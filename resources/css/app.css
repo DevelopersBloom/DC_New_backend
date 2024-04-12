@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@keyframes appear {
+    from{
+        transform: translateY(-100px);
+        opacity: 0;
+    }
+    to{
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+html{
+    font-size: 16px;
+}
+.alert-element{
+    top: 100px;
+    right: 50px;
+    animation: appear 0.5s ease-out;
+}
+body {
+    font-family: 'Nunito', sans-serif;
+    overflow-x: hidden;
+}
+.beautiful-scroll::-webkit-scrollbar-track
+{
+    border-radius: 10px;
+    background-color: transparent;
+}
+
+.beautiful-scroll::-webkit-scrollbar
+{
+    width: 8px;
+    background-color: transparent;
+}
+
+.beautiful-scroll::-webkit-scrollbar-thumb
+{
+    border-radius: 10px;
+    background-color: rgb(14 165 233);
+}
+.dark .beautiful-scroll::-webkit-scrollbar{
+    background-color: rgb(17 24 39);
+}
+.router-link-active:not(.new_contract){
+    color:black !important;
+    font-weight: bold;
+}
+.dark .router-link-active:not(.new_contract){
+    color:white !important;
+}
+.page-spinner-handler{
+    position:fixed;
+    inset: 0;
+    background:rgba(0,0,0,0.5);
+    z-index:999
+}
+.page-spinner-handler > svg{
+    position:absolute;
+    left:50%;
+    top: 50%;
+}
+.alert-element.is-link{
+    cursor:pointer;
+}
+.alert-element.is-link .message_part{
+    text-decoration:underline;
+}
+svg.dram_icon path{
+    fill: black ;
+}
+.dark svg.dram_icon path{
+    fill: white ;
+}
+.pdf-viewer{
+    .pdf-vue3-scroller{
+        max-height: 150px !important;
+    }
+}
+.confirm-modal div:nth-child(2).h-modal{
+    z-index:999;
+
+}
