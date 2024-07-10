@@ -31,13 +31,13 @@ const makeMoney = (value, with_sign = false) => {
             check = false;
         }
     }
-    if(!result.length){
+    if (!result.length) {
         result = '0'
     }
-    if(minus){
+    if (minus) {
         result = '- ' + result
     }
-    if(float){
+    if (float) {
         result = result + float
     }
     return result;
@@ -45,12 +45,12 @@ const makeMoney = (value, with_sign = false) => {
 const alertSuccess = (message, timeout = 5000, link = null) => {
     const alert = document.createElement('div')
     let className = link ? 'is-link' : ''
-    alert.innerHTML = '<div class="fixed '+ className +' alert-element flex categories-center p-4 mb-4 text-green-500 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">\n' +
+    alert.innerHTML = '<div class="fixed ' + className + ' alert-element flex categories-center p-4 mb-4 text-green-500 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">\n' +
         '      <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">\n' +
         '        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>\n' +
         '      </svg>\n' +
         '      <div class="ml-3 text-sm font-medium message_part">\n' +
-                    message +
+        message +
         '      </div>\n' +
         '    </div>'
     document.body.appendChild(alert)
@@ -61,8 +61,8 @@ const alertSuccess = (message, timeout = 5000, link = null) => {
         onHide: (context, targetEl) => {
         }
     });
-    if(link){
-        alert.addEventListener('click',function(){
+    if (link) {
+        alert.addEventListener('click', function () {
             router.push(link)
             dismiss.hide()
         })
@@ -95,4 +95,4 @@ const alertError = (message, timeout = 5000) => {
 }
 
 
-export {makeMoney , alertSuccess, alertError}
+export {makeMoney, alertSuccess, alertError}
