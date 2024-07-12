@@ -130,7 +130,7 @@ class TestController extends Controller
 //        $payments = Payment::where('status','completed')->where('date','03.01.2024')->sum('amount');
 //        dd($payments);
 //    }
-    public function test(){
+    public function test(Request $request){
         return response()->json([
             'user' => 'Saten'
         ]);

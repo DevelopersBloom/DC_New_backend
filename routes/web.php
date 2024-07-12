@@ -8,7 +8,6 @@ use App\Http\Controllers\DealController;
 use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\InnerController;
-use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TestController;
 use Illuminate\Support\Facades\Route;

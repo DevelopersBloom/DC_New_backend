@@ -477,8 +477,10 @@ class ContractController extends Controller
             $query->withCount('contracts');
         }])->paginate(10);
         foreach ($contracts as $contract){
-            $contract->category_title = $contract->category->title;
-            $contract->evaluator_title = $contract->evaluator->full_name;
+            if($contract->category && $contract->full_name){
+                $contract->category_title = $contract->category->title;
+                $contract->evaluator_title = $contract->evaluator->full_name;
+            }
         }
         $all = Contract::where('pawnshop_id',auth()->user()->pawnshop_id)->get()->count();
         return response()->json([

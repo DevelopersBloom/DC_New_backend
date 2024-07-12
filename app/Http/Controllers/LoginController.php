@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class LoginController extends Controller
 {
@@ -14,7 +15,7 @@ class LoginController extends Controller
             'password' => bcrypt($request->input('password')),
         ]);
 
-        $token = auth()->login($user);
+        $token = auth('api')->login($user);
 
         return $this->respondWithToken($token);
     }
@@ -22,7 +23,7 @@ class LoginController extends Controller
     public function login(Request $request) {
         $credentials = $request->only('email', 'password');
         if (!$token = auth('api')->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized', 'success' => 'error'], 200);
+            return response()->json(['error' => 'Unauthorized', 'success' => 'error'], 401);
         }
 
         return $this->respondWithToken($token);
