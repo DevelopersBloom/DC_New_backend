@@ -45,6 +45,11 @@ return [
             'provider' => 'users',
 //            'hash' => false,
         ],
+        'jwt_cookie' => [
+            'driver' => 'jwt',
+            'provider' => 'users',
+            'hash' => false,
+        ],
     ],
 
     /*

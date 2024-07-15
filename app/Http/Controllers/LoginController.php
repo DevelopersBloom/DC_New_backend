@@ -38,15 +38,16 @@ class LoginController extends Controller
 
     public function logout() {
         auth()->logout();
-        return response()->json(['message' => 'Successfully logged out']);
+        return response()->json(['message' => 'Successfully logged out'])
+        ->cookie('token', '', -1);
     }
 
     protected function respondWithToken($token) {
         return response()->json([
             'success' => 'success',
-            'access_token' => $token,
-            'token_type' => 'bearer',
+//            'access_token' => $token,
+//            'token_type' => 'bearer',
             'user' => auth()->user()
-        ]);
+        ])->cookie('token', $token, 60, null, null, false, true);
     }
 }
