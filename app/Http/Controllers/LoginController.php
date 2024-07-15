@@ -22,11 +22,23 @@ class LoginController extends Controller
 
     public function login(Request $request) {
         $credentials = $request->only('email', 'password');
+        $rememberMe = $request->has('remember_me');
+
         if (!$token = auth('api')->attempt($credentials)) {
             return response()->json(['error' => 'Unauthorized', 'success' => 'error'], 401);
         }
 
-        return $this->respondWithToken($token);
+        $cookie = cookie(
+            'token',
+            $token,
+            $rememberMe ? 20160 : 120, // Expiration time in minutes (2 weeks vs 2 hours)
+            null,
+            null,
+            false,
+            true // HttpOnly
+        );
+
+        return $this->respondWithToken($token)->withCookie($cookie);
     }
     public function getUser(){
         return response()->json(['user' => auth()->user()]);

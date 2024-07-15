@@ -15,8 +15,9 @@ class User extends Authenticatable implements JWTSubject
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
-     * The attributes that are mass assignable.
      *
+     * The attributes that are mass assignable.
+     *5
      * @var array<int, string>
      */
     protected $fillable = [
