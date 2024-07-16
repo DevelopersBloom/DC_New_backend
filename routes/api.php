@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
@@ -25,6 +26,34 @@ Route::group(['prefix' => 'auth'], function () {
         Route::post('refresh', [LoginController::class, 'refresh']);
     });
 });
+
+Route::group(['middleware' => 'jwt.auth'], function () {
+    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+        Route::get('/get-users', [AdminController::class, 'getUsers']);
+        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
+        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
+        Route::get('/edit-user/{id}', [AdminController::class, 'editUser']);
+        Route::get('/edit-evaluator/{id}', [AdminController::class, 'editEvaluator']);
+        Route::get('/edit-pawnshop/{id}', [AdminController::class, 'editPawnshop']);
+        Route::get('/edit-category/{id}', [AdminController::class, 'editCategory']);
+        Route::get('/get-categories', [AdminController::class, 'getCategories']);
+        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
+        Route::get('/get-user-config', [AdminController::class, 'getUserConfig']);
+        Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
+        Route::post('/create-user', [AdminController::class, 'createUser']);
+        Route::post('/create-evaluator', [AdminController::class, 'createEvaluator']);
+        Route::post('/update-user', [AdminController::class, 'updateUser']);
+        Route::post('/delete-user', [AdminController::class, 'deleteUser']);
+        Route::post('/update-evaluator', [AdminController::class, 'updateEvaluator']);
+        Route::post('/create-pawnshop', [AdminController::class, 'createPawnshop']);
+        Route::post('/update-pawnshop', [AdminController::class, 'updatePawnshop']);
+        Route::post('/update-cashbox', [AdminController::class, 'updateCashbox']);
+        Route::post('/create-category', [AdminController::class, 'createCategory']);
+        Route::post('/update-category', [AdminController::class, 'updateCategory']);
+        Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
+    });
+});
+
 
 Route::get('/test', [TestController::class, 'test']);
 
