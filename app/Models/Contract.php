@@ -50,6 +50,11 @@ class Contract extends Model
         'passport_given',
     ];
 
+    const STATUS_INITIAL = 'initial';
+    const STATUS_EXECUTED = 'executed';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_OVERDUE = 'overdue';
+
     public function payments(){
         return $this->hasMany(Payment::class, 'contract_id');
     }

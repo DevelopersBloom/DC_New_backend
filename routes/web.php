@@ -34,32 +34,6 @@ Route::get('/api/download-order/{id}', [FileController::class, 'downloadOrder'])
 Route::post('/api/download-monthly-export', [ExcelController::class, 'downloadMonthlyExport']);
 Route::post('/api/download-quarter-export', [ExcelController::class, 'downloadQuarterExport']);
 Route::group(['middleware' => 'jwt.auth', 'prefix' => 'api'], function () {
-    Route::post('/create-contract', [ContractController::class, 'create']);
-    Route::post('/update-contract', [ContractController::class, 'update']);
-    Route::post('/extend-contract', [ContractController::class, 'extend']);
-    Route::post('/execute-contract', [ContractController::class, 'execute']);
-    Route::post('/make-regular-payment', [PaymentController::class, 'makePayment']);
-    Route::post('/make-full-payment', [PaymentController::class, 'makeFullPayment']);
-    Route::post('/make-partial-payment', [PaymentController::class, 'makePartialPayment']);
-    Route::get('/get-contracts', [ContractController::class, 'get']);
-    Route::get('/get-filters', [ContractController::class, 'getFilters']);
-    Route::get('/get-todays-contracts', [ContractController::class, 'getTodaysContracts']);
-    Route::get('/get-payments/{id}', [PaymentController::class, 'getPayments']);
-    Route::get('/edit-contract/{id}', [ContractController::class, 'editContract']);
-    Route::post('/get-clients', [ContractController::class, 'searchClient']);
-    Route::post('/filter-contracts', [ContractController::class, 'filterContracts']);
-    Route::post('/main-search', [ContractController::class, 'mainSearch']);
-    Route::get('/get-clients-info/{id}', [ClientController::class, 'getInfo']);
-    Route::get('/get-clients-list', [ClientController::class, 'getClients']);
-    Route::post('/save-profile-files', [ClientController::class, 'saveFiles']);
-    Route::get('/get-categories', [ContractController::class, 'getCategories']);
-    Route::post('/send-comment', [InnerController::class, 'addComment']);
-    Route::post('/request-discount', [PaymentController::class, 'requestDiscount']);
-    Route::post('/answer-discount', [PaymentController::class, 'answerDiscount']);
-    Route::get('/get-comments', [InnerController::class, 'getComments']);
-    Route::post('/get-deals', [DealController::class, 'index']);
-    Route::post('/add-cost', [DealController::class, 'addCost']);
-
     Route::group(['prefix' => 'config'], function () {
         Route::post('/get-cashbox-list', [ConfigController::class, 'getCashboxList']);
         Route::post('/set-cashbox-value', [ConfigController::class, 'setCashboxValue']);
