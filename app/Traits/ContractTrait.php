@@ -7,41 +7,43 @@ use App\Models\Deal;
 use App\Models\Order;
 use App\Models\Payment;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 trait ContractTrait
 {
     public function getFullContract($id)
     {
-        $contract = Contract::where('pawnshop_id',auth()->user()->pawnshop_id)->where('id', $id)
-            ->with(['client','files','category','evaluator','payments' => function($payment){
+        $contract = Contract::where('pawnshop_id', auth()->user()->pawnshop_id)->where('id', $id)
+            ->with(['client', 'files', 'category', 'evaluator', 'payments' => function ($payment) {
                 $payment->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') ASC");
-            },'history' => function($query){
-                $query->with(['type','user','order'])->orderBy('id','DESC');
-            },'items' => function($query){
+            }, 'history' => function ($query) {
+                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
+            }, 'items' => function ($query) {
                 $query->with('category');
-            },'discounts',])->first();
-        if($contract && $contract->evaluator){
+            }, 'discounts',])->first();
+        if ($contract && $contract->evaluator) {
             $contract->evaluator_title = $contract->evaluator->full_name;
         }
         return $contract;
     }
 
-    public function createDeal($amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
-        if($type === 'in'){
-            if($cash){
+    public function createDeal($amount, $type, $contract_id, $order_id = null, $cash = true, $purpose = null, $receiver = null, $source = null)
+    {
+        if ($type === 'in') {
+            if ($cash) {
                 auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox + $amount;
-            }else{
+            } else {
                 auth()->user()->pawnshop->bank_cashbox = auth()->user()->pawnshop->bank_cashbox + $amount;
             }
-        }else{
-            if($cash){
+        } else {
+            if ($cash) {
                 auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox - $amount;
-            }else{
+            } else {
                 auth()->user()->pawnshop->bank_cashbox = auth()->user()->pawnshop->bank_cashbox - $amount;
             }
 
         }
-        if($amount < 0){
+        if ($amount < 0) {
             $type = $type === 'in' ? 'out' : 'in';
             $amount = -$amount;
         }
@@ -63,35 +65,39 @@ trait ContractTrait
             'source' => $source,
         ]);
     }
-    public function setContractPenalty($id){
+
+    public function setContractPenalty($id)
+    {
         $contract = Contract::where('id', $id)->with('payments')->first();
         $now = Carbon::now();
         $dateToCheck = null;
-        if($contract){
-            for($i = 0; $i < count($contract->payments);$i++){
+        if ($contract) {
+            for ($i = 0; $i < count($contract->payments); $i++) {
                 $payment = $contract->payments[$i];
-                if($now ->gt(Carbon::parse($payment->date)) && $payment->status === 'initial'){
+                if ($now->gt(Carbon::parse($payment->date)) && $payment->status === 'initial') {
                     $dateToCheck = Carbon::parse($payment->date);
                     break;
                 }
             }
-            if ($dateToCheck){
+            if ($dateToCheck) {
                 $difference = $now->diffInDays($dateToCheck);
                 $penalty = $contract->left * $difference * $contract->penalty * 0.01;
                 $contract->penalty_amount = $penalty;
                 $contract->save();
-            }else{
+                return $penalty;
+            } else {
                 $contract->penalty_amount = 0;
                 $contract->save();
+                return 0;
             }
         }
 
     }
 
 
-
-    public function createPayment($contract_id,$amount,$type,$payer,$cash){
-        $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
+    public function createPayment($contract_id, $amount, $type, $payer, $cash)
+    {
+        $status = ($type === 'penalty' || $type === 'full') ? 'completed' : 'initial';
         $payment = new Payment();
         $payment->amount = $amount;
         $payment->paid = $amount;
@@ -101,7 +107,7 @@ trait ContractTrait
         $payment->pawnshop_id = auth()->user()->pawnshop_id;
         $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
         $payment->status = $status;
-        if($payer){
+        if ($payer) {
             $payment->another_payer = true;
             $payment->name = $payer['name'];
             $payment->surname = $payer['surname'];
@@ -112,7 +118,34 @@ trait ContractTrait
         return $payment;
     }
 
-    public function completePayment(){
+    public function checkAndUpdateOverdueContracts()
+    {
+        set_time_limit(300);
+
+        $today = Carbon::today();
+
+        Contract::where('status', 'initial')
+            ->where(function ($query) use ($today) {
+                $query->whereHas('payments', function ($paymentQuery) use ($today) {
+                    $paymentQuery
+                        ->where('status', 'initial')
+                        ->whereDate(DB::raw("STR_TO_DATE(date, '%d.%m.%Y')"), '<', $today)
+                        ->whereNull('paid');
+                })
+                    ->orWhereDate(DB::raw("STR_TO_DATE(deadline, '%d.%m.%Y')"), '<', $today);
+            })
+            ->chunkById(1000, function ($contracts) {
+                foreach ($contracts as $contract) {
+//                    $contract->load('payments'); // Eager loading
+                    $contract->status = 'overdue';
+                    $contract->save();
+                }
+            });
+
+    }
+
+    public function completePayment()
+    {
 
     }
 }

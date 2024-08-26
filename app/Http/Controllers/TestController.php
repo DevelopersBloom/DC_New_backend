@@ -132,7 +132,7 @@ class TestController extends Controller
 //    }
     public function test(Request $request){
         return response()->json([
-            'user' => 'Saten'
+            'penalty_for_id_1' => $this->setContractPenalty(1)
         ]);
 //        $a = intval(300000.97);
 //        dd($a);

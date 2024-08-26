@@ -18,6 +18,7 @@ use App\Traits\OrderTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ContractController extends Controller
 {
@@ -492,14 +493,35 @@ class ContractController extends Controller
 
     public function get(Request $request)
     {
+        $this->checkAndUpdateOverdueContracts();
+
         // Default per page value if not provided 6
         $perPage = $request->query('limit', 6);
         $status = $request->query('status', 'all');
         $pawnshop_id = auth()->user()->pawnshop_id;
+        $today = Carbon::today()->setTimezone('Asia/Yerevan');
 
         $contractsQuery = Contract::where('pawnshop_id', $pawnshop_id);
+        $counts = json_decode($this->getCounts($request)->getContent(), true);
 
-        if ($status != 'all') {
+        if ($status == 'todays') {
+            $paymentsQuery = Payment::whereHas('contract', function ($query) use ($contractsQuery) {
+                $query->addNestedWhereQuery($contractsQuery->getQuery());
+            })
+                ->where('status', 'initial')
+                ->whereDate(DB::raw("STR_TO_DATE(date, '%d.%m.%Y')"), '=', $today)
+                ->whereNull('paid')
+                ->with('contract');
+
+            $payments = $paymentsQuery
+                ->orderBy('date', 'DESC')
+                ->paginate($perPage);
+
+            return response()->json([
+                'payments' => $payments,
+                'counts' => $counts
+            ]);
+        } elseif ($status != 'all') {
             $contractsQuery->where('status', $status);
         }
 
@@ -508,30 +530,49 @@ class ContractController extends Controller
             ->paginate($perPage);
 
         foreach ($contracts as $contract) {
-            if ($contract->categor) {
+            if ($contract->category) {
                 $contract->category_title = $contract->category->title;
             }
         }
+
+        return response()->json([
+            'contracts' => $contracts,
+            'counts' => $counts
+        ]);
+    }
+
+    public function getCounts(Request $request)
+
+
+    {
+        $pawnshop_id = auth()->user()->pawnshop_id;
+        $today = Carbon::today()->setTimezone('Asia/Yerevan');
 
         $allCount = Contract::where('pawnshop_id', $pawnshop_id)->count();
         $activeCount = Contract::where('pawnshop_id', $pawnshop_id)->where('status', Contract::STATUS_INITIAL)->count();
         $executedCount = Contract::where('pawnshop_id', $pawnshop_id)->where('status', Contract::STATUS_EXECUTED)->count();
         $completedCount = Contract::where('pawnshop_id', $pawnshop_id)->where('status', Contract::STATUS_COMPLETED)->count();
         $overdueCount = Contract::where('pawnshop_id', $pawnshop_id)->where('status', Contract::STATUS_OVERDUE)->count();
+        $todaysCount = Payment::whereHas('contract', function ($query) use ($pawnshop_id) {
+            $query->where('pawnshop_id', $pawnshop_id);
+        })
+            ->where('status', 'initial')
+            ->whereDate(DB::raw("STR_TO_DATE(date, '%d.%m.%Y')"), '=', $today)
+            ->whereNull('paid')
+            ->count();
 
         return response()->json([
-            'contracts' => $contracts,
-            'counts' => [
                 'all' => $allCount,
-                'active' => $activeCount,
+                'initial' => $activeCount,
                 'executed' => $executedCount,
                 'completed' => $completedCount,
-                'overdue' => $overdueCount
-            ]
+                'overdue' => $overdueCount,
+                'todays' => $todaysCount
         ]);
     }
 
-    public function getFilters()
+    public
+    function getFilters()
     {
         $users = User::where('pawnshop_id', auth()->user()->pawnshop_id)->get();
         $categories = Category::all();
@@ -541,7 +582,8 @@ class ContractController extends Controller
         ]);
     }
 
-    public function filterContracts(Request $request)
+    public
+    function filterContracts(Request $request)
     {
         $contracts = Contract::where('pawnshop_id', auth()->user()->pawnshop_id)->orderBy('id', 'DESC')
             ->with(['payments' => function ($payment) {
@@ -626,7 +668,10 @@ class ContractController extends Controller
             ->where('status', 'initial')
             ->where('date', Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y'))
             ->whereHas('contract', function ($contract) {
-                $contract->where('status', 'initial');
+                $contract->where(function ($query) {
+                    $query->where('status', 'initial')
+                        ->orWhere('status', 'overdue');
+                });
             })
             ->with(['contract' => function ($contract) {
                 $contract->with(['payments' => function ($payment) {
@@ -641,7 +686,8 @@ class ContractController extends Controller
         ]);
     }
 
-    public function getCategories()
+    public
+    function getCategories()
     {
         $categories = Category::get();
         $evaluators = Evaluator::where('pawnshop_id', auth()->user()->pawnshop_id)->get();
@@ -656,7 +702,8 @@ class ContractController extends Controller
         return response()->json($res);
     }
 
-    public function searchClient(Request $request)
+    public
+    function searchClient(Request $request)
     {
         $clientQuery = Client::query();
         $keywords = explode(' ', $request->text);
@@ -676,7 +723,8 @@ class ContractController extends Controller
         ]);
     }
 
-    public function mainSearch(Request $request)
+    public
+    function mainSearch(Request $request)
     {
         $clientQuery = Client::query();
         $contractQuery = Contract::query();

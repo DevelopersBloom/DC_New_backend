@@ -66,6 +66,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::post('/make-full-payment', [PaymentController::class, 'makeFullPayment']);
     Route::post('/make-partial-payment', [PaymentController::class, 'makePartialPayment']);
     Route::get('/get-contracts', [ContractController::class, 'get']);
+    Route::get('/get-counts', [ContractController::class, 'getCounts']);
     Route::get('/get-filters', [ContractController::class, 'getFilters']);
     Route::get('/get-todays-contracts', [ContractController::class, 'getTodaysContracts']);
     Route::get('/get-payments/{id}', [PaymentController::class, 'getPayments']);
