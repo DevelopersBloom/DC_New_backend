@@ -495,45 +495,35 @@ class ContractController extends Controller
     {
         $this->checkAndUpdateOverdueContracts();
 
-        // Default per page value if not provided 6
         $perPage = $request->query('limit', 6);
         $status = $request->query('status', 'all');
         $pawnshop_id = auth()->user()->pawnshop_id;
         $today = Carbon::today()->setTimezone('Asia/Yerevan');
 
-        $contractsQuery = Contract::where('pawnshop_id', $pawnshop_id);
-        $counts = json_decode($this->getCounts($request)->getContent(), true);
+        $contractsQuery = Contract::where('contracts.pawnshop_id', $pawnshop_id);
 
         if ($status == 'todays') {
-            $paymentsQuery = Payment::whereHas('contract', function ($query) use ($contractsQuery) {
-                $query->addNestedWhereQuery($contractsQuery->getQuery());
-            })
-                ->where('status', 'initial')
-                ->whereDate(DB::raw("STR_TO_DATE(date, '%d.%m.%Y')"), '=', $today)
-                ->whereNull('paid')
-                ->with('contract');
-
-            $payments = $paymentsQuery
-                ->orderBy('date', 'DESC')
-                ->paginate($perPage);
-
-            return response()->json([
-                'payments' => $payments,
-                'counts' => $counts
-            ]);
+            $contractsQuery->join('payments', 'contracts.id', '=', 'payments.contract_id')
+                ->where('payments.status', 'initial')
+                ->whereDate(DB::raw("STR_TO_DATE(payments.date, '%d.%m.%Y')"), '=', $today)
+                ->whereNull('payments.paid')
+                ->select('contracts.*', 'payments.amount')
+                ->with('category');
         } elseif ($status != 'all') {
-            $contractsQuery->where('status', $status);
+            $contractsQuery->where('contracts.status', $status);
         }
 
         $contracts = $contractsQuery
-            ->orderBy('created_at', 'DESC')
+            ->orderBy('contracts.created_at', 'DESC')
             ->paginate($perPage);
 
-        foreach ($contracts as $contract) {
-            if ($contract->category) {
-                $contract->category_title = $contract->category->title;
-            }
-        }
+        // Modify the collection to include category title
+        $contracts->getCollection()->transform(function ($contract) {
+            $contract->category_title = $contract->category ? $contract->category->title : "Այլ";
+            return $contract;
+        });
+
+        $counts = json_decode($this->getCounts($request)->getContent(), true);
 
         return response()->json([
             'contracts' => $contracts,
@@ -542,8 +532,6 @@ class ContractController extends Controller
     }
 
     public function getCounts(Request $request)
-
-
     {
         $pawnshop_id = auth()->user()->pawnshop_id;
         $today = Carbon::today()->setTimezone('Asia/Yerevan');
@@ -562,12 +550,12 @@ class ContractController extends Controller
             ->count();
 
         return response()->json([
-                'all' => $allCount,
-                'initial' => $activeCount,
-                'executed' => $executedCount,
-                'completed' => $completedCount,
-                'overdue' => $overdueCount,
-                'todays' => $todaysCount
+            'all' => $allCount,
+            'initial' => $activeCount,
+            'executed' => $executedCount,
+            'completed' => $completedCount,
+            'overdue' => $overdueCount,
+            'todays' => $todaysCount
         ]);
     }
 
