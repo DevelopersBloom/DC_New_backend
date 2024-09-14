@@ -68,6 +68,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/get-contracts', [ContractController::class, 'get']);
     Route::get('/get-counts', [ContractController::class, 'getCounts']);
     Route::get('/get-filters', [ContractController::class, 'getFilters']);
+    Route::get('/get-item-filters', [ContractController::class, 'getItemFilters']);
     Route::get('/get-todays-contracts', [ContractController::class, 'getTodaysContracts']);
     Route::get('/get-payments/{id}', [PaymentController::class, 'getPayments']);
     Route::get('/edit-contract/{id}', [ContractController::class, 'editContract']);

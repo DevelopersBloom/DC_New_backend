@@ -674,6 +674,56 @@ class ContractController extends Controller
         ]);
     }
 
+    public function getItemFilters(Request $request)
+    {
+        $provided = $request->query('provided');
+        $type = $request->query('type');
+
+        // Determine category_id based on type
+        $categoryId = $this->getCategoryIdByType($type);
+
+        if (!$categoryId) {
+            return response()->json(['error' => 'Invalid type provided'], 400);
+        }
+
+        // Query the relevant tables
+        $interestRate = DB::table('interest_rates')
+            ->where('category_id', $categoryId)
+            ->where('min_amount', '<=', $provided)
+            ->where('max_amount', '>=', $provided)
+            ->first(['percentage']);
+
+        $penaltyPercentage = DB::table('penalty_percentages')
+            ->where('category_id', $categoryId)
+            ->where('min_amount', '<=', $provided)
+            ->where('max_amount', '>=', $provided)
+            ->first(['percentage']);
+
+        $oneTimePercentage = DB::table('one_time_percentages')
+            ->where('category_id', $categoryId)
+            ->where('min_amount', '<=', $provided)
+            ->where('max_amount', '>=', $provided)
+            ->first(['percentage']);
+
+        return response()->json([
+            'interest_rate' => $interestRate ? $interestRate->percentage : null,
+            'penalty_percentage' => $penaltyPercentage ? $penaltyPercentage->percentage : null,
+            'one_time_percentage' => $oneTimePercentage ? $oneTimePercentage->percentage : null,
+        ]);
+    }
+
+    private function getCategoryIdByType($type)
+    {
+        // Mapping type to category_id
+        $categories = [
+            'gold' => 1,
+            'car' => 7,
+            'electronics' => 9,
+        ];
+
+        return $categories[$type] ?? null;
+    }
+
     public
     function getCategories()
     {
@@ -690,8 +740,7 @@ class ContractController extends Controller
         return response()->json($res);
     }
 
-    public
-    function searchClient(Request $request)
+    public function searchClient(Request $request)
     {
         $clientQuery = Client::query();
         $keywords = explode(' ', $request->text);

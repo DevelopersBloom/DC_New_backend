@@ -5,8 +5,6 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Evaluator;
 use App\Models\HistoryType;
-use App\Models\Type;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class TypeSeeder extends Seeder
@@ -22,6 +20,10 @@ class TypeSeeder extends Seeder
             [
                 'name' => 'gold',
                 'title' => 'Ոսկի',
+            ],
+            [
+                'name' => 'electronics',  // Adding the new 'electronics' category
+                'title' => 'Տեխնիկա',
             ],
             [
                 'name' => 'phone',
@@ -52,12 +54,15 @@ class TypeSeeder extends Seeder
                 'title' => 'Այլ',
             ],
         ];
-        foreach ($types as $type){
-            Category::create([
-                'name' => $type['name'],
-                'title' => $type['title'],
-            ]);
+
+        foreach ($types as $type) {
+            Category::updateOrCreate(
+                ['name' => $type['name']],  // Check if the category already exists
+                ['title' => $type['title']] // If it exists, update; otherwise, insert
+            );
         }
+
+        // History types
         $history_types = [
             [
                 'name' => 'opening',
@@ -100,24 +105,27 @@ class TypeSeeder extends Seeder
                 'title' => 'Իրացում',
             ],
         ];
-        foreach ($history_types as $type){
-            HistoryType::create([
-                'name' => $type['name'],
-                'title' => $type['title'],
-            ]);
+
+        foreach ($history_types as $type) {
+            HistoryType::updateOrCreate(
+                ['name' => $type['name']],
+                ['title' => $type['title']]
+            );
         }
 
+        // Evaluators
         $evaluators = [
             [
                 'full_name' => 'Grigor',
                 'pawnshop_id' => 1
             ],
         ];
-        foreach ($evaluators as $evaluator){
-            Evaluator::create([
-                'full_name' => $evaluator['full_name'],
-                'pawnshop_id' => $evaluator['pawnshop_id'],
-            ]);
+
+        foreach ($evaluators as $evaluator) {
+            Evaluator::updateOrCreate(
+                ['full_name' => $evaluator['full_name']],
+                ['pawnshop_id' => $evaluator['pawnshop_id']]
+            );
         }
     }
 }
