@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class LoginController extends Controller
 {
+
     public function register(Request $request)
     {
         $user = User::create([

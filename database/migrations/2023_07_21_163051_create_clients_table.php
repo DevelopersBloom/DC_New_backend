@@ -15,20 +15,21 @@ return new class extends Migration
     {
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->nullable();
-            $table->string('surname')->nullable();
+            $table->string('name');
+            $table->string('surname');
             $table->string('middle_name')->nullable();
-            $table->string('passport')->nullable();
-            $table->string('address')->nullable();
-            $table->string('phone1')->nullable();
-            $table->string('phone2')->nullable();
-            $table->string('dob')->nullable();
-            $table->string('passport_given')->nullable();
+            $table->string('passport_series');
+            $table->date('passport_validity');
+            $table->string('passport_issued');
+            $table->date('date_of_birth');
+            $table->string('email')->unique();
+            $table->string('phone');
+            $table->string('additional_phone')->nullable();
+            $table->string('country');
+            $table->string('city');
+            $table->string('street');
+            $table->string('building');
             $table->integer('pawnshop_id')->nullable();
-            $table->string('email')->nullable();
-            $table->string('bank')->nullable();
-            $table->string('card')->nullable();
-            $table->text('comment')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
