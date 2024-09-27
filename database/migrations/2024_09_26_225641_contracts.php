@@ -14,22 +14,21 @@ return new class extends Migration
     public function up()
     {
         Schema::create('contracts', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->unsignedBigInteger('customer_id');
+            $table->id();
+            $table->unsignedBigInteger('client_id');
             $table->decimal('estimated_amount', 10, 2);
             $table->decimal('provided_amount', 10, 2);
-            $table->string('category');
-            $table->string('subcategory');
-            $table->string('model')->nullable();
+            $table->unsignedBigInteger('item_id');
             $table->decimal('interest_rate', 5, 2);
             $table->decimal('penalty', 5, 2);
             $table->integer('deadline'); // In days, months, or years
             $table->decimal('lump_sum', 10, 2)->nullable();
             $table->text('description')->nullable();
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');
-            $table->integer('pawnshop_id');
+            $table->unsignedBigInteger('pawnshop_id');
 
-            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
+            $table->foreign('item_id')->references('id')->on('items');
+            $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
 
             $table->softDeletes();

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('surname');
             $table->string('middle_name')->nullable();
-            $table->string('passport_series');
+            $table->string('passport_series')->unique();
             $table->date('passport_validity');
             $table->string('passport_issued');
             $table->date('date_of_birth');
@@ -29,7 +29,11 @@ return new class extends Migration
             $table->string('city');
             $table->string('street');
             $table->string('building');
-            $table->integer('pawnshop_id')->nullable();
+            $table->string('bank_name');
+            $table->string('account_number');
+            $table->string('card_number')->nullable();
+            $table->string('iban');
+
             $table->softDeletes();
             $table->timestamps();
         });

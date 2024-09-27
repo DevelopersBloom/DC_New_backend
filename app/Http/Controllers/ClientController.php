@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
+    public function createClient()
+    {
+
+
+    }
     public function getInfo($id){
         $client = Client::where('pawnshop_id', auth()->user()->pawnshop_id)->where('id',$id)->with(['files','contracts' => function($contract){
             $contract->with('category');

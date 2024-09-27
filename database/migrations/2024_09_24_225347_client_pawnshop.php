@@ -16,10 +16,10 @@ return new class extends Migration
         Schema::create('cleint_pownshop', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('client_id');
-            $table->unsignedBigInteger('pownshop_id');
+            $table->unsignedBigInteger('pawnshop_id');
 
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
-            $table->foreign('pownshop_id')->references('id')->on('pownshops')->onDelete('cascade');
+            $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
 
             $table->unique(['client_id', 'pawnshop_id']);
         });

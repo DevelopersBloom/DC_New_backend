@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
@@ -29,7 +30,8 @@ Route::group(['prefix' => 'auth'], function () {
 });
 
 Route::group(['middleware' => 'jwt.auth'], function () {
-    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+//    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+
         Route::get('/get-users', [AdminController::class, 'getUsers']);
         Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
         Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
@@ -52,7 +54,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/create-category', [AdminController::class, 'createCategory']);
         Route::post('/update-category', [AdminController::class, 'updateCategory']);
         Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
-    });
+        Route::group(['prefix' => 'clients'], function () {
+            Route::post('/', [ClientControllerNew::class, 'storeOrUpdate']);
+            Route::get('/search', [ClientControllerNew::class, 'search']);
+        });
 });
 
 

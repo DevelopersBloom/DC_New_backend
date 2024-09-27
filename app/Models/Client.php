@@ -10,21 +10,26 @@ class Client extends Model
 {
     use HasFactory;
     use SoftDeletes;
+
     protected $fillable = [
         'name',
         'surname',
         'middle_name',
-        'address',
-        'passport',
+        'passport_series',
+        'passport_validity',
+        'passport_issued',
+        'date_of_birth',
         'email',
-        'bank',
-        'card',
-        'phone1',
-        'phone2',
-        'pawnshop_id',
-        'comment',
-        'dob',
-        'passport_given',
+        'phone',
+        'additional_phone',
+        'country',
+        'city',
+        'street',
+        'building',
+        'bank_name',
+        'account_number',
+        'card_number',
+        'iban',
     ];
 
     public function contracts(){
