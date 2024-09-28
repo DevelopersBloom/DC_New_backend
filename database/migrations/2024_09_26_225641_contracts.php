@@ -18,7 +18,6 @@ return new class extends Migration
             $table->unsignedBigInteger('client_id');
             $table->decimal('estimated_amount', 10, 2);
             $table->decimal('provided_amount', 10, 2);
-            $table->unsignedBigInteger('item_id');
             $table->decimal('interest_rate', 5, 2);
             $table->decimal('penalty', 5, 2);
             $table->integer('deadline'); // In days, months, or years
@@ -27,7 +26,6 @@ return new class extends Migration
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');
             $table->unsignedBigInteger('pawnshop_id');
 
-            $table->foreign('item_id')->references('id')->on('items');
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
 

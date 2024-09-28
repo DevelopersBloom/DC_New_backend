@@ -34,10 +34,10 @@ class ClientControllerNew extends Controller
     public function search(Request $request)
     {
         $request->validate([
-            'inputString' => 'nullable|string|max:255',
+            'fullName' => 'nullable|string|max:255',
         ]);
 
-        $inputString = $request->input('search');
+        $inputString = $request->input('fullName');
 
         $inputs = preg_split('/\s+/', trim($inputString));
 

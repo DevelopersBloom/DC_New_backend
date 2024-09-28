@@ -14,6 +14,7 @@ class ClientService
 
     public function storeOrUpdate(array $data): Client
     {
+
         $client = Client::where('passport_series', $data['passport_series'])
             ->where('passport_validity', $data['passport_validity'])
             ->first();
@@ -30,10 +31,6 @@ class ClientService
             $client->city = $data['city'];
             $client->street = $data['street'];
             $client->building = $data['building'] ?? null;
-            $client->bank_name = $data['bank_name'] ?? null;
-            $client->account_number = $data['account_number'] ?? null;
-            $client->card_number = $data['card_number'] ?? null;
-            $client->iban = $data['iban'] ?? null;
             $client->save();
         } else {
             $client = new Client();
@@ -51,10 +48,6 @@ class ClientService
             $client->city = $data['city'];
             $client->street = $data['street'];
             $client->building = $data['building'] ?? null;
-            $client->bank_name = $data['bank_name'] ?? null;
-            $client->account_number = $data['account_number'] ?? null;
-            $client->card_number = $data['card_number'] ?? null;
-            $client->iban = $data['iban'] ?? null;
             $client->save();
         }
         return $client;
@@ -73,5 +66,17 @@ class ClientService
                 ->orWhere('name', 'like', '%' . ($secondInput ?? '') . '%')
                 ->orWhere('surname', 'like', '%' . ($secondInput ?? '') . '%');
         })->get();
+    }
+
+    public function updateBankInfo(int $client_id,string $bank_name,string $card_number,?string $account_number, ?string $iban)
+    {
+        $client = Client::findOrFail($client_id);
+        $client->bank_name = $bank_name;
+        $client->card_number = $card_number;
+        $client->account_number =$account_number;
+        $client->iban = $iban;
+        $client->save();
+
+        return $client;
     }
 }

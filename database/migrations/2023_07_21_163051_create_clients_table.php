@@ -29,10 +29,10 @@ return new class extends Migration
             $table->string('city');
             $table->string('street');
             $table->string('building');
-            $table->string('bank_name');
-            $table->string('account_number');
+            $table->string('bank_name')->nullable();
+            $table->string('account_number')->nullable();
             $table->string('card_number')->nullable();
-            $table->string('iban');
+            $table->string('iban')->nullable();
 
             $table->softDeletes();
             $table->timestamps();

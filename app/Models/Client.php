@@ -30,6 +30,7 @@ class Client extends Model
         'account_number',
         'card_number',
         'iban',
+
     ];
 
     public function contracts(){

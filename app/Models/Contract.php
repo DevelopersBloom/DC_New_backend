@@ -13,21 +13,8 @@ class Contract extends Model
 {
     use HasFactory;
     use SoftDeletes;
+
     protected $fillable=[
-        'name',
-        'surname',
-        'middle_name',
-        'passport',
-        'address',
-        'phone1',
-        'phone2',
-        'email',
-        'bank',
-        'card',
-        'comment',
-        'left',
-        'worth',
-        'given',
         'collected',
         'rate',
         'penalty',

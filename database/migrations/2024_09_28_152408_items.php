@@ -16,6 +16,7 @@ return new class extends Migration
         Schema::create('items', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('category_id');
+            $table->unsignedBigInteger('contract_id');
             $table->string('subcategory');
             $table->string('model')->nullable();
             $table->float('weight')->nullable();
@@ -24,6 +25,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('category_id')->references('id')->on('categories');
+            $table->foreign('contract_id')->references('id')->on('contracts');
         });
     }
 
@@ -37,3 +39,4 @@ return new class extends Migration
         Schema::dropIfExists('items');
     }
 };
+

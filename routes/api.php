@@ -6,7 +6,7 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\ContractControllerNew;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -58,6 +58,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::post('/', [ClientControllerNew::class, 'storeOrUpdate']);
             Route::get('/search', [ClientControllerNew::class, 'search']);
         });
+    Route::post('/contract', [ContractControllerNew::class, 'store']);
+
 });
 
 

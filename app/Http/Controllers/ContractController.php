@@ -3,12 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CreateClient;
-use App\Http\Requests\CreateContract;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Evaluator;
-use App\Models\File;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Item;
@@ -24,30 +22,26 @@ class ContractController extends Controller
 {
     use ContractTrait, OrderTrait;
 
-    public function createClient(CreateClient $request)
-    {
-        $client = Client::create($request->validate());
-        return response()->json(['client_id' => $client->id]);
+
+    public function createClient2($request){
+        $client = Client::create([
+            'name' => $request->name,
+            'surname' => $request->surname,
+            'middle_name' => $request->middle_name,
+            'address' => $request->address,
+            'passport' => $request->passport,
+            'email' => $request->email,
+            'bank' => $request->bank,
+            'card' => $request->card,
+            'pawnshop_id' => auth()->user()->pawnshop_id,
+            'phone1' => $request->phone1,
+            'phone2' => $request->phone2,
+            'comment' => $request->comment,
+            'dob' => $request->dob,
+            'passport_given' => $request->passport_given,
+        ]);
+        return $client;
     }
-//    public function createClient2($request){
-//        $client = Client::create([
-//            'name' => $request->name,
-//            'surname' => $request->surname,
-//            'middle_name' => $request->middle_name,
-//            'address' => $request->address,
-//            'passport' => $request->passport,
-//            'email' => $request->email,
-//            'bank' => $request->bank,
-//            'card' => $request->card,
-//            'pawnshop_id' => auth()->user()->pawnshop_id,
-//            'phone1' => $request->phone1,
-//            'phone2' => $request->phone2,
-//            'comment' => $request->comment,
-//            'dob' => $request->dob,
-//            'passport_given' => $request->passport_given,
-//        ]);
-//        return $client;
-//    }
 
     public function updateClient($request, $id){
         Client::where('id',$id)->update([

@@ -2,19 +2,62 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\ClientRequest;
+use App\Http\Requests\ContractRequest;
+use App\Http\Requests\ItemRequest;
+use App\Http\Resources\ContractResource;
+use App\Services\ClientService;
+use App\Services\ContractService;
+use App\Services\FileService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 class ContractControllerNew extends Controller
 {
+    protected ClientService $clientService;
+    protected ContractService $contractService;
+    protected FileService $fileService;
 
-    public function store($id)
+    public function __construct(ClientService $clientService, ContractService $contractService,FileService $fileService)
     {
-        if ($id == 0) {
-            ClientControllerNew::create()
-        }
-
-
+        $this->clientService = $clientService;
+        $this->contractService = $contractService;
+        $this->fileService = $fileService;
     }
+    public function store(ClientRequest $clientRequest, ContractRequest $contractRequest,ItemRequest $itemRequest): JsonResponse|JsonResource
+    {
+        DB::beginTransaction();
+        try {
+            $client = $this->clientService->storeOrUpdate($clientRequest->validated());
+            $contract = $this->contractService->createContract($client->id, $contractRequest->validated());
+            $item = $this->contractService->storeContractItem($contract->id,$itemRequest->validated());
+            $files = $contractRequest->file('files');
+            $file_type_id = $contractRequest->input('file_type_id');
 
+            if ($files) {
+                $this->fileService->uploadContractFiles($contract->id, $files,$file_type_id);
+            }
 
+            // If the provided amount is more than 20000, update the client with bank info
+            if ($contract->provided_amount > 20000) {
+                $this->clientService->updateBankInfo(
+                    $client->id,
+                    $clientData['bank_name'] ?? null,
+                    $clientData['card_number'] ?? null,
+                    $clientData['account_number'] ?? null,
+                    $clientData['iban'] ?? null
+                );
+            }
+            DB::commit();
+            return new ContractResource($contract->load(['client', 'items', 'files']));
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Error processing the request',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
