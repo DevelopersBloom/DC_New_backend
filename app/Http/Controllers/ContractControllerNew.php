@@ -31,12 +31,15 @@ class ContractControllerNew extends Controller
         try {
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated());
-            $item = $this->contractService->storeContractItem($contract->id,$itemRequest->validated());
-            $files = $contractRequest->file('files');
-            $file_type_id = $contractRequest->input('file_type_id');
+            $items = $itemRequest->validated()['items'];
 
-            if ($files) {
-                $this->fileService->uploadContractFiles($contract->id, $files,$file_type_id);
+            foreach ($items as $item_data) {
+                $this->contractService->storeContractItem($contract->id, $item_data);
+            }
+
+            $filesData = $contractRequest->all()['files'];
+            if ($filesData) {
+                $this->fileService->uploadContractFiles($contract->id, $filesData);
             }
 
             // If the provided amount is more than 20000, update the client with bank info

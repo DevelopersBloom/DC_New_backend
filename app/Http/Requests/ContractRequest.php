@@ -26,15 +26,11 @@ class ContractRequest extends FormRequest
         return [
             'estimated_amount' => 'required|numeric',
             'provided_amount' => 'required|numeric',
-            'interest_rate' => 'required|numeric',
-            'penalty' => 'required|numeric',
             'deadline' => 'required|integer',
-            'lump_sum' => 'nullable|numeric',
             'description' => 'nullable|string',
-            'pawnshop_id' => 'required|exists:pawnshops,id',
             'files' => 'nullable|array',
-            'files.*' => 'file',
-            'file_type_id' => 'required|integer|exists:file_types,id'
+            'files.*.file' => 'required|file',
+            'files.*.file_type' => 'required|string',
         ];
     }
     public function messages()
@@ -55,10 +51,7 @@ class ContractRequest extends FormRequest
             'pawnshop_id.required' => 'The pawnshop ID is required.',
             'pawnshop_id.exists' => 'The pawnshop ID must exist in the pawnshops table.',
             'files.array' => 'The files must be an array.',
-            'files.*.file' => 'Each uploaded file must be a valid file.',
-            'file_type_id.required' => 'The file type ID is required.',
-            'file_type_id.integer' => 'The file type ID must be an integer.',
-            'file_type_id.exists' => 'The selected file type ID does not exist in the file_types table.',
+            'file_type.required' => 'The file type  is required.',
         ];
     }
 }

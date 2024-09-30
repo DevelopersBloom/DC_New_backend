@@ -15,19 +15,16 @@ return new class extends Migration
     {
         Schema::create('files', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('file_type_id');
+            $table->string('file_type');
             $table->unsignedBigInteger('fileable_id'); // ID of the related model
-            $table->string('fileable_type'); // Class name of the related model
+            $table->string('fileable_type');
 
-            // Additional file information
-            $table->string('name'); // The stored file name
-            $table->string('type'); // The MIME type of the file
-            $table->string('original_name'); // The original file name uploaded by the user
-            $table->string('doc_type')->default('regular'); // Optional document type, defaulting to 'regular'
+            $table->string('name');
+            $table->string('type');
+            $table->string('original_name');
+            $table->string('doc_type')->default('regular');
 
             $table->timestamps();
-
-            $table->foreign('file_type_id')->references('id')->on('file_types');
         });
     }
 

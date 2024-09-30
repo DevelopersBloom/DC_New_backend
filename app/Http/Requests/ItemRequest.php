@@ -21,27 +21,13 @@ class ItemRequest extends FormRequest
      *
      * @return array<string, mixed>
      */
-    public function rules()
+    public function rules(): array
     {
         return [
-            'category_id' => 'required|exists:categories,id',
-            'subcategory' => 'required|string|max:255',
-            'model'       => 'nullable|string|max:255',
-        ];
-    }
-
-    public function messages()
-    {
-        return [
-            'category_id.required' => 'Category is required.',
-            'category_id.exists'   => 'The selected category does not exist.',
-
-            'subcategory.required'  => 'Subcategory is required.',
-            'subcategory.string'    => 'Subcategory must be a string.',
-            'subcategory.max'       => 'Subcategory must not exceed 255 characters.',
-
-            'model.string'          => 'Model must be a string.',
-            'model.max'             => 'Model must not exceed 255 characters.',
+            'items' => 'required|array',
+            'items.*.category_id' => 'required|exists:categories,id',
+            'items.*.subcategory' => 'required|string|max:255',
+            'items.*.model'       => 'nullable|string|max:255',
         ];
     }
 }
