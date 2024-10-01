@@ -9,8 +9,14 @@ class Category extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'name', 'title'
+        'name',
+        'title',
+        'pawnshop_id',
+        'rate',
+        'penalty',
+        'lump_rate'
     ];
+
 
     public function contracts(){
         return $this->hasMany(Contract::class);

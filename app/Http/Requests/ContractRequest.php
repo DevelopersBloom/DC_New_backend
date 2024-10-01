@@ -46,7 +46,7 @@ class ContractRequest extends FormRequest
             'penalty.numeric' => 'The penalty must be a numeric value.',
             'deadline.required' => 'The deadline is required.',
             'deadline.integer' => 'The deadline must be an integer.',
-            'lump_sum.numeric' => 'The lump sum must be a numeric value.',
+            'lump_rate.numeric' => 'The lump sum must be a numeric value.',
             'description.string' => 'The description must be a string.',
             'pawnshop_id.required' => 'The pawnshop ID is required.',
             'pawnshop_id.exists' => 'The pawnshop ID must exist in the pawnshops table.',

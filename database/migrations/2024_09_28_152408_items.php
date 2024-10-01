@@ -21,6 +21,17 @@ return new class extends Migration
             $table->string('model')->nullable();
             $table->float('weight')->nullable();
             $table->float('clear_weight')->nullable();
+            $table->string('hallmark')->nullable();
+            $table->string('car_make')->nullable();
+            $table->integer('manufacture')->nullable();
+            $table->string('power')->nullable();
+            $table->string('license_plate')->nullable();
+            $table->string('color')->nullable();
+            $table->string('registration')->nullable();
+            $table->string('identification')->nullable();
+            $table->string('ownership')->nullable();
+            $table->string('issued_by')->nullable();
+            $table->date('date_of_issuance')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
 

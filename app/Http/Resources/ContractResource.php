@@ -23,7 +23,7 @@ class ContractResource extends JsonResource
             'interest_rate' => $this->interest_rate,
             'penalty' => $this->penalty,
             'deadline' => $this->deadline,
-            'lump_sum' => $this->lump_sum,
+            'lump_rate' => $this->lump_rate,
             'description' => $this->description,
             'pawnshop_id' => $this->pawnshop_id,
             'created_at' => $this->created_at,

@@ -16,12 +16,12 @@ return new class extends Migration
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('client_id');
-            $table->decimal('estimated_amount', 10, 2);
-            $table->decimal('provided_amount', 10, 2);
-            $table->decimal('interest_rate', 5, 2);
-            $table->decimal('penalty', 5, 2);
+            $table->decimal('estimated_amount');
+            $table->decimal('provided_amount');
+            $table->decimal('interest_rate')->nullable();
+            $table->decimal('penalty')->nullable();
             $table->integer('deadline'); // In days, months, or years
-            $table->decimal('lump_sum', 10, 2)->nullable();
+            $table->decimal('lump_rate')->nullable();
             $table->text('description')->nullable();
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');
             $table->unsignedBigInteger('pawnshop_id');

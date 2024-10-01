@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ClientControllerNew;
+use App\Http\Controllers\FileController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
@@ -59,6 +60,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::get('/search', [ClientControllerNew::class, 'search']);
         });
     Route::post('/contract', [ContractControllerNew::class, 'store']);
+    Route::get('/contracts/download/{id}', [FileController::class, 'downloadContract']);
 
 });
 

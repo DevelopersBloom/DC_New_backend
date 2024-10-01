@@ -53,7 +53,7 @@ class   ContractService
         $contract->interest_rate =1;
         $contract->penalty = 2;
         $contract->deadline = $data['deadline'];
-        $contract->lump_sum = 5;
+        $contract->lump_rate = 5;
         $contract->description = $data['description'] ?? null;
         $contract->status = 'initial';
         $contract->pawnshop_id = auth()->user()->pawnshop_id;

@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('title');
             $table->text('pawnshop_id')->nullable();
+            $table->decimal('interest_rate')->nullable();
+            $table->decimal('penalty')->nullable();
+            $table->decimal('lump_rate')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

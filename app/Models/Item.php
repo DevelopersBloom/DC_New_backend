@@ -10,10 +10,22 @@ class Item extends Model
     use HasFactory;
     protected $fillable = [
         'contract_id',
+        'category_id',
+        'subcategory',
+        'model',
         'weight',
         'clear_weight',
-        'category_id',
-        'type',
+        'hallmark',
+        'car_make',
+        'manufacture',
+        'power',
+        'license_plate',
+        'color',
+        'registration',
+        'identification',
+        'ownership',
+        'issued_by',
+        'date_of_issuance',
         'description'
     ];
     public function category(){
