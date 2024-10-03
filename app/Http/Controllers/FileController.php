@@ -14,8 +14,90 @@ use PhpOffice\PhpWord\TemplateProcessor;
 class FileController extends Controller
 {
     use FileTrait;
-
     public function downloadContract($id)
+    {
+        // Load the contract with necessary relations
+        $contract = Contract::where('id', $id)
+            ->with(['client', 'items', 'pawnshop', 'payments'])
+            ->firstOrFail();
+
+        // Initialize the template processor
+        $templateProcessor = new TemplateProcessor(public_path('/files/contract_template.docx'));
+        $pawnshop = $contract->pawnshop;
+
+        // Get client details
+        $client = $contract->client;
+        $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
+        $client_numbers = $client->phone;
+
+        if ($client->additional_phone) {
+            $client_numbers .= ', ' . $client->additional_phone;
+        }  $pawnshop_numbers = $pawnshop->telephone;
+        if ($pawnshop->phone1) {
+            $pawnshop_numbers .= ', ' . $pawnshop->phone1;
+        }
+        if ($pawnshop->phone2) {
+            $pawnshop_numbers .= ', ' . $pawnshop->phone2;
+        }
+
+        $yearly_rate = $contract->interest_rate * 365;
+        $cash = $contract->provided_amount > 20000 ? 'անկանխիկ' : 'կանխիկ';
+        $o_t_p = $contract->provided_amount >= 400000 ? '2' : '2,5';
+
+        $templateProcessor->setValues([
+            'city' => $pawnshop->city,
+            'date' => $contract->date,
+            'license' => $pawnshop->license,
+            'address' => $pawnshop->address,
+            'representative' => $pawnshop->representative,
+            'client_name' => $client_name,
+            'client_dob' => $contract->date_of_birth,
+            'client_passport' => $contract->passport_series,
+            'client_given' => $contract->passport_issued,
+            'client_address' => $client->country . ', ' . $client->city . ', ' . $client->street,
+            'client_numbers' => $client_numbers,
+            'given' => $this->makeMoney($contract->provided_amount),
+            'contract_id' => $contract->id,
+            'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
+            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->created_at)),
+            'dl_dt' => Carbon::parse($contract->deadline)->format('d'),
+            'psh_numbers' => $pawnshop_numbers,
+            'psh_mail' => $pawnshop->email,
+            'psh_bank' => $pawnshop->bank,
+            'psh_card' => $pawnshop->card_account_number,
+            'client_bank' => $client->bank_name,
+            'client_card' => $client->card_number,
+            'rate' => $contract->interest_rate,
+            'yr_rate' => $yearly_rate,
+            'penalty' => $contract->penalty,
+            'o_t_p' => $o_t_p,
+            'cash' => $cash
+        ]);
+        $table_values = [];
+        $i = 1;
+        foreach ($contract->payments as $payment) {
+            $table_values[] = [
+                'p_n' => $i . '.',
+                'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
+                'p_m' => $payment->amount,
+                'p_text' => $this->numberToText($payment->amount)
+            ];
+            $i++;
+        }
+        $templateProcessor->cloneRowAndSetValues('p_n', $table_values);
+        $filename = time() . 'contract.docx';
+        $pathToSave = public_path('/files/download/' . $filename);
+        $templateProcessor->saveAs($pathToSave);
+        $downloadName = $contract->id . '_Պայմանագիր.docx';
+        $headers = [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
+        ];
+        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
+
+    }
+
+    public function downloadContract1($id)
     {
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_template.docx'));
         $contract = Contract::where('id', $id)->with('payments', 'pawnshop')->first();

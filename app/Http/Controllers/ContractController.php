@@ -23,25 +23,6 @@ class ContractController extends Controller
     use ContractTrait, OrderTrait;
 
 
-    public function createClient2($request){
-        $client = Client::create([
-            'name' => $request->name,
-            'surname' => $request->surname,
-            'middle_name' => $request->middle_name,
-            'address' => $request->address,
-            'passport' => $request->passport,
-            'email' => $request->email,
-            'bank' => $request->bank,
-            'card' => $request->card,
-            'pawnshop_id' => auth()->user()->pawnshop_id,
-            'phone1' => $request->phone1,
-            'phone2' => $request->phone2,
-            'comment' => $request->comment,
-            'dob' => $request->dob,
-            'passport_given' => $request->passport_given,
-        ]);
-        return $client;
-    }
 
     public function updateClient($request, $id){
         Client::where('id',$id)->update([

@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Category;
 use App\Models\Contract;
 use App\Models\Item;
+use App\Models\Payment;
+use Carbon\Carbon;
 use function Symfony\Component\String\b;
 
 class   ContractService
@@ -44,15 +46,15 @@ class   ContractService
         $item->save();
         return $item;
     }
-    public function createContract(int $client_id, array $data)
+    public function createContract(int $client_id, array $data,$deadline)
     {
         $contract = new Contract();
         $contract->client_id = $client_id;
         $contract->estimated_amount = $data['estimated_amount'];
         $contract->provided_amount = $data['provided_amount'];
-        $contract->interest_rate =1;
-        $contract->penalty = 2;
-        $contract->deadline = $data['deadline'];
+        $contract->interest_rate = 0.4;
+        $contract->penalty = 0.13;
+        $contract->deadline = $deadline;
         $contract->lump_rate = 5;
         $contract->description = $data['description'] ?? null;
         $contract->status = 'initial';
@@ -60,5 +62,37 @@ class   ContractService
         $contract->save();
         return $contract;
 
+    }
+
+    public function createPayment(Contract $contract)
+    {
+        $fromDate = Carbon::parse($contract->created_at);
+        $toDate = Carbon::parse($contract->deadline);
+        $currentDate = $fromDate;
+
+        while ($currentDate->lt($toDate))
+        {
+            $payment = [
+                'contract_id' => $contract->id,
+                'from_date' => $fromDate,
+            ];
+            $nextPaymentDate = (clone $currentDate)->addMonths();
+            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+            $diffDays = $paymentDate->diffInDays($currentDate);
+            $amount = $this->calcAmount($contract->provided_amount,$diffDays,$contract->interest_rate);
+            $payment['date'] =  $paymentDate->format('d.m.Y');;
+            $payment['days'] = $diffDays;
+            $payment['amount'] = $amount;
+            $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
+
+            Payment::create($payment);
+
+            $currentDate = $nextPaymentDate;
+        }
+    }
+
+    public function calcAmount($amount,$days,$rate): int
+    {
+        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
     }
 }

@@ -11,6 +11,7 @@ use App\Services\ContractService;
 use App\Services\FileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ContractControllerNew extends Controller
@@ -18,7 +19,6 @@ class ContractControllerNew extends Controller
     protected ClientService $clientService;
     protected ContractService $contractService;
     protected FileService $fileService;
-
     public function __construct(ClientService $clientService, ContractService $contractService,FileService $fileService)
     {
         $this->clientService = $clientService;
@@ -30,7 +30,10 @@ class ContractControllerNew extends Controller
         DB::beginTransaction();
         try {
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
-            $contract = $this->contractService->createContract($client->id, $contractRequest->validated());
+            $deadline = Carbon::now('Asia/Yerevan')->addDays($contractRequest->validated()['deadline'])->format('Y-m-d H:i:s');
+            $contract = $this->contractService->createContract($client->id,$contractRequest->validated(),$deadline);
+
+            // $contract = $this->contractService->createContract($client->id, $contractRequest->validated());
             $items = $itemRequest->validated()['items'];
 
             foreach ($items as $item_data) {
@@ -41,17 +44,19 @@ class ContractControllerNew extends Controller
             if ($filesData) {
                 $this->fileService->uploadContractFiles($contract->id, $filesData);
             }
+            $this->contractService->createPayment($contract);
 
             // If the provided amount is more than 20000, update the client with bank info
             if ($contract->provided_amount > 20000) {
                 $this->clientService->updateBankInfo(
                     $client->id,
-                    $clientData['bank_name'] ?? null,
-                    $clientData['card_number'] ?? null,
+                    $clientData['bank_name'] ?? 'ameria',
+                    $clientData['card_number'] ?? '55448556151521',
                     $clientData['account_number'] ?? null,
                     $clientData['iban'] ?? null
                 );
             }
+            // Create payments for the contract
             DB::commit();
             return new ContractResource($contract->load(['client', 'items', 'files']));
         } catch (\Exception $e) {
