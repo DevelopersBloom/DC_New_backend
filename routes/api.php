@@ -59,9 +59,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::post('/', [ClientControllerNew::class, 'storeOrUpdate']);
             Route::get('/search', [ClientControllerNew::class, 'search']);
         });
-    Route::post('/contract', [ContractControllerNew::class, 'store']);
-    Route::get('/contracts/download/{id}', [FileController::class, 'downloadContract']);
-
+        Route::post('/contract', [ContractControllerNew::class, 'store']);
+        Route::get('/contracts/download/{id}', [FileController::class, 'downloadContract']);
+//    });
 });
 
 

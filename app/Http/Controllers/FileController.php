@@ -93,7 +93,9 @@ class FileController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
         ];
-        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
+        return response()->download($pathToSave, $downloadName)->deleteFileAfterSend(true);
+
+        //return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
 
     }
 

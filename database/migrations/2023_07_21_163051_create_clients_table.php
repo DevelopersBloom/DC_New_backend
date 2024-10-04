@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('country');
             $table->string('city');
             $table->string('street');
-            $table->string('building');
+            $table->string('building')->nullable();
             $table->string('bank_name')->nullable();
             $table->string('account_number')->nullable();
             $table->string('card_number')->nullable();

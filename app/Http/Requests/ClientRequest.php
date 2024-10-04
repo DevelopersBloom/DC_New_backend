@@ -44,7 +44,7 @@ class ClientRequest extends FormRequest
             'country' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'street' => 'required|string|max:255',
-            'building' => 'required|string|max:50',
+            'building' => 'nullable|string|max:50',
             'bank_name' => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:50',
             'card_number' => 'nullable|string|max:50',
