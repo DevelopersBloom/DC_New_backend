@@ -6,7 +6,6 @@ use App\Http\Requests\ClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Services\ClientService;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ClientControllerNew extends Controller
 {
@@ -27,25 +26,20 @@ class ClientControllerNew extends Controller
         return new ClientResource($client);
     }
 
-    /**
-     * @param Request $request
-     * @return AnonymousResourceCollection
-     */
     public function search(Request $request)
     {
-        $request->validate([
-            'fullName' => 'nullable|string|max:255',
-        ]);
+        $fullName = $request->query('fullName');
+        if (!$fullName) {
+            return response()->json(['message' => 'fullName parameter is required'], 400);
+        }
 
-        $inputString = $request->input('fullName');
-
-        $inputs = preg_split('/\s+/', trim($inputString));
-
+        $fullName = str_replace(' ', ' ', $fullName);
+        $inputs = preg_split('/\s+/', trim($fullName));
         $firstInput = $inputs[0] ?? null;
         $secondInput = $inputs[1] ?? null;
-
         $clients = $this->clientService->search($firstInput, $secondInput);
 
         return ClientResource::collection($clients);
     }
+
 }

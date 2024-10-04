@@ -61,10 +61,19 @@ class ClientService
     public function search(?string $firstInput, ?string $secondInput)
     {
         return Client::where(function ($query) use ($firstInput, $secondInput) {
-            $query->where('name', 'like', '%' . ($firstInput ?? '') . '%')
-                ->Where('surname', 'like', '%' . ($firstInput ?? '') . '%')
-                ->orWhere('name', 'like', '%' . ($secondInput ?? '') . '%')
-                ->orWhere('surname', 'like', '%' . ($secondInput ?? '') . '%');
+            if ($firstInput) {
+                $query->where(function ($subQuery) use ($firstInput) {
+                    $subQuery->where('name', 'like', '%' . $firstInput . '%')
+                        ->orWhere('surname', 'like', '%' . $firstInput . '%');
+                });
+            }
+
+            if ($secondInput) {
+                $query->orWhere(function ($subQuery) use ($secondInput) {
+                    $subQuery->where('name', 'like', '%' . $secondInput . '%')
+                        ->orWhere('surname', 'like', '%' . $secondInput . '%');
+                });
+            }
         })->get();
     }
 
