@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\FileController;
@@ -58,9 +59,16 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
 
         Route::get('/clients/search', [ClientControllerNew::class, 'search']);
-        Route::post('/contract', [ContractControllerNew::class, 'store']);
-        Route::get('/contracts/download/{id}', [FileController::class, 'downloadContract']);
-//    });
+        Route::group(['prefix' => 'contracts'], function () {
+            Route::post('/', [ContractControllerNew::class, 'store']);
+            Route::get('/download/{id}', [FileController::class, 'downloadContract']);
+        });
+        Route::group(['prefix' => 'categories'], function () {
+            Route::get('/', [CategoryController::class, 'index']);
+            Route::get('/{id}', [CategoryController::class, 'show']);
+        });
+
+    //    });
 });
 
 

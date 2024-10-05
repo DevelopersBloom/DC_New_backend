@@ -22,40 +22,67 @@ class TypeSeeder extends Seeder
             [
                 'name' => 'gold',
                 'title' => 'Ոսկի',
+                'interest_rate' => 4,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
             [
                 'name' => 'phone',
                 'title' => 'Հեռախոս',
+                'interest_rate' => 3,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
             [
                 'name' => 'laptop',
                 'title' => 'Նոթբուք',
+                'interest_rate' => 4,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
             [
                 'name' => 'tablet',
                 'title' => 'Պլանշետ',
+                'interest_rate' => 4,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
             [
                 'name' => 'pc',
                 'title' => 'Համակարգիչ',
+                'interest_rate' => 4,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
             [
                 'name' => 'tv',
                 'title' => 'Հեռուստացույց',
+                'interest_rate' => 4,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
             [
                 'name' => 'car',
                 'title' => 'Ավտոմեքենա',
+                'interest_rate' => 4,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
             [
                 'name' => 'other',
                 'title' => 'Այլ',
+                'interest_rate' => 4,
+                'penalty' => 13,
+                'lump_rate' => 4,
             ],
         ];
         foreach ($types as $type){
             Category::create([
                 'name' => $type['name'],
                 'title' => $type['title'],
+                'interest_rate' => $type['interest_rate'],
+                'penalty' => $type['penalty'],
+                'lump_rate' => $type['lump_rate'],
             ]);
         }
         $history_types = [

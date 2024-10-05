@@ -12,7 +12,7 @@ class Category extends Model
         'name',
         'title',
         'pawnshop_id',
-        'rate',
+        'interest_rate',
         'penalty',
         'lump_rate'
     ];
