@@ -22,14 +22,13 @@ class FileController extends Controller
             ->firstOrFail();
 
         // Initialize the template processor
-        $templateProcessor = new TemplateProcessor(public_path('/files/contract_template.docx'));
+        $templateProcessor = new TemplateProcessor(public_path('/files/contract_gravatoms_template.docx'));
         $pawnshop = $contract->pawnshop;
 
         // Get client details
         $client = $contract->client;
         $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
         $client_numbers = $client->phone;
-
         if ($client->additional_phone) {
             $client_numbers .= ', ' . $client->additional_phone;
         }  $pawnshop_numbers = $pawnshop->telephone;
@@ -43,7 +42,6 @@ class FileController extends Controller
         $yearly_rate = $contract->interest_rate * 365;
         $cash = $contract->provided_amount > 20000 ? 'անկանխիկ' : 'կանխիկ';
         $o_t_p = $contract->provided_amount >= 400000 ? '2' : '2,5';
-
         $templateProcessor->setValues([
             'city' => $pawnshop->city,
             'date' => $contract->date,
@@ -51,9 +49,9 @@ class FileController extends Controller
             'address' => $pawnshop->address,
             'representative' => $pawnshop->representative,
             'client_name' => $client_name,
-            'client_dob' => $contract->date_of_birth,
-            'client_passport' => $contract->passport_series,
-            'client_given' => $contract->passport_issued,
+            'client_dob' => $client->date_of_birth,
+            'client_passport' => $client->passport_series,
+            'client_given' => $client->passport_issued,
             'client_address' => $client->country . ', ' . $client->city . ', ' . $client->street,
             'client_numbers' => $client_numbers,
             'given' => $this->makeMoney($contract->provided_amount),
@@ -71,12 +69,26 @@ class FileController extends Controller
             'yr_rate' => $yearly_rate,
             'penalty' => $contract->penalty,
             'o_t_p' => $o_t_p,
-            'cash' => $cash
+            'cash' => $cash,
+
         ]);
+        // Set values for the bond section
         $table_values = [];
+        foreach ($contract->items as $item) {
+            $table_values[] = [
+                'item_description' => $item->category->title . $item->description,
+                'i_t' => $item->type,
+                'i_w' => $item->weight,
+                'i_cw' => $item->clear_weight
+            ];
+        }
+        $templateProcessor->cloneRowAndSetValues('item_description', $table_values);
+
+        // Set values for payments
+        $payment_values = [];
         $i = 1;
         foreach ($contract->payments as $payment) {
-            $table_values[] = [
+            $payment_values[] = [
                 'p_n' => $i . '.',
                 'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
                 'p_m' => $payment->amount,
@@ -84,11 +96,12 @@ class FileController extends Controller
             ];
             $i++;
         }
-        $templateProcessor->cloneRowAndSetValues('p_n', $table_values);
-        $filename = time() . 'contract.docx';
+        $templateProcessor->cloneRowAndSetValues('p_n', $payment_values);
+
+        $filename = time() . 'contract_bond.docx';
         $pathToSave = public_path('/files/download/' . $filename);
         $templateProcessor->saveAs($pathToSave);
-        $downloadName = $contract->id . '_Պայմանագիր.docx';
+        $downloadName = $contract->id . '_Գրավատոմս_և_Պայմանագիր.docx';
         $headers = [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',

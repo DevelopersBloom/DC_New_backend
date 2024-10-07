@@ -68,4 +68,5 @@ class ContractControllerNew extends Controller
             ], 500);
         }
     }
+
 }
