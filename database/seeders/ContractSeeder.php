@@ -75,7 +75,7 @@ class ContractSeeder extends Seeder
                     'passport_validity' => $passport_validity
                 ]);
                // $contracts_count = rand(2,5);
-                $contracts_count = 5;
+                $contracts_count = 1;
                 for($k = 0; $k < $contracts_count; $k++){
                     $given = rand(30,500) * 1000;
                     $one_time_payment = $given>=400000 ? $given * 0.01 * 2 : $given * 0.01 * 2.5;

@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -62,10 +63,16 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::group(['prefix' => 'contracts'], function () {
             Route::post('/', [ContractControllerNew::class, 'store']);
             Route::get('/download/{id}', [FileController::class, 'downloadContract']);
+            Route::get('/{id}', [ContractControllerNew::class, 'show']);
+
         });
         Route::group(['prefix' => 'categories'], function () {
             Route::get('/', [CategoryController::class, 'index']);
             Route::get('/{id}', [CategoryController::class, 'show']);
+
+        });
+        Route::group(['prefix' => 'payments'], function () {
+
         });
 
     //    });
