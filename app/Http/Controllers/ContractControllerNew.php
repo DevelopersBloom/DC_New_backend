@@ -53,7 +53,9 @@ class ContractControllerNew extends Controller
         DB::beginTransaction();
         try {
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
+
             $deadline = Carbon::now('Asia/Yerevan')->addDays($contractRequest->validated()['deadline'])->format('Y-m-d H:i:s');
+
             $contract = $this->contractService->createContract($client->id,$contractRequest->validated(),$deadline);
 
             // $contract = $this->contractService->createContract($client->id, $contractRequest->validated());
@@ -71,7 +73,6 @@ class ContractControllerNew extends Controller
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000 ? "true" : "false";
             $order_id = $this->getOrder($cash, 'out');
-
             // Create an "out" order
             $outOrder = Order::create([
                 'contract_id' => $contract->id,
