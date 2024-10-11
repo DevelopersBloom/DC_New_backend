@@ -28,9 +28,9 @@ class ContractRequest extends FormRequest
             'provided_amount' => 'required|numeric',
             'deadline' => 'required|integer',
             'description' => 'nullable|string',
-            'files' => 'nullable|array',
-            'files.*.file' => 'required|file',
-            'files.*.file_type' => 'required|string',
+//            'files' => 'nullable|array',
+//            'files.*.file' => 'required|file',
+//            'files.*.file_type' => 'required|string',
         ];
     }
     public function messages()
@@ -50,8 +50,8 @@ class ContractRequest extends FormRequest
             'description.string' => 'The description must be a string.',
             'pawnshop_id.required' => 'The pawnshop ID is required.',
             'pawnshop_id.exists' => 'The pawnshop ID must exist in the pawnshops table.',
-            'files.array' => 'The files must be an array.',
-            'file_type.required' => 'The file type  is required.',
+//            'files.array' => 'The files must be an array.',
+//            'file_type.required' => 'The file type  is required.',
         ];
     }
 }
