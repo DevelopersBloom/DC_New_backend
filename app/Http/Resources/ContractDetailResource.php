@@ -48,7 +48,8 @@ class ContractDetailResource extends JsonResource
                     'amount' => $payment->amount,
                     'penalty' => $payment->penalty,
                     'date' => $payment->date,
-                    'status' => $payment->status
+                    'status' => $payment->status,
+                    'mother' => $payment->mother
                 ];
             }),
             'history' => $this->history->map(function ($history) {

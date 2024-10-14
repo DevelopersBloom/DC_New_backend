@@ -52,6 +52,7 @@ class   ContractService
         $contract->client_id = $client_id;
         $contract->estimated_amount = $data['estimated_amount'];
         $contract->provided_amount = $data['provided_amount'];
+        $contract->left = $data['provided_amount'];
         $contract->interest_rate = 0.4;
         $contract->penalty = 0.13;
         $contract->deadline = $deadline;
@@ -63,33 +64,70 @@ class   ContractService
         return $contract;
 
     }
-
     public function createPayment(Contract $contract)
     {
-        $fromDate = Carbon::parse($contract->created_at);
-        $toDate = Carbon::parse($contract->deadline);
+        $fromDate = Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan');
+        $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
         $currentDate = $fromDate;
 
         while ($currentDate->lt($toDate))
         {
             $payment = [
                 'contract_id' => $contract->id,
-                'from_date' => $fromDate,
+                'from_date' => $currentDate->format('d.m.Y'),
             ];
+
+            // Determine the next payment date, or use the deadline if it's the last payment
             $nextPaymentDate = (clone $currentDate)->addMonths();
             $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+
             $diffDays = $paymentDate->diffInDays($currentDate);
-            $amount = $this->calcAmount($contract->provided_amount,$diffDays,$contract->interest_rate);
-            $payment['date'] =  $paymentDate->format('d.m.Y');;
+            $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
+            $payment['date'] = $paymentDate->format('d.m.Y');
             $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
             $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
+            $payment['mother'] = 0;
+
+            // Check if it's the last payment
+            if ($paymentDate->eq($toDate)) {
+                $payment['mother'] = $contract->provided_amount; // Add mother amount for the last payment
+                $payment['last_payment'] = true;
+            }
 
             Payment::create($payment);
 
+            // Move to the next payment date
             $currentDate = $nextPaymentDate;
         }
     }
+
+//    public function createPayment(Contract $contract)
+//    {
+//        $fromDate = Carbon::parse($contract->created_at);
+//        $toDate = Carbon::parse($contract->deadline);
+//        $currentDate = $fromDate;
+//
+//        while ($currentDate->lt($toDate))
+//        {
+//            $payment = [
+//                'contract_id' => $contract->id,
+//                'from_date' => $fromDate,
+//            ];
+//            $nextPaymentDate = (clone $currentDate)->addMonths();
+//            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+//            $diffDays = $paymentDate->diffInDays($currentDate);
+//            $amount = $this->calcAmount($contract->provided_amount,$diffDays,$contract->interest_rate);
+//            $payment['date'] =  $paymentDate->format('d.m.Y');;
+//            $payment['days'] = $diffDays;
+//            $payment['amount'] = $amount;
+//            $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
+//
+//            Payment::create($payment);
+//
+//            $currentDate = $nextPaymentDate;
+//        }
+//    }
 
     public function calcAmount($amount,$days,$rate): int
     {

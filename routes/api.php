@@ -7,6 +7,7 @@ use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentControllerNew;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -64,6 +65,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::post('/', [ContractControllerNew::class, 'store']);
             Route::get('/download/{id}', [FileController::class, 'downloadContract']);
             Route::get('/{id}', [ContractControllerNew::class, 'show']);
+            Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment']);
+            Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);
 
         });
         Route::group(['prefix' => 'categories'], function () {
@@ -72,7 +75,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
         });
         Route::group(['prefix' => 'payments'], function () {
-
+            Route::get('/{id}', [PaymentController::class, 'getPayments']);
         });
 
     //    });

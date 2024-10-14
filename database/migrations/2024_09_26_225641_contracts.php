@@ -25,7 +25,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');
             $table->unsignedBigInteger('pawnshop_id');
-
+            $table->integer('left')->nullable();
+            $table->integer('collected')->nullable();
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
 
