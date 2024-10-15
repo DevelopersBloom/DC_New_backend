@@ -20,9 +20,11 @@ class PaymentControllerNew extends Controller
 
     protected PaymentService $paymentService;
 
-    public function __construct(PaymentService $paymentService) {
+    public function __construct(PaymentService $paymentService)
+    {
         $this->paymentService = $paymentService;
     }
+
     public function makePayment(Request $request): JsonResponse
     {
         $contract =  Contract::findOrFail($request->contract_id);
@@ -47,7 +49,9 @@ class PaymentControllerNew extends Controller
        ]);
 
     }
-    private function updateContractStatus($contract) {
+
+    private function updateContractStatus($contract)
+    {
         $paymentsLeft = $contract->payments->where('status', 'initial');
 
         if ($paymentsLeft->isEmpty()) {
@@ -101,4 +105,24 @@ class PaymentControllerNew extends Controller
             'contract' => $updatedContract,
         ]);
     }
+
+    public function payPartial(Request $request): JsonResponse
+    {
+        $contract = Contract::findOrFail($request->contract_id);
+        $partialAmount = $request->amount;
+        $payer = $request->payer;
+        $cash = $request->cash;
+
+        // Call the payment service to handle the partial payment
+        $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash);
+
+        // Update contract status and check if any payments remain
+        $this->updateContractStatus($contract);
+
+        return response()->json([
+            'success' => 'success',
+            'message' => 'Partial payment processed successfully!'
+        ]);
+    }
+
 }

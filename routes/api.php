@@ -67,7 +67,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::get('/{id}', [ContractControllerNew::class, 'show']);
             Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment']);
             Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);
-
+            Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial']);
         });
         Route::group(['prefix' => 'categories'], function () {
             Route::get('/', [CategoryController::class, 'index']);

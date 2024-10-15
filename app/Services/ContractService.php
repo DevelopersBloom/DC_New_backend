@@ -25,22 +25,22 @@ class   ContractService
                 break;
             case 'gold':
                 $item->subcategory = $data['subcategory'];
-                $item->weight = $data['weight'];
-                $item->clear_weight = $data['clear_weight'];
-                $item->hallmark = $data['hallmark'];
+                $item->weight = $data['weight'] ?? null;
+                $item->clear_weight = $data['clear_weight'] ?? null;
+                $item->hallmark = $data['hallmark'] ?? null;
                 break;
             case 'car':
-                $item->model = $data['model'];
-                $item->car_make = $data['car_make'];
-                $item->manufacture = $data['manufacture'] ;
-                $item->power = $data['power'] ;
-                $item->license_plate = $data['license_plate'] ;
-                $item->color = $data['color'];
-                $item->registration_certificate = $data['registration_certificate'] ;
-                $item->identification_number = $data['identification_number'] ;
-                $item->ownership_certificate = $data['ownership_certificate'];
-                $item->issued_by = $data['issued_by'];
-                $item->date_of_issuance = $data['date_of_issuance'] ;
+                $item->model = $data['model'] ?? null;
+                $item->car_make = $data['car_make'] ?? null;
+                $item->manufacture = $data['manufacture'] ?? null;
+                $item->power = $data['power'] ?? null;
+                $item->license_plate = $data['license_plate'] ?? null;
+                $item->color = $data['color']?? null;
+                $item->registration = $data['registration_certificate'] ?? null;
+                $item->identification = $data['identification_number'] ?? null;
+                $item->ownership = $data['ownership_certificate']?? null;
+                $item->issued_by = $data['issued_by']?? null;
+                $item->date_of_issuance = $data['date_of_issuance'] ?? null;
                 break;
         }
         $item->save();
@@ -53,7 +53,7 @@ class   ContractService
         $contract->estimated_amount = $data['estimated_amount'];
         $contract->provided_amount = $data['provided_amount'];
         $contract->left = $data['provided_amount'];
-        $contract->interest_rate = 0.4;
+        $contract->interest_rate = 0.18;
         $contract->penalty = 0.13;
         $contract->deadline = $deadline;
         $contract->lump_rate = 5;

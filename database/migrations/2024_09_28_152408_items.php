@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('category_id');
             $table->unsignedBigInteger('contract_id');
-            $table->string('subcategory');
+            $table->string('subcategory')->nullable();
             $table->string('model')->nullable();
             $table->float('weight')->nullable();
             $table->float('clear_weight')->nullable();

@@ -102,7 +102,11 @@ class ContractControllerNew extends Controller
             // Create payments for the contract
             DB::commit();
 
-            return new ContractResource($contract->load(['client', 'items', 'files','payments','history']));
+            return response()->json([
+                'contract_id' => $contract->id,
+                'message' => 'Contract created successfully.'
+            ], 201);
+          //  return new ContractResource($contract->load(['client', 'items', 'files','payments','history']));
         } catch (\Exception $e) {
             DB::rollBack();
 

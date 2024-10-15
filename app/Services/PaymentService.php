@@ -21,6 +21,7 @@ class PaymentService {
             foreach ($payments as $payment) {
                 $amount = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash);
             }
+            dd($amount);
             // Handle any remaining amount
             if ($amount > 0) {
                 $this->handleRemainingAmount($contract, $amount, $cash);
@@ -40,7 +41,7 @@ class PaymentService {
     }
 
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash) {
-        $paymentFinal = ($payment['amount'] + $payment['mother'] + $payment['penalty']) - $payment['paid'];
+        $paymentFinal = ($payment['amount']  + $payment['penalty']) - $payment['paid'];
         if ($amount >= $paymentFinal) {
             $this->completePayment($payment,$payer, $cash);
             $contract->collected += $paymentFinal;
@@ -56,7 +57,7 @@ class PaymentService {
     {
         $payment->status = 'completed';
         $payment->paid = $payment['amount'] + $payment['mother'] + $payment['penalty'];
-        $payment->date = Carbon::now()->format('Y.m.d');
+        $payment->date = Carbon::now()->format('d.m.Y');
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
 
@@ -81,16 +82,18 @@ class PaymentService {
     {
         $decrease = $amount % 1000;
         $amount -= $decrease;
-
+        dd($amount);
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')->first();
-        if ($nextPayment) {
+        if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
             $nextPayment->paid = $decrease;
             $nextPayment->save();
             $contract->collected += $decrease;
-        } else {
-            $this->payPartial($contract->id, $amount, false, $cash);
         }
+        if ($amount > 0) {
+            $this->payPartial($contract, $amount, false, $cash);
+        }
+
 
     }
     public function createPayment($contractId, $amount, $type, $payer, $cash): void
@@ -103,7 +106,7 @@ class PaymentService {
         $payment->type = $type;
         $payment->cash = $cash;
         $payment->pawnshop_id = auth()->user()->pawnshop_id;
-        $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
+        $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
         $payment->status = $status;
         if ($payer) {
             $payment->another_payer = true;
@@ -115,23 +118,58 @@ class PaymentService {
         $payment->save();
     }
 
-    public function payPartial($contractId, $amount, $payer, $cash): void
+    public function payPartial($contract, $partialAmount, $payer, $cash): void
     {
-        $payment = new Payment();
-        $payment->contract_id = $contractId;
-        $payment->amount = $amount;
-        $payment->type = 'partial';
-        $payment->cash = $cash;
+        $now = Carbon::now();
+        $payments = Payment::where('contract_id', $contract->id)->where('type', 'regular')->get();
+        $startedToChange = false;
+        $daysToCalc = 0;
+        foreach ($payments as $index => $payment) {
+            $dateToCheck = Carbon::createFromFormat('d.m.Y', $payment->date);
+            if ($dateToCheck->gt($now)) {
+                dd(1);
+                if ($startedToChange) {
+                    $coeff = ($contract->left - $partialAmount) / $contract->left;
+                    $payment->amount = intval(ceil($payment->amount * $coeff / 10) * 10);
+                } else {
+                    $startedToChange = true;
 
-        if ($payer) {
-            $payment->another_payer = true;
-            $payment->name = $payer['name'];
-            $payment->surname = $payer['surname'];
-            $payment->phone = $payer['phone'];
+                    if ($index === 0) {
+                        $daysToCalc = $now->diffInDays(Carbon::parse($contract->date));
+                    } else {
+                        $daysToCalc = $now->diffInDays(Carbon::parse($payments[$index - 1]->date));
+                    }
+
+                    $daysLeft = $payment->days - $daysToCalc;
+                    $sum = $payment->amount;
+                    $sum -= $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate);
+                    $sum += $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
+                    $payment->amount = $sum;
+                }
+                $payment->save();
+            }
+            if ($payment->last_payment) {
+                dd(2);
+                $payment->mother = $contract->left - $partialAmount;
+                $payment->save();
+            }
         }
+        // Update contract with partial payment
+        $contract->left -= $partialAmount;
+        $contract->collected += $partialAmount;
+        $contract->save();
 
-        $payment->save();
+        auth()->user()->pawnshop->given -= $partialAmount;
+        auth()->user()->pawnshop->save();
+
+        // Create the partial payment record
+        $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash);
+
+
     }
+
+
+
     public function processFullPayment($contract, $amount, $payer, $cash)
     {
         // Remove remaining initial payments
@@ -146,5 +184,9 @@ class PaymentService {
         $contract->save();
 
         return $contract;
+    }
+    public function calcAmount($amount,$days,$rate): int
+    {
+        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
     }
 }
