@@ -33,7 +33,7 @@ return new class extends Migration
             $table->integer('pawnshop_id')->nullable();
             $table->string('date')->nullable();
             $table->string('from_date')->nullable();
-            $table->enum('status',['completed','initial'])->default('initial');
+            $table->enum('status',['completed','initial','partial'])->default('initial');
             $table->softDeletes();
             $table->timestamps();
         });

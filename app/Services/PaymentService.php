@@ -21,9 +21,8 @@ class PaymentService {
             foreach ($payments as $payment) {
                 $amount = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash);
             }
-            dd($amount);
             // Handle any remaining amount
-            if ($amount > 0) {
+            if ($amount > 0 ) {
                 $this->handleRemainingAmount($contract, $amount, $cash);
             }
         }
@@ -41,7 +40,7 @@ class PaymentService {
     }
 
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash) {
-        $paymentFinal = ($payment['amount']  + $payment['penalty']) - $payment['paid'];
+        $paymentFinal = ($payment['amount'] + $payment['penalty']);
         if ($amount >= $paymentFinal) {
             $this->completePayment($payment,$payer, $cash);
             $contract->collected += $paymentFinal;
@@ -55,11 +54,13 @@ class PaymentService {
 
     private function completePayment($payment, $payer, $cash): void
     {
-        $payment->status = 'completed';
-        $payment->paid = $payment['amount'] + $payment['mother'] + $payment['penalty'];
+        $payment->paid += $payment['amount']  + $payment['penalty'];
         $payment->date = Carbon::now()->format('d.m.Y');
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
+        $payment->amount = 0;
+        $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
+
 
         if ($payer) {
             $payment->another_payer = true;
@@ -73,8 +74,11 @@ class PaymentService {
 
     private function partiallyCompletePayment($payment, $paid): void
     {
-       // $payment->amount -= $amount;
+        $payment->amount -= $paid;
         $payment->paid += $paid;
+        if ($payment->last_payment && $payment->amount == 0) {
+            $payment->mother -= $payment->paid;
+        }
         $payment->save();
     }
 
@@ -82,11 +86,10 @@ class PaymentService {
     {
         $decrease = $amount % 1000;
         $amount -= $decrease;
-        dd($amount);
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')->first();
         if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
-            $nextPayment->paid = $decrease;
+            $nextPayment->paid += $decrease;
             $nextPayment->save();
             $contract->collected += $decrease;
         }
@@ -98,7 +101,14 @@ class PaymentService {
     }
     public function createPayment($contractId, $amount, $type, $payer, $cash): void
     {
-        $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
+       // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
+        if ($type === 'penalty' || $type === 'full') {
+            $status = 'completed';
+        } elseif ($type === 'partial') {
+            $status = 'partial';
+        }else {
+            $status = 'initial';
+        }
         $payment = new Payment();
         $payment->contract_id = $contractId;
         $payment->amount = $amount;
@@ -127,7 +137,6 @@ class PaymentService {
         foreach ($payments as $index => $payment) {
             $dateToCheck = Carbon::createFromFormat('d.m.Y', $payment->date);
             if ($dateToCheck->gt($now)) {
-                dd(1);
                 if ($startedToChange) {
                     $coeff = ($contract->left - $partialAmount) / $contract->left;
                     $payment->amount = intval(ceil($payment->amount * $coeff / 10) * 10);
@@ -149,7 +158,6 @@ class PaymentService {
                 $payment->save();
             }
             if ($payment->last_payment) {
-                dd(2);
                 $payment->mother = $contract->left - $partialAmount;
                 $payment->save();
             }
