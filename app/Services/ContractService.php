@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Category;
+use App\Models\CategoryRate;
 use App\Models\Contract;
 use App\Models\Item;
 use App\Models\Payment;
@@ -48,15 +49,16 @@ class   ContractService
     }
     public function createContract(int $client_id, array $data,$deadline)
     {
+
         $contract = new Contract();
         $contract->client_id = $client_id;
         $contract->estimated_amount = $data['estimated_amount'];
         $contract->provided_amount = $data['provided_amount'];
         $contract->left = $data['provided_amount'];
-        $contract->interest_rate = 0.18;
-        $contract->penalty = 0.13;
+        $contract->interest_rate = $data['interest_rate']/100;
+        $contract->penalty = $data['penalty']/100;
         $contract->deadline = $deadline;
-        $contract->lump_rate = 5;
+        $contract->lump_rate = $data['lump_rate']/100;
         $contract->description = $data['description'] ?? null;
         $contract->status = 'initial';
         $contract->pawnshop_id = auth()->user()->pawnshop_id;
