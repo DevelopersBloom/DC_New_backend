@@ -3,14 +3,17 @@
 namespace App\Services;
 
 use App\Models\Payment;
+use App\Traits\ContractTrait;
 use Illuminate\Support\Carbon;
 
 class PaymentService {
-    public function processPayments($contract, $amount, $penalty, $payer, $cash, $payments) {
+    use ContractTrait;
+    public function processPayments($contract, $amount, $payer, $cash, $payments) {
         $paymentsSum = 0;
         foreach ($payments as $item) {
-            $paymentsSum += $item['amount'] + $item['mother'] + $item['penalty'];
+            $paymentsSum += $item['amount'] + $item['mother'];
         }
+        $penalty = $this->countPenalty($contract->id);
 
         // Process penalty
         if ($penalty) {
@@ -54,7 +57,7 @@ class PaymentService {
 
     private function completePayment($payment, $payer, $cash): void
     {
-        $payment->paid += $payment['amount']  + $payment['penalty'];
+        $payment->paid += $payment['amount'] + $payment['penalty'];
         $payment->date = Carbon::now()->format('d.m.Y');
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
@@ -186,7 +189,7 @@ class PaymentService {
 
         // process full payment
         $this->createPayment($contract->id, $amount, 'full', $payer, $cash);
-        $contract->status = 'completed';
+        $contract->status = 'full';
         $contract->left = 0;
         $contract->collected += $amount;
         $contract->save();
@@ -197,4 +200,6 @@ class PaymentService {
     {
         return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
     }
+
+
 }

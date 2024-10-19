@@ -115,4 +115,58 @@ trait ContractTrait
     public function completePayment(){
 
     }
+
+    public function calcAmount($amount,$days,$rate): int
+    {
+        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
+    }
+    public function calculateCurrentPayment($contract): array
+    {
+        $penalty_amount = $this->countPenalty($contract->id);
+        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->created_at);
+        $current_date = Carbon::now();
+        $days_passed = $contract_creation_date->diffInDays($current_date);
+        $calculatedAmount = $this->calcAmount($contract->left, $days_passed, $contract->interest_rate);
+        $total_paid = Payment::where('contract_id', $contract->id)
+            ->where('type','regular')->sum('paid');
+        $penalty_paid = Payment::with('contract_id',$contract->id)
+            ->where('type','penalty')->sum('paid');
+        $penalty = $penalty_amount - $penalty_paid;
+        $current_amount = $calculatedAmount - $total_paid + $penalty;
+
+        return ["current_amount" => $current_amount > 0 ? $current_amount : 0,
+                "penalty_amount"=>$penalty];
+    }
+
+    public function countPenalty($contract_id)
+    {
+        $contract = Contract::where('id', $contract_id)->with('payments')->first();
+        $penalty_paid = Payment::with('contract_id',$contract->id)
+            ->where('type','penalty')->sum('paid');
+        $now = \Carbon\Carbon::now();
+        $dateToCheck = null;
+        if ($contract) {
+            for ($i = 0; $i < count($contract->payments); $i++) {
+                $payment = $contract->payments[$i];
+
+                if ($now ->gt(\Carbon\Carbon::parse($payment->date)) && $payment->status === 'initial') {
+                    $dateToCheck = Carbon::parse($payment->date);
+                    break;
+                }
+
+            }
+            if ($dateToCheck){
+                $difference = $now->diffInDays($dateToCheck);
+                $penalty_amount =( $this->calcAmount($contract->left, $difference, $contract->penalty) - $penalty_paid);
+                $contract->penalty_amount = $penalty_amount;
+                $contract->save();
+            }else{
+                $penalty_amount = 0;
+                $contract->penalty_amount = 0;
+                $contract->save();
+            }
+            return $penalty_amount;
+        }
+
+    }
 }

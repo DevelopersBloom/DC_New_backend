@@ -105,7 +105,9 @@ class ContractDetailResource extends JsonResource
                         'description' => $item->description,
                     ];
                 }
-            })
+            }),
+            'current_payment_amount' => $this->current_payment_amount,
+            'penalty_amount' => $this->penalty_amount,
         ];
     }
 }

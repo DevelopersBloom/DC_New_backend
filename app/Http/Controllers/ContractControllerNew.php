@@ -12,6 +12,7 @@ use App\Models\Deal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Services\ClientService;
 use App\Services\ContractService;
 use App\Services\FileService;
@@ -34,6 +35,10 @@ class ContractControllerNew extends Controller
         $this->contractService = $contractService;
         $this->fileService = $fileService;
     }
+
+
+
+
     public function show($id): ContractDetailResource
     {
         $contract = Contract::with([
@@ -44,6 +49,10 @@ class ContractControllerNew extends Controller
                 $query->with(['type'])->orderBy('id', 'ASC');},
             'items'
         ])->findOrFail($id);
+        $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+        $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
+        $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
+
         return new ContractDetailResource($contract);
     }
 

@@ -24,19 +24,19 @@ class PaymentControllerNew extends Controller
     {
         $this->paymentService = $paymentService;
     }
-
     public function makePayment(Request $request): JsonResponse
     {
+
         $contract =  Contract::findOrFail($request->contract_id);
         $amount = $request->amount;
-        $penalty = $request->penalty;
         $payer = $request->payer;
         $cash = $request->cash;
 
         $paymentIds = $request->payments;
+
         $payments = Payment::whereIn('id', $paymentIds)->get();
         $paymentsSum = $this->paymentService->processPayments(
-            $contract,$amount,$penalty,$payer,$cash,$payments
+            $contract,$amount,$payer,$cash,$payments
         );
 
        $this->createDeal($amount ?? $paymentsSum, 'in', $contract->id, $this->generateOrderInNew($request,$payments)->id, $cash);
@@ -60,9 +60,14 @@ class PaymentControllerNew extends Controller
         }
         $contract->save();
     }
-
     public function makeFullPayment(Request $request): JsonResponse
     {
+        $has_penalty_amount = $this->countPenalty($request->contract_id);
+        if ($has_penalty_amount > 0) {
+            return response()->json([
+                'message' => 'You have an unpaid penalty amount! ',
+            ], 404);
+        }
         $contract = Contract::findOrFail($request->contract_id);
         $amount = $request->amount;
         $payer = $request->payer;
@@ -108,6 +113,12 @@ class PaymentControllerNew extends Controller
 
     public function payPartial(Request $request): JsonResponse
     {
+        $has_penalty_amount = $this->countPenalty($request->contract_id);
+        if ($has_penalty_amount > 0) {
+            return response()->json([
+                'message' => 'You have an unpaid penalty amount! ',
+            ], 404);
+        }
         $contract = Contract::findOrFail($request->contract_id);
         $partialAmount = $request->amount;
         $payer = $request->payer;

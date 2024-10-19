@@ -55,10 +55,11 @@ class   ContractService
         $contract->estimated_amount = $data['estimated_amount'];
         $contract->provided_amount = $data['provided_amount'];
         $contract->left = $data['provided_amount'];
-        $contract->interest_rate = $data['interest_rate']/100;
-        $contract->penalty = $data['penalty']/100;
+        $contract->mother = $data['provided_amount'];
+        $contract->interest_rate = $data['interest_rate'];
+        $contract->penalty = $data['penalty'];
         $contract->deadline = $deadline;
-        $contract->lump_rate = $data['lump_rate']/100;
+        $contract->lump_rate = $data['lump_rate'];
         $contract->description = $data['description'] ?? null;
         $contract->status = 'initial';
         $contract->pawnshop_id = auth()->user()->pawnshop_id;

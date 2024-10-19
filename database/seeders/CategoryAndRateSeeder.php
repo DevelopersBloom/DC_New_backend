@@ -29,52 +29,40 @@ class CategoryAndRateSeeder extends Seeder
                 'name' => 'car',
                 'title' => 'Ավտոմեքենա'
             ],
-            [
-                'name' => 'other',
-                'title' => 'Այլ'
-            ],
         ]);
 
         // Retrieve the category IDs
         $goldId = DB::table('categories')->where('name', 'gold')->value('id');
         $phoneId = DB::table('categories')->where('name', 'phone')->value('id');
         $carId = DB::table('categories')->where('name', 'car')->value('id');
-        $otherId = DB::table('categories')->where('name', 'other')->value('id');
 
         // Seed the category_rates table
         DB::table('category_rates')->insert([
             [
                 'category_id' => $goldId,
-                'interest_rate' => 13,
-                'penalty' => 4,
+                'interest_rate' => 0.4,
+                'penalty' => 0.13,
                 'min_amount' => 10000,
                 'max_amount' => 100000,
-                'lump_rate' => 12
+                'lump_rate' => 2.5
             ],
             [
                 'category_id' => $phoneId,
-                'interest_rate' => 6.0,
-                'penalty' => 4,
+                'interest_rate' => 0.4,
+                'penalty' => 0.13,
                 'min_amount' => 10000,
                 'max_amount' => 100000,
-                'lump_rate' => 2
+                'lump_rate' => 2.5
             ],
             [
                 'category_id' => $carId,
-                'interest_rate' => 4,
-                'penalty' => 2,
+                'interest_rate' => 0.4,
+                'penalty' => 0.13,
                 'min_amount' => 10000,
                 'max_amount' => 100000,
-                'lump_rate' => 1
+                'lump_rate' => 2.5
             ],
-            [
-                'category_id' => $otherId,
-                'interest_rate' => 7,
-                'penalty' => 3,
-                'min_amount' => 10000,
-                'max_amount' => 100000,
-                'lump_rate' => 2
-            ],
+
         ]);
     }
 }
