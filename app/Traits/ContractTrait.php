@@ -129,14 +129,54 @@ trait ContractTrait
         $calculatedAmount = $this->calcAmount($contract->left, $days_passed, $contract->interest_rate);
         $total_paid = Payment::where('contract_id', $contract->id)
             ->where('type','regular')->sum('paid');
-        $penalty_paid = Payment::with('contract_id',$contract->id)
-            ->where('type','penalty')->sum('paid');
-        $penalty = $penalty_amount - $penalty_paid;
+//        $penalty_paid = Payment::with('contract_id',$contract->id)
+//            ->where('type','penalty')->sum('paid');
+        $penalty = $penalty_amount ;
         $current_amount = $calculatedAmount - $total_paid + $penalty;
 
         return ["current_amount" => $current_amount > 0 ? $current_amount : 0,
                 "penalty_amount"=>$penalty];
     }
+    public function calculateCurrentPayment1($contract): array
+    {
+        $penalty_amount = $this->countPenalty($contract->id);
+        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->created_at);
+        $current_date = Carbon::now();
+        $days_passed = $contract_creation_date->diffInDays($current_date);
+
+        // Calculate the total amount based on the days passed since contract creation
+        $calculatedAmount = $this->calcAmount($contract->left, $days_passed, $contract->interest_rate);
+
+        // Get the total amount paid so far
+        $total_paid = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->sum('paid');
+
+        // Calculate the penalty, if any
+        $penalty = $penalty_amount;
+
+        // Recalculate the future payment amounts (with dates greater than now)
+        $futurePayments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('date', '>', $current_date)
+            ->get();
+
+        foreach ($futurePayments as $futurePayment) {
+            // Coeff to recalculate based on the remaining balance after partial payment
+            $coeff = $contract->left / ($contract->left + $total_paid);  // Use remaining amount coefficient
+            $futurePayment->amount = intval(ceil($futurePayment->amount * $coeff / 10) * 10);
+            $futurePayment->save();
+        }
+
+        // Calculate the current amount due (considering total paid, penalties, and recalculations)
+        $current_amount = $calculatedAmount - $total_paid + $penalty;
+
+        return [
+            "current_amount" => $current_amount > 0 ? $current_amount : 0,
+            "penalty_amount" => $penalty
+        ];
+    }
+
 
     public function countPenalty($contract_id)
     {
@@ -145,6 +185,7 @@ trait ContractTrait
             ->where('type','penalty')->sum('paid');
         $now = \Carbon\Carbon::now();
         $dateToCheck = null;
+        $penalty_amount = 0;
         if ($contract) {
             for ($i = 0; $i < count($contract->payments); $i++) {
                 $payment = $contract->payments[$i];
@@ -161,11 +202,10 @@ trait ContractTrait
                 $contract->penalty_amount = $penalty_amount;
                 $contract->save();
             }else{
-                $penalty_amount = 0;
                 $contract->penalty_amount = 0;
                 $contract->save();
             }
-            return $penalty_amount;
+            return $penalty_amount > 0 ? $penalty_amount : 0;
         }
 
     }

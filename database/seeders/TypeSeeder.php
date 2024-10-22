@@ -95,6 +95,10 @@ class TypeSeeder extends Seeder
                 'title' => 'Միանվագ Վճար',
             ],
             [
+                'name' => 'mother_payment',
+                'title' => 'ՄԳ տրամադրում'
+            ],
+            [
                 'name' => 'edit',
                 'title' => 'Պայմանագրի Փոփոխությոն',
             ],

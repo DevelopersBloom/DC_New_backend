@@ -107,7 +107,7 @@ class PaymentControllerNew extends Controller
 
         return response()->json([
             'success' => 'success',
-            'contract' => $updatedContract,
+            'message' => 'Full payment created successfully',
         ]);
     }
 

@@ -105,11 +105,9 @@ class PaymentService {
     public function createPayment($contractId, $amount, $type, $payer, $cash): void
     {
        // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
-        if ($type === 'penalty' || $type === 'full') {
+        if ($type === 'penalty' || $type === 'full' || $type === 'partial') {
             $status = 'completed';
-        } elseif ($type === 'partial') {
-            $status = 'partial';
-        }else {
+        } else {
             $status = 'initial';
         }
         $payment = new Payment();
@@ -189,7 +187,7 @@ class PaymentService {
 
         // process full payment
         $this->createPayment($contract->id, $amount, 'full', $payer, $cash);
-        $contract->status = 'full';
+        $contract->status = 'completed';
         $contract->left = 0;
         $contract->collected += $amount;
         $contract->save();

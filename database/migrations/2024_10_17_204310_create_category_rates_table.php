@@ -19,8 +19,8 @@ return new class extends Migration
             $table->decimal('interest_rate')->nullable();
             $table->decimal('penalty')->nullable();
             $table->decimal('lump_rate')->nullable();
-            $table->integer('min_amount');
-            $table->integer('max_amount');
+            $table->integer('min_amount')->nullable();
+            $table->integer('max_amount')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

@@ -6,13 +6,11 @@ use App\Http\Requests\ClientRequest;
 use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
-use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Services\ClientService;
 use App\Services\ContractService;
 use App\Services\FileService;
@@ -57,74 +55,214 @@ class ContractControllerNew extends Controller
     }
 
 
-    public function store(ClientRequest $clientRequest, ContractRequest $contractRequest,ItemRequest $itemRequest): JsonResponse|JsonResource
+//    public function store(ClientRequest $clientRequest, ContractRequest $contractRequest,ItemRequest $itemRequest): JsonResponse|JsonResource
+//    {
+//        DB::beginTransaction();
+//        try {
+//            $client = $this->clientService->storeOrUpdate($clientRequest->validated());
+//
+//            $deadline = Carbon::now('Asia/Yerevan')->addDays($contractRequest->validated()['deadline'])->format('Y-m-d H:i:s');
+//
+//            $contract = $this->contractService->createContract($client->id,$contractRequest->validated(),$deadline);
+//
+//            // $contract = $this->contractService->createContract($client->id, $contractRequest->validated());
+//            $items = $itemRequest->validated()['items'];
+//
+//            foreach ($items as $item_data) {
+//                $this->contractService->storeContractItem($contract->id, $item_data);
+//            }
+//            $filesData = $contractRequest->all()['files'];
+//            if ($filesData) {
+//                $this->fileService->uploadContractFiles($contract->id, $filesData);
+//            }
+//            $this->contractService->createPayment($contract);
+//            $history_type = HistoryType::where('name','opening')->first();
+//            $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
+//            $cash = $contract->provided_amount < 20000 ? "true" : "false";
+//            $order_out_id = $this->getOrder($cash, 'out');
+//            // Create an "out" order
+//            $outOrder = Order::create([
+//                'contract_id' => $contract->id,
+//                'type' => 'out',
+//                'title' => 'Օրդեր',
+//                'pawnshop_id' => auth()->user()->pawnshop_id,
+//                'order' => $order_out_id,
+//                'amount' => $contract->provided_amount,
+//                'rep_id' => '2211',
+//                'date' => Carbon::now()->format('d.m.Y'),
+//                'client_name' => $client_name,
+//                'purpose' => 'վարկ',
+//            ]);
+//
+//            // Add history for "out" order
+//            History::create([
+//                'type_id' => $history_type->id,
+//                'contract_id' => $contract->id,
+//                'user_id' => auth()->user()->id,
+//                'order_id' => $outOrder->id,
+//                'date' => Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+//                'amount' => $contract->provided_amount,
+//            ]);
+//            $this->createDeal($contract->provided_amount, 'out', $contract->id, $outOrder->id, $cash, 'Գրավ');
+//            $history_type = HistoryType::where('name','one_time_payment')->first();
+//
+//            $order_in_id = $this->getOrder($cash,'in');
+//            $res = [
+//                'contract_id' => $contract->id,
+//                'type' => 'in',
+//                'title' => 'Օրդեր',
+//                'pawnshop_id' => auth()->user()->pawnshop_id,
+//                'order' => $order_in_id,
+//                'amount' => 2000,
+//                'rep_id' => '2211',
+//                'date' => \Carbon\Carbon::now()->format('d.m.Y'),
+//                'client_name' => $client_name,
+//                'purpose' => 'Մինավագ վճար',
+//            ];
+//            $new_order = Order::create($res);
+//            History::create([
+//                'type_id' => $history_type->id,
+//                'contract_id' => $contract->id,
+//                'user_id' => auth()->user()->id,
+//                'order_id' => $new_order->id,
+//                'date' => Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+//                'amount' => 2000
+//            ]);
+//            $this->createDeal(2000,'in',$contract->id,$new_order->id,$cash,'Միանվագ Վճար');
+//
+//            $history_type = HistoryType::where('name','mother_payment')->first();
+//            $res = [
+//                'contract_id' => $contract->id,
+//                'type' => 'out',
+//                'title' => 'Օրդեր',
+//                'pawnshop_id' => auth()->user()->pawnshop_id,
+//                'order' => $order_out_id,
+//                'amount' => $contract->provided_amount,
+//                'rep_id' => '2211',
+//                'date' => \Carbon\Carbon::now()->format('d.m.Y'),
+//                'client_name' => $client_name,
+//                'purpose' => 'ՄԳ տրամադրում',
+//            ];
+//            $new_order = Order::create($res);
+//            History::create([
+//                'type_id' => $history_type->id,
+//                'contract_id' => $contract->id,
+//                'user_id' => auth()->user()->id,
+//                'order_id' => $new_order->id,
+//                'date' => Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+//                'amount' => $contract->provided_amount,
+//            ]);
+//            $this->createDeal($contract->provided_amount,'out',$contract->id,$new_order->id,$cash,'ՄԳ տրամադրում');
+//
+//            // Create payments for the contract
+//            DB::commit();
+//
+//            return response()->json([
+//                'contract_id' => $contract->id,
+//                'message' => 'Contract created successfully.'
+//            ], 201);
+//          //  return new ContractResource($contract->load(['client', 'items', 'files','payments','history']));
+//        } catch (\Exception $e) {
+//            DB::rollBack();
+//
+//            return response()->json([
+//                'message' => 'Error processing the request',
+//                'error' => $e->getMessage(),
+//            ], 500);
+//        }
+//    }
+    public function store(ClientRequest $clientRequest, ContractRequest $contractRequest, ItemRequest $itemRequest): JsonResponse|JsonResource
     {
         DB::beginTransaction();
         try {
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
 
             $deadline = Carbon::now('Asia/Yerevan')->addDays($contractRequest->validated()['deadline'])->format('Y-m-d H:i:s');
+            $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
 
-            $contract = $this->contractService->createContract($client->id,$contractRequest->validated(),$deadline);
-
-            // $contract = $this->contractService->createContract($client->id, $contractRequest->validated());
+            // Store contract items
             $items = $itemRequest->validated()['items'];
-
             foreach ($items as $item_data) {
                 $this->contractService->storeContractItem($contract->id, $item_data);
             }
-            $filesData = $contractRequest->all()['files'];
+
+            // Upload contract files if provided
+            $filesData = $contractRequest->all()['files'] ?? null;
             if ($filesData) {
                 $this->fileService->uploadContractFiles($contract->id, $filesData);
             }
+
+            // Create contract payments
             $this->contractService->createPayment($contract);
-            $history_type = HistoryType::where('name','opening')->first();
+
+            // Create orders and history entries
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000 ? "true" : "false";
-            $order_id = $this->getOrder($cash, 'out');
-            // Create an "out" order
-            $outOrder = Order::create([
-                'contract_id' => $contract->id,
-                'type' => 'out',
-                'title' => 'Օրդեր',
-                'pawnshop_id' => auth()->user()->pawnshop_id,
-                'order' => $order_id,
-                'amount' => $contract->provided_amount,
-                'rep_id' => '2211',
-                'date' => Carbon::now()->format('d.m.Y'),
-                'client_name' => $client_name,
-                'purpose' => 'վարկ',
-            ]);
 
-            // Add history for "out" order
-            History::create([
-                'type_id' => $history_type->id,
-                'contract_id' => $contract->id,
-                'user_id' => auth()->user()->id,
-                'order_id' => $outOrder->id,
-                'date' => Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
-                'amount' => $contract->provided_amount,
-            ]);
-            $this->createDeal($contract->provided_amount, 'out', $contract->id, $outOrder->id, $cash, 'Գրավ');
+            $this->createOrderAndHistory($contract, $client_name, $cash);
 
-
-            // Create payments for the contract
             DB::commit();
 
             return response()->json([
                 'contract_id' => $contract->id,
-                'message' => 'Contract created successfully.'
+                'message' => 'Contract created successfully.',
             ], 201);
-          //  return new ContractResource($contract->load(['client', 'items', 'files','payments','history']));
         } catch (\Exception $e) {
             DB::rollBack();
-
             return response()->json([
                 'message' => 'Error processing the request',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
+    /**
+     * Helper method to create order and history entries
+     */
+    private function createOrderAndHistory($contract, $client_name, $cash)
+    {
+        $historyTypes = HistoryType::whereIn('name', ['opening', 'one_time_payment', 'mother_payment'])->get();
+        $this->createOrderHistoryEntry($contract, $client_name, 'out', 'opening', $contract->provided_amount, $cash, 'վարկ');
+        $this->createOrderHistoryEntry($contract, $client_name, 'in', 'one_time_payment', 2000, $cash, 'Միանվագ վճար');
+        $this->createOrderHistoryEntry($contract, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, 'ՄԳ տրամադրում');
+    }
+
+    /**
+     * Helper method to create individual order and history entries
+     */
+    private function createOrderHistoryEntry($contract, $client_name, $type, $historyTypeName, $amount, $cash, $purpose)
+    {
+        $order_id = $this->getOrder($cash, $type);
+
+        // Create an order
+        $order = Order::create([
+            'contract_id' => $contract->id,
+            'type' => $type,
+            'title' => 'Օրդեր',
+            'pawnshop_id' => auth()->user()->pawnshop_id,
+            'order' => $order_id,
+            'amount' => $amount,
+            'rep_id' => '2211',
+            'date' => Carbon::now()->format('d.m.Y'),
+            'client_name' => $client_name,
+            'purpose' => $purpose,
+        ]);
+
+        // Add history for the order
+        $historyType = HistoryType::where('name', $historyTypeName)->first();
+        History::create([
+            'type_id' => $historyType->id,
+            'contract_id' => $contract->id,
+            'user_id' => auth()->user()->id,
+            'order_id' => $order->id,
+            'date' => Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+            'amount' => $amount,
+        ]);
+
+        // Create a deal for the order
+        $this->createDeal($amount, $type, $contract->id, $order->id, $cash, $purpose);
+    }
+
     public function createDeal($amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
         if($type === 'in'){
             if($cash){
