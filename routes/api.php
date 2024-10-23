@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\CategoryRateController;
+use App\Http\Controllers\RateController;
 use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LoginController;
@@ -70,7 +70,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial']);
 
         });
-        Route::get('/rates',[CategoryRateController::class,'getRates']);
+        Route::get('/rates',[RateController::class,'getRates']);
 
         Route::group(['prefix' => 'categories'], function () {
             Route::get('/', [CategoryController::class, 'index']);

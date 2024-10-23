@@ -10,6 +10,7 @@ use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\History;
 use App\Models\HistoryType;
+use App\Models\LumpRate;
 use App\Models\Order;
 use App\Services\ClientService;
 use App\Services\ContractService;
@@ -33,18 +34,16 @@ class ContractControllerNew extends Controller
         $this->contractService = $contractService;
         $this->fileService = $fileService;
     }
-
-
-
-
-    public function show($id): ContractDetailResource
+    public function show($id)
     {
+
         $contract = Contract::with([
             'client',
             'payments' => function ($query) {
                 $query->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') ASC");},
             'history' => function ($query) {
-                $query->with(['type'])->orderBy('id', 'ASC');},
+                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
+            },
             'items'
         ])->findOrFail($id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
@@ -183,9 +182,9 @@ class ContractControllerNew extends Controller
             // Store contract items
             $items = $itemRequest->validated()['items'];
             foreach ($items as $item_data) {
+                $category_id = $item_data['category_id'];
                 $this->contractService->storeContractItem($contract->id, $item_data);
             }
-
             // Upload contract files if provided
             $filesData = $contractRequest->all()['files'] ?? null;
             if ($filesData) {
@@ -199,7 +198,7 @@ class ContractControllerNew extends Controller
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000 ? "true" : "false";
 
-            $this->createOrderAndHistory($contract, $client_name, $cash);
+            $this->createOrderAndHistory($contract, $client_name, $cash,$category_id);
 
             DB::commit();
 
@@ -219,11 +218,14 @@ class ContractControllerNew extends Controller
     /**
      * Helper method to create order and history entries
      */
-    private function createOrderAndHistory($contract, $client_name, $cash)
+    private function createOrderAndHistory($contract, $client_name, $cash,$category_id)
     {
         $historyTypes = HistoryType::whereIn('name', ['opening', 'one_time_payment', 'mother_payment'])->get();
+        $lump_rate = LumpRate::getRateByCategoryAndAmount($category_id, $contract->provided_amount);
+        $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
+
         $this->createOrderHistoryEntry($contract, $client_name, 'out', 'opening', $contract->provided_amount, $cash, 'վարկ');
-        $this->createOrderHistoryEntry($contract, $client_name, 'in', 'one_time_payment', 2000, $cash, 'Միանվագ վճար');
+        $this->createOrderHistoryEntry($contract, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, 'Միանվագ վճար');
         $this->createOrderHistoryEntry($contract, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, 'ՄԳ տրամադրում');
     }
 

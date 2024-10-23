@@ -18,6 +18,9 @@ class DatabaseSeeder extends Seeder
             CategoryAndRateSeeder::class
         ]);
         $this->call([
+            LumpRateSeeder::class
+        ]);
+        $this->call([
             TypeSeeder::class
         ]);
         $this->call([

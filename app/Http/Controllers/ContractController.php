@@ -22,8 +22,6 @@ class ContractController extends Controller
 {
     use ContractTrait, OrderTrait;
 
-
-
     public function updateClient($request, $id){
         Client::where('id',$id)->update([
             'name' => $request->name,
@@ -579,7 +577,7 @@ class ContractController extends Controller
             'payments' => $payments,
         ]);
     }
-    public function getCategories()
+    public function getCategoriesract()
     {
        $categories = Category::get();
        $evaluators = Evaluator::where('pawnshop_id',auth()->user()->pawnshop_id)->get();
