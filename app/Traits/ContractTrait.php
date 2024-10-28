@@ -26,7 +26,7 @@ trait ContractTrait
         return $contract;
     }
 
-    public function createDeal($amount,$interest_amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
+    public function createDeal($amount,$interest_amount,$delay_days,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
         if($type === 'in'){
             if($cash){
                 auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox + $amount;
@@ -50,6 +50,7 @@ trait ContractTrait
             'type' => $type,
             'amount' => $amount,
             'interest_amount' => $interest_amount,
+            'delay_days' => $delay_days,
             'date' => Carbon::now()->format('d.m.Y'),
             'pawnshop_id' => auth()->user()->pawnshop_id,
             'contract_id' => $contract_id,
@@ -197,6 +198,7 @@ trait ContractTrait
                 }
 
             }
+            $difference = 0;
             if ($dateToCheck){
                 $difference = $now->diffInDays($dateToCheck);
                 $penalty_amount =( $this->calcAmount($contract->left, $difference, $contract->penalty) - $penalty_paid);
@@ -206,7 +208,10 @@ trait ContractTrait
                 $contract->penalty_amount = 0;
                 $contract->save();
             }
-            return $penalty_amount > 0 ? $penalty_amount : 0;
+            return [
+                'penalty_amount' => $penalty_amount > 0 ? $penalty_amount : 0,
+                'delay_days' => $difference ,
+            ];
         }
 
     }

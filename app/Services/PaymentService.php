@@ -14,8 +14,9 @@ class PaymentService {
         foreach ($payments as $item) {
             $payments_sum += $item['amount'] + $item['mother'];
         }
-        $penalty = $this->countPenalty($contract->id);
-
+        $result = $this->countPenalty($contract->id);
+        $penalty = $result['penalty_amount'];
+        $delay_days = $result['delay_days'];
         // Process penalty
         if ($penalty) {
             $amount = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash);
@@ -29,13 +30,14 @@ class PaymentService {
             }
             // Handle any remaining amount
             if ($amount> 0 ) {
-                $decrease = $this->handleRemainingAmount($contract, $amount, $cash);
+                $decrease = $this->handleRemainingAmount($contract, $amount, $cash,$payment->id);
                 $interest_amount+=$decrease;
             }
         }
         return [
                 'payments_sum' => $payments_sum,
-                'interest_amount' =>$interest_amount
+                'interest_amount' =>$interest_amount,
+                'delay_days' => $delay_days
                 ];
     }
 
@@ -73,7 +75,6 @@ class PaymentService {
         $payment->amount = 0;
         $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
 
-
         if ($payer) {
             $payment->another_payer = true;
             $payment->name = $payer['name'];
@@ -94,21 +95,23 @@ class PaymentService {
         $payment->save();
     }
 
-    private function handleRemainingAmount($contract, $amount, $cash)
+    private function handleRemainingAmount($contract, $amount, $cash,$payment_id)
     {
         $decrease = $amount % 1000;
         $amount -= $decrease;
-        $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')->first();
+        $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
+                                ->where('id','!=',$payment_id)->first();
         if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
             $nextPayment->paid += $decrease;
             $nextPayment->save();
             $contract->collected += $decrease;
-            return $decrease;
+
         }
         if ($amount > 0) {
             $this->payPartial($contract, $amount, false, $cash);
         }
+        return $decrease;
 
 
     }

@@ -23,6 +23,7 @@ class Deal extends Model
         'given',
         'insurance',
         'date',
+        'delay_days',
         'purpose',
         'receiver',
         'source'

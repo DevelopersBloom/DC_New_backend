@@ -30,7 +30,7 @@ class DealController extends Controller
 
     public function index(Request $request){
         $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
-            ->select('id','cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount')
+            ->select('id','cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days')
                 ->with(['order:id,client_name,order,contract_id,purpose','contract:id,discount,penalty_amount,discount,mother'])
             ->when($request->dateFrom,function ($query) use ($request){
                 $query->where(function ($query) use ($request) {
@@ -45,12 +45,7 @@ class DealController extends Controller
             ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')->paginate(10);
         $deals->getCollection()->transform(function ($deal) {
             $deal->total_amount = $deal->cashbox + $deal->bank_cashbox;
-            if ($deal->contract && $deal->contract->penalty_rate > 0) {
-                // Calculate delay days from penalty_amount and penalty_rate
-                $deal->contract->delay_days = intval($deal->contract->penalty_amount / $deal->contract->penalty_rate);
-            } else {
-                $deal->contract->delay_days = 0;
-            }
+
             return $deal;
         });
 
