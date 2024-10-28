@@ -39,7 +39,7 @@ class PaymentControllerNew extends Controller
             $contract,$amount,$payer,$cash,$payments
         );
 
-       $this->createDeal($amount ?? $paymentsSum, 'in', $contract->id, $this->generateOrderInNew($request,$payments)->id, $cash);
+       $this->createDeal($amount ?? $paymentsSum, 'in', $contract->id, $this->generateOrderInNew($request,$payments)->id, $cash,'Հերթական վճարում');
        $this->updateContractStatus($contract);
        return response()->json([
            'success' => 'success',
@@ -100,7 +100,7 @@ class PaymentControllerNew extends Controller
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
         ]);
 
-        $this->createDeal($amount, 'in', $contract->id, $newOrder->id, $cash);
+        $this->createDeal($amount, 'in', $contract->id, $newOrder->id, $cash,'Ամբողջական վճարում');
 
         // Fetch the updated contract with full details
         $updatedContract = $this->getFullContract($request->contract_id);

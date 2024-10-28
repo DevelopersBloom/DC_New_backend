@@ -22,8 +22,10 @@ return new class extends Migration
             $table->string('receiver')->nullable();
             $table->string('source')->nullable();
             $table->integer('amount')->nullable();
+            $table->integer('interest_amount')->nullable();
             $table->integer('order_id')->nullable();
             $table->integer('contract_id')->nullable();
+            $table->integer('payment_id')->nullable();
             $table->integer('pawnshop_id')->nullable();
             $table->integer('cashbox')->nullable();
             $table->integer('bank_cashbox')->nullable();

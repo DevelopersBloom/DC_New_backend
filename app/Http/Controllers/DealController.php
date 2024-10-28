@@ -15,9 +15,27 @@ use Illuminate\Http\Request;
 class DealController extends Controller
 {
     use ContractTrait,OrderTrait;
+    public function getCashBox(int $pawnshop_id)
+    {
+        $pawnshop = Pawnshop::findOrFail($pawnshop_id);
+        $cash_box = $pawnshop->cashbox;
+        $bank_cash_box = $pawnshop->bank_cashbox;
+        $total_amount = $cash_box + $bank_cash_box;
+        return response()->json([
+            'cashBox' => $cash_box,
+            'bankCashBox' => $bank_cash_box,
+            'totalAmount' => $total_amount
+        ]);
+    }
+//    >select('id','cashbox','bank_cashbox','pawnshop_id','cash')
+//                ->with(['order:id,order,contract_id,client_name,amount,purpose','contract:id,interest_rate,penalty,mother,provided_amount'])
+//                ->
     public function index(Request $request){
         $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
-            ->with(['order','contract'])
+            ->select('id','cashbox','bank_cashbox','pawnshop_id','cash','order_id','type')
+                ->with(['order:id,client_name,order,contract_id,amount,purpose','contract:id,interest_rate,penalty,mother,provided_amount'])
+
+                //->with(['order','contract'])
             ->when($request->dateFrom,function ($query) use ($request){
                 $query->where(function ($query) use ($request) {
                     $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);

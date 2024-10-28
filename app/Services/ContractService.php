@@ -49,7 +49,6 @@ class   ContractService
     }
     public function createContract(int $client_id, array $data,$deadline)
     {
-
         $contract = new Contract();
         $contract->client_id = $client_id;
         $contract->estimated_amount = $data['estimated_amount'];

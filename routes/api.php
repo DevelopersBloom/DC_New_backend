@@ -12,6 +12,7 @@ use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContractControllerNew;
+use App\Http\Controllers\DealController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -80,6 +81,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::group(['prefix' => 'payments'], function () {
             Route::get('/{id}', [PaymentController::class, 'getPayments']);
         });
+        Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
+        Route::get('/get-deals', [DealController::class, 'index']);
 
     //    });
 });
