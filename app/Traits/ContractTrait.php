@@ -26,7 +26,7 @@ trait ContractTrait
         return $contract;
     }
 
-    public function createDeal($amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
+    public function createDeal($amount,$interest_amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
         if($type === 'in'){
             if($cash){
                 auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox + $amount;
@@ -49,6 +49,7 @@ trait ContractTrait
         Deal::create([
             'type' => $type,
             'amount' => $amount,
+            'interest_amount' => $interest_amount,
             'date' => Carbon::now()->format('d.m.Y'),
             'pawnshop_id' => auth()->user()->pawnshop_id,
             'contract_id' => $contract_id,

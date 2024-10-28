@@ -11,6 +11,7 @@ class Deal extends Model
     protected $fillable = [
         'type',
         'amount',
+        'interest_amount',
         'order_id',
         'pawnshop_id',
         'contract_id',

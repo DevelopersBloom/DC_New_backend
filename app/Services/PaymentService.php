@@ -9,9 +9,10 @@ use Illuminate\Support\Carbon;
 class PaymentService {
     use ContractTrait;
     public function processPayments($contract, $amount, $payer, $cash, $payments) {
-        $paymentsSum = 0;
+        $payments_sum = 0;
+        $interest_amount = 0;
         foreach ($payments as $item) {
-            $paymentsSum += $item['amount'] + $item['mother'];
+            $payments_sum += $item['amount'] + $item['mother'];
         }
         $penalty = $this->countPenalty($contract->id);
 
@@ -22,14 +23,20 @@ class PaymentService {
         // Process payments
         if ($amount > 0) {
             foreach ($payments as $payment) {
-                $amount = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash);
+                $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash);
+                $amount = $result['amount'];
+                $interest_amount += $result['interest_amount'];
             }
             // Handle any remaining amount
-            if ($amount > 0 ) {
-                $this->handleRemainingAmount($contract, $amount, $cash);
+            if ($amount> 0 ) {
+                $decrease = $this->handleRemainingAmount($contract, $amount, $cash);
+                $interest_amount+=$decrease;
             }
         }
-        return $paymentsSum;
+        return [
+                'payments_sum' => $payments_sum,
+                'interest_amount' =>$interest_amount
+                ];
     }
 
     private function processPenalty($contractId, $amount, $penalty, $payer, $cash) {
@@ -47,11 +54,13 @@ class PaymentService {
         if ($amount >= $paymentFinal) {
             $this->completePayment($payment,$payer, $cash);
             $contract->collected += $paymentFinal;
-            return $amount - $paymentFinal;
+            return ['interest_amount' => $paymentFinal,
+                    'amount' => $amount - $paymentFinal];
         } else {
             $this->partiallyCompletePayment($payment, $amount);
             $contract->collected += $amount;
-            return 0;
+            return ['interest_amount' => $amount,
+                    'amount' => 0];
         }
     }
 
@@ -85,7 +94,7 @@ class PaymentService {
         $payment->save();
     }
 
-    private function handleRemainingAmount($contract, $amount, $cash): void
+    private function handleRemainingAmount($contract, $amount, $cash)
     {
         $decrease = $amount % 1000;
         $amount -= $decrease;
@@ -95,6 +104,7 @@ class PaymentService {
             $nextPayment->paid += $decrease;
             $nextPayment->save();
             $contract->collected += $decrease;
+            return $decrease;
         }
         if ($amount > 0) {
             $this->payPartial($contract, $amount, false, $cash);

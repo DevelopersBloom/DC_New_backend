@@ -27,15 +27,11 @@ class DealController extends Controller
             'totalAmount' => $total_amount
         ]);
     }
-//    >select('id','cashbox','bank_cashbox','pawnshop_id','cash')
-//                ->with(['order:id,order,contract_id,client_name,amount,purpose','contract:id,interest_rate,penalty,mother,provided_amount'])
-//                ->
+
     public function index(Request $request){
         $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
-            ->select('id','cashbox','bank_cashbox','pawnshop_id','cash','order_id','type')
-                ->with(['order:id,client_name,order,contract_id,amount,purpose','contract:id,interest_rate,penalty,mother,provided_amount'])
-
-                //->with(['order','contract'])
+            ->select('id','cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount')
+                ->with(['order:id,client_name,order,contract_id,purpose','contract:id,discount,penalty_amount,discount,mother'])
             ->when($request->dateFrom,function ($query) use ($request){
                 $query->where(function ($query) use ($request) {
                     $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);
@@ -47,9 +43,21 @@ class DealController extends Controller
                 })->get();
             })
             ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')->paginate(10);
+        $deals->getCollection()->transform(function ($deal) {
+            $deal->total_amount = $deal->cashbox + $deal->bank_cashbox;
+            if ($deal->contract && $deal->contract->penalty_rate > 0) {
+                // Calculate delay days from penalty_amount and penalty_rate
+                $deal->contract->delay_days = intval($deal->contract->penalty_amount / $deal->contract->penalty_rate);
+            } else {
+                $deal->contract->delay_days = 0;
+            }
+            return $deal;
+        });
+
         return response()->json([
             'deals' => $deals
         ]);
+
     }
     public function addCost(Request $request){
         $type = $request->type;

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->decimal('provided_amount');
             $table->decimal('interest_rate')->nullable();
             $table->decimal('penalty')->nullable();
+            $table->decimal('discount')->nullable();
             $table->date('deadline');
             $table->decimal('lump_rate')->nullable();
             $table->text('description')->nullable();

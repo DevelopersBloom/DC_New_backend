@@ -35,11 +35,10 @@ class PaymentControllerNew extends Controller
         $paymentIds = $request->payments;
 
         $payments = Payment::whereIn('id', $paymentIds)->get();
-        $paymentsSum = $this->paymentService->processPayments(
+        $result = $this->paymentService->processPayments(
             $contract,$amount,$payer,$cash,$payments
         );
-
-       $this->createDeal($amount ?? $paymentsSum, 'in', $contract->id, $this->generateOrderInNew($request,$payments)->id, $cash,'Հերթական վճարում');
+       $this->createDeal($amount ?? $result['$payments_sum'],$result['interest_amount'], 'in', $contract->id, $this->generateOrderInNew($request,$payments)->id, $cash,'Հերթական վճարում');
        $this->updateContractStatus($contract);
        return response()->json([
            'success' => 'success',
