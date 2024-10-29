@@ -42,10 +42,11 @@ class DealController extends Controller
                     $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')]);
                 })->get();
             })
-            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')->paginate(10);
+            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')
+            ->paginate(10);
+
         $deals->getCollection()->transform(function ($deal) {
             $deal->total_amount = $deal->cashbox + $deal->bank_cashbox;
-
             return $deal;
         });
 

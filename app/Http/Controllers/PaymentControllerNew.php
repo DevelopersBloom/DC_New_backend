@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contract;
 use App\Models\History;
 use App\Models\HistoryType;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Services\PaymentService;
 use App\Traits\ContractTrait;
@@ -62,7 +63,7 @@ class PaymentControllerNew extends Controller
     public function makeFullPayment(Request $request): JsonResponse
     {
         $has_penalty_amount = $this->countPenalty($request->contract_id);
-        if ($has_penalty_amount > 0) {
+        if ($has_penalty_amount['penalty_amount'] > 0) {
             return response()->json([
                 'message' => 'You have an unpaid penalty amount! ',
             ], 404);
@@ -99,7 +100,7 @@ class PaymentControllerNew extends Controller
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
         ]);
 
-        $this->createDeal($amount, 'in', $contract->id, $newOrder->id, $cash,'Ամբողջական վճարում');
+        $this->createDeal($amount, null,null,'in', $contract->id, $newOrder->id, $cash,'Ամբողջական վճարում');
 
         // Fetch the updated contract with full details
         $updatedContract = $this->getFullContract($request->contract_id);
@@ -113,18 +114,45 @@ class PaymentControllerNew extends Controller
     public function payPartial(Request $request): JsonResponse
     {
         $has_penalty_amount = $this->countPenalty($request->contract_id);
-        if ($has_penalty_amount > 0) {
+        if ($has_penalty_amount['penalty_amount'] > 0) {
             return response()->json([
                 'message' => 'You have an unpaid penalty amount! ',
             ], 404);
         }
-        $contract = Contract::findOrFail($request->contract_id);
+        $contract_id = $request->contract_id;
+        $contract = Contract::findOrFail($contract_id);
         $partialAmount = $request->amount;
         $payer = $request->payer;
         $cash = $request->cash;
 
         // Call the payment service to handle the partial payment
         $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash);
+
+        $history_type = HistoryType::where('name','partial_payment')->first();
+        $client_name = $contract->name.' '.$contract->surname.' '.$contract->middle_name;
+        $order_id = $this->getOrder($cash,'in');
+        $res = [
+            'contract_id' => $contract->id,
+            'type' => 'in',
+            'title' => 'Օրդեր',
+            'pawnshop_id' => auth()->user()->pawnshop_id,
+            'order' => $order_id,
+            'amount' => $partialAmount,
+            'rep_id' => '2211',
+            'date' => Carbon::now()->format('d.m.Y'),
+            'client_name' => $client_name,
+            'purpose' => 'Մասնակի մարում',
+        ];
+        $new_order = Order::create($res);
+        History::create([
+            'amount' => $partialAmount,
+            'user_id' => auth()->user()->id,
+            'type_id' => $history_type->id,
+            'order_id' => $new_order->id,
+            'contract_id' => $contract->id,
+            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y'),
+        ]);
+        $this->createDeal($partialAmount, null,null, 'in', $contract->id, $new_order->id, $cash, 'Մասնակի վճարում');
 
         // Update contract status and check if any payments remain
         $this->updateContractStatus($contract);
