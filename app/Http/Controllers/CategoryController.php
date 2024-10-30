@@ -13,7 +13,7 @@ class CategoryController extends Controller
      */
     public function index(): JsonResponse
     {
-        $categories = Category::select('id', 'title')->get();
+        $categories = Category::select('id', 'title','name')->get();
         return response()->json($categories);
     }
 
