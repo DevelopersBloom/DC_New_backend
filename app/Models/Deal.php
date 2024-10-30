@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Deal extends Model
 {
     use HasFactory;
+    const HISTORY =  'history';
+    const IN_DEAL = 'in';
+    const OUT_DEAL = 'out';
+    const EXPENSE_DEAL = 'expense';
+
     protected $fillable = [
         'type',
         'amount',

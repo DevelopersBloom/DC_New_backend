@@ -29,6 +29,7 @@ class DealController extends Controller
     }
 
     public function index(Request $request){
+        $dealType = $request->input('type', Deal::HISTORY);
         $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
             ->select('id','cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days')
                 ->with(['order:id,client_name,order,contract_id,purpose','contract:id,discount,penalty_amount,discount,mother'])
@@ -41,6 +42,61 @@ class DealController extends Controller
                 $query->where(function ($query) use ($request) {
                     $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')]);
                 })->get();
+            })
+            ->when($dealType === Deal::IN_DEAL, function ($query) {
+                $query->where('type', 'in');
+            })
+            ->when($dealType === Deal::OUT_DEAL, function ($query) {
+                $query->where('type', 'out');
+            })
+            ->when($dealType === Deal::EXPENSE_DEAL, function ($query) {
+                $query->where('type', 'in')->where('purpose', 'ծախս');
+            })
+            ->when($request->hasAny(['name', 'surname', 'middle_name', 'passport_series', 'phone']), function ($query) use ($request) {
+                $query->whereHas('contract.client', function ($query) use ($request) {
+                    if ($request->filled('name')) {
+                        $query->where('name', 'like', '%' . $request->name . '%');
+                    }
+                    if ($request->filled('surname')) {
+                        $query->where('surname', 'like', '%' . $request->surname . '%');
+                    }
+                    if ($request->filled('middle_name')) {
+                        $query->where('middle_name', 'like', '%' . $request->middle_name . '%');
+                    }
+                    if ($request->filled('passport_series')) {
+                        $query->where('passport_series', 'like', '%' . $request->passport_series . '%');
+                    }
+                    if ($request->filled('phone')) {
+                        $query->where('phone', 'like', '%' . $request->phone . '%');
+                    }
+                    if ($request->filled('status')) {
+                        $query->where('status', 'like', '%' . $request->status . '%');
+                    }
+                    if ($request->filled('category_id')) {
+                        $query->where('category_id', 'like', '%' . $request->category_id . '%');
+                    }
+                    if ($request->filled('estimated_amount_from')) {
+                        $query->where('estimated_amount', '>=', $request->estimated_amount_from);
+                    }
+                    if ($request->filled('estimated_amount_to')) {
+                        $query->where('estimated_amount', '<=', $request->estimated_amount_to);
+                    }
+                    if ($request->filled('provided_amount_from')) {
+                        $query->where('provided_amount', '>=', $request->provided_amount_from);
+                    }
+                    if ($request->filled('provided_amount_to')) {
+                        $query->where('provided_amount', '<=', $request->provided_amount_to);
+                    }
+                    if ($request->filled('date_from')) {
+                        $query->where('created_at', '>=', Carbon::parse($request->date_from)->setTimezone('Asia/Yerevan'));
+                    }
+                    if ($request->filled('date_to')) {
+                        $query->where('created_at', '<=', Carbon::parse($request->date_to)->setTimezone('Asia/Yerevan'));
+                    }
+                });
+            })
+            ->when($request->filled('deal_days'), function ($query) use ($request) {
+                $query->where('delay_days', $request->deal_days);
             })
             ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')
             ->paginate(10);
