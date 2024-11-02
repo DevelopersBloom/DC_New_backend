@@ -260,8 +260,8 @@ DealController extends Controller
     {
         $name = $request->name;
         $amount = $request->amount;
-        $receiver = $request->reveiver;
-        $save = $receiver->save_template;
+        $receiver = $request->receiver;
+        $save = $request->save_template;
         $this->createCashboxOrder($name,$amount, 'out', $receiver,'անկանխիկ հաշվի համալրում');
         $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,'հաշվի համալրում');
 
@@ -276,8 +276,10 @@ DealController extends Controller
         $receiver = $request->receiver;
         $cash = $request->cash;
         $save = $request->save_template;
-        $order_id = $this->getOrder($request->cash, 'out');
-        $this->createOrderAndDeal($order_id, 'cost_out', $name, $amount, $purpose, $receiver, $cash);
+        $type = $request->type;
+
+        $order_id = $this->getOrder($request->cash, $type);
+        $this->createOrderAndDeal($order_id, $type === 'out' ? 'cost_out' : 'in', $name, $amount, $purpose, $receiver, $cash);
 
         return response()->json(['success' => 'success']);
     }
