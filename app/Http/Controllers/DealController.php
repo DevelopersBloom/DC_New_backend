@@ -12,7 +12,8 @@ use App\Traits\OrderTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
-class DealController extends Controller
+class
+DealController extends Controller
 {
     use ContractTrait,OrderTrait;
     public function getCashBox(int $pawnshop_id)
@@ -50,7 +51,7 @@ class DealController extends Controller
                 $query->where('type', 'out');
             })
             ->when($dealType === Deal::EXPENSE_DEAL, function ($query) {
-                $query->where('type', 'in')->where('purpose', 'ծախս');
+                $query->where('type', 'cost_out');
             })
             ->when($request->hasAny(['name', 'surname', 'middle_name', 'passport_series', 'phone']), function ($query) use ($request) {
                 $query->whereHas('contract.client', function ($query) use ($request) {
@@ -111,7 +112,72 @@ class DealController extends Controller
         ]);
 
     }
-    public function addCost(Request $request){
+//    public function addCashbox(Request $request)
+//    {
+//        $amount = $request->amount;
+//        $purpose = $request->purpose;
+//        $source = $request->source;
+//        $receiver = $request->receiver;
+//        $save_template = $request->save_template;
+//        $name = $request->name;
+//        $order_id = $this->getOrder(true,'out');
+//        $res = [
+//            'type' => 'cost_out',
+//            'title' => $name,
+//            'pawnshop_id' => auth()->user()->pawnshop_id,
+//            'order' => $order_id,
+//            'amount' => $amount,
+//            'date' => Carbon::now()->format('d.m.Y'),
+//            'purpose' => $purpose,
+//            'receiver' => $receiver
+//        ];
+//        $new_order = Order::create($res);
+//        $this->createDeal($amount,null,null,'out',null,$new_order->id,true,$purpose,$receiver,$source);
+//        $order_id = $this->getOrder(false,'in');
+//        $res = [
+//            'type' => 'cost_in',
+//            'title' => $name,
+//            'pawnshop_id' => auth()->user()->pawnshop_id,
+//            'order' => $order_id,
+//            'amount' => $amount,
+//            'date' => Carbon::now()->format('d.m.Y'),
+//            'purpose' => $purpose,
+//            'receiver' => auth()->user()->pawnshop->bank
+//        ];
+//        $new_order = Order::create($res);
+//        $this->createDeal($amount,null,null,'in',null,$new_order->id,false,$purpose,$receiver,$source);
+//        return response()->json([
+//            "success" => "success",
+//        ]);
+//    }
+//    public function addCost(Request $request)
+//    {
+//        $amount = $request->amount;
+//        $purpose = $request->purpose;
+//        $source = $request->source;
+//        $receiver = $request->receiver;
+//        $cash = $request->cash;
+//        $save_template = $request->save_template;
+//        $name = $request->name;
+//
+//        $order_id = $this->getOrder($cash,'out');
+//        $res = [
+//            'type' => 'cost_out',
+//            'title' => 'Օրդեր',
+//            'pawnshop_id' => auth()->user()->pawnshop_id,
+//            'order' => $order_id,
+//            'amount' => $amount,
+//            'date' => Carbon::now()->format('d.m.Y'),
+//            'purpose' => $purpose,
+//            'receiver' => $receiver
+//        ];
+//        $new_order = Order::create($res);
+//        $this->createDeal($amount,null,null,'cost_out',null,$new_order->id,$cash,$purpose,$receiver);
+//        return response()->json([
+//            'success' => 'success'
+//        ]);
+//    }
+    public function addCostOld(Request $request){
         $type = $request->type;
         $source = $request->source;
         $amount = $request->amount;
@@ -189,6 +255,58 @@ class DealController extends Controller
             'success' => 'success'
         ]);
 
+    }
+    public function addCashbox(Request $request)
+    {
+        $name = $request->name;
+        $amount = $request->amount;
+        $receiver = $request->reveiver;
+        $save = $receiver->save_template;
+        $this->createCashboxOrder($name,$amount, 'out', $receiver,'անկանխիկ հաշվի համալրում');
+        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,'հաշվի համալրում');
+
+        return response()->json(["success" => "success"]);
+    }
+
+    public function addCost(Request $request)
+    {
+        $name = $request->name;
+        $amount = $request->amount;
+        $purpose = $request->purpose;
+        $receiver = $request->receiver;
+        $cash = $request->cash;
+        $save = $request->save_template;
+        $order_id = $this->getOrder($request->cash, 'out');
+        $this->createOrderAndDeal($order_id, 'cost_out', $name, $amount, $purpose, $receiver, $cash);
+
+        return response()->json(['success' => 'success']);
+    }
+
+    private function createCashboxOrder($name,$amount, $type, $receiver,$purpose)
+    {
+        $order_id = $this->getOrder($type === 'out', $type);
+        $order = $this->createOrder($type, $name, $amount, $order_id, $purpose, $receiver);
+        $this->createDeal($amount, null, null, $type, null, $order->id, $type === 'out', $purpose, $receiver);
+    }
+
+    private function createOrderAndDeal($order_id, string $type, string $title, $amount, $purpose, $receiver, $cash)
+    {
+        $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver);
+        $this->createDeal($amount, null, null, $type, null, $order->id, $cash, $purpose, $receiver);
+    }
+
+    private function createOrder(string $type, string $title, $amount, $order_id, $purpose, $receiver)
+    {
+        return Order::create([
+            'type' => $type,
+            'title' => $title,
+            'pawnshop_id' => auth()->user()->pawnshop_id,
+            'order' => $order_id,
+            'amount' => $amount,
+            'date' => Carbon::now()->format('d.m.Y'),
+            'purpose' => $purpose,
+            'receiver' => $receiver
+        ]);
     }
 
 }

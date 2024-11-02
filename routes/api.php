@@ -83,6 +83,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         });
         Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
         Route::get('/get-deals', [DealController::class, 'index']);
+        Route::post('/add-cost', [DealController::class, 'addCost']);
+        Route::post('/add-cash-box', [DealController::class, 'addCashBox']);
+
 
     //    });
 });
