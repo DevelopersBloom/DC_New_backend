@@ -126,6 +126,7 @@ trait ContractTrait
     {
         $penalty_amount = $this->countPenalty($contract->id);
         $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->created_at);
+
         $current_date = Carbon::now();
         $days_passed = $contract_creation_date->diffInDays($current_date);
         $calculatedAmount = $this->calcAmount($contract->left, $days_passed, $contract->interest_rate);
@@ -134,10 +135,10 @@ trait ContractTrait
 //        $penalty_paid = Payment::with('contract_id',$contract->id)
 //            ->where('type','penalty')->sum('paid');
         $penalty = $penalty_amount ;
-        $current_amount = $calculatedAmount - $total_paid + $penalty;
+        $current_amount = $calculatedAmount - $total_paid + $penalty['penalty_amount'];
 
         return ["current_amount" => $current_amount > 0 ? $current_amount : 0,
-                "penalty_amount"=>$penalty];
+                "penalty_amount"=>$penalty['penalty_amount']];
     }
     public function calculateCurrentPayment1($contract): array
     {
@@ -208,6 +209,7 @@ trait ContractTrait
                 $contract->penalty_amount = 0;
                 $contract->save();
             }
+
             return [
                 'penalty_amount' => $penalty_amount > 0 ? $penalty_amount : 0,
                 'delay_days' => $difference ,

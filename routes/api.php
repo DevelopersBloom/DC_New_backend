@@ -62,7 +62,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
 
         Route::get('/clients/search', [ClientControllerNew::class, 'search']);
-        Route::group(['prefix' => 'contracts'], function () {
+
+
+    Route::group(['prefix' => 'contracts'], function () {
+            Route::get('/', [ContractControllerNew::class, 'get']);
             Route::post('/', [ContractControllerNew::class, 'store']);
             Route::get('/download/{id}', [FileController::class, 'downloadContract']);
             Route::get('/{id}', [ContractControllerNew::class, 'show']);
@@ -85,8 +88,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/get-deals', [DealController::class, 'index']);
         Route::post('/add-cost', [DealController::class, 'addCost']);
         Route::post('/add-cash-box', [DealController::class, 'addCashBox']);
-
-
     //    });
 });
 

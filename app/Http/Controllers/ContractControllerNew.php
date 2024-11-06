@@ -18,8 +18,10 @@ use App\Services\FileService;
 use App\Traits\ContractTrait;
 use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ContractControllerNew extends Controller
@@ -34,9 +36,62 @@ class ContractControllerNew extends Controller
         $this->contractService = $contractService;
         $this->fileService = $fileService;
     }
+    public function get(Request $request): JsonResponse
+    {
+        $status = $request->input('status', 'all');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $query = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
+            ->orderBy('created_at', 'DESC')
+            ->with(['payments' => function($payment) {
+                $payment->orderBy('date');
+            }, 'client' => function($query) {
+                $query->withCount('contracts');
+            }]);
+        // Apply status-based filters
+        switch ($status) {
+            case 'initial':
+                $query->where('status', 'initial');
+                break;
+            case 'completed':
+                $query->where('status', 'completed');
+                break;
+            case 'executed':
+                $query->where('status', 'executed');
+                break;
+            case 'overdue':
+                $query->whereDate('deadline', '<=', today());
+                break;
+            case 'todays':
+                $query->whereHas('payments', function($q) {
+                    $q->whereDate('date', today());
+                });
+                break;
+        }
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+        // Paginate and process the additional fields
+        $contracts = $query->paginate(10);
+        foreach ($contracts as $contract) {
+            if ($contract->category && $contract->evaluator) {
+                $contract->category_title = $contract->category->title;
+                $contract->evaluator_title = $contract->evaluator->full_name;
+            }
+        }
+
+        $totalContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)->count();
+
+        return response()->json([
+            'contracts' => $contracts,
+            'total' => $totalContracts
+        ]);
+    }
     public function show($id)
     {
-
         $contract = Contract::with([
             'client',
             'payments' => function ($query) {
@@ -47,6 +102,7 @@ class ContractControllerNew extends Controller
             'items'
         ])->findOrFail($id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
         $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
 
