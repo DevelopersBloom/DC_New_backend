@@ -13,11 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('categories', function (Blueprint $table) {
+        Schema::create('category_rates', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->nullable();
-            $table->string('title');
-            $table->text('pawnshop_id')->nullable();
+            $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
+            $table->decimal('interest_rate')->nullable();
+            $table->decimal('penalty')->nullable();
+            $table->integer('min_amount')->nullable();
+            $table->integer('max_amount')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
@@ -30,6 +32,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('categories');
+        Schema::dropIfExists('category_rates');
     }
 };

@@ -31,7 +31,7 @@ return new class extends Migration
             $table->integer('penalty')->default(0);
             $table->integer('contract_id')->nullable();
             $table->integer('pawnshop_id')->nullable();
-            $table->string('date')->nullable();
+            $table->date('date')->nullable();
             $table->string('from_date')->nullable();
             $table->enum('status',['completed','initial'])->default('initial');
             $table->softDeletes();

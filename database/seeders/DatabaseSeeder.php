@@ -15,6 +15,12 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call([
+            CategoryAndRateSeeder::class
+        ]);
+        $this->call([
+            LumpRateSeeder::class
+        ]);
+        $this->call([
             TypeSeeder::class
         ]);
         $this->call([
@@ -26,5 +32,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PawnshopConfigSeeder::class
         ]);
+//        $this->call([
+//            ContractSeeder::class
+//        ]);
     }
 }

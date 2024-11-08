@@ -28,9 +28,12 @@ class ContractRequest extends FormRequest
             'provided_amount' => 'required|numeric',
             'deadline' => 'required|integer',
             'description' => 'nullable|string',
-            'files' => 'nullable|array',
-            'files.*.file' => 'required|file',
-            'files.*.file_type' => 'required|string',
+            'interest_rate' => 'required|numeric',
+            'penalty' => 'required|numeric',
+            'lump_rate' => 'required|numeric',
+//            'files' => 'nullable|array',
+//            'files.*.file' => 'required|file',
+//            'files.*.file_type' => 'required|string',
         ];
     }
     public function messages()
@@ -46,12 +49,12 @@ class ContractRequest extends FormRequest
             'penalty.numeric' => 'The penalty must be a numeric value.',
             'deadline.required' => 'The deadline is required.',
             'deadline.integer' => 'The deadline must be an integer.',
-            'lump_rate.numeric' => 'The lump sum must be a numeric value.',
+            'lump_rate.numeric' => 'The lump rate must be a numeric value.',
             'description.string' => 'The description must be a string.',
             'pawnshop_id.required' => 'The pawnshop ID is required.',
             'pawnshop_id.exists' => 'The pawnshop ID must exist in the pawnshops table.',
-            'files.array' => 'The files must be an array.',
-            'file_type.required' => 'The file type  is required.',
+//            'files.array' => 'The files must be an array.',
+//            'file_type.required' => 'The file type  is required.',
         ];
     }
 }

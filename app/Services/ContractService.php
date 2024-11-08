@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Category;
+use App\Models\CategoryRate;
 use App\Models\Contract;
 use App\Models\Item;
 use App\Models\Payment;
@@ -25,22 +26,22 @@ class   ContractService
                 break;
             case 'gold':
                 $item->subcategory = $data['subcategory'];
-                $item->weight = $data['weight'];
-                $item->clear_weight = $data['clear_weight'];
-                $item->hallmark = $data['hallmark'];
+                $item->weight = $data['weight'] ?? null;
+                $item->clear_weight = $data['clear_weight'] ?? null;
+                $item->hallmark = $data['hallmark'] ?? null;
                 break;
             case 'car':
-                $item->model = $data['model'];
-                $item->car_make = $data['car_make'];
-                $item->manufacture = $data['manufacture'] ;
-                $item->power = $data['power'] ;
-                $item->license_plate = $data['license_plate'] ;
-                $item->color = $data['color'];
-                $item->registration_certificate = $data['registration_certificate'] ;
-                $item->identification_number = $data['identification_number'] ;
-                $item->ownership_certificate = $data['ownership_certificate'];
-                $item->issued_by = $data['issued_by'];
-                $item->date_of_issuance = $data['date_of_issuance'] ;
+                $item->model = $data['model'] ?? null;
+                $item->car_make = $data['car_make'] ?? null;
+                $item->manufacture = $data['manufacture'] ?? null;
+                $item->power = $data['power'] ?? null;
+                $item->license_plate = $data['license_plate'] ?? null;
+                $item->color = $data['color']?? null;
+                $item->registration = $data['registration_certificate'] ?? null;
+                $item->identification = $data['identification_number'] ?? null;
+                $item->ownership = $data['ownership_certificate']?? null;
+                $item->issued_by = $data['issued_by']?? null;
+                $item->date_of_issuance = $data['date_of_issuance'] ?? null;
                 break;
         }
         $item->save();
@@ -52,10 +53,12 @@ class   ContractService
         $contract->client_id = $client_id;
         $contract->estimated_amount = $data['estimated_amount'];
         $contract->provided_amount = $data['provided_amount'];
-        $contract->interest_rate = 0.4;
-        $contract->penalty = 0.13;
+        $contract->left = $data['provided_amount'];
+        $contract->mother = $data['provided_amount'];
+        $contract->interest_rate = $data['interest_rate'];
+        $contract->penalty = $data['penalty'];
         $contract->deadline = $deadline;
-        $contract->lump_rate = 5;
+        $contract->lump_rate = $data['lump_rate'];
         $contract->description = $data['description'] ?? null;
         $contract->status = 'initial';
         $contract->pawnshop_id = auth()->user()->pawnshop_id;
@@ -63,33 +66,68 @@ class   ContractService
         return $contract;
 
     }
-
     public function createPayment(Contract $contract)
     {
-        $fromDate = Carbon::parse($contract->created_at);
-        $toDate = Carbon::parse($contract->deadline);
+        $fromDate = Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan');
+        $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
         $currentDate = $fromDate;
 
         while ($currentDate->lt($toDate))
         {
             $payment = [
                 'contract_id' => $contract->id,
-                'from_date' => $fromDate,
+                'from_date' => $currentDate->format('d.m.Y'),
             ];
+
+            // Determine the next payment date, or use the deadline if it's the last payment
             $nextPaymentDate = (clone $currentDate)->addMonths();
             $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+
             $diffDays = $paymentDate->diffInDays($currentDate);
-            $amount = $this->calcAmount($contract->provided_amount,$diffDays,$contract->interest_rate);
-            $payment['date'] =  $paymentDate->format('d.m.Y');;
-            $payment['days'] = $diffDays;
+            $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
+            $payment['date'] = $paymentDate->format('Y-m-d');            $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
             $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
+            $payment['mother'] = 0;
+
+            // Check if it's the last payment
+            if ($paymentDate->eq($toDate)) {
+                $payment['mother'] = $contract->provided_amount; // Add mother amount for the last payment
+                $payment['last_payment'] = true;
+            }
 
             Payment::create($payment);
-
+            // Move to the next payment date
             $currentDate = $nextPaymentDate;
         }
     }
+
+//    public function createPayment(Contract $contract)
+//    {
+//        $fromDate = Carbon::parse($contract->created_at);
+//        $toDate = Carbon::parse($contract->deadline);
+//        $currentDate = $fromDate;
+//
+//        while ($currentDate->lt($toDate))
+//        {
+//            $payment = [
+//                'contract_id' => $contract->id,
+//                'from_date' => $fromDate,
+//            ];
+//            $nextPaymentDate = (clone $currentDate)->addMonths();
+//            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+//            $diffDays = $paymentDate->diffInDays($currentDate);
+//            $amount = $this->calcAmount($contract->provided_amount,$diffDays,$contract->interest_rate);
+//            $payment['date'] =  $paymentDate->format('d.m.Y');;
+//            $payment['days'] = $diffDays;
+//            $payment['amount'] = $amount;
+//            $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
+//
+//            Payment::create($payment);
+//
+//            $currentDate = $nextPaymentDate;
+//        }
+//    }
 
     public function calcAmount($amount,$days,$rate): int
     {

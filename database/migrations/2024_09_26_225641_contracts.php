@@ -20,12 +20,16 @@ return new class extends Migration
             $table->decimal('provided_amount');
             $table->decimal('interest_rate')->nullable();
             $table->decimal('penalty')->nullable();
+            $table->decimal('discount')->nullable();
             $table->date('deadline');
             $table->decimal('lump_rate')->nullable();
             $table->text('description')->nullable();
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');
             $table->unsignedBigInteger('pawnshop_id');
-
+            $table->integer('mother')->nullable();
+            $table->integer('left')->nullable();
+            $table->integer('collected')->nullable();
+            $table->integer('penalty_amount')->default(0);
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
 

@@ -12,13 +12,18 @@ class Category extends Model
         'name',
         'title',
         'pawnshop_id',
-        'rate',
-        'penalty',
-        'lump_rate'
     ];
-
-
-    public function contracts(){
+    public function contracts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
         return $this->hasMany(Contract::class);
+    }
+    public function lumpRates(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(LumpRate::class);
+    }
+
+    public function categoryRates(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CategoryRate::class);
     }
 }

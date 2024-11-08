@@ -3,31 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index()
+    /**
+     * @return JsonResponse
+     */
+    public function index(): JsonResponse
     {
-        $categories = Category::where('pawnshop_id', auth()->user()->id)
-            ->select('id', 'title')
-            ->get();
-
+        $categories = Category::select('id', 'title','name')->get();
         return response()->json($categories);
     }
 
-    public function getCategoryDetails(int $categoryId)
+    /**
+     * @param int $category_id
+     * @return JsonResponse
+     */
+    public function show(int $category_id): JsonResponse
     {
         $category = Category::select('interest_rate', 'penalty', 'lump_rate')
-            ->where('id', $categoryId);
-        if (!$category) {
-            return response()->json(['error' => 'Category not found'], 404);
-        }
-
-        return response()->json([
-            'rate' => $category->rate,
-            'penalty' => $category->penalty,
-            'lump_rate' => $category->lump_rate,
-        ]);
+            ->findOrFail($category_id);
+        return response()->json($category);
     }
 }

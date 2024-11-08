@@ -23,7 +23,7 @@ class PaymentController extends Controller
     public function getPayments($id){
         $contract = $this->getFullContract($id);
         return response()->json([
-            'contract' => $contract,
+             'contract' => $contract,
         ]);
     }
 

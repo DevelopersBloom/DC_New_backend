@@ -31,6 +31,10 @@ class ClientService
             $client->city = $data['city'];
             $client->street = $data['street'];
             $client->building = $data['building'] ?? null;
+            $client->bank_name = $data['bank_name'] ?? null;
+            $client->card_number = $data['card_number'] ?? null;
+            $client->account_number = $data['account_number'] ?? null;
+            $client->iban = $data['iban'] ?? null;
             $client->save();
         } else {
             $client = new Client();
@@ -48,6 +52,10 @@ class ClientService
             $client->city = $data['city'];
             $client->street = $data['street'];
             $client->building = $data['building'] ?? null;
+            $client->bank_name = $data['bank_name'] ?? null;
+            $client->card_number = $data['card_number'] ?? null;
+            $client->account_number = $data['account_number'] ?? null;
+            $client->iban = $data['iban'] ?? null;
             $client->save();
         }
         return $client;

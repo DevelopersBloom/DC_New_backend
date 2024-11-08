@@ -27,6 +27,10 @@ class PawnshopSeeder extends Seeder
         $pawnshop->email = 'diamondcredit1@mail.ru';
         $pawnshop->bank = 'Ամերիաբանկ';
         $pawnshop->card_account_number = '1570073548790300';
+        $pawnshop->worth = '0';
+        $pawnshop->given = '0';
+        $pawnshop->cashbox = '5000000';
+        $pawnshop->bank_cashbox = '2000000';
         $pawnshop->save();
 
 
@@ -41,6 +45,10 @@ class PawnshopSeeder extends Seeder
         $pawnshop->email = 'diamondcredit@mail.ru';
         $pawnshop->bank = 'Ամերիաբանկ';
         $pawnshop->card_account_number = '1570073548790400';
+        $pawnshop->worth = '0';
+        $pawnshop->given = '0';
+        $pawnshop->cashbox = '5000000';
+        $pawnshop->bank_cashbox = '2000000';
         $pawnshop->save();
 
 

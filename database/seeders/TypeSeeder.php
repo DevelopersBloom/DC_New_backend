@@ -18,46 +18,73 @@ class TypeSeeder extends Seeder
      */
     public function run()
     {
-        $types = [
-            [
-                'name' => 'gold',
-                'title' => 'Ոսկի',
-            ],
-            [
-                'name' => 'phone',
-                'title' => 'Հեռախոս',
-            ],
-            [
-                'name' => 'laptop',
-                'title' => 'Նոթբուք',
-            ],
-            [
-                'name' => 'tablet',
-                'title' => 'Պլանշետ',
-            ],
-            [
-                'name' => 'pc',
-                'title' => 'Համակարգիչ',
-            ],
-            [
-                'name' => 'tv',
-                'title' => 'Հեռուստացույց',
-            ],
-            [
-                'name' => 'car',
-                'title' => 'Ավտոմեքենա',
-            ],
-            [
-                'name' => 'other',
-                'title' => 'Այլ',
-            ],
-        ];
-        foreach ($types as $type){
-            Category::create([
-                'name' => $type['name'],
-                'title' => $type['title'],
-            ]);
-        }
+//        $types = [
+//            [
+//                'name' => 'gold',
+//                'title' => 'Ոսկի',
+//                'interest_rate' => 4,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//            [
+//                'name' => 'phone',
+//                'title' => 'Հեռախոս',
+//                'interest_rate' => 3,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//            [
+//                'name' => 'laptop',
+//                'title' => 'Նոթբուք',
+//                'interest_rate' => 4,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//            [
+//                'name' => 'tablet',
+//                'title' => 'Պլանշետ',
+//                'interest_rate' => 4,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//            [
+//                'name' => 'pc',
+//                'title' => 'Համակարգիչ',
+//                'interest_rate' => 4,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//            [
+//                'name' => 'tv',
+//                'title' => 'Հեռուստացույց',
+//                'interest_rate' => 4,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//            [
+//                'name' => 'car',
+//                'title' => 'Ավտոմեքենա',
+//                'interest_rate' => 4,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//            [
+//                'name' => 'other',
+//                'title' => 'Այլ',
+//                'interest_rate' => 4,
+//                'penalty' => 13,
+//                'lump_rate' => 4,
+//            ],
+//        ];
+//        foreach ($types as $type){
+//            Category::create([
+//                'name' => $type['name'],
+//                'title' => $type['title'],
+//                'interest_rate' => $type['interest_rate'],
+//                'penalty' => $type['penalty'],
+//                'lump_rate' => $type['lump_rate'],
+//            ]);
+//        }
         $history_types = [
             [
                 'name' => 'opening',
@@ -66,6 +93,10 @@ class TypeSeeder extends Seeder
             [
                 'name' => 'one_time_payment',
                 'title' => 'Միանվագ Վճար',
+            ],
+            [
+                'name' => 'mother_payment',
+                'title' => 'ՄԳ տրամադրում'
             ],
             [
                 'name' => 'edit',

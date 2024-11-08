@@ -1,14 +1,18 @@
 <?php
 
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\RateController;
 use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LoginController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentControllerNew;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContractControllerNew;
+use App\Http\Controllers\DealController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -58,9 +62,33 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
 
         Route::get('/clients/search', [ClientControllerNew::class, 'search']);
-        Route::post('/contract', [ContractControllerNew::class, 'store']);
-        Route::get('/contracts/download/{id}', [FileController::class, 'downloadContract']);
-//    });
+
+
+    Route::group(['prefix' => 'contracts'], function () {
+            Route::get('/', [ContractControllerNew::class, 'get']);
+            Route::post('/', [ContractControllerNew::class, 'store']);
+            Route::get('/download/{id}', [FileController::class, 'downloadContract']);
+            Route::get('/{id}', [ContractControllerNew::class, 'show']);
+            Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment']);
+            Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);
+            Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial']);
+
+        });
+        Route::get('/rates',[RateController::class,'getRates']);
+
+        Route::group(['prefix' => 'categories'], function () {
+            Route::get('/', [CategoryController::class, 'index']);
+            Route::get('/{id}', [CategoryController::class, 'show']);
+
+        });
+        Route::group(['prefix' => 'payments'], function () {
+            Route::get('/{id}', [PaymentController::class, 'getPayments']);
+        });
+        Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
+        Route::get('/get-deals', [DealController::class, 'index']);
+        Route::post('/add-cost', [DealController::class, 'addCost']);
+        Route::post('/add-cash-box', [DealController::class, 'addCashBox']);
+    //    });
 });
 
 
