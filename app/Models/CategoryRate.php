@@ -19,8 +19,14 @@ class CategoryRate extends Model
     public static function getRateByCategoryAndAmount($category_id, $amount)
     {
         return self::where('category_id', $category_id)
-            ->where('min_amount','<=',$amount)
-            ->where('max_amount','>=',$amount)
+            ->where(function($query) use ($amount) {
+                $query->where('min_amount', '<=', $amount)
+                    ->orWhereNull('min_amount');
+            })
+            ->where(function($query) use ($amount) {
+                $query->where('max_amount', '>=', $amount)
+                    ->orWhereNull('max_amount');
+            })
             ->whereNull('deleted_at')
             ->first();
     }
