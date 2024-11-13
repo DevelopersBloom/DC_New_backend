@@ -69,7 +69,7 @@ class PaymentService {
     private function completePayment($payment, $payer, $cash): void
     {
         $payment->paid += $payment['amount'] + $payment['penalty'];
-        $payment->date = Carbon::now()->format('d.m.Y');
+        $payment->date = Carbon::now()->format('Y.m.d');
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
         $payment->amount = 0;
@@ -130,7 +130,7 @@ class PaymentService {
         $payment->type = $type;
         $payment->cash = $cash;
         $payment->pawnshop_id = auth()->user()->pawnshop_id;
-        $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
+        $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->status = $status;
         if ($payer) {
             $payment->another_payer = true;
@@ -149,7 +149,7 @@ class PaymentService {
         $startedToChange = false;
         $daysToCalc = 0;
         foreach ($payments as $index => $payment) {
-            $dateToCheck = Carbon::createFromFormat('d.m.Y', $payment->date);
+            $dateToCheck = Carbon::createFromFormat('Y-m-d', $payment->date);
             if ($dateToCheck->gt($now)) {
                 if ($startedToChange) {
                     $coeff = ($contract->left - $partialAmount) / $contract->left;
@@ -171,6 +171,7 @@ class PaymentService {
                 }
                 $payment->save();
             }
+
             if ($payment->last_payment) {
                 $payment->mother = $contract->left - $partialAmount;
                 $payment->save();
@@ -185,6 +186,7 @@ class PaymentService {
         auth()->user()->pawnshop->save();
 
         // Create the partial payment record
+
         $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash);
 
 
