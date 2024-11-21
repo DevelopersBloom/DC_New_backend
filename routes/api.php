@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContractControllerNew;
 use App\Http\Controllers\DealController;
+use App\Http\Controllers\NoteController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -62,6 +63,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
 
         Route::get('/clients/search', [ClientControllerNew::class, 'search']);
+        Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
 
 
     Route::group(['prefix' => 'contracts'], function () {
@@ -73,7 +75,13 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);
             Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial']);
 
-        });
+    });
+    Route::group(['prefix' => 'notes'], function () {
+       Route::get('/{id}',[NoteController::class,'index']);
+       Route::post('/',[NoteController::class,'store']);
+       Route::put('/{id}',[NoteController::class,'update']);
+       Route::delete('/{id}',[NoteController::class,'destroy']);
+    });
         Route::get('/rates',[RateController::class,'getRates']);
 
         Route::group(['prefix' => 'categories'], function () {

@@ -90,16 +90,18 @@ class ContractControllerNew extends Controller
             'total' => $totalContracts
         ]);
     }
-    public function show($id)
+    public function show($id): ContractDetailResource
     {
         $contract = Contract::with([
             'client',
             'payments' => function ($query) {
-                $query->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') ASC");},
+                $query->orderBy('date', 'ASC');
+            },
             'history' => function ($query) {
                 $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
             },
-            'items'
+            'items',
+            'files'
         ])->findOrFail($id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
 

@@ -72,6 +72,16 @@ class ContractDetailResource extends JsonResource
 
                 ];
             }),
+            'files' => $this->files->map(function ($file) {
+                return [
+                    'id' => $file->id,
+                    'name' => $file->name,
+                    'type' => $file->type,
+                    'original_name' => $file->original_name,
+                    'file_type' => $file->file_type,
+                    'url' => asset('storage/client/files/' . $file->name),
+                ];
+            }),
             'items' => $this->items->map(function ($item) {
                 if ($item->category->name === 'phone') {
                     return [

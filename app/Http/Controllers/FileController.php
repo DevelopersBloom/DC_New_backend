@@ -259,14 +259,15 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => $order->date,
             'client_name' => $order->client_name,
-            'contract_id' => $contract->ADB_ID,
+            'contract_id' => $contract->id,
             'purpose' => $order->purpose,
             'amount_text' => $this->numberToText($order->amount),
         ]);
         $filename = time() . 'order_in.docx';
         $pathToSave = public_path('/files/download/' . $filename);
         $templateProcessor->saveAs($pathToSave);
-        $downloadName = $order->order . ' Մուտքի Օրդեր.docx';
+        $downloadName = $order->order . 'Մուտքի Օրդեր.docx';
+
         $headers = [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename=' . $downloadName,
@@ -275,7 +276,7 @@ class FileController extends Controller
         return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
 
-    public function downloadOrderOut($id)
+    public function downloadOrderOutOld($id)
     {
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template.docx'));
         $order = Order::where('id', $id)->first();
@@ -290,6 +291,35 @@ class FileController extends Controller
             'cl_dob' => $contract->dob,
             'cl_pas' => $contract->passport,
             'cl_giv' => $contract->passport_given,
+            'amount_text' => $this->numberToText($order->amount),
+        ]);
+        $filename = time() . 'order_out.docx';
+        $pathToSave = public_path('/files/download/' . $filename);
+        $templateProcessor->saveAs($pathToSave);
+        $downloadName = $order->order . ' Ելքի Օրդեր.docx';
+        $headers = [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => 'attachment; filename=' . $downloadName,
+        ];
+        // Return the document as a response and delete the temporary file after sending
+        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
+    }
+    public function downloadOrderOut($id)
+    {
+        $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template_new.docx'));
+        $order = Order::where('id', $id)->first();
+        $contract = Contract::where('id', $order->contract_id)->with('client')->first();
+
+        $templateProcessor->setValues([
+            'amount' => $this->makeMoney($order->amount),
+            'rep_id' => $order->rep_id,
+            'order' => $order->order,
+            'date' => $order->date,
+            'client_name' => $order->client_name,
+            'contract_id' => $contract->id,
+            'cl_dob' => $contract->client->date_of_birth,
+            'cl_pas' => $contract->client->passport_series,
+            'cl_giv' => $contract->client->passport_issued,
             'amount_text' => $this->numberToText($order->amount),
         ]);
         $filename = time() . 'order_out.docx';
@@ -327,7 +357,6 @@ class FileController extends Controller
         // Return the document as a response and delete the temporary file after sending
         return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
-
     public function downloadCostOrderIn($id)
     {
         $templateProcessor = new TemplateProcessor(public_path('/files/cost_in_template.docx'));
@@ -351,4 +380,28 @@ class FileController extends Controller
         // Return the document as a response and delete the temporary file after sending
         return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
+
+//    public function downloadCostOrderInOld($id)
+//    {
+//        $templateProcessor = new TemplateProcessor(public_path('/files/cost_in_template.docx'));
+//        $order = Order::where('id', $id)->first();
+//        $templateProcessor->setValues([
+//            'amount' => $this->makeMoney($order->amount),
+//            'receiver' => $order->receiver,
+//            'order' => $order->order,
+//            'date' => $order->date,
+//            'purpose' => $order->purpose,
+//            'amount_text' => $this->numberToText($order->amount),
+//        ]);
+//        $filename = time() . 'cost_order_in.docx';
+//        $pathToSave = public_path('/files/download/' . $filename);
+//        $templateProcessor->saveAs($pathToSave);
+//        $downloadName = $order->order . ' Ծախս.docx';
+//        $headers = [
+//            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+//            'Content-Disposition' => 'attachment; filename=' . $downloadName,
+//        ];
+//        // Return the document as a response and delete the temporary file after sending
+//        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
+//    }
 }
