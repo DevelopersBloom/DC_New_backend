@@ -291,13 +291,13 @@ DealController extends Controller
         $this->createDeal($amount, null, null, $type, null, $order->id, $type === 'out', $purpose, $receiver);
     }
 
-    private function createOrderAndDeal($order_id, string $type, string $title, $amount, $purpose, $receiver, $cash)
+    private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash)
     {
         $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver);
         $this->createDeal($amount, null, null, $type, null, $order->id, $cash, $purpose, $receiver);
     }
 
-    private function createOrder(string $type, string $title, $amount, $order_id, $purpose, $receiver)
+    private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver)
     {
         return Order::create([
             'type' => $type,

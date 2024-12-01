@@ -101,7 +101,9 @@ class ContractControllerNew extends Controller
                 $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
             },
             'items',
-            'files'
+            'files',
+            'deals',
+
         ])->findOrFail($id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
 
@@ -109,6 +111,67 @@ class ContractControllerNew extends Controller
         $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
 
         return new ContractDetailResource($contract);
+    }
+    public function getHistoryDetails(int $id)
+    {
+        $history = History::with('user', 'order','contract')->find($id);
+        if (!$history) {
+            return response()->json(['message' => 'History record not found'], 404);
+        }
+        $details = [];
+        switch ($history->type->name) {
+            case HistoryType::REGULAR_PAYMENT:
+                $details = [
+                    'order_id'        => $history->order->order,
+                    'interest_amount' => $history->interest_amount,
+                    'penalty'         => $history->penalty,
+                    'discount'        => $history->discount,
+                    'date'            => $history->date,
+                    'delay_days'      => $history->delay_days,
+                    'total'           => $history->amount,
+                ];
+                break;
+            case HistoryType::PARTIAL_PAYMENT:
+                $details = [
+                    'order_id' => $history->order->order,
+                    'amount'   => $history->amount,
+                    'date'     => $history->date,
+                    'total'    => $history->total,
+                ];
+                break;
+            case HistoryType::ONE_TIME_PAYMENT:
+                $details = [
+                    'order_id'         => $history->order->order,
+                    'one_time_payment' => $history->amount,
+                    'date'             => $history->date,
+                    'total'            => $history->amount,
+                ];
+                break;
+            case HistoryType::FULL_PAYMENT:
+                $details = [
+                    'order_id'        => $history->order->order,
+                    'interest_amount' => $history->interest_amount,
+                    'penalty'         => $history->penalty,
+                    'mother_amount'   => $history->mother,
+                    'returned_amount' => $history->amount - $history->interest_amount - $history->contract->mother,
+                    'discount'        => $history->discount,
+                    'date'            => $history->date,
+                    'delay_days'      => $history->delay_days,
+                    'total'           => $history->amount
+                ];
+                break;
+            case HistoryType::MOTHER_PAYMENT:
+                $details = [
+                    'order_id' => $history->order->order,
+                    'provided' => $history->amount,
+                    'date'     => $history->date,
+                    'total'    => $history->amount,
+                ];
+                break;
+        }
+        return response()->json([
+            'details' => $details
+        ]);
     }
 
     public function store(ClientRequest $clientRequest, ContractRequest $contractRequest, ItemRequest $itemRequest): JsonResponse|JsonResource
@@ -164,7 +227,7 @@ class ContractControllerNew extends Controller
     private function createOrderAndHistory($contract, $client_name, $cash,$category_id)
     {
         $historyTypes = HistoryType::whereIn('name', ['opening', 'one_time_payment', 'mother_payment'])->get();
-        $lump_rate = LumpRate::getRateByCategoryAndAmount($category_id, $contract->provided_amount);
+        $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
         $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
 
         $this->createOrderHistoryEntry($contract, $client_name, 'out', 'opening', $contract->provided_amount, $cash, 'վարկ');

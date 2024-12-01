@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContractControllerNew;
 use App\Http\Controllers\DealController;
 use App\Http\Controllers\NoteController;
+use App\Http\Controllers\AdminControllerNew;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -35,68 +36,87 @@ Route::group(['prefix' => 'auth'], function () {
         Route::post('refresh', [LoginController::class, 'refresh']);
     });
 });
-
 Route::group(['middleware' => 'jwt.auth'], function () {
-//    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+        Route::get('/get',[AdminControllerNew::class,'get']);
+        Route::put('/update',[AdminControllerNew::class,'update']);
+        Route::post('/upload-file',[AdminControllerNew::class,'uploadFile']);
+        Route::get('/download-file',[AdminControllerNew::class,'downloadFile']);
 
-        Route::get('/get-users', [AdminController::class, 'getUsers']);
-        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
-        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
-        Route::get('/edit-user/{id}', [AdminController::class, 'editUser']);
-        Route::get('/edit-evaluator/{id}', [AdminController::class, 'editEvaluator']);
-        Route::get('/edit-pawnshop/{id}', [AdminController::class, 'editPawnshop']);
-        Route::get('/edit-category/{id}', [AdminController::class, 'editCategory']);
-        Route::get('/get-categories', [AdminController::class, 'getCategories']);
-        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
-        Route::get('/get-user-config', [AdminController::class, 'getUserConfig']);
-        Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
-        Route::post('/create-user', [AdminController::class, 'createUser']);
-        Route::post('/create-evaluator', [AdminController::class, 'createEvaluator']);
-        Route::post('/update-user', [AdminController::class, 'updateUser']);
-        Route::post('/delete-user', [AdminController::class, 'deleteUser']);
-        Route::post('/update-evaluator', [AdminController::class, 'updateEvaluator']);
-        Route::post('/create-pawnshop', [AdminController::class, 'createPawnshop']);
-        Route::post('/update-pawnshop', [AdminController::class, 'updatePawnshop']);
-        Route::post('/update-cashbox', [AdminController::class, 'updateCashbox']);
-        Route::post('/create-category', [AdminController::class, 'createCategory']);
-        Route::post('/update-category', [AdminController::class, 'updateCategory']);
-        Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
+        Route::get('/get-users',[AdminControllerNew::class,'getUsers']);
+        Route::post('/create-user',[AdminControllerNew::class,'createUser']);
+        Route::put('/update-user/{id}',[AdminControllerNew::class,'updateUser']);
+        Route::delete('/delete-user/{id}',[AdminControllerNew::class,'deleteUser']);
 
-        Route::get('/clients/search', [ClientControllerNew::class, 'search']);
-        Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
+        // Categories
+        Route::get('get-categories',[AdminControllerNew::class,'getCategories']);
+        Route::post('create-rates',[AdminControllerNew::class,'createRate']);
+        Route::put('update-rate/{id}',[AdminControllerNew::class,'updateRate']);
+        Route::delete('delete-rate/{id}',[AdminControllerNew::class,'deleteRate']);
 
+        Route::get('get-lump-rates',[AdminControllerNew::class,'getLumpRates']);
+        Route::post('create-lump-rate',[AdminControllerNew::class,'createLumpRate']);
+        Route::put('update-lump-rate/{id}',[AdminControllerNew::class,'updateLumpRate']);
+        Route::delete('delete-lump-rate/{id}',[AdminControllerNew::class,'deleteLumpRate']);
 
-    Route::group(['prefix' => 'contracts'], function () {
-            Route::get('/', [ContractControllerNew::class, 'get']);
-            Route::post('/', [ContractControllerNew::class, 'store']);
-            Route::get('/download/{id}', [FileController::class, 'downloadContract']);
-            Route::get('/{id}', [ContractControllerNew::class, 'show']);
-            Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment']);
-            Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);
-            Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial']);
+        Route::get('get-category-duration',[AdminControllerNew::class,'getCategoryDuration']);
+        Route::post('save-duration',[AdminControllerNew::class,'saveCategoryDuration']);
+        //
+//        Route::get('/get-users', [AdminController::class, 'getUsers']);
+//        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
+//        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
+//        Route::get('/edit-user/{id}', [AdminController::class, 'editUser']);
+//        Route::get('/edit-evaluator/{id}', [AdminController::class, 'editEvaluator']);
 
+        // Pawnshop Management
+//        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
+//        Route::post('/create-pawnshop', [AdminController::class, 'createPawnshop']);
+//        Route::post('/update-pawnshop', [AdminController::class, 'updatePawnshop']);
+//        Route::get('/edit-pawnshop/{id}', [AdminController::class, 'editPawnshop']);
+//        Route::post('/update-cashbox', [AdminController::class, 'updateCashbox']);
+//
+//        // Categories
+//        Route::get('/get-categories', [AdminController::class, 'getCategories']);
+//        Route::post('/create-category', [AdminController::class, 'createCategory']);
+//        Route::post('/update-category', [AdminController::class, 'updateCategory']);
+//        Route::get('/edit-category/{id}', [AdminController::class, 'editCategory']);
+//
+//        // Discounts and Configuration
+//        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
+//        Route::get('/get-user-config', [AdminController::class, 'getUserConfig']);
+//        Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
     });
+    Route::get('/clients/search', [ClientControllerNew::class, 'search']);
+    Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
+    Route::group(['prefix' => 'contracts'], function () {
+        Route::get('/', [ContractControllerNew::class, 'get']);
+        Route::post('/', [ContractControllerNew::class, 'store']);
+        Route::get('/download/{id}', [FileController::class, 'downloadContract']);
+        Route::get('/{id}', [ContractControllerNew::class, 'show']);
+        Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment']);
+        Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);
+        Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial']);
+        Route::get('/history-detail/{id}',[ContractControllerNew::class,'getHistoryDetails']);
+    });
+
     Route::group(['prefix' => 'notes'], function () {
        Route::get('/{id}',[NoteController::class,'index']);
        Route::post('/',[NoteController::class,'store']);
        Route::put('/{id}',[NoteController::class,'update']);
        Route::delete('/{id}',[NoteController::class,'destroy']);
     });
-        Route::get('/rates',[RateController::class,'getRates']);
-
-        Route::group(['prefix' => 'categories'], function () {
-            Route::get('/', [CategoryController::class, 'index']);
-            Route::get('/{id}', [CategoryController::class, 'show']);
-
-        });
-        Route::group(['prefix' => 'payments'], function () {
-            Route::get('/{id}', [PaymentController::class, 'getPayments']);
-        });
-        Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
-        Route::get('/get-deals', [DealController::class, 'index']);
-        Route::post('/add-cost', [DealController::class, 'addCost']);
-        Route::post('/add-cash-box', [DealController::class, 'addCashBox']);
-    //    });
+    Route::get('/rates',[RateController::class,'getRates']);
+    Route::group(['prefix' => 'categories'], function () {
+        Route::get('/', [CategoryController::class, 'index']);
+        Route::get('/{id}', [CategoryController::class, 'show']);
+    });
+    Route::group(['prefix' => 'payments'], function () {
+        Route::get('/{id}', [PaymentController::class, 'getPayments']);
+    });
+    Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
+    Route::get('/get-deals', [DealController::class, 'index']);
+    Route::post('/add-cost', [DealController::class, 'addCost']);
+    Route::post('/add-cash-box', [DealController::class, 'addCashBox']);
 });
 
 

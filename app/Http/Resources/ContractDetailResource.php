@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\HistoryType;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -18,68 +19,69 @@ class ContractDetailResource extends JsonResource
     {
         return [
             'contract' => [
-                'id' => $this->id,
+                'id'               => $this->id,
                 'estimated_amount' => $this->estimated_amount,
-                'provided_amount' => $this->provided_amount,
-                'interest_rate' => $this->interest_rate,
-                'penalty' => $this->penalty,
-                'lump_rate' => $this->lump_rate,
+                'provided_amount'  => $this->provided_amount,
+                'interest_rate'    => $this->interest_rate,
+                'penalty'          => $this->penalty,
+                'lump_rate'        => $this->lump_rate,
             ],
             'client' => [
-                'id' => $this->client->id,
-                'name' => $this->client->name,
-                'surname' => $this->client->surname,
-                'middle_name' => $this->client->middle_name,
-                'country' => $this->client->country,
-                'city' => $this->client->city,
-                'street' => $this->client->street,
-                'building' => $this->client->building,
-                'phone' => $this->client->phone,
-                'additional_phone' => $this->client->additional_phone,
-                'email' => $this->client->email,
-                'date_of_birth' => $this->client->date_of_birth,
-                'passport_series' => $this->client->passport_series,
+                'id'                => $this->client->id,
+                'name'              => $this->client->name,
+                'surname'           => $this->client->surname,
+                'middle_name'       => $this->client->middle_name,
+                'country'           => $this->client->country,
+                'city'              => $this->client->city,
+                'street'            => $this->client->street,
+                'building'          => $this->client->building,
+                'phone'             => $this->client->phone,
+                'additional_phone'  => $this->client->additional_phone,
+                'email'             => $this->client->email,
+                'date_of_birth'     => $this->client->date_of_birth,
+                'passport_series'   => $this->client->passport_series,
                 'passport_validity' => $this->client->passport_validity,
-                'passport_issued' => $this->client->passport_issued,
+                'passport_issued'   => $this->client->passport_issued,
             ],
             'payments' => $this->payments->map(function ($payment) {
                 return [
-                    'id' => $payment->id,
-                    'amount' => $payment->amount,
+                    'id'      => $payment->id,
+                    'amount'  => $payment->amount,
                     'penalty' => $payment->penalty,
-                    'date' => $payment->date,
-                    'status' => $payment->status,
-                    'mother' => $payment->mother
+                    'date'    => $payment->date,
+                    'status'  => $payment->status,
+                    'mother'  => $payment->mother
                 ];
             }),
             'history' => $this->history->map(function ($history) {
                 return [
+                    'id'   => $history->id,
                     'type' => $history->type->title,
                     'date' => $history->date,
-                    'user' => [
-                        'id' => $history->user->id,
-                        'name' => $history->user->name,
-                        'surname' => $history->user->surname,
-                        'role' => $history->user->role,
-                        'email' => $history->user->email,
-                    ],
-                    'order' => [
-                        'id' => $history->order->id,
-                        'amount' => $history->order->amount,
-                        'status' => $history->order->status,
-                        'created_at' => $history->order->created_at,
-                    ]
+//                    'user' => [
+//                        'id' => $history->user->id,
+//                        'name' => $history->user->name,
+//                        'surname' => $history->user->surname,
+//                        'role' => $history->user->role,
+//                        'email' => $history->user->email,
+//                    ],
+//                    'order' => [
+//                        'id' => $history->order->id,
+//                        'amount' => $history->order->amount,
+//                        'status' => $history->order->status,
+//                        'created_at' => $history->order->created_at,
+//                    ]
 
                 ];
             }),
             'files' => $this->files->map(function ($file) {
                 return [
-                    'id' => $file->id,
-                    'name' => $file->name,
-                    'type' => $file->type,
+                    'id'            => $file->id,
+                    'name'          => $file->name,
+                    'type'          => $file->type,
                     'original_name' => $file->original_name,
-                    'file_type' => $file->file_type,
-                    'url' => asset('storage/client/files/' . $file->name),
+                    'file_type'     => $file->file_type,
+                    'url'           => asset('storage/client/files/' . $file->name),
                 ];
             }),
             'items' => $this->items->map(function ($item) {

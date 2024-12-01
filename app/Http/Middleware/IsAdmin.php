@@ -3,24 +3,42 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class IsAdmin
 {
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     * @param Request $request
+     * @param  Closure(Request): (Response|RedirectResponse)  $next
+     * @return JsonResponse
      */
+//    public function handle(Request $request, Closure $next): JsonResponse
+//    {
+//        if (Auth::check() &&  Auth::user()->role == 'admin') {
+//            return $next($request);
+//        }
+//
+//        return response()->json(['error' => 'Unauthorized'], 403);
+//    }
     public function handle(Request $request, Closure $next)
     {
-        if (Auth::check() &&  Auth::user()->role == 'admin') {
-            return $next($request);
+        if (auth()->user() && auth()->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        return response()->json(['error' => 'Unauthorized'], 403);
+        $response = $next($request);
+
+        if ($response instanceof BinaryFileResponse) {
+            return $response;
+        }
+
+        return $response instanceof JsonResponse ? $response : response()->json($response);
     }
 }

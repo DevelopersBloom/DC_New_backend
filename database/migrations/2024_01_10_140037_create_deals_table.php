@@ -23,8 +23,10 @@ return new class extends Migration
             $table->string('source')->nullable();
             $table->integer('amount')->nullable();
             $table->integer('interest_amount')->nullable();
+            $table->integer('discount')->nullable();
             $table->integer('delay_days')->nullable();
             $table->integer('order_id')->nullable();
+            $table->integer('penalty')->nullable();
             $table->integer('contract_id')->nullable();
             $table->integer('payment_id')->nullable();
             $table->integer('pawnshop_id')->nullable();

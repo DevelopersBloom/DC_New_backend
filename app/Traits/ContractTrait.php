@@ -26,7 +26,7 @@ trait ContractTrait
         return $contract;
     }
 
-    public function createDeal($amount,$interest_amount,$delay_days,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
+    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
         if($type === 'in'){
             if($cash){
                 auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox + $amount;
@@ -47,25 +47,27 @@ trait ContractTrait
         }
         auth()->user()->pawnshop->save();
         Deal::create([
-            'type' => $type,
-            'amount' => $amount,
+            'type'            => $type,
+            'amount'          => $amount,
             'interest_amount' => $interest_amount,
-            'delay_days' => $delay_days,
-            'date' => Carbon::now()->format('d.m.Y'),
-            'pawnshop_id' => auth()->user()->pawnshop_id,
-            'contract_id' => $contract_id,
-            'order_id' => $order_id,
-            'cashbox' => auth()->user()->pawnshop->cashbox,
-            'bank_cashbox' => auth()->user()->pawnshop->bank_cashbox,
-            'worth' => auth()->user()->pawnshop->worth,
-            'given' => auth()->user()->pawnshop->given,
-            'purpose' => $purpose,
-            'cash' => $cash,
-            'receiver' => $receiver,
-            'source' => $source,
+            'delay_days'      => $delay_days,
+            'penalty'         => $penalty,
+            'discount'        => $discount,
+            'date'            => Carbon::now()->format('d.m.Y'),
+            'pawnshop_id'     => auth()->user()->pawnshop_id,
+            'contract_id'     => $contract_id,
+            'order_id'        => $order_id,
+            'cashbox'         => auth()->user()->pawnshop->cashbox,
+            'bank_cashbox'    => auth()->user()->pawnshop->bank_cashbox,
+            'worth'           => auth()->user()->pawnshop->worth,
+            'given'           => auth()->user()->pawnshop->given,
+            'purpose'         => $purpose,
+            'cash'            => $cash,
+            'receiver'        => $receiver,
+            'source'          => $source,
         ]);
     }
-    public function setContractPenalty($id){
+    public function setContractPenalty($id) {
         $contract = Contract::where('id', $id)->with('payments')->first();
         $now = Carbon::now();
         $dateToCheck = null;
@@ -87,7 +89,6 @@ trait ContractTrait
                 $contract->save();
             }
         }
-
     }
 
 
@@ -180,8 +181,55 @@ trait ContractTrait
         ];
     }
 
-
     public function countPenalty($contract_id)
+    {
+        $contract = Contract::where('id', $contract_id)->with('payments')->first();
+        $penalty_paid = Payment::where('contract_id', $contract->id)
+            ->where('type', 'penalty')
+            ->sum('paid');
+        $now = \Carbon\Carbon::now();
+        $total_penalty_amount = 0;
+        $total_delay_days = 0;
+
+        if ($contract) {
+            foreach ($contract->payments as $payment) {
+                // Parse the payment date
+                $payment_date = \Carbon\Carbon::parse($payment->date);
+
+                // Check if the payment is overdue and has 'initial' status
+                if ($now->gt($payment_date) && $payment->status === 'initial') {
+                    // Calculate the overdue days
+                    $delay_days = $now->diffInDays($payment_date);
+
+                    // Calculate the penalty for this overdue payment
+                    $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
+
+                    // Add to the total penalty and delay days
+                    $total_penalty_amount += $penalty_amount;
+                    $total_delay_days += $delay_days;
+                }
+            }
+
+            // Subtract already paid penalties
+            $total_penalty_amount -= $penalty_paid;
+
+            // Save the penalty amount to the contract
+            $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
+            $contract->save();
+
+            return [
+                'penalty_amount' => $total_penalty_amount > 0 ? $total_penalty_amount : 0,
+                'delay_days' => $total_delay_days,
+            ];
+        }
+
+        return [
+            'penalty_amount' => 0,
+            'delay_days' => 0,
+        ];
+    }
+
+    public function countPenalty1($contract_id)
     {
         $contract = Contract::where('id', $contract_id)->with('payments')->first();
         $penalty_paid = Payment::with('contract_id',$contract->id)
@@ -195,6 +243,7 @@ trait ContractTrait
 
                 if ($now ->gt(\Carbon\Carbon::parse($payment->date)) && $payment->status === 'initial') {
                     $dateToCheck = Carbon::parse($payment->date);
+
                     break;
                 }
 

@@ -8,16 +8,21 @@ use Carbon\Carbon;
 
 trait HistoryTrait
 {
-    public function createHistory($request,$order_id = null){
+    public function createHistory($request,$order_id = null,$interest_amount,$delay_days,$penalty,
+            $discount){
         $history = new History();
         $history->contract_id = $request->contract_id;
         $history->user_id = auth()->user()->id;
         $history->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
         $history->order_id = $order_id;
-
+        $history->interest_amount = $interest_amount;
+        $history->penalty = $penalty;
+        $history->discount = $discount;
+        $history->delay_days = $delay_days;
 
         $amount = $request->amount;
-        $penalty = $request->penalty;
+
+
         if($amount){
             $history->amount = $amount;
         }else{

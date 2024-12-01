@@ -17,8 +17,12 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('surname')->nullable();
+            $table->string('middle_name')->nullable();
+            $table->string('tel')->nullable();
+            $table->string('position')->nullable();
             $table->string('role')->default('user');
             $table->string('email')->unique();
+            $table->date('start_work')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->integer('pawnshop_id')->nullable();

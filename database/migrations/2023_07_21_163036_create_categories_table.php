@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('title');
             $table->text('pawnshop_id')->nullable();
+            $table->integer('duration')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

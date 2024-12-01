@@ -19,6 +19,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Գրիգոր',
                 'surname' => 'Սահակյան',
+                'tel'   => '+37455655522',
                 'email' => 'admin@gmail.com',
                 'pawnshop_id' => 1,
                 'role' => 'admin',
@@ -27,6 +28,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Կարինե',
                 'surname' => 'Քոլյան',
+                'tel'   => '+37455655522',
                 'email' => 'kolian.karine@gmail.com',
                 'pawnshop_id' => 1,
                 'role' => 'user',
@@ -38,6 +40,7 @@ class UserSeeder extends Seeder
             $user = new User();
             $user->name = $list['name'];
             $user->surname = $list['surname'];
+            $user->tel = $list['tel'];
             $user->email = $list['email'];
             $user->pawnshop_id = $list['pawnshop_id'];
             $user->role = $list['role'];

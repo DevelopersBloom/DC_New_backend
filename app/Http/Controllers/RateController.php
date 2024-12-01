@@ -17,7 +17,7 @@ class RateController extends Controller
 
         $rate = CategoryRate::getRateByCategoryAndAmount($validated['category_id'], $validated['amount']);
 
-        $lumpRate = LumpRate::getRateByCategoryAndAmount($validated['category_id'], $validated['amount']);
+        $lumpRate = LumpRate::getRateByCategoryAndAmount($validated['amount']);
         // Prepare the response
         if ($rate || $lumpRate) {
             return response()->json([

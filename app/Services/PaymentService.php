@@ -11,15 +11,19 @@ class PaymentService {
     public function processPayments($contract, $amount, $payer, $cash, $payments) {
         $payments_sum = 0;
         $interest_amount = 0;
+        $initial_amount = $amount;
         foreach ($payments as $item) {
             $payments_sum += $item['amount'] + $item['mother'];
         }
         $result = $this->countPenalty($contract->id);
         $penalty = $result['penalty_amount'];
         $delay_days = $result['delay_days'];
+        $payed_penalty = 0;
+        $discount = 0;
         // Process penalty
         if ($penalty) {
             $amount = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash);
+            $payed_penalty = $initial_amount - $amount;
         }
         // Process payments
         if ($amount > 0) {
@@ -35,10 +39,12 @@ class PaymentService {
             }
         }
         return [
-                'payments_sum' => $payments_sum,
-                'interest_amount' =>$interest_amount,
-                'delay_days' => $delay_days
-                ];
+            'payments_sum'    => $payments_sum,
+            'interest_amount' => $interest_amount,
+            'delay_days'      => $delay_days,
+            'penalty'         => $payed_penalty,
+            'discount'        => $discount,
+        ];
     }
 
     private function processPenalty($contractId, $amount, $penalty, $payer, $cash) {

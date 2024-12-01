@@ -16,7 +16,11 @@ class History extends Model
         'user_id',
         'date',
         'contract_id',
-        'order_id'
+        'order_id',
+        'discount',
+        'penalty',
+        'interest_amount',
+        'delay_days',
     ];
 
     public function type(){
@@ -29,5 +33,9 @@ class History extends Model
 
     public function order(){
         return $this->belongsTo(Order::class);
+    }
+    public function contract()
+    {
+        return $this->belongsTo(Contract::class);
     }
 }

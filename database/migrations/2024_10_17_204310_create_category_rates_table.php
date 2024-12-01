@@ -20,7 +20,6 @@ return new class extends Migration
             $table->decimal('penalty')->nullable();
             $table->integer('min_amount')->nullable();
             $table->integer('max_amount')->nullable();
-            $table->softDeletes();
             $table->timestamps();
         });
     }

@@ -112,7 +112,7 @@ class TypeSeeder extends Seeder
             ],
             [
                 'name' => 'regular_payment',
-                'title' => 'Վճարում',
+                'title' => 'Հերթական Վճարում',
             ],
             [
                 'name' => 'partial_payment',

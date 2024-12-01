@@ -225,7 +225,8 @@ trait FileTrait
         $new_order = Order::create($res);
         return $new_order;
     }
-    public function generateOrderInNew($request,$payments){
+    public function generateOrderInNew($request,$payments)
+    {
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->name.' '.$contract->surname.' '.$contract->middle_name;
         $purpose = $this->getOrderPurposeNew($request,$payments);

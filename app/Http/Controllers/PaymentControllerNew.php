@@ -39,7 +39,14 @@ class PaymentControllerNew extends Controller
         $result = $this->paymentService->processPayments(
             $contract,$amount,$payer,$cash,$payments
         );
-       $this->createDeal($amount ?? $result['$payments_sum'],$result['interest_amount'],$result['delay_days'], 'in', $contract->id, $this->generateOrderInNew($request,$payments)->id, $cash,'Հերթական վճարում');
+        $order_id = $this->generateOrderInNew($request,$payments)->id;
+        $this->createHistory($request, $order_id,$result['interest_amount'],$result['delay_days'],$result['penalty'],
+            $result['discount']);
+
+        $this->createDeal($amount ?? $result['$payments_sum'],
+           $result['interest_amount'],$result['delay_days'],$result['penalty'],
+           $result['discount'], 'in', $contract->id,
+            $order_id, $cash,'Հերթական վճարում');
        $this->updateContractStatus($contract);
        return response()->json([
            'success' => 'success',
@@ -47,7 +54,6 @@ class PaymentControllerNew extends Controller
 //          'contract' => $this->getFullContract($request->contract_id),
 //          'data' => $request->all()
        ]);
-
     }
 
     private function updateContractStatus($contract)
@@ -80,7 +86,6 @@ class PaymentControllerNew extends Controller
         }
         auth()->user()->pawnshop->given = auth()->user()->pawnshop->given - $contract->left;
         auth()->user()->pawnshop->save();
-
         $this->paymentService->processFullPayment($contract, $amount, $payer, $cash);
 
         // Generate history for the payment
@@ -99,8 +104,7 @@ class PaymentControllerNew extends Controller
             'contract_id' => $contract->id,
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
         ]);
-
-        $this->createDeal($amount, null,null,'in', $contract->id, $newOrder->id, $cash,'Ամբողջական վճարում');
+        $this->createDeal($amount, null,null,null,null,'in', $contract->id, $newOrder->id, $cash,'Ամբողջական վճարում');
 
         // Fetch the updated contract with full details
         $updatedContract = $this->getFullContract($request->contract_id);
@@ -152,7 +156,7 @@ class PaymentControllerNew extends Controller
             'contract_id' => $contract->id,
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y'),
         ]);
-        $this->createDeal($partialAmount, null,null, 'in', $contract->id, $new_order->id, $cash, 'Մասնակի վճարում');
+        $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id, $new_order->id, $cash, 'Մասնակի վճարում');
 
         // Update contract status and check if any payments remain
         $this->updateContractStatus($contract);

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Deal extends Model
 {
@@ -16,6 +17,8 @@ class Deal extends Model
     protected $fillable = [
         'type',
         'amount',
+        'penalty',
+        'discount',
         'interest_amount',
         'order_id',
         'pawnshop_id',
@@ -34,11 +37,13 @@ class Deal extends Model
         'source'
     ];
 
-    public function order(){
+    public function order(): BelongsTo
+    {
         return $this->belongsTo(Order::class);
     }
 
-    public function contract(){
+    public function contract(): BelongsTo
+    {
         return $this->belongsTo(Contract::class);
     }
 }

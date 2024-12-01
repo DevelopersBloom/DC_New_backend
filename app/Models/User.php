@@ -22,10 +22,14 @@ class User extends Authenticatable implements JWTSubject
     protected $fillable = [
         'name',
         'surname',
+        'middle_name',
+        'tel',
         'email',
         'password',
         'pawnshop_id',
-        'role'
+        'role',
+        'position',
+        'start_work'
     ];
 
     /**
@@ -72,5 +76,8 @@ class User extends Authenticatable implements JWTSubject
 
     public function config(){
         return $this->hasOne(PawnshopConfig::class,'pawnshop_id','pawnshop_id');
+    }
+    public function files(){
+        return $this->morphMany(File::class,'fileable');
     }
 }

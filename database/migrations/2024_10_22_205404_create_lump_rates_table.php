@@ -15,11 +15,9 @@ return new class extends Migration
     {
         Schema::create('lump_rates', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
             $table->decimal('lump_rate')->nullable();
             $table->integer('min_amount')->nullable();
             $table->integer('max_amount')->nullable();
-            $table->softDeletes();
             $table->timestamps();
         });
     }

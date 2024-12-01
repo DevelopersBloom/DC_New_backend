@@ -21,6 +21,10 @@ return new class extends Migration
             $table->integer('order_id')->nullable();
             $table->string('date');
             $table->integer('amount')->nullable();
+            $table->integer('discount')->nullable();
+            $table->integer('penalty')->nullable();
+            $table->string('delay_days')->nullable();
+            $table->integer('interest_amount')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

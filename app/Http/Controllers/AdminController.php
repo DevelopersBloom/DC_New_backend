@@ -26,7 +26,7 @@ class AdminController extends Controller
         return response()->json(['message' => 'Pawnshop updated successfully']);
     }
 
-    public function getUsers()
+    public function getUsers1()
     {
         $users = User::with('pawnshop')->withCount('contracts')->get();
         return response()->json([
