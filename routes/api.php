@@ -86,6 +86,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 //        Route::get('/get-user-config', [AdminController::class, 'getUserConfig']);
 //        Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
     });
+    Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search', [ClientControllerNew::class, 'search']);
     Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::group(['prefix' => 'contracts'], function () {
