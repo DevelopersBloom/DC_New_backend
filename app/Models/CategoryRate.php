@@ -26,7 +26,6 @@ class CategoryRate extends Model
                 $query->where('max_amount', '>=', $amount)
                     ->orWhereNull('max_amount');
             })
-            ->whereNull('deleted_at')
             ->first();
     }
 }

@@ -7,6 +7,8 @@ use App\Models\CategoryRate;
 use App\Models\Contract;
 use App\Models\Item;
 use App\Models\Payment;
+use App\Models\Subcategory;
+use App\Models\SubcategoryItem;
 use Carbon\Carbon;
 use function Symfony\Component\String\b;
 
@@ -20,19 +22,50 @@ class   ContractService
         $category = Category::findOrFail($data['category_id']);
         switch ($category->name)
         {
-            case 'phone':
-                $item->subcategory = $data['subcategory'];
-                $item->model = $data['model'] ?? null;
+            case 'electronics':
+                $subcategory = Subcategory::firstOrCreate(
+                    [
+                        'name'        => $data['subcategory'],
+                        'category_id' => $data['category_id'],
+                    ]
+                );
+
+                if ($data['model']) {
+                    $subcategoryItem = SubcategoryItem::firstOrCreate([
+                        'subcategory_id' => $subcategory->id,
+                        'model' => $data['model'],
+                    ]);
+                    $item->model = $subcategoryItem->model;
+                }
+                $item->subcategory =  $subcategory->name;
                 break;
             case 'gold':
-                $item->subcategory = $data['subcategory'];
+                $subcategory = Subcategory::firstOrCreate(
+                    [
+                        'name' => $data['subcategory'],
+                        'category_id' => $data['category_id']
+                    ]
+                );
+                $item->subcategory =  $subcategory->name;
                 $item->weight = $data['weight'] ?? null;
                 $item->clear_weight = $data['clear_weight'] ?? null;
                 $item->hallmark = $data['hallmark'] ?? null;
                 break;
             case 'car':
-                $item->model = $data['model'] ?? null;
-                $item->car_make = $data['car_make'] ?? null;
+                $subcategory = Subcategory::firstOrCreate(
+                    [
+                        'name'        => $data['model'],
+                        'category_id' => $data['category_id'],
+                    ]
+                );
+                if ($data['car_make']) {
+                    $subcategoryItem = SubcategoryItem::firstOrCreate([
+                        'subcategory_id' => $subcategory->id,
+                        'model' => $data['car_make'],
+                    ]);
+                    $item->car_make = $subcategoryItem->model;
+                }
+                $item->model = $subcategory->name ?? null;
                 $item->manufacture = $data['manufacture'] ?? null;
                 $item->power = $data['power'] ?? null;
                 $item->license_plate = $data['license_plate'] ?? null;

@@ -10,6 +10,8 @@ use App\Models\Category;
 use App\Models\CategoryRate;
 use App\Models\File;
 use App\Models\LumpRate;
+use App\Models\Subcategory;
+use App\Models\SubcategoryItem;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -380,6 +382,79 @@ class AdminControllerNew extends Controller
         return response()->json([
 
             'message' => 'Lump rate deleted successfully.',
+        ]);
+    }
+
+    public function getCategoriesWithSubcategories(): JsonResponse
+    {
+        $categories = Category::with('subcategories.items')->get();
+
+        return response()->json([
+            'categories' => $categories
+        ]);
+    }
+    public function addSubcategory(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'name'        => 'required|string|max:255',
+        ]);
+
+        $existing_subcategory = Subcategory::where('category_id',$validated['category_id'])
+            ->where('name',$validated['name'])
+            ->first();
+
+        if ($existing_subcategory) {
+            return response()->json([
+                'message' => 'Subcategory already exists for this category.',
+                'subcategory' => $existing_subcategory
+            ], 409);
+        }
+
+        Subcategory::create($validated);
+
+        return response()->json([
+            'message' => 'Subcategory added successfully.',
+        ], 201);
+    }
+    public function addSubcategoryItem(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'subcategory_id' => 'required|exists:subcategories,id',
+            'model' => 'required|string|max:255',
+        ]);
+
+        $existingItem = SubcategoryItem::where('subcategory_id', $validated['subcategory_id'])
+            ->where('model', $validated['model'])
+            ->first();
+
+        if ($existingItem) {
+            return response()->json([
+                'message' => 'Subcategory item already exists for this subcategory.',
+            ], 409);
+        }
+
+        $subcategoryItem = SubcategoryItem::create($validated);
+
+        return response()->json([
+            'message' => 'Subcategory item added successfully.',
+            'subcategory_item' => $subcategoryItem,
+        ], 201);
+    }
+
+    public function deleteSubcategoryItem(int $id): JsonResponse
+    {
+        $subcategory_item = SubcategoryItem::find($id);
+        if (!$subcategory_item) {
+            return response()->json([
+                'message' => 'Item not found.'
+            ], 404);
+        }
+
+        $subcategory_item->delete();
+
+        return response()->json([
+            'message' => 'Item deleted successfully.'
         ]);
     }
 

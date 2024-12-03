@@ -38,29 +38,40 @@ Route::group(['prefix' => 'auth'], function () {
 });
 Route::group(['middleware' => 'jwt.auth'], function () {
     Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+        //general
         Route::get('/get',[AdminControllerNew::class,'get']);
         Route::put('/update',[AdminControllerNew::class,'update']);
         Route::post('/upload-file',[AdminControllerNew::class,'uploadFile']);
         Route::get('/download-file',[AdminControllerNew::class,'downloadFile']);
 
+        //users
         Route::get('/get-users',[AdminControllerNew::class,'getUsers']);
         Route::post('/create-user',[AdminControllerNew::class,'createUser']);
         Route::put('/update-user/{id}',[AdminControllerNew::class,'updateUser']);
         Route::delete('/delete-user/{id}',[AdminControllerNew::class,'deleteUser']);
 
-        // Categories
-        Route::get('get-categories',[AdminControllerNew::class,'getCategories']);
-        Route::post('create-rates',[AdminControllerNew::class,'createRate']);
-        Route::put('update-rate/{id}',[AdminControllerNew::class,'updateRate']);
-        Route::delete('delete-rate/{id}',[AdminControllerNew::class,'deleteRate']);
+        // conditions
+        //Interest rate
+        Route::get('/get-categories',[AdminControllerNew::class,'getCategories']);
+        Route::post('/create-rates',[AdminControllerNew::class,'createRate']);
+        Route::put('/update-rate/{id}',[AdminControllerNew::class,'updateRate']);
+        Route::delete('/delete-rate/{id}',[AdminControllerNew::class,'deleteRate']);
 
-        Route::get('get-lump-rates',[AdminControllerNew::class,'getLumpRates']);
-        Route::post('create-lump-rate',[AdminControllerNew::class,'createLumpRate']);
-        Route::put('update-lump-rate/{id}',[AdminControllerNew::class,'updateLumpRate']);
-        Route::delete('delete-lump-rate/{id}',[AdminControllerNew::class,'deleteLumpRate']);
 
-        Route::get('get-category-duration',[AdminControllerNew::class,'getCategoryDuration']);
-        Route::post('save-duration',[AdminControllerNew::class,'saveCategoryDuration']);
+        Route::get('/get-lump-rates',[AdminControllerNew::class,'getLumpRates']);
+        Route::post('/create-lump-rate',[AdminControllerNew::class,'createLumpRate']);
+        Route::put('/update-lump-rate/{id}',[AdminControllerNew::class,'updateLumpRate']);
+        Route::delete('/delete-lump-rate/{id}',[AdminControllerNew::class,'deleteLumpRate']);
+
+        //duration
+        Route::get('/get-category-duration',[AdminControllerNew::class,'getCategoryDuration']);
+        Route::post('/save-duration',[AdminControllerNew::class,'saveCategoryDuration']);
+
+        //Subcategories
+        Route::get('/get-subcategories',[AdminControllerNew::class,'getCategoriesWithSubcategories']);
+        Route::post('/create-subcategory',[AdminControllerNew::class,'addSubcategory']);
+        Route::post('/create-item',[AdminControllerNew::class,'addSubcategoryItem']);
+        Route::delete('/delete-item/{id}',[AdminControllerNew::class,'deleteSubcategoryItem']);
         //
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
