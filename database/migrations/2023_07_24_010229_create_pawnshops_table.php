@@ -35,6 +35,7 @@ return new class extends Migration
             $table->integer('bank_order_in')->nullable();
             $table->integer('bank_order_out')->nullable();
             $table->string('card_account_number')->nullable();
+            $table->decimal('assurance_money')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

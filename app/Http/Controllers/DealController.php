@@ -267,19 +267,34 @@ DealController extends Controller
 
         return response()->json(["success" => "success"]);
     }
-
-    public function addCost(Request $request)
+    public function addCostNDM(Request $request)
     {
         $name = $request->name;
         $amount = $request->amount;
-        $purpose = $request->purpose;
         $receiver = $request->receiver;
         $cash = $request->cash;
         $save = $request->save_template;
         $type = $request->type;
 
+        $purpose = Order::NDM_PURPOSE;
         $order_id = $this->getOrder($request->cash, $type);
         $this->createOrderAndDeal($order_id, $type === 'out' ? 'cost_out' : 'in', $name, $amount, $purpose, $receiver, $cash);
+
+        return response()->json(['success' => 'success']);
+    }
+
+    public function makeExpense(Request $request)
+    {
+        $name = $request->name;
+        $amount = $request->amount;
+        $receiver = $request->receiver;
+        $cash = $request->cash;
+        $save = $request->save_template;
+        $type = 'cost_out';
+
+        $purpose = Order::EXPENSE_PURPOSE;
+        $order_id = $this->getOrder($request->cash, $type);
+        $this->createOrderAndDeal($order_id, $type, $name, $amount, $purpose, $receiver, $cash);
 
         return response()->json(['success' => 'success']);
     }
@@ -294,7 +309,7 @@ DealController extends Controller
     private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash)
     {
         $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver);
-        $this->createDeal($amount, null, null, $type, null, $order->id, $cash, $purpose, $receiver);
+        $this->createDeal($amount, null, null, null, null,$type,null,$order->id, $cash, $purpose, $receiver);
     }
 
     private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver)

@@ -58,7 +58,7 @@ Route::group(['middleware' => 'jwt.auth', 'prefix' => 'api'], function () {
     Route::post('/answer-discount', [PaymentController::class, 'answerDiscount']);
     Route::get('/get-comments', [InnerController::class, 'getComments']);
     Route::post('/get-deals', [DealController::class, 'index']);
-    Route::post('/add-cost', [DealController::class, 'addCost']);
+    //Route::post('/add-cost', [DealController::class, 'addCost']);
 
     Route::group(['prefix' => 'config'], function () {
         Route::post('/get-cashbox-list', [ConfigController::class, 'getCashboxList']);

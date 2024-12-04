@@ -31,8 +31,8 @@ class Pawnshop extends Model
         'bank_order_in',
         'bank_order_out',
         'card_account_number',
+        'assurance_money'
     ];
-
 
     public function contracts(){
         return $this->hasMany(Contract::class);
@@ -40,5 +40,20 @@ class Pawnshop extends Model
 
     public function users(){
         return $this->hasMany(User::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+    public function countNDM()
+    {
+        $enter = $this->orders()->where('type','in')
+            ->where('purpose',Order::NDM_PURPOSE)
+            ->sum('amount');
+        $exist = $this->orders()->where('type','cost_out')
+            ->where('purpose',Order::NDM_PURPOSE)
+            ->sum('amount');
+        return $enter - $exist;
     }
 }

@@ -72,7 +72,11 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/create-subcategory',[AdminControllerNew::class,'addSubcategory']);
         Route::post('/create-item',[AdminControllerNew::class,'addSubcategoryItem']);
         Route::delete('/delete-item/{id}',[AdminControllerNew::class,'deleteSubcategoryItem']);
-        //
+
+        //Pawnshops
+        Route::get('/get-pawnshops', [AdminControllerNew::class, 'getPawnshops']);
+        Route::put('update-pawnshop/{id}',[AdminControllerNew::class,'updatePawnshop']);
+
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
 //        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
@@ -127,7 +131,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     });
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
     Route::get('/get-deals', [DealController::class, 'index']);
-    Route::post('/add-cost', [DealController::class, 'addCost']);
+    Route::post('/add-cost', [DealController::class, 'addCostNDM']);
+    Route::post('/make-expense', [DealController::class, 'makeExpense']);
     Route::post('/add-cash-box', [DealController::class, 'addCashBox']);
 });
 

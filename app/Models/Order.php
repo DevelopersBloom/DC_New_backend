@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     use HasFactory;
+    const NDM_PURPOSE = 'Ներգրավված դրամական միջոցներ';
+    const EXPENSE_PURPOSE = 'Ելքագրել ծախս';
     protected $fillable = [
         'contract_id',
         'type',
@@ -22,4 +24,8 @@ class Order extends Model
         'receiver',
         'cashbox',
     ];
+    public function pawnshop()
+    {
+        return $this->belongsTo(Pawnshop::class);
+    }
 }

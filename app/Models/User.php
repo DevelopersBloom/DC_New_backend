@@ -64,7 +64,7 @@ class User extends Authenticatable implements JWTSubject
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
-    protected $with = ['pawnshop', 'config'];
+  //  protected $with = ['pawnshop', 'config'];
 
     public function pawnshop(){
         return $this->belongsTo(Pawnshop::class);

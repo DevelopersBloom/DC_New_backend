@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\CategoryRate;
 use App\Models\File;
 use App\Models\LumpRate;
+use App\Models\Pawnshop;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use App\Models\User;
@@ -457,5 +458,53 @@ class AdminControllerNew extends Controller
             'message' => 'Item deleted successfully.'
         ]);
     }
+
+    public function getPawnshops(): JsonResponse
+    {
+        $pawnshops = Pawnshop::select(['id', 'city', 'license', 'cashbox', 'bank_cashbox', 'assurance_money'])
+            ->withCount('users')
+            ->with(['users:id,name,surname,middle_name,role,pawnshop_id'])
+            ->get()
+            ->map(function ($pawnshop) {
+                $enter = $pawnshop->orders()->where('type', 'in')->sum('amount') ?? 0;
+                $exist = $pawnshop->orders()->where('type', 'cost_out')->sum('amount') ?? 0;
+                $pawnshop->ndm = $enter - $exist;
+                return $pawnshop;
+            });
+
+        return response()->json([
+            "pawnshops" => $pawnshops,
+        ]);
+    }
+    public function updatePawnshop(Request $request, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'city' => 'required|string|max:255',
+            'license' => 'required|string|max:255',
+            'assurance_money' => 'nullable|numeric|min:0',
+        ]);
+
+        $pawnshop = Pawnshop::withTrashed()->find($id);
+
+        if (!$pawnshop) {
+            return response()->json([
+                'message' => 'Pawnshop not found',
+            ], 404);
+        }
+
+        $pawnshop->city = $validated['city'];
+        $pawnshop->license = $validated['license'];
+        if (isset($validated['assurance_money'])) {
+            $pawnshop->assurance = $validated['assurance_money'];
+        }
+
+        $pawnshop->save();
+
+        return response()->json([
+            'message' => 'Pawnshop updated successfully',
+            'pawnshop' => $pawnshop
+        ]);
+    }
+
 
 }
