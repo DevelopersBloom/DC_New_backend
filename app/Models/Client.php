@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
 class Client extends Model
 {
     use HasFactory;
@@ -47,6 +47,10 @@ class Client extends Model
 
     public function files(){
         return $this->morphMany(File::class,'fileable');
+    }
+    public function deals(): HasMany
+    {
+        return $this->hasMany(Deal::class);
     }
 
 }

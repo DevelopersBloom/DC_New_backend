@@ -204,7 +204,7 @@ class ContractControllerNew extends Controller
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000 ? "true" : "false";
 
-            $this->createOrderAndHistory($contract, $client_name, $cash,$category_id);
+            $this->createOrderAndHistory($contract,$client->id, $client_name, $cash,$category_id);
 
             DB::commit();
 
@@ -224,21 +224,21 @@ class ContractControllerNew extends Controller
     /**
      * Helper method to create order and history entries
      */
-    private function createOrderAndHistory($contract, $client_name, $cash,$category_id)
+    private function createOrderAndHistory($contract, $client_id,$client_name, $cash,$category_id)
     {
         $historyTypes = HistoryType::whereIn('name', ['opening', 'one_time_payment', 'mother_payment'])->get();
         $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
         $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
 
-        $this->createOrderHistoryEntry($contract, $client_name, 'out', 'opening', $contract->provided_amount, $cash, 'վարկ');
-        $this->createOrderHistoryEntry($contract, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, 'Միանվագ վճար');
-        $this->createOrderHistoryEntry($contract, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, 'ՄԳ տրամադրում');
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, 'վարկ');
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, 'Միանվագ վճար');
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, 'ՄԳ տրամադրում');
     }
 
     /**
      * Helper method to create individual order and history entries
      */
-    private function createOrderHistoryEntry($contract, $client_name, $type, $historyTypeName, $amount, $cash, $purpose)
+    private function createOrderHistoryEntry($contract,$client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose)
     {
         $order_id = $this->getOrder($cash, $type);
 
@@ -268,11 +268,11 @@ class ContractControllerNew extends Controller
         ]);
         if ($historyTypeName !== 'opening') {
             // Create a deal for the order
-            $this->createDeal($amount, $type, $contract->id, $order->id, $cash, $purpose);
+            $this->createDeal($amount,null,null,null,null, $type, $contract->id,$client_id, $order->id, $cash, $purpose);
         }
     }
 
-    public function createDeal($amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
+    public function createDeal1($amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
         if($type === 'in'){
             if($cash){
                 auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox + $amount;
@@ -308,6 +308,7 @@ class ContractControllerNew extends Controller
 //            'cash' => $cash,
             'receiver' => $receiver,
             'source' => $source,
+            'created_by' => auth()->user()->id,
         ]);
     }
 

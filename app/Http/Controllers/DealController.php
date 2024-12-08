@@ -277,8 +277,9 @@ DealController extends Controller
         $type = $request->type;
 
         $purpose = Order::NDM_PURPOSE;
+        $filter_type = Order::NDM_FILTER;
         $order_id = $this->getOrder($request->cash, $type);
-        $this->createOrderAndDeal($order_id, $type === 'out' ? 'cost_out' : 'in', $name, $amount, $purpose, $receiver, $cash);
+        $this->createOrderAndDeal($order_id, $type === 'out' ? 'cost_out' : 'in', $name, $amount, $purpose, $receiver, $cash,$filter_type);
 
         return response()->json(['success' => 'success']);
     }
@@ -291,10 +292,11 @@ DealController extends Controller
         $cash = $request->cash;
         $save = $request->save_template;
         $type = 'cost_out';
+        $purpose = $request->purpose;
 
-        $purpose = Order::EXPENSE_PURPOSE;
+        $filter_type = Order::EXPENSE_FILTER;
         $order_id = $this->getOrder($request->cash, $type);
-        $this->createOrderAndDeal($order_id, $type, $name, $amount, $purpose, $receiver, $cash);
+        $this->createOrderAndDeal($order_id, $type, $name, $amount, $purpose, $receiver, $cash,$filter_type);
 
         return response()->json(['success' => 'success']);
     }
@@ -306,10 +308,10 @@ DealController extends Controller
         $this->createDeal($amount, null, null, $type, null, $order->id, $type === 'out', $purpose, $receiver);
     }
 
-    private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash)
+    private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type)
     {
         $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver);
-        $this->createDeal($amount, null, null, null, null,$type,null,$order->id, $cash, $purpose, $receiver);
+        $this->createDeal($amount, null, null, null, null,$type,null,null,$order->id, $cash,$receiver,$purpose,$filter_type);
     }
 
     private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver)

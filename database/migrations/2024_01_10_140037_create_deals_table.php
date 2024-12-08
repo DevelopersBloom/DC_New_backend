@@ -28,6 +28,7 @@ return new class extends Migration
             $table->integer('order_id')->nullable();
             $table->integer('penalty')->nullable();
             $table->integer('contract_id')->nullable();
+            $table->integer('client_id')->nullable();
             $table->integer('payment_id')->nullable();
             $table->integer('pawnshop_id')->nullable();
             $table->integer('cashbox')->nullable();
@@ -36,6 +37,9 @@ return new class extends Migration
             $table->integer('given')->default(0);
             $table->integer('insurance')->nullable();
             $table->integer('funds')->nullable();
+            $table->integer('created_by')->nullable();
+            $table->integer('updated_by')->nullable();
+            $table->string('filter_type')->nullable();
             $table->timestamps();
         });
     }

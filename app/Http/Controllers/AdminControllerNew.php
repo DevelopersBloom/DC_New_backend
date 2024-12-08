@@ -8,8 +8,10 @@ use App\Http\Requests\UpdateAdminRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Category;
 use App\Models\CategoryRate;
+use App\Models\Deal;
 use App\Models\File;
 use App\Models\LumpRate;
+use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
@@ -503,6 +505,42 @@ class AdminControllerNew extends Controller
         return response()->json([
             'message' => 'Pawnshop updated successfully',
             'pawnshop' => $pawnshop
+        ]);
+    }
+
+    public function getDeals(Request $request): JsonResponse
+    {
+
+        $filter_type = $request->query('filter','history');
+
+        $dealsQuery = Deal::select('id','client_id','order_id','cash','contract_id','delay_days',
+        'interest_amount','purpose','penalty','discount','created_by')
+            ->with('client:id,name,surname')
+            ->with('contract:id,mother')
+            ->with('createdBy:id,name,surname');
+
+        switch ($filter_type) {
+            case 'cost_in':
+                $dealsQuery->where('type', 'in');
+                break;
+
+            case 'cost_out':
+                $dealsQuery->whereIn('type', 'cost_out','out');
+                break;
+
+            case 'expense':
+                $dealsQuery->where('type', 'cost_out')->where('filter_type', Order::EXPENSE_FILTER);
+                break;
+
+            case 'history':
+            default:
+                break;
+        }
+
+        $deals = $dealsQuery->get();
+
+        return response()->json([
+            'deals' => $deals
         ]);
     }
 

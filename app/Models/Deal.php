@@ -23,6 +23,7 @@ class Deal extends Model
         'order_id',
         'pawnshop_id',
         'contract_id',
+        'client_id',
         'cashbox',
         'bank_cashbox',
         'worth',
@@ -34,9 +35,14 @@ class Deal extends Model
         'delay_days',
         'purpose',
         'receiver',
-        'source'
+        'source',
+        'created_by',
+        'updated_by',
+        'filter_type'
     ];
-
+    protected $casts = [
+        'cash' => 'boolean'
+    ];
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
@@ -45,5 +51,19 @@ class Deal extends Model
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

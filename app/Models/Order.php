@@ -10,6 +10,9 @@ class Order extends Model
     use HasFactory;
     const NDM_PURPOSE = 'Ներգրավված դրամական միջոցներ';
     const EXPENSE_PURPOSE = 'Ելքագրել ծախս';
+    const EXPENSE_FILTER = "expense";
+    CONST NDM_FILTER = "ndm";
+
     protected $fillable = [
         'contract_id',
         'type',
