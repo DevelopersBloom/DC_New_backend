@@ -543,6 +543,57 @@ class AdminControllerNew extends Controller
             'deals' => $deals
         ]);
     }
+    public function updateDeal(Request $request, $id): JsonResponse
+    {
+        $deal = Deal::findOrFail($id);
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'cash'   => 'required|boolean',
+            'type'   => 'required|string'
+        ]);
+
+        $pawnshop = $deal->pawnshop;
+
+        if ($validated->type === 'payment') {
+
+        } else {
+            if ($deal->type === 'in') {
+                $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
+                $validated['cash'] ? $pawnshop->cashbox += $validated['amount'] : $pawnshop->bank_cashbox += $validated['amount'];
+            } else {
+                $deal->cash ? $pawnshop->cashbox += $deal->amount : $pawnshop->bank_cashbox += $deal->amount;
+                $validated['cash'] ? $pawnshop->cashbox -= $validated['amount'] : $pawnshop->bank_cashbox -= $validated['amount'];
+            }
+
+            $pawnshop->save();
+
+            $deal->update([
+                'amount' => $validated['amount'],
+                'cash' => $validated['cash'],
+            ]);
+        }
+
+        return response()->json(['message' => 'Deal updated successfully']);
+    }
+    public function deleteDeal($id): JsonResponse
+    {
+        $deal = Deal::findOrFail($id);
+
+        $pawnshop = $deal->pawnshop;
+
+        if ($deal->type === 'in') {
+            $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
+        } else {
+            $deal->cash ? $pawnshop->cashbox += $deal->amount : $pawnshop->bank_cashbox += $deal->amount;
+        }
+
+        $pawnshop->save();
+        $deal->delete();
+
+        return response()->json(['message' => 'Deal deleted successfully']);
+    }
+
 
 
 }

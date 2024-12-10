@@ -47,6 +47,10 @@ class Deal extends Model
     {
         return $this->belongsTo(Order::class);
     }
+    public function pawnshop(): BelongsTo
+    {
+        return $this->belongsTo(Pawnshop::class);
+    }
 
     public function contract(): BelongsTo
     {

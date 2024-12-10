@@ -40,6 +40,7 @@ return new class extends Migration
             $table->integer('created_by')->nullable();
             $table->integer('updated_by')->nullable();
             $table->string('filter_type')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

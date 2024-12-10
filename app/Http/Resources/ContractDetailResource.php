@@ -65,12 +65,12 @@ class ContractDetailResource extends JsonResource
 //                        'role' => $history->user->role,
 //                        'email' => $history->user->email,
 //                    ],
-//                    'order' => [
-//                        'id' => $history->order->id,
-//                        'amount' => $history->order->amount,
-//                        'status' => $history->order->status,
-//                        'created_at' => $history->order->created_at,
-//                    ]
+                    'order' => [
+                        'id' => $history->order->id,
+                        'amount' => $history->order->amount,
+                        'status' => $history->order->status,
+                        'created_at' => $history->order->created_at,
+                    ]
 
                 ];
             }),
