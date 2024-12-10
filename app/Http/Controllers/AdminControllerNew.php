@@ -18,6 +18,7 @@ use App\Models\SubcategoryItem;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
@@ -140,6 +141,47 @@ class AdminControllerNew extends Controller
 
     }
 
+    public function updateUsers(Request $request)
+    {
+        $validated  = $request->validate([
+            'users' => 'required|array',
+            'users.*.id' => 'required|integer|exists:users,id',
+            'users.*.role' => 'nullable|string|max:255',
+            'users.*.position' => 'nullable|string|max:255',
+            'deleted_user_ids' => 'nullable|array',
+            'deleted_user_ids.*' => 'integer|exists:users,id',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($validated['users'] as $userData) {
+                $user = User::findOrFail($userData['id']);
+                $user->update([
+                    'role' => $userData['role'],
+                    'position' => $userData['position'],
+                ]);
+            }
+
+            if (!empty($validated['deleted_user_ids'])) {
+                User::whereIn('id', $validated['deleted_user_ids'])->delete();
+            }
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Users updated successfully.',
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'An error occurred while updating users.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
+    }
     /**
      * Admin can update user role and position
      * @param Request $request

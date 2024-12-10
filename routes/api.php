@@ -47,6 +47,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         //users
         Route::get('/get-users',[AdminControllerNew::class,'getUsers']);
         Route::post('/create-user',[AdminControllerNew::class,'createUser']);
+        Route::post('/update-users', [AdminControllerNew::class, 'updateUsers']);
         Route::put('/update-user/{id}',[AdminControllerNew::class,'updateUser']);
         Route::delete('/delete-user/{id}',[AdminControllerNew::class,'deleteUser']);
 
