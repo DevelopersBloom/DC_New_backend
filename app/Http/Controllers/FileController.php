@@ -228,7 +228,11 @@ class FileController extends Controller
     public function downloadOrder($id)
     {
         $order = Order::where('id', $id)->first();
+
         if ($order) {
+            if ($order->purpose === Contract::CONTRACT_OPENING) {
+                return $this->downloadContract($order->contract_id);
+            }
             switch ($order->type) {
                 case 'in':
                     return $this->downloadOrderIn($id);

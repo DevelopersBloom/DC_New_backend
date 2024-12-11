@@ -230,9 +230,9 @@ class ContractControllerNew extends Controller
         $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
         $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
 
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, 'վարկ');
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, 'Միանվագ վճար');
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, 'ՄԳ տրամադրում');
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING);
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT);
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT);
     }
 
     /**

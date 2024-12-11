@@ -16,6 +16,10 @@ class Contract extends Model
     use HasFactory;
     use SoftDeletes;
 
+    const CONTRACT_OPENING = 'Պայմանագրի բացում';
+    const LUMP_PAYMENT = 'Միանվագ վճար';
+    const MOTHER_AMOUNT_PAYMENT = 'ՄԳ տրամադրում';
+
     protected $fillable=[
         'collected',
         'rate',
