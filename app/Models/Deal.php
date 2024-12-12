@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Deal extends Model
 {
-    use HasFactory;
+    use HasFactory,SoftDeletes;
     const HISTORY =  'history';
     const IN_DEAL = 'in';
     const OUT_DEAL = 'out';
@@ -38,11 +39,45 @@ class Deal extends Model
         'source',
         'created_by',
         'updated_by',
-        'filter_type'
+        'filter_type',
+        'payment_id',
+        'history_id'
     ];
     protected $casts = [
         'cash' => 'boolean'
     ];
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($deal) {
+//            if ($deal->isForceDeleting()) {
+//                if ($deal->history) {
+//                    $deal->history->forceDelete();
+//                }
+//
+//                if ($deal->order) {
+//                    $deal->order->forceDelete();
+//                }
+//
+//                if ($deal->payment) {
+//                    $deal->payment->forceDelete();
+//                }
+//            } else {
+                if ($deal->history) {
+                    $deal->history->delete();
+                }
+
+                if ($deal->order) {
+                    $deal->order->delete();
+                }
+
+                if ($deal->payment) {
+                    $deal->payment->delete();
+                }
+//            }
+        });
+    }
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
@@ -60,6 +95,15 @@ class Deal extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+    public function history(): BelongsTo
+    {
+        return $this->belongsTo(History::class);
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
     public function createdBy(): BelongsTo
     {

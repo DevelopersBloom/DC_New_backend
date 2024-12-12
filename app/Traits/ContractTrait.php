@@ -26,7 +26,7 @@ trait ContractTrait
         return $contract;
     }
 
-    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$client_id,$order_id = null,$cash = true,$receiver = null,$purpose = null,$filter_type = null,$source = null)
+    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$client_id,$order_id = null,$cash = true,$receiver = null,$purpose = null,$filter_type = null,$history_id = null,$payment_id = null,$source = null)
     {
         if($type === 'in'){
             if($cash){
@@ -68,7 +68,9 @@ trait ContractTrait
             'source'          => $source,
             'created_by'      => auth()->user()->id,
             'client_id'       => $client_id,
-            'filter_type'     => $filter_type
+            'filter_type'     => $filter_type,
+            'history_id'      => $history_id,
+            'payment_id'      => $payment_id,
         ]);
     }
     public function setContractPenalty($id) {

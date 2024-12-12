@@ -19,6 +19,9 @@ class Contract extends Model
     const CONTRACT_OPENING = 'Պայմանագրի բացում';
     const LUMP_PAYMENT = 'Միանվագ վճար';
     const MOTHER_AMOUNT_PAYMENT = 'ՄԳ տրամադրում';
+    const REGULAR_PAYMENT = 'Հերթական վճարում';
+    const FULL_PAYMENT = 'Ամբողջական վճարում';
+    const PARTIAL_PAYMENT ='Մասնակի վճարում';
 
     protected $fillable=[
         'collected',

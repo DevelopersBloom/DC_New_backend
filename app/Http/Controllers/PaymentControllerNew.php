@@ -39,14 +39,15 @@ class PaymentControllerNew extends Controller
         $result = $this->paymentService->processPayments(
             $contract,$amount,$payer,$cash,$payments
         );
+        $payment_id = $result['id'];
         $order_id = $this->generateOrderInNew($request,$payments)->id;
-        $this->createHistory($request, $order_id,$result['interest_amount'],$result['delay_days'],$result['penalty'],
+        $history = $this->createHistory($request, $order_id,$result['interest_amount'],$result['delay_days'],$result['penalty'],
             $result['discount']);
 
         $this->createDeal($amount ?? $result['$payments_sum'],
            $result['interest_amount'],$result['delay_days'],$result['penalty'],
-           $result['discount'], 'in', $contract->id,null,
-            $order_id, $cash,'Հերթական վճարում');
+           $result['discount'], 'in', $contract->id,$contract->client->id,
+            $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,$payment_id);
        $this->updateContractStatus($contract);
        return response()->json([
            'success' => 'success',
@@ -86,7 +87,7 @@ class PaymentControllerNew extends Controller
         }
         auth()->user()->pawnshop->given = auth()->user()->pawnshop->given - $contract->left;
         auth()->user()->pawnshop->save();
-        $this->paymentService->processFullPayment($contract, $amount, $payer, $cash);
+        $payment_id = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash);
 
         // Generate history for the payment
         $type = HistoryType::where('name', 'full_payment')->first();
@@ -96,7 +97,7 @@ class PaymentControllerNew extends Controller
         }
         $newOrder = $this->generateOrder($contract, $amount, $purpose, 'in', $cash);
 
-        History::create([
+        $history = History::create([
             'amount' => $amount,
             'type_id' => $type->id,
             'user_id' => auth()->user()->id,
@@ -104,7 +105,8 @@ class PaymentControllerNew extends Controller
             'contract_id' => $contract->id,
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
         ]);
-        $this->createDeal($amount, null,null,null,null,'in', $contract->id,null, $newOrder->id, $cash,'Ամբողջական վճարում');
+
+        $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,$payment_id);
 
         // Fetch the updated contract with full details
         $updatedContract = $this->getFullContract($request->contract_id);
@@ -130,8 +132,7 @@ class PaymentControllerNew extends Controller
         $cash = $request->cash;
 
         // Call the payment service to handle the partial payment
-        $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash);
-
+        $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash);
         $history_type = HistoryType::where('name','partial_payment')->first();
         $client_name = $contract->name.' '.$contract->surname.' '.$contract->middle_name;
         $order_id = $this->getOrder($cash,'in');
@@ -148,7 +149,7 @@ class PaymentControllerNew extends Controller
             'purpose' => 'Մասնակի մարում',
         ];
         $new_order = Order::create($res);
-        History::create([
+        $history = History::create([
             'amount' => $partialAmount,
             'user_id' => auth()->user()->id,
             'type_id' => $history_type->id,
@@ -156,7 +157,7 @@ class PaymentControllerNew extends Controller
             'contract_id' => $contract->id,
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y'),
         ]);
-        $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,null, $new_order->id, $cash, 'Մասնակի վճարում');
+        $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id,$payment_id);
 
         // Update contract status and check if any payments remain
         $this->updateContractStatus($contract);

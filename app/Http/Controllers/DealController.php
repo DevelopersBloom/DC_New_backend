@@ -177,85 +177,85 @@ DealController extends Controller
 //            'success' => 'success'
 //        ]);
 //    }
-    public function addCostOld(Request $request){
-        $type = $request->type;
-        $source = $request->source;
-        $amount = $request->amount;
-        $purpose = null;
-        $cash = $request->cash;
-        $otherPurpose = $request->otherPurpose;
-        $receiver = $request->receiver;
-        $purposeTranslation = $request->purposeTranslation;
-        if($request -> purpose === 'other'){
-            $purpose = $otherPurpose;
-        }else{
-            $purpose = $purposeTranslation;
-        }
-        if($type === 'out'){
-            if($request->purpose === 'bank_cashbox_charging'){
-                $order_id = $this->getOrder(true,'out');
-                $res = [
-                    'type' => 'cost_out',
-                    'title' => 'Օրդեր',
-                    'pawnshop_id' => auth()->user()->pawnshop_id,
-                    'order' => $order_id,
-                    'amount' => $amount,
-                    'date' => Carbon::now()->format('d.m.Y'),
-                    'purpose' => 'Անկանխիկ հաշվի համալրում',
-                    'receiver' => $receiver
-                ];
-                $new_order = Order::create($res);
-                $this->createDeal($amount,'out',null,$new_order->id,true,'Անկանխիկ հաշվի համալրում',$receiver);
-                $order_id = $this->getOrder(false,'in');
-                $res = [
-                    'type' => 'cost_in',
-                    'title' => 'Օրդեր',
-                    'pawnshop_id' => auth()->user()->pawnshop_id,
-                    'order' => $order_id,
-                    'amount' => $amount,
-                    'date' => Carbon::now()->format('d.m.Y'),
-                    'purpose' => 'Հաշվի համալրում',
-                    'receiver' => auth()->user()->pawnshop->bank
-                ];
-                $new_order = Order::create($res);
-                $this->createDeal($amount,'in',null,$new_order->id,false,'Հաշվի համալրում',auth()->user()->pawnshop->bank);
-            }else{
-                $order_id = $this->getOrder($cash,'out');
-                $res = [
-                    'type' => 'cost_out',
-                    'title' => 'Օրդեր',
-                    'pawnshop_id' => auth()->user()->pawnshop_id,
-                    'order' => $order_id,
-                    'amount' => $amount,
-                    'date' => Carbon::now()->format('d.m.Y'),
-                    'purpose' => $purpose,
-                    'receiver' => $receiver
-                ];
-                $new_order = Order::create($res);
-                $this->createDeal($amount,'out',null,$new_order->id,$cash,$purpose,$receiver);
-            }
-        }else{
-            $order_id = $this->getOrder($cash,'in');
-            $res = [
-                'type' => 'cost_in',
-                'title' => 'Օրդեր',
-                'pawnshop_id' => auth()->user()->pawnshop_id,
-                'order' => $order_id,
-                'amount' => $amount,
-                'date' => Carbon::now()->format('d.m.Y'),
-                'purpose' => $purpose,
-                'source' => $source,
-                'receiver' => '«Դայմոնդ Կրեդիտ» ՍՊԸ'
-            ];
-            $new_order = Order::create($res);
-            $this->createDeal($amount,'in',null,$new_order->id,$cash,$purpose,null,$source);
-        }
-
-        return response()->json([
-            'success' => 'success'
-        ]);
-
-    }
+//    public function addCostOld(Request $request){
+//        $type = $request->type;
+//        $source = $request->source;
+//        $amount = $request->amount;
+//        $purpose = null;
+//        $cash = $request->cash;
+//        $otherPurpose = $request->otherPurpose;
+//        $receiver = $request->receiver;
+//        $purposeTranslation = $request->purposeTranslation;
+//        if($request -> purpose === 'other'){
+//            $purpose = $otherPurpose;
+//        }else{
+//            $purpose = $purposeTranslation;
+//        }
+//        if($type === 'out'){
+//            if($request->purpose === 'bank_cashbox_charging'){
+//                $order_id = $this->getOrder(true,'out');
+//                $res = [
+//                    'type' => 'cost_out',
+//                    'title' => 'Օրդեր',
+//                    'pawnshop_id' => auth()->user()->pawnshop_id,
+//                    'order' => $order_id,
+//                    'amount' => $amount,
+//                    'date' => Carbon::now()->format('d.m.Y'),
+//                    'purpose' => 'Անկանխիկ հաշվի համալրում',
+//                    'receiver' => $receiver
+//                ];
+//                $new_order = Order::create($res);
+//                $this->createDeal($amount,'out',null,$new_order->id,true,'Անկանխիկ հաշվի համալրում',$receiver);
+//                $order_id = $this->getOrder(false,'in');
+//                $res = [
+//                    'type' => 'cost_in',
+//                    'title' => 'Օրդեր',
+//                    'pawnshop_id' => auth()->user()->pawnshop_id,
+//                    'order' => $order_id,
+//                    'amount' => $amount,
+//                    'date' => Carbon::now()->format('d.m.Y'),
+//                    'purpose' => 'Հաշվի համալրում',
+//                    'receiver' => auth()->user()->pawnshop->bank
+//                ];
+//                $new_order = Order::create($res);
+//                $this->createDeal($amount,'in',null,$new_order->id,false,'Հաշվի համալրում',auth()->user()->pawnshop->bank);
+//            }else{
+//                $order_id = $this->getOrder($cash,'out');
+//                $res = [
+//                    'type' => 'cost_out',
+//                    'title' => 'Օրդեր',
+//                    'pawnshop_id' => auth()->user()->pawnshop_id,
+//                    'order' => $order_id,
+//                    'amount' => $amount,
+//                    'date' => Carbon::now()->format('d.m.Y'),
+//                    'purpose' => $purpose,
+//                    'receiver' => $receiver
+//                ];
+//                $new_order = Order::create($res);
+//                $this->createDeal($amount,'out',null,$new_order->id,$cash,$purpose,$receiver);
+//            }
+//        }else{
+//            $order_id = $this->getOrder($cash,'in');
+//            $res = [
+//                'type' => 'cost_in',
+//                'title' => 'Օրդեր',
+//                'pawnshop_id' => auth()->user()->pawnshop_id,
+//                'order' => $order_id,
+//                'amount' => $amount,
+//                'date' => Carbon::now()->format('d.m.Y'),
+//                'purpose' => $purpose,
+//                'source' => $source,
+//                'receiver' => '«Դայմոնդ Կրեդիտ» ՍՊԸ'
+//            ];
+//            $new_order = Order::create($res);
+//            $this->createDeal($amount,'in',null,$new_order->id,$cash,$purpose,null,$source);
+//        }
+//
+//        return response()->json([
+//            'success' => 'success'
+//        ]);
+//
+//    }
     public function addCashbox(Request $request)
     {
         $name = $request->name;
@@ -296,7 +296,7 @@ DealController extends Controller
 
         $filter_type = Order::EXPENSE_FILTER;
         $order_id = $this->getOrder($request->cash, $type);
-        $this->createOrderAndDeal($order_id, $type, $name, $amount, $purpose, $receiver, $cash,$filter_type);
+        $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type);
 
         return response()->json(['success' => 'success']);
     }
@@ -305,7 +305,7 @@ DealController extends Controller
     {
         $order_id = $this->getOrder($type === 'out', $type);
         $order = $this->createOrder($type, $name, $amount, $order_id, $purpose, $receiver);
-        $this->createDeal($amount, null, null, $type, null, $order->id, $type === 'out', $purpose, $receiver);
+        $this->createDeal($amount, null, null, null, null, $type, null, null,$order->id,$type === 'out', $receiver,$purpose);
     }
 
     private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type)

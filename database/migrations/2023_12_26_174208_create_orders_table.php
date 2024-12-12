@@ -26,6 +26,8 @@ return new class extends Migration
             $table->string('client_name')->nullable();
             $table->string('purpose')->nullable();
             $table->string('receiver')->nullable();
+
+            $table->softDeletes();
             $table->timestamps();
         });
     }

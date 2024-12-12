@@ -31,8 +31,10 @@ class PawnshopSeeder extends Seeder
         $pawnshop->given = '0';
         $pawnshop->cashbox = '5000000';
         $pawnshop->bank_cashbox = '2000000';
-        $pawnshop->save();
-
+        $pawnshop->order_in = 1;
+        $pawnshop->order_out = 1;
+        $pawnshop->bank_order_in = 1;
+        $pawnshop->bank_order_out = 1;
 
         $pawnshop = new Pawnshop();
         $pawnshop->city = 'Գյումրի';
@@ -49,6 +51,10 @@ class PawnshopSeeder extends Seeder
         $pawnshop->given = '0';
         $pawnshop->cashbox = '5000000';
         $pawnshop->bank_cashbox = '2000000';
+        $pawnshop->order_in = 1;
+        $pawnshop->order_out = 1;
+        $pawnshop->bank_order_in = 1;
+        $pawnshop->bank_order_out = 1;
         $pawnshop->save();
 
 

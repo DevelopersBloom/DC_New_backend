@@ -11,7 +11,7 @@ trait OrderTrait
                 $order = auth()->user()->pawnshop->order_in;
                 auth()->user()->pawnshop->order_in = auth()->user()->pawnshop->order_in + 1;
             }else{
-                $order = 'Ա'.auth()->user()->pawnshop->bank_order_in;
+                $order = 'Ա'. auth()->user()->pawnshop->bank_order_in;
                 auth()->user()->pawnshop->bank_order_in = auth()->user()->pawnshop->bank_order_in + 1;
             }
         }else{

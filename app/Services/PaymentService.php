@@ -39,6 +39,7 @@ class PaymentService {
             }
         }
         return [
+            'id'              => $payment->id,
             'payments_sum'    => $payments_sum,
             'interest_amount' => $interest_amount,
             'delay_days'      => $delay_days,
@@ -121,7 +122,7 @@ class PaymentService {
 
 
     }
-    public function createPayment($contractId, $amount, $type, $payer, $cash): void
+    public function createPayment($contractId, $amount, $type, $payer, $cash)
     {
        // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
         if ($type === 'penalty' || $type === 'full' || $type === 'partial') {
@@ -146,9 +147,10 @@ class PaymentService {
         }
 
         $payment->save();
+        return $payment->id;
     }
 
-    public function payPartial($contract, $partialAmount, $payer, $cash): void
+    public function payPartial($contract, $partialAmount, $payer, $cash)
     {
         $now = Carbon::now();
         $payments = Payment::where('contract_id', $contract->id)->where('type', 'regular')->get();
@@ -193,7 +195,7 @@ class PaymentService {
 
         // Create the partial payment record
 
-        $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash);
+        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash);
 
 
     }
@@ -203,17 +205,17 @@ class PaymentService {
     public function processFullPayment($contract, $amount, $payer, $cash)
     {
         // Remove remaining initial payments
-        $p =Payment::where('contract_id', $contract->id)
+        Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
 
         // process full payment
-        $this->createPayment($contract->id, $amount, 'full', $payer, $cash);
+        $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash);
         $contract->status = 'completed';
         $contract->left = 0;
         $contract->collected += $amount;
         $contract->save();
 
-        return $contract;
+        return $payment;
     }
     public function calcAmount($amount,$days,$rate): int
     {
