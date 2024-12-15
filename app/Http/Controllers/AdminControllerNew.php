@@ -120,8 +120,12 @@ class AdminControllerNew extends Controller
                 'message' => 'File not found.',
             ], 404);
         }
+        $mimeType = mime_content_type($filePath);
 
-        return response()->download($filePath, $file->original_name);
+
+        return response()->download($filePath, $file->original_name,[
+            'Content-Type' => $mimeType,
+        ]);
     }
 
     /**
