@@ -42,13 +42,13 @@ class MonthlyExport implements FromView, WithEvents, WithColumnWidths, ShouldAut
         for($i = 1; $i <= $days; $i++){
             $day = $i < 10 ? '0'.$i : $i;
             $date = Carbon::parse($year.'-'.$month.'-'.$day);
-            $contracts_query = Contract::where('pawnshop_id',$this->pawnshop_id)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])->where(function ($query) use ($date) {
+            $contracts_query = Contract::where('pawnshop_id',$this->pawnshop_id)->whereRaw("STR_TO_DATE(created_at, '%d.%m.%Y') <= ?", [$date])->where(function ($query) use ($date) {
                 $query->where('status','initial')->orWhere(function ($query1) use ($date) {
-                    $query1->whereIn('status',['completed','executed'])->whereRaw("STR_TO_DATE(close_date, '%d.%m.%Y') > ?", [$date]);
+                    $query1->whereIn('status',['completed','executed'])->whereRaw("STR_TO_DATE(created_at, '%d.%m.%Y') > ?", [$date]);
                 });
             });
-            $worth = $contracts_query->sum('worth');
-            $given = $contracts_query->sum('given');
+            $worth = 10;
+            $given = 10;
             $contract_ids = $contracts_query->get()->pluck('id');
             $partial_payments_amount = Payment::where('type','partial')->whereIn('contract_id',$contract_ids)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])->sum('amount');
             $given -= $partial_payments_amount;

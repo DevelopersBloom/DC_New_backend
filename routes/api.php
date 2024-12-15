@@ -42,7 +42,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/get',[AdminControllerNew::class,'get']);
         Route::put('/update',[AdminControllerNew::class,'update']);
         Route::post('/upload-file',[AdminControllerNew::class,'uploadFile']);
-        Route::get('/download-file',[AdminControllerNew::class,'downloadFile']);
+        Route::get('/download-file/{id}',[AdminControllerNew::class,'downloadFile']);
 
         //users
         Route::get('/get-users',[AdminControllerNew::class,'getUsers']);
