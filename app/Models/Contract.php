@@ -44,6 +44,7 @@ class Contract extends Model
         'extended',
         'ADB_ID',
         'passport_given',
+        'closed_at'
     ];
 
     public function payments(): HasMany

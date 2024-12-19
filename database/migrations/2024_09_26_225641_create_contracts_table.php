@@ -30,6 +30,7 @@ return new class extends Migration
             $table->integer('left')->nullable();
             $table->integer('collected')->nullable();
             $table->integer('penalty_amount')->default(0);
+            $table->date('closed_at')->nullable();
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\MonthlyExport;
+use App\Exports\MonthlySheet3Export;
 use App\Exports\QuarterExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
