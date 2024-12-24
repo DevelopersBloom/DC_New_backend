@@ -2,6 +2,11 @@
 
 namespace App\Exports;
 
+use App\Models\Contract;
+use App\Models\Deal;
+use App\Models\Pawnshop;
+use App\Models\Payment;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Maatwebsite\Excel\Concerns\FromView;
 use Maatwebsite\Excel\Concerns\RegistersEventListeners;
@@ -15,8 +20,68 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class MonthlySheet1Export implements FromView, WithEvents, WithColumnWidths, ShouldAutoSize, WithStyles
 {
     use RegistersEventListeners;
+    private $year;
+    private $month;
+    private $pawnshop_id;
+
+    public function __construct($year,$month, $pawnshop_id)
+    {
+        $this->year = $year;
+        $this->month = $month;
+        $this->pawnshop_id = $pawnshop_id;
+    }
     public function view(): View
     {
+        $array = [];
+        $month = $this->month;
+        $year = $this->year;
+        $days = Carbon::createFromFormat('Y',$year)->month($month)->daysInMonth;
+        $lastDayOfMonth = Carbon::create($year,$month,1)->endOfMonth()->format('d/m/Y');
+        $pawnshop = Pawnshop::where('id',$this->pawnshop_id)->first();
+        $lastDay_of_current_date = Carbon::createFromDate($year, $month)->endOfMonth()->toDateString();
+        $lastDay_of_previous_date = Carbon::createFromDate($year,$month)->endOfMonth()->toDateString();
+
+        $current_date = Carbon::createFromFormat('d.m.Y', $lastDay_of_current_date . '.' . $month . '.' . $year);
+        $previous_date = Carbon::createFromFormat('d.m.Y', $lastDay_of_previous_date . '.' . $month . '.' . $year);
+
+        $current_contracts = Contract::where('pawnshop_id', $this->pawnshop_id)
+            ->whereDate('created_at', '<=', $current_date)
+            ->where(function ($query) use ($current_date) {
+                $query->where('status', 'initial')
+                    ->orWhere(function ($query1) use ($current_date) {
+                        $query1->whereIn('status', ['completed', 'executed'])
+                            ->whereNotNull('deleted_at')
+                            ->whereDate('closed_at','>',$current_date);
+                    });
+            });
+        $previous_contracts = Contract::where('pawnshop_id', $this->pawnshop_id)
+            ->whereDate('created_at', '<=', $previous_date)
+            ->where(function ($query) use ($previous_date) {
+                $query->where('status', 'initial')
+                    ->orWhere(function ($query1) use ($previous_date) {
+                        $query1->whereIn('status', ['completed', 'executed'])
+                            ->whereNotNull('deleted_at')
+                            ->whereDate('closed_at','>',$previous_date);
+                    });
+            });
+        $current_worth = $current_contracts->sum('estimated_amount');
+        $current_given = $current_contracts->sum('provided_amount');
+        $contract_ids = $current_contracts->get()->pluck('id');
+        $partial_payments_amount = Payment::where('type','partial')->whereIn('contract_id',$contract_ids)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$current_date])->sum('amount');
+        $current_given -= $partial_payments_amount;
+        $cashbox_sum = 0;
+        $insurance = 0;
+        $funds = 0;
+        $deal = Deal::whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$current_date])->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')->first();
+        if($deal){
+            $cashbox_sum = $deal->cashbox + $deal->bank_cashbox;
+            $insurance = $deal->insurance;
+            $funds = $deal->funds;
+        }else{
+            $cashbox_sum = $pawnshop->cashbox + $pawnshop->bank_cashbox;
+            $insurance = $pawnshop->insurance;
+            $funds = $pawnshop->funds;
+        }
         $data = [
             [
                 'index' => '1',

@@ -9,7 +9,8 @@ use Carbon\Carbon;
 trait HistoryTrait
 {
     public function createHistory($request,$order_id = null,$interest_amount,$delay_days,$penalty,
-            $discount){
+            $discount)
+    {
         $history = new History();
         $history->contract_id = $request->contract_id;
         $history->user_id = auth()->user()->id;

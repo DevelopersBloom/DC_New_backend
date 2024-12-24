@@ -47,7 +47,7 @@ class PaymentControllerNew extends Controller
         $this->createDeal($amount ?? $result['$payments_sum'],
            $result['interest_amount'],$result['delay_days'],$result['penalty'],
            $result['discount'], 'in', $contract->id,$contract->client->id,
-            $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,$payment_id);
+            $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,$payment_id,null,1);
        $this->updateContractStatus($contract);
        return response()->json([
            'success' => 'success',
@@ -63,6 +63,7 @@ class PaymentControllerNew extends Controller
 
         if ($paymentsLeft->isEmpty()) {
             $contract->status = 'completed';
+            $contract->closed_at = Carbon::now();
             $contract->left = 0;
         }
         $contract->save();

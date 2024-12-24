@@ -19,7 +19,7 @@ class MonthlyExport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            'Sheet1' => new MonthlySheet1Export(),
+            'Sheet1' => new MonthlySheet1Export($this->year,$this->month,$this->pawnshop_id),
             'Sheet2' => new MonthlySheet2Export(),
             'Sheet3' => new MonthlySheet3Export($this->year, $this->month, $this->pawnshop_id),
         ];

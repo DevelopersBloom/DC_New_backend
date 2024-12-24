@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->integer('contract_id');
             $table->integer('type_id');
-            $table->integer('user_id');
+            $table->integer('user_id')->nullable();
             $table->integer('order_id')->nullable();
             $table->string('date');
             $table->integer('amount')->nullable();

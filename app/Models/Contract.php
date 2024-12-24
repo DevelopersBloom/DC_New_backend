@@ -42,9 +42,18 @@ class Contract extends Model
         'dob',
         'info',
         'extended',
-        'ADB_ID',
         'passport_given',
-        'closed_at'
+        'category_id',
+        'closed_at',
+        'estimated_amount',
+        'provided_amount',
+        'interest_rate',
+        'num',
+        'lump_rate',
+        'closed_at',
+        'mother',
+        'left'
+
     ];
 
     public function payments(): HasMany

@@ -2,14 +2,75 @@
 
 namespace App\Traits;
 
+use App\Models\Category;
+use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\History;
+use App\Models\HistoryType;
+use App\Models\Item;
+use App\Models\LumpRate;
 use App\Models\Order;
+use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\Subcategory;
+use App\Models\SubcategoryItem;
 use Carbon\Carbon;
 
 trait ContractTrait
 {
+    /**
+     * Helper method to create order and history entries
+     */
+    private function createOrderAndHistory($contract, $client_id,$client_name, $cash,$category_id,$num = null,$pawnshop_id = null)
+    {
+        $historyTypes = HistoryType::whereIn('name', ['opening', 'one_time_payment', 'mother_payment'])->get();
+        $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
+        $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT,$num,$pawnshop_id);
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$num,$pawnshop_id);
+        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT,$num,$pawnshop_id);
+    }
+
+    /**
+     * Helper method to create individual order and history entries
+     */
+    private function createOrderHistoryEntry($contract,$client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose,$num = null,$pawnshop_id,$date = null)
+    {
+        $order_id = $this->getOrder($cash, $type,$pawnshop_id);
+        if ($historyTypeName !== 'opening') {
+            // Create an order
+            $order = Order::create([
+                'num' => $num,
+                'contract_id' => $contract->id,
+                'type' => $type,
+                'title' => 'Օրդեր',
+                'pawnshop_id' => auth()->user()->pawnshop_id ?? $pawnshop_id,
+                'order' => $order_id,
+                'amount' => $amount,
+                'rep_id' => '2211',
+                'date' => $date ?? \Illuminate\Support\Carbon::now()->format('d.m.Y'),
+                'client_name' => $client_name,
+                'purpose' => $purpose,
+            ]);
+        }
+        $order_id = $order->id ?? null;
+        // Add history for the order
+        $historyType = HistoryType::where('name', $historyTypeName)->first();
+        $history = History::create([
+            'type_id' => $historyType->id,
+            'contract_id' => $contract->id,
+            'user_id' => auth()->user()->id ?? null,
+            'order_id' => $order_id,
+            'date' => $date ?? Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+            'amount' => $amount,
+        ]);
+        if ($historyTypeName !== 'opening') {
+            // Create a deal for the order
+            $this->createDeal($amount,null,null,null,null, $type, $contract->id,$client_id, $order_id, $cash,null, $purpose,'contract',$history->id,null,null,$pawnshop_id);
+        }
+    }
+
     public function getFullContract($id)
     {
         $contract = Contract::where('pawnshop_id',auth()->user()->pawnshop_id)->where('id', $id)
@@ -26,19 +87,20 @@ trait ContractTrait
         return $contract;
     }
 
-    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$client_id,$order_id = null,$cash = true,$receiver = null,$purpose = null,$filter_type = null,$history_id = null,$payment_id = null,$source = null)
+    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$client_id,$order_id = null,$cash = true,$receiver = null,$purpose = null,$filter_type = null,$history_id = null,$payment_id = null,$source = null,$pawnshop_id = null)
     {
+        $pawnshop = $pawnshop_id ? Pawnshop::find($pawnshop_id) : auth()->user()->pawnshop;
         if($type === 'in'){
             if($cash){
-                auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox + $amount;
+                $pawnshop->cashbox = $pawnshop->cashbox + $amount;
             }else{
-                auth()->user()->pawnshop->bank_cashbox = auth()->user()->pawnshop->bank_cashbox + $amount;
+                $pawnshop->bank_cashbox = $pawnshop->bank_cashbox + $amount;
             }
         }else{
             if($cash){
-                auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox - $amount;
+                $pawnshop->cashbox = $pawnshop->cashbox - $amount;
             }else{
-                auth()->user()->pawnshop->bank_cashbox = auth()->user()->pawnshop->bank_cashbox - $amount;
+                $pawnshop->bank_cashbox = $pawnshop->bank_cashbox - $amount;
             }
 
         }
@@ -46,7 +108,7 @@ trait ContractTrait
             $type = $type === 'in' ? 'out' : 'in';
             $amount = -$amount;
         }
-        auth()->user()->pawnshop->save();
+        $pawnshop->save();
         Deal::create([
             'type'            => $type,
             'amount'          => $amount,
@@ -55,18 +117,18 @@ trait ContractTrait
             'penalty'         => $penalty,
             'discount'        => $discount,
             'date'            => Carbon::now()->format('d.m.Y'),
-            'pawnshop_id'     => auth()->user()->pawnshop_id,
+            'pawnshop_id'     => $pawnshop->id,
             'contract_id'     => $contract_id,
             'order_id'        => $order_id,
-            'cashbox'         => auth()->user()->pawnshop->cashbox,
-            'bank_cashbox'    => auth()->user()->pawnshop->bank_cashbox,
-            'worth'           => auth()->user()->pawnshop->worth,
-            'given'           => auth()->user()->pawnshop->given,
+            'cashbox'         => $pawnshop->cashbox,
+            'bank_cashbox'    => $pawnshop->bank_cashbox,
+            'worth'           => $pawnshop->worth,
+            'given'           => $pawnshop->given,
             'purpose'         => $purpose,
             'cash'            => boolval($cash),
             'receiver'        => $receiver,
             'source'          => $source,
-            'created_by'      => auth()->user()->id,
+            'created_by'      => auth()->user()->id ?? null,
             'client_id'       => $client_id,
             'filter_type'     => $filter_type,
             'history_id'      => $history_id,
@@ -187,16 +249,15 @@ trait ContractTrait
         ];
     }
 
-    public function countPenalty($contract_id)
+    public function countPenalty($contract_id,$import_date = null)
     {
         $contract = Contract::where('id', $contract_id)->with('payments')->first();
         $penalty_paid = Payment::where('contract_id', $contract->id)
             ->where('type', 'penalty')
             ->sum('paid');
-        $now = \Carbon\Carbon::now();
+        $now = $import_date ?? \Carbon\Carbon::now();
         $total_penalty_amount = 0;
         $total_delay_days = 0;
-
         if ($contract) {
             foreach ($contract->payments as $payment) {
                 // Parse the payment date
@@ -272,4 +333,175 @@ trait ContractTrait
         }
 
     }
+    public function clientsStoreOrUpdate(array $data)
+    {
+        $client = Client::where('passport_series', $data['passport_series'])
+            ->where('passport_validity', $data['passport_validity'])
+            ->first();
+        if ($client) {
+            $client->name = $data['name'];
+            $client->surname = $data['surname'];
+            $client->middle_name = $data['middle_name'] ?? null;
+            $client->passport_issued = $data['passport_issued'];
+            $client->date_of_birth = $data['date_of_birth'];
+            $client->email = $data['email'];
+            $client->phone = $data['phone'];
+            $client->additional_phone = $data['additional_phone'] ?? null;
+            $client->country = $data['country'];
+            $client->city = $data['city'];
+            $client->street = $data['street'];
+            $client->building = $data['building'] ?? null;
+            $client->bank_name = $data['bank_name'] ?? null;
+            $client->card_number = $data['card_number'] ?? null;
+            $client->account_number = $data['account_number'] ?? null;
+            $client->iban = $data['iban'] ?? null;
+            $client->save();
+        } else {
+            $client = new Client();
+            $client->name = $data['name'];
+            $client->surname = $data['surname'];
+            $client->middle_name = $data['middle_name'] ?? null;
+            $client->passport_series = $data['passport_series'];
+            $client->passport_validity = $data['passport_validity'];
+            $client->passport_issued = $data['passport_issued'];
+            $client->date_of_birth = $data['date_of_birth'];
+            $client->email = $data['email'];
+            $client->phone = $data['phone'];
+            $client->additional_phone = $data['additional_phone'] ?? null;
+            $client->country = $data['country'];
+            $client->city = $data['city'];
+            $client->street = $data['street'];
+            $client->building = $data['building'] ?? null;
+            $client->bank_name = $data['bank_name'] ?? null;
+            $client->card_number = $data['card_number'] ?? null;
+            $client->account_number = $data['account_number'] ?? null;
+            $client->iban = $data['iban'] ?? null;
+            $client->save();
+        }
+        return $client;
+    }
+    public function createContract(int $client_id, array $data,$deadline)
+    {
+        $values = [
+            'client_id' => $client_id,
+            'num' => $data['num'] ?? null,
+            'estimated_amount' => $data['estimated_amount'],
+            'provided_amount' => $data['provided_amount'],
+            'left' => $data['left'],
+            'mother' => $data['mother'],
+            'interest_rate' => $data['interest_rate'],
+            'penalty' => $data['penalty'],
+            'deadline' => $deadline,
+            'lump_rate' => $data['lump_rate'],
+            'description' => $data['description'] ?? null,
+            'status' => 'initial',
+            'closed_at' => $data['closed_at'] ?? null,
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
+        ];
+         return Contract::create($values);
+    }
+    public function storeContractItem(int $contract_id,array $data)
+    {
+        $item = new Item();
+        $item->category_id = $data['category_id'];
+        $item->contract_id = $contract_id;
+        $category = Category::findOrFail($data['category_id']);
+        switch ($category->name)
+        {
+            case 'electronics':
+                $subcategory = Subcategory::firstOrCreate(
+                    [
+                        'name'        => $data['subcategory'],
+                        'category_id' => $data['category_id'],
+                    ]
+                );
+
+                if ($data['model']) {
+                    $subcategoryItem = SubcategoryItem::firstOrCreate([
+                        'subcategory_id' => $subcategory->id,
+                        'model' => $data['model'],
+                    ]);
+                    $item->model = $subcategoryItem->model;
+                }
+                $item->subcategory =  $subcategory->name;
+                break;
+            case 'gold':
+                $subcategory = Subcategory::firstOrCreate(
+                    [
+                        'name' => $data['subcategory'],
+                        'category_id' => $data['category_id']
+                    ]
+                );
+                $item->subcategory =  $subcategory->name;
+                $item->weight = $data['weight'] ?? null;
+                $item->clear_weight = $data['clear_weight'] ?? null;
+                $item->hallmark = $data['hallmark'] ?? null;
+                break;
+            case 'car':
+                $subcategory = Subcategory::firstOrCreate(
+                    [
+                        'name'        => $data['model'],
+                        'category_id' => $data['category_id'],
+                    ]
+                );
+                if ($data['car_make']) {
+                    $subcategoryItem = SubcategoryItem::firstOrCreate([
+                        'subcategory_id' => $subcategory->id,
+                        'model' => $data['car_make'],
+                    ]);
+                    $item->car_make = $subcategoryItem->model;
+                }
+                $item->model = $subcategory->name ?? null;
+                $item->manufacture = $data['manufacture'] ?? null;
+                $item->power = $data['power'] ?? null;
+                $item->license_plate = $data['license_plate'] ?? null;
+                $item->color = $data['color']?? null;
+                $item->registration = $data['registration_certificate'] ?? null;
+                $item->identification = $data['identification_number'] ?? null;
+                $item->ownership = $data['ownership_certificate']?? null;
+                $item->issued_by = $data['issued_by']?? null;
+                $item->date_of_issuance = $data['date_of_issuance'] ?? null;
+                break;
+        }
+        $item->save();
+        return $item;
+    }
+    public function createImportPayment(Contract $contract)
+    {
+        $fromDate = Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan');
+        $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
+        $currentDate = $fromDate;
+        $pgi_id = 1;
+        while ($currentDate->lt($toDate))
+        {
+            $payment = [
+                'contract_id' => $contract->id,
+                'from_date' => $currentDate->format('d.m.Y'),
+            ];
+
+            // Determine the next payment date, or use the deadline if it's the last payment
+            $nextPaymentDate = (clone $currentDate)->addMonths();
+            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+
+            $diffDays = $paymentDate->diffInDays($currentDate);
+            $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
+            $payment['date'] = $paymentDate->format('Y-m-d');            $payment['days'] = $diffDays;
+            $payment['amount'] = $amount;
+            $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
+            $payment['mother'] = 0;
+            $payment['PGI_ID'] = $pgi_id;
+
+            // Check if it's the last payment
+            if ($paymentDate->eq($toDate)) {
+                $payment['mother'] = $contract->provided_amount; // Add mother amount for the last payment
+                $payment['last_payment'] = true;
+            }
+
+            Payment::create($payment);
+            $pgi_id++;
+            // Move to the next payment date
+            $currentDate = $nextPaymentDate;
+        }
+    }
+
 }

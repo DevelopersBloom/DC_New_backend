@@ -48,8 +48,6 @@ class ItemRequest extends FormRequest
             'items.*.ownership' => 'required_if:items.*.category.name,car|nullable|string|max:50',
             'items.*.issued_by' => 'required_if:items.*.category.name,car|nullable|string|max:255',
             'items.*.date_of_issuance' => 'required_if:items.*.category.name,car|nullable|date',
-
-
         ];
     }
 }

@@ -94,17 +94,18 @@ class   ContractService
         $contract->lump_rate = $data['lump_rate'];
         $contract->description = $data['description'] ?? null;
         $contract->status = 'initial';
-        $contract->pawnshop_id = auth()->user()->pawnshop_id;
+        $contract->pawnshop_id = auth()->user()->pawnshop_id ?? $data['pawnshop_id'];
         $contract->save();
         return $contract;
 
     }
-    public function createPayment(Contract $contract)
+    public function createPayment(Contract $contract,$import_date = null,$import_pawnshop_id = null)
     {
-        $fromDate = Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan');
+       $fromDate = $import_date ? Carbon::parse($import_date)->setTimezone('Asia/Yerevan') : Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan');
+       $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
         $currentDate = $fromDate;
-
+        $pgi_id = 1;
         while ($currentDate->lt($toDate))
         {
             $payment = [
@@ -120,8 +121,9 @@ class   ContractService
             $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
             $payment['date'] = $paymentDate->format('Y-m-d');            $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
-            $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
+            $payment['pawnshop_id'] = $pawnshop_id;
             $payment['mother'] = 0;
+            $payment['PGI_ID'] = $pgi_id;
 
             // Check if it's the last payment
             if ($paymentDate->eq($toDate)) {
@@ -130,6 +132,7 @@ class   ContractService
             }
 
             Payment::create($payment);
+            $pgi_id++;
             // Move to the next payment date
             $currentDate = $nextPaymentDate;
         }

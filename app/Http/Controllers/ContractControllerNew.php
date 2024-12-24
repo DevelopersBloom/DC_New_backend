@@ -221,57 +221,6 @@ class ContractControllerNew extends Controller
         }
     }
 
-    /**
-     * Helper method to create order and history entries
-     */
-    private function createOrderAndHistory($contract, $client_id,$client_name, $cash,$category_id)
-    {
-        $historyTypes = HistoryType::whereIn('name', ['opening', 'one_time_payment', 'mother_payment'])->get();
-        $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
-        $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
-
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT);
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING);
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT);
-    }
-
-    /**
-     * Helper method to create individual order and history entries
-     */
-    private function createOrderHistoryEntry($contract,$client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose)
-    {
-        $order_id = $this->getOrder($cash, $type);
-        if ($historyTypeName !== 'opening') {
-            // Create an order
-            $order = Order::create([
-                'contract_id' => $contract->id,
-                'type' => $type,
-                'title' => 'Օրդեր',
-                'pawnshop_id' => auth()->user()->pawnshop_id,
-                'order' => $order_id,
-                'amount' => $amount,
-                'rep_id' => '2211',
-                'date' => Carbon::now()->format('d.m.Y'),
-                'client_name' => $client_name,
-                'purpose' => $purpose,
-            ]);
-        }
-        $order_id = $order->id ?? null;
-        // Add history for the order
-        $historyType = HistoryType::where('name', $historyTypeName)->first();
-        $history = History::create([
-            'type_id' => $historyType->id,
-            'contract_id' => $contract->id,
-            'user_id' => auth()->user()->id,
-            'order_id' => $order_id,
-            'date' => Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
-            'amount' => $amount,
-        ]);
-        if ($historyTypeName !== 'opening') {
-            // Create a deal for the order
-            $this->createDeal($amount,null,null,null,null, $type, $contract->id,$client_id, $order_id, $cash,null, $purpose,'contract',$history->id);
-        }
-    }
 
     public function createDeal1($amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
         if($type === 'in'){

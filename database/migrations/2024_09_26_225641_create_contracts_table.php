@@ -15,6 +15,7 @@ return new class extends Migration
     {
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
+            $table->integer('num')->nullable();
             $table->unsignedBigInteger('client_id');
             $table->decimal('estimated_amount');
             $table->decimal('provided_amount');
@@ -33,7 +34,8 @@ return new class extends Migration
             $table->date('closed_at')->nullable();
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
-
+            $table->date('date')->nullable();
+            $table->integer('category_id')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

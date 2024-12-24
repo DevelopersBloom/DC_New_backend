@@ -104,12 +104,12 @@ class PaymentImport implements ToCollection
                                 'mother' => $amount
                             ]);
                         }
-                        if($status === 'completed'){
-                            $lastPayment->update([
-                                'paid' => $lastPayment->paid + $amount
-                            ]);
-                            $contract->close_date = $date->format('d.m.Y');
-                        }
+                            if($status === 'completed'){
+                                $lastPayment->update([
+                                    'paid' => $lastPayment->paid + $amount
+                                ]);
+                                $contract->close_date = $date->format('d.m.Y');
+                            }
                     }elseif ($regular_number === '`' && $amount){
                         $contract->payments()->create([
                             'status' => 'completed',
