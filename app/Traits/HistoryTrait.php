@@ -13,8 +13,10 @@ trait HistoryTrait
     {
         $history = new History();
         $history->contract_id = $request->contract_id;
-        $history->user_id = auth()->user()->id;
-        $history->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
+        if (auth()->user()){
+            $history->user_id =  auth()->user()->id;
+        }
+        $history->date = $request->date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
         $history->order_id = $order_id;
         $history->interest_amount = $interest_amount;
         $history->penalty = $penalty;
@@ -23,12 +25,11 @@ trait HistoryTrait
 
         $amount = $request->amount;
 
-
         if($amount){
             $history->amount = $amount;
         }else{
             $sum = 0;
-            foreach ($request -> payments as $item){
+            foreach ($request->payments as $item){
                 $sum += $item['final'];
             }
             if($penalty){

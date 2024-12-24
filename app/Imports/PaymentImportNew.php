@@ -8,13 +8,14 @@ use App\Models\Payment;
 use App\Services\PaymentService;
 use App\Traits\ContractTrait;
 use App\Traits\FileTrait;
+use App\Traits\HistoryTrait;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
 class PaymentImportNew implements ToCollection
 {
-    use ContractTrait,FileTrait;
+    use ContractTrait,FileTrait,HistoryTrait;
     protected $paymentService;
     public function __construct(PaymentService $paymentService)
     {
@@ -75,6 +76,9 @@ class PaymentImportNew implements ToCollection
                             'purpose' => 'Հերթական վճարում',
                         ];
                         $new_order = Order::create($res);
+                        $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];
+                        $history = $this->createHistory( $request,$order_id,$amount,null,$penalty,
+                           null);
                         $this->createDeal($amount+$penalty,
                             $amount,null,$penalty,
                             null, 'in', $contract->id,$contract->client->id,

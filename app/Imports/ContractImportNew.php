@@ -104,7 +104,7 @@ class ContractImportNew implements ToCollection
             }
 
             // Create order and history
-            $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, $pawnshop_id);
+            $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, $pawnshop_id,$date);
         }
     }
 }
