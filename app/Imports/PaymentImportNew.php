@@ -49,6 +49,7 @@ class PaymentImportNew implements ToCollection
                             'type' => 'regular'
                         ]);
                         $contract->collected += $amount;
+                        $purpose = Contract::REGULAR_PAYMENT;
 
                         if ($penalty > 0) {
                             $payment = $contract->payments()->create([
@@ -61,6 +62,7 @@ class PaymentImportNew implements ToCollection
                                 'type' => 'penalty'
                             ]);
                             $contract->collected += $penalty;
+                            $purpose .= 'և' . Contract::PENALTY;
                         }
                         $order_id = $this->getOrder($cash,'in',1);
                         $res = [
@@ -73,7 +75,7 @@ class PaymentImportNew implements ToCollection
                             'rep_id' => '2211',
                             'date' => $date->format('Y.m.d'),
                             'client_name' => $contract->client['name'] . $contract->client['surname'],
-                            'purpose' => 'Հերթական վճարում',
+                            'purpose' => $purpose,
                         ];
                         $new_order = Order::create($res);
                         $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];
@@ -82,7 +84,7 @@ class PaymentImportNew implements ToCollection
                         $this->createDeal($amount+$penalty,
                             $amount,null,$penalty,
                             null, 'in', $contract->id,$contract->client->id,
-                            $new_order->id, $cash,null,Contract::REGULAR_PAYMENT,'payment',null,$payment->id,null,1);
+                            $new_order->id, $cash,null,$purpose,'payment',null,$payment->id,null,1);
                     } elseif($status == 'Չվճարված') {
                         $from_date = clone $date;
                         $from_date = $from_date->subMonth()->format('d.m.Y');
