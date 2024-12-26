@@ -104,7 +104,7 @@ class ContractImportNew implements ToCollection
                 'penalty' =>$row[20],
                 'lump_rate' =>floatval($row[21]),
                 'description' => $row[24] ?? null,
-                'pawnshop_id' => $pawnshop_id,
+                'pawnshop_id' => 1,
                 'mother' => $row[17],
                 'left' => $row[17]
             ];
@@ -125,7 +125,7 @@ class ContractImportNew implements ToCollection
             }
 
             // Create order and history
-            $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, $pawnshop_id,$date);
+            $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, 1,$date);
 
         }
     }
