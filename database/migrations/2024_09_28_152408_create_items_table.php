@@ -31,7 +31,7 @@ return new class extends Migration
             $table->string('identification')->nullable();
             $table->string('ownership')->nullable();
             $table->string('issued_by')->nullable();
-            $table->date('date_of_issuance')->nullable();
+            $table->string('date_of_issuance')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
 

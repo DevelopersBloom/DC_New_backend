@@ -32,6 +32,10 @@ class PaymentImportNew implements ToCollection
             $contract = Contract::where('num', $contract_num)->first();
             if ($contract) {
                 $pgi_id = $row[0];
+                $pgi_id = $row[0];
+                if (substr($pgi_id, -1) === '.') {
+                    $pgi_id = rtrim($pgi_id, '.');
+                }
                 $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[2]));
                 $amount = $row[3];
                 $status = $row[4];
@@ -65,6 +69,7 @@ class PaymentImportNew implements ToCollection
                             $purpose .= 'և' . Contract::PENALTY;
                         }
                         $order_id = $this->getOrder($cash,'in',1);
+
                         $res = [
                             'contract_id' => $contract->id,
                             'type' => 'in',
@@ -79,7 +84,7 @@ class PaymentImportNew implements ToCollection
                         ];
                         $new_order = Order::create($res);
                         $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];
-                        $history = $this->createHistory( $request,$order_id,$amount,null,$penalty,
+                        $history = $this->createHistory( $request,$new_order->id,$amount,null,$penalty,
                            null);
                         $this->createDeal($amount+$penalty,
                             $amount,null,$penalty,

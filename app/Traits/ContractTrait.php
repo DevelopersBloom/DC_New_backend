@@ -336,7 +336,7 @@ trait ContractTrait
     public function clientsStoreOrUpdate(array $data)
     {
         $client = Client::where('passport_series', $data['passport_series'])
-            ->where('passport_validity', $data['passport_validity'])
+            ->where('passport_issued', $data['passport_issued'])
             ->first();
         if ($client) {
             $client->name = $data['name'];
@@ -362,7 +362,6 @@ trait ContractTrait
             $client->surname = $data['surname'];
             $client->middle_name = $data['middle_name'] ?? null;
             $client->passport_series = $data['passport_series'];
-            $client->passport_validity = $data['passport_validity'];
             $client->passport_issued = $data['passport_issued'];
             $client->date_of_birth = $data['date_of_birth'];
             $client->email = $data['email'];

@@ -17,19 +17,19 @@ return new class extends Migration
             $table->id();
             $table->integer('num')->nullable();
             $table->unsignedBigInteger('client_id');
-            $table->decimal('estimated_amount');
-            $table->decimal('provided_amount');
-            $table->decimal('interest_rate')->nullable();
-            $table->decimal('penalty')->nullable();
-            $table->decimal('discount')->nullable();
+            $table->decimal('estimated_amount', 15, 2); // Adjust precision and scale for decimal
+            $table->decimal('provided_amount', 15, 2); // Adjust precision and scale for decimal
+            $table->decimal('interest_rate', 5, 2)->nullable(); // Adjust precision and scale for decimal
+            $table->decimal('penalty', 15, 2)->nullable(); // Adjust precision and scale for decimal
+            $table->decimal('discount', 15, 2)->nullable(); // Adjust precision and scale for decimal
             $table->date('deadline');
-            $table->decimal('lump_rate')->nullable();
+            $table->decimal('lump_rate', 15, 2)->nullable(); // Adjust precision and scale for decimal
             $table->text('description')->nullable();
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');
             $table->unsignedBigInteger('pawnshop_id');
-            $table->integer('mother')->nullable();
-            $table->integer('left')->nullable();
-            $table->integer('collected')->nullable();
+            $table->decimal('mother', 15, 2)->nullable(); // Adjust precision and scale for decimal
+            $table->decimal('left', 15, 2)->nullable(); // Adjust precision and scale for decimal
+            $table->decimal('collected', 15, 2)->nullable(); // Adjust precision and scale for decimal
             $table->integer('penalty_amount')->default(0);
             $table->date('closed_at')->nullable();
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
@@ -40,7 +40,6 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      *

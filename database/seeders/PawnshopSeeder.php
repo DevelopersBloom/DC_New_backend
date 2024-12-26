@@ -35,6 +35,7 @@ class PawnshopSeeder extends Seeder
         $pawnshop->order_out = 1;
         $pawnshop->bank_order_in = 1;
         $pawnshop->bank_order_out = 1;
+        $pawnshop->save();
 
         $pawnshop = new Pawnshop();
         $pawnshop->city = 'Գյումրի';

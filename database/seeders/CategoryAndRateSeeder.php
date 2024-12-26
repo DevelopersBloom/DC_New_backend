@@ -26,7 +26,7 @@ class CategoryAndRateSeeder extends Seeder
             ],
             [
                 'name' => 'car',
-                'title' => 'Ավտոմեքենա'
+                'title' => 'Մեքենա'
             ],
         ]);
 

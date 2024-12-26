@@ -2,22 +2,24 @@
 
 namespace App\Imports;
 
+use App\Models\Client;
 use App\Services\ContractService;
 use App\Traits\ContractTrait;
 use App\Traits\OrderTrait;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 
 class ContractImportNew implements ToCollection
 {
     use ContractTrait, OrderTrait;
-    protected $contractService;
+//    protected $contractService;
 
-    public function __construct(ContractService $contractService)
-    {
-        $this->contractService = $contractService;
-    }
+//    public function __construct(ContractService $contractService)
+//    {
+//        $this->contractService = $contractService;
+//    }
     /**
      * Process the imported collection of contracts.
      *
@@ -26,10 +28,9 @@ class ContractImportNew implements ToCollection
     public function collection(Collection $collection)
     {
         foreach ($collection->skip(2) as $row) {
-            // Parse date fields
             $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[0]));
             $date_of_birth = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[11]));
-            $passport_validity = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[6]));
+            //$passport_validity = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[6]));
             $closed_at = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[23]));
 
             // Extract contract and client details
@@ -55,14 +56,34 @@ class ContractImportNew implements ToCollection
             $phone = count($phone_arr) > 0 ? trim($phone_arr[0]) : null;
             $additional_phone = count($phone_arr) > 1 ? trim($phone_arr[1]) : null;
 
+            $passport_data = $row[5];
+            $passport_series = null;
+            $passport_issued = null;
+            if($passport_data){
+                if(preg_match('#[a-zA-Z]{2}\d{7}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)) {
+                    $passport_series = $matches[0][0];
+                }elseif(preg_match('#[a-zA-Z]{2}\d{6}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)) {
+                    $passport_series = $matches[0][0];
+                }elseif (preg_match('#\d{9}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)){
+                    $passport_series = $matches[0][0];
+                }elseif (preg_match('#\d{8}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)){
+                    $passport_series = $matches[0][0];
+                }elseif(preg_match('#\d{2} \d{2} \d{6}#', $passport_data, $matches, PREG_OFFSET_CAPTURE)){
+                    $passport_series = $matches[0][0];
+                }
+                $password_given_check = substr($passport_data,-3);
+                if(preg_match('#\d{3}#', $password_given_check, $matches, PREG_OFFSET_CAPTURE)) {
+                    $passport_issued = $password_given_check;
+                }
+            }
             // Prepare client data
             $client_data = [
                 'name' => $client_name,
                 'surname' => $client_surname,
                 'middle_name' => $client_middle_name,
-                'passport_series' => $row[5],
-                'passport_validity' => $passport_validity,
-                'passport_issued' => $row[7],
+                'passport_series' => $passport_series,
+             //   'passport_validity' => $passport_validity,
+                'passport_issued' => $passport_issued,
                 'country' => $row[8],
                 'city' => $row[9],
                 'street' => $row[10],
@@ -91,12 +112,12 @@ class ContractImportNew implements ToCollection
             // Calculate contract deadline
             $deadline_days = $row[22];
             $deadline = (clone $date)->addDays($deadline_days);
-
             // Create contract
             $contract = $this->createContract($client->id, $contract_data, $deadline);
+            Log::info('Contract:', ['contract' => $contract->toArray()]);
+            Log::info('Client:', ['client' => $client->toArray()]);
             // Determine payment type
             $cash = $contract->provided_amount < 20000;
-
             // Prepare full client name
             $client_fullname = $client->name . ' ' . $client->surname;
             if ($client->middle_name) {
@@ -105,6 +126,7 @@ class ContractImportNew implements ToCollection
 
             // Create order and history
             $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, $pawnshop_id,$date);
+
         }
     }
 }
