@@ -264,7 +264,7 @@ class AdminControllerNew extends Controller
         $categories = Category::whereNull('deleted_at')
             ->select('id','name', 'title')
             ->with(['categoryRates' => function ($query) {
-                $query->select('category_id', 'interest_rate', 'penalty', 'min_amount', 'max_amount');
+                $query->select('id','category_id', 'interest_rate', 'penalty', 'min_amount', 'max_amount');
             }])
             ->get();
         return response()->json([
