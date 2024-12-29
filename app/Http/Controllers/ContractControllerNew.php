@@ -41,6 +41,7 @@ class ContractControllerNew extends Controller
         $status = $request->input('status', 'all');
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
+        $num = $request->input('num');
         $query = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
             ->orderBy('created_at', 'DESC')
             ->with(['payments' => function($payment) {
@@ -68,6 +69,10 @@ class ContractControllerNew extends Controller
                 });
                 break;
         }
+        if ($num) {
+            $query->where('num', $num);
+        }
+
         if ($dateFrom) {
             $query->whereDate('created_at', '>=', $dateFrom);
         }

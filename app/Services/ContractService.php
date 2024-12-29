@@ -82,6 +82,7 @@ class   ContractService
     }
     public function createContract(int $client_id, array $data,$deadline)
     {
+        $maxNum = Contract::max('num') ?? 0;
         $contract = new Contract();
         $contract->client_id = $client_id;
         $contract->estimated_amount = $data['estimated_amount'];
@@ -95,6 +96,7 @@ class   ContractService
         $contract->description = $data['description'] ?? null;
         $contract->status = 'initial';
         $contract->pawnshop_id = auth()->user()->pawnshop_id ?? $data['pawnshop_id'];
+        $contract->num = $maxNum + 1;
         $contract->save();
         return $contract;
 
