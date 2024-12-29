@@ -13,6 +13,7 @@ use App\Models\File;
 use App\Models\LumpRate;
 use App\Models\Order;
 use App\Models\Pawnshop;
+use App\Models\Payment;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use App\Models\User;
@@ -591,44 +592,73 @@ class AdminControllerNew extends Controller
             'deals' => $deals
         ]);
     }
-    public function updateDeal(Request $request, $id): JsonResponse
+    public function updateDeals(Request $request): JsonResponse
     {
-        $deal = Deal::findOrFail($id);
-
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:0',
-            'cash'   => 'required|boolean',
-            'type'   => 'required|string'
+            'deals' => 'required|array',
+            'deals.*.id' => 'required|exists:deals,id',
+            'deals.*.amount' => 'required|numeric|min:0',
+            'deals.*.cash' => 'required|boolean',
         ]);
 
-        $pawnshop = $deal->pawnshop;
+        foreach ($validated['deals'] as $dealData) {
+            $deal = Deal::findOrFail($dealData['id']);
+            if ($deal->filter_type === 'payment') {
+//                $lastPayment = Payment::where('contract_id', $deal->contract_id)
+//                    ->where('paid','>','0')
+//                    ->orderBy('date', 'desc')
+//                    ->first();
+//                if ($deal->payment_id !== $lastPayment->id) {
+//                    return response()->json([
+//                        'error' => 'Unauthorized action. Only the last payment can be updated.'
+//                    ], 403);
+//                }
+//                $lastPayment->amount += $lastPayment->paid;
+//                $lastPayment->paid = 0;
+//                $lastPayment->amount -= $deal->amount;
+//                $lastPayment->paid += $deal->amount;
+//                $lastPayment->save();
+                return response()->json([
+                    'error' => 'Unauthorized action. Only the last payment can be updated.'
+                ], 403);
+            }
+            $pawnshop = $deal->pawnshop;
 
-        if ($validated->type === 'payment') {
-
-        } else {
             if ($deal->type === 'in') {
                 $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
-                $validated['cash'] ? $pawnshop->cashbox += $validated['amount'] : $pawnshop->bank_cashbox += $validated['amount'];
+                $dealData['cash'] ? $pawnshop->cashbox += $dealData['amount'] : $pawnshop->bank_cashbox += $dealData['amount'];
             } else {
                 $deal->cash ? $pawnshop->cashbox += $deal->amount : $pawnshop->bank_cashbox += $deal->amount;
-                $validated['cash'] ? $pawnshop->cashbox -= $validated['amount'] : $pawnshop->bank_cashbox -= $validated['amount'];
+                $dealData['cash'] ? $pawnshop->cashbox -= $dealData['amount'] : $pawnshop->bank_cashbox -= $dealData['amount'];
             }
 
             $pawnshop->save();
 
             $deal->update([
-                'amount' => $validated['amount'],
-                'cash' => $validated['cash'],
+                'amount' => $dealData['amount'],
+                'cash' => $dealData['cash'],
             ]);
         }
-
-        return response()->json(['message' => 'Deal updated successfully']);
+        return response()->json(['message' => 'Deals updated successfully']);
     }
     public function deleteDeal($id): JsonResponse
     {
         $deal = Deal::findOrFail($id);
-
         $pawnshop = $deal->pawnshop;
+        $payment = $deal->payment;
+
+        if ($deal->type === 'payment') {
+            $lastPayment = Payment::where('contract_id', $deal->contract_id)
+                ->where('paid','>','0')
+                ->orderByDesc('date')
+                ->first();
+
+            if ($payment && $payment->id === $lastPayment->id) {
+                $payment->amount += $deal->amount;
+                $payment->paid -= $deal->amount;
+                $payment->save();
+            }
+        }
 
         if ($deal->type === 'in') {
             $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
@@ -637,6 +667,7 @@ class AdminControllerNew extends Controller
         }
 
         $pawnshop->save();
+
         $deal->delete();
 
         return response()->json(['message' => 'Deal deleted successfully']);

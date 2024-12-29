@@ -80,7 +80,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
         //Deals
         Route::get('get-deals',[AdminControllerNew::class,'getDeals']);
-        Route::put('update-deal/{id}',[AdminControllerNew::class,'updateDeal']);
+        Route::put('update-deals',[AdminControllerNew::class,'updateDeals']);
         Route::delete('delete-deal/{id}',[AdminControllerNew::class,'deleteDeal']);
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
