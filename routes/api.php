@@ -54,8 +54,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         // conditions
         //Interest rate
         Route::get('/get-categories',[AdminControllerNew::class,'getCategories']);
-        Route::post('/create-rates',[AdminControllerNew::class,'createRate']);
-        Route::put('/update-rate/{id}',[AdminControllerNew::class,'updateRate']);
+        Route::post('/save-rates',[AdminControllerNew::class,'saveRates']);
+        //Route::put('/update-rate/{id}',[AdminControllerNew::class,'updateRate']);
         Route::delete('/delete-rate/{id}',[AdminControllerNew::class,'deleteRate']);
 
 

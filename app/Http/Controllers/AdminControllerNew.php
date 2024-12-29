@@ -273,50 +273,52 @@ class AdminControllerNew extends Controller
     }
 
     /**
+     * Update or create category rates
      * @param CategoryRateRequest $request
      * @return JsonResponse
      */
-    public function createRate(CategoryRateRequest $request): JsonResponse
+    public function saveRates(CategoryRateRequest $request): JsonResponse
     {
         $validatedData = $request->validated();
 
-        CategoryRate::create([
-            'category_id'   => $validatedData['category_id'],
-            'interest_rate' => $validatedData['interest_rate'] ?? null,
-            'penalty'       => $validatedData['penalty'] ?? null,
-            'min_amount'    => $validatedData['min_amount'] ?? null,
-            'max_amount'    => $validatedData['max_amount'] ?? null,
-        ]);
+        DB::beginTransaction();
 
-        return response()->json([
-            'message' => 'Category rate created successfully.',
-        ],201);
-    }
+        try {
+            foreach ($validatedData['rates'] as $data) {
+                $id = $data['id'];
+                if ($id > 0) {
+                    $categoryRate = CategoryRate::findOrFail($id);
+                    $categoryRate->update([
+                        'interest_rate' => $data['interest_rate'] ?? $categoryRate->interest_rate,
+                        'penalty' => $data['penalty'] ?? $categoryRate->penalty,
+                        'min_amount' => $data['min_amount'] ?? $categoryRate->min_amount,
+                        'max_amount' => $data['max_amount'] ?? $categoryRate->max_amount,
+                    ]);
+                } else {
+                    CategoryRate::create([
+                        'category_id' => $data['category_id'],
+                        'interest_rate' => $data['interest_rate'] ?? null,
+                        'penalty' => $data['penalty'] ?? null,
+                        'min_amount' => $data['min_amount'] ?? null,
+                        'max_amount' => $data['max_amount'] ?? null,
+                    ]);
+                }
+            }
 
-    public function updateRate(CategoryRateRequest $request, int $id): JsonResponse
-    {
-        $validatedData = $request->validated();
+            DB::commit();
 
-        $categoryRates = CategoryRate::find($id);
-
-        if (!$categoryRates) {
             return response()->json([
-                'message' => 'Category rate not found.',
-            ], 404);
+                'message' => 'Category rates processed successfully',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'An error occurred while processing category rates',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-        $categoryRates->update([
-            'category_id'   => $validatedData['category_id'],
-            'interest_rate' => $validatedData['interest_rate'] ?? $categoryRates->interest_rate,
-            'penalty'       => $validatedData['penalty'] ?? $categoryRates->penalty,
-            'min_amount'    => $validatedData['min_amount'] ?? $categoryRates->min_amount,
-            'max_amount'    => $validatedData['max_amount'] ?? $categoryRates->max_amount,
-        ]);
-
-        return response()->json([
-            'message' => 'Category rate updated successfully.',
-        ]);
     }
-
     public function deleteRate($id)
     {
         $categoryRate = CategoryRate::find($id);
@@ -639,7 +641,4 @@ class AdminControllerNew extends Controller
 
         return response()->json(['message' => 'Deal deleted successfully']);
     }
-
-
-
 }

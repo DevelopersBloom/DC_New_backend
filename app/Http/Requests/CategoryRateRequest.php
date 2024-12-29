@@ -24,11 +24,13 @@ class CategoryRateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_id'   => 'required','exists:categories,id',
-            'interest_rate' => 'nullable|numeric|min:0',
-            'penalty'       => 'nullable|numeric|min:0',
-            'min_amount'    => 'nullable|numeric|min:0',
-            'max_amount'    => 'nullable|numeric',
+            'rates' => ['required', 'array'],
+            'rates.*.id' => ['nullable', 'integer'],
+            'rates.*.category_id' => ['required', 'integer'],
+            'rates.*.interest_rate' => ['nullable', 'numeric', 'between:0,100'],
+            'rates.*.penalty' => ['nullable', 'numeric', 'between:0,100'],
+            'rates.*.min_amount' => ['nullable', 'numeric', 'min:0'],
+            'rates.*.max_amount' => ['nullable', 'numeric', 'min:0', 'gte:rates.*.min_amount'],
         ];
     }
 
