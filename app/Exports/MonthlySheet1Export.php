@@ -427,22 +427,6 @@ class MonthlySheet1Export implements FromView, WithEvents, WithColumnWidths, Sho
             ],
         ];
     }
-//    public function beforeSheet(BeforeSheet $event){
-//        $event->sheet->getDelegate()->getParent()->getDefaultStyle()->applyFromArray([
-//            'font' => [
-//                'name' => 'Times Armenian',
-//                'size' => 11,
-//            ],
-//        ]);
-////        $event->sheet->getDelegate()->getRowDimension(2)->setRowHeight(30);
-////        $event->sheet->getDelegate()->getRowDimension(6)->setRowHeight(50);
-////        $event->sheet->getDelegate()->getRowDimension(12)->setRowHeight(70);
-////        $event->sheet->getStyle('12')->getAlignment()->setWrapText(true);
-////        $event->sheet->getStyle('2')->getAlignment()->setWrapText(true);
-////        $event->sheet->getStyle('6')->getAlignment()->setWrapText(true);
-////        $event->sheet->getStyle('2')->getFont()->setSize(10);
-//
-//    }
     public static function beforeSheet(BeforeSheet $event)
     {
         $event->sheet->getDelegate()->getParent()->getDefaultStyle()->applyFromArray([

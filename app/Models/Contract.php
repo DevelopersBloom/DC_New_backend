@@ -23,6 +23,8 @@ class Contract extends Model
     const FULL_PAYMENT = 'Ամբողջական վճարում';
     const PARTIAL_PAYMENT ='Մասնակի վճարում';
     const PENALTY = 'Տուգանք';
+    const STATUS_INITIAL = 'initial';
+    const STATUS_COMPLETED = 'completed';
 
     protected $fillable=[
         'collected',

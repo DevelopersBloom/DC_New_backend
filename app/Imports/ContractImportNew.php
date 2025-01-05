@@ -2,7 +2,7 @@
 
 namespace App\Imports;
 
-use App\Models\Client;
+use App\Services\ClientService;
 use App\Services\ContractService;
 use App\Traits\ContractTrait;
 use App\Traits\OrderTrait;
@@ -14,12 +14,14 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 class ContractImportNew implements ToCollection
 {
     use ContractTrait, OrderTrait;
-//    protected $contractService;
+    protected $contractService;
+    protected $clientService;
 
-//    public function __construct(ContractService $contractService)
-//    {
-//        $this->contractService = $contractService;
-//    }
+    public function __construct(ClientService $clientService,ContractService $contractService)
+    {
+        $this->clientService = $clientService;
+        $this->contractService = $contractService;
+    }
     /**
      * Process the imported collection of contracts.
      *
@@ -76,7 +78,6 @@ class ContractImportNew implements ToCollection
                     $passport_issued = $password_given_check;
                 }
             }
-            // Prepare client data
             $client_data = [
                 'name' => $client_name,
                 'surname' => $client_surname,
@@ -94,7 +95,7 @@ class ContractImportNew implements ToCollection
             ];
 
             // Store or update client
-            $client = $this->clientsStoreOrUpdate($client_data);
+            $client = $this->clientService->storeOrUpdate($client_data);
             // Prepare contract data
             $contract_data = [
                 'num' => $row[1],
@@ -113,10 +114,7 @@ class ContractImportNew implements ToCollection
             $deadline_days = $row[22];
             $deadline = (clone $date)->addDays($deadline_days);
             // Create contract
-            $contract = $this->createContract($client->id, $contract_data, $deadline);
-            Log::info('Contract:', ['contract' => $contract->toArray()]);
-            Log::info('Client:', ['client' => $client->toArray()]);
-            // Determine payment type
+            $contract = $this->contractService->createContract($client->id, $contract_data, $deadline);
             $cash = $contract->provided_amount < 20000;
             // Prepare full client name
             $client_fullname = $client->name . ' ' . $client->surname;
@@ -126,7 +124,6 @@ class ContractImportNew implements ToCollection
 
             // Create order and history
             $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, 1,$date);
-
         }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Category;
 use App\Models\Contract;
+use App\Services\ContractService;
 use App\Traits\ContractTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -11,7 +12,12 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 
 class ItemImport implements ToCollection
 {
-    use ContractTrait;
+    protected $contractService;
+    public function __construct(ContractService $contractService)
+    {
+        $this->contractService = $contractService;
+    }
+
     /**
     * @param Collection $collection
     */
@@ -48,7 +54,7 @@ class ItemImport implements ToCollection
                 'issued_by' => $row[15],
                 'date_of_issuance' => $row[16],
             ];
-            $this->storeContractItem($contract->id, $data);
+            $this->contractService->storeContractItem($contract->id, $data);
         }
     }
 }

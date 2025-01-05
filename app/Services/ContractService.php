@@ -69,7 +69,7 @@ class   ContractService
                 $item->manufacture = $data['manufacture'] ?? null;
                 $item->power = $data['power'] ?? null;
                 $item->license_plate = $data['license_plate'] ?? null;
-                $item->color = $data['color']?? null;
+                $item->color = $data['color'] ?? null;
                 $item->registration = $data['registration_certificate'] ?? null;
                 $item->identification = $data['identification_number'] ?? null;
                 $item->ownership = $data['ownership_certificate']?? null;
@@ -80,7 +80,34 @@ class   ContractService
         $item->save();
         return $item;
     }
-    public function createContract(int $client_id, array $data,$deadline)
+    public function createContract(int $client_id, array $data, $deadline)
+    {
+        // Calculate the next contract number
+        $maxNum = Contract::max('num') ?? 0;
+        $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
+
+        $values = [
+            'client_id' => $client_id,
+            'num' => $data['num'] ?? $maxNum + 1, //if import from excel , use data['num']
+            'estimated_amount' => $data['estimated_amount'],
+            'provided_amount' => $data['provided_amount'],
+            'left' => $data['left'] ?? $data['provided_amount'],
+            'mother' => $data['mother'] ?? $data['provided_amount'], // Default to provided amount
+            'interest_rate' => $data['interest_rate'],
+            'penalty' => $data['penalty'],
+            'deadline' => $deadline,
+            'lump_rate' => $data['lump_rate'],
+            'description' => $data['description'] ?? null,
+            'status' => $status,
+            'closed_at' => $data['closed_at'] ?? null,
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
+        ];
+
+        // Create and return the contract
+        return Contract::create($values);
+    }
+
+    public function createContract1(int $client_id, array $data,$deadline)
     {
         $maxNum = Contract::max('num') ?? 0;
         $contract = new Contract();

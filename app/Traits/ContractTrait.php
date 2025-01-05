@@ -194,7 +194,7 @@ trait ContractTrait
     public function calculateCurrentPayment($contract): array
     {
         $penalty_amount = $this->countPenalty($contract->id);
-        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->created_at);
+        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->date);
 
         $current_date = Carbon::now();
         $days_passed = $contract_creation_date->diffInDays($current_date);
@@ -331,139 +331,6 @@ trait ContractTrait
                 'delay_days' => $difference ,
             ];
         }
-
-    }
-    public function clientsStoreOrUpdate(array $data)
-    {
-        $client = Client::where('passport_series', $data['passport_series'])
-            ->where('passport_issued', $data['passport_issued'])
-            ->first();
-        if ($client) {
-            $client->name = $data['name'];
-            $client->surname = $data['surname'];
-            $client->middle_name = $data['middle_name'] ?? null;
-            $client->passport_issued = $data['passport_issued'];
-            $client->date_of_birth = $data['date_of_birth'];
-            $client->email = $data['email'];
-            $client->phone = $data['phone'];
-            $client->additional_phone = $data['additional_phone'] ?? null;
-            $client->country = $data['country'];
-            $client->city = $data['city'];
-            $client->street = $data['street'];
-            $client->building = $data['building'] ?? null;
-            $client->bank_name = $data['bank_name'] ?? null;
-            $client->card_number = $data['card_number'] ?? null;
-            $client->account_number = $data['account_number'] ?? null;
-            $client->iban = $data['iban'] ?? null;
-            $client->save();
-        } else {
-            $client = new Client();
-            $client->name = $data['name'];
-            $client->surname = $data['surname'];
-            $client->middle_name = $data['middle_name'] ?? null;
-            $client->passport_series = $data['passport_series'];
-            $client->passport_issued = $data['passport_issued'];
-            $client->date_of_birth = $data['date_of_birth'];
-            $client->email = $data['email'];
-            $client->phone = $data['phone'];
-            $client->additional_phone = $data['additional_phone'] ?? null;
-            $client->country = $data['country'];
-            $client->city = $data['city'];
-            $client->street = $data['street'];
-            $client->building = $data['building'] ?? null;
-            $client->bank_name = $data['bank_name'] ?? null;
-            $client->card_number = $data['card_number'] ?? null;
-            $client->account_number = $data['account_number'] ?? null;
-            $client->iban = $data['iban'] ?? null;
-            $client->save();
-        }
-        return $client;
-    }
-    public function createContract(int $client_id, array $data,$deadline)
-    {
-        $values = [
-            'client_id' => $client_id,
-            'num' => $data['num'] ?? null,
-            'estimated_amount' => $data['estimated_amount'],
-            'provided_amount' => $data['provided_amount'],
-            'left' => $data['left'],
-            'mother' => $data['mother'],
-            'interest_rate' => $data['interest_rate'],
-            'penalty' => $data['penalty'],
-            'deadline' => $deadline,
-            'lump_rate' => $data['lump_rate'],
-            'description' => $data['description'] ?? null,
-            'status' => 'initial',
-            'closed_at' => $data['closed_at'] ?? null,
-            'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
-        ];
-         return Contract::create($values);
-    }
-    public function storeContractItem(int $contract_id,array $data)
-    {
-        $item = new Item();
-        $item->category_id = $data['category_id'];
-        $item->contract_id = $contract_id;
-        $category = Category::findOrFail($data['category_id']);
-        switch ($category->name)
-        {
-            case 'electronics':
-                $subcategory = Subcategory::firstOrCreate(
-                    [
-                        'name'        => $data['subcategory'],
-                        'category_id' => $data['category_id'],
-                    ]
-                );
-
-                if ($data['model']) {
-                    $subcategoryItem = SubcategoryItem::firstOrCreate([
-                        'subcategory_id' => $subcategory->id,
-                        'model' => $data['model'],
-                    ]);
-                    $item->model = $subcategoryItem->model;
-                }
-                $item->subcategory =  $subcategory->name;
-                break;
-            case 'gold':
-                $subcategory = Subcategory::firstOrCreate(
-                    [
-                        'name' => $data['subcategory'],
-                        'category_id' => $data['category_id']
-                    ]
-                );
-                $item->subcategory =  $subcategory->name;
-                $item->weight = $data['weight'] ?? null;
-                $item->clear_weight = $data['clear_weight'] ?? null;
-                $item->hallmark = $data['hallmark'] ?? null;
-                break;
-            case 'car':
-                $subcategory = Subcategory::firstOrCreate(
-                    [
-                        'name'        => $data['model'],
-                        'category_id' => $data['category_id'],
-                    ]
-                );
-                if ($data['car_make']) {
-                    $subcategoryItem = SubcategoryItem::firstOrCreate([
-                        'subcategory_id' => $subcategory->id,
-                        'model' => $data['car_make'],
-                    ]);
-                    $item->car_make = $subcategoryItem->model;
-                }
-                $item->model = $subcategory->name ?? null;
-                $item->manufacture = $data['manufacture'] ?? null;
-                $item->power = $data['power'] ?? null;
-                $item->license_plate = $data['license_plate'] ?? null;
-                $item->color = $data['color']?? null;
-                $item->registration = $data['registration_certificate'] ?? null;
-                $item->identification = $data['identification_number'] ?? null;
-                $item->ownership = $data['ownership_certificate']?? null;
-                $item->issued_by = $data['issued_by']?? null;
-                $item->date_of_issuance = $data['date_of_issuance'] ?? null;
-                break;
-        }
-        $item->save();
-        return $item;
     }
     public function createImportPayment(Contract $contract)
     {
