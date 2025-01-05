@@ -98,6 +98,7 @@ class ContractImportNew implements ToCollection
             $client = $this->clientService->storeOrUpdate($client_data);
             // Prepare contract data
             $contract_data = [
+                'date' => $date,
                 'num' => $row[1],
                 'estimated_amount' => $row[17],
                 'provided_amount' => $row[18],

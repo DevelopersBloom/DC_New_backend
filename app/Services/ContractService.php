@@ -87,6 +87,7 @@ class   ContractService
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
 
         $values = [
+            'date' => $data['date'] ?? now()->toDateString(),
             'client_id' => $client_id,
             'num' => $data['num'] ?? $maxNum + 1, //if import from excel , use data['num']
             'estimated_amount' => $data['estimated_amount'],
