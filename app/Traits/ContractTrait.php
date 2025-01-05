@@ -194,7 +194,7 @@ trait ContractTrait
     public function calculateCurrentPayment($contract): array
     {
         $penalty_amount = $this->countPenalty($contract->id);
-        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->date);
+        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->created_at);
 
         $current_date = Carbon::now();
         $days_passed = $contract_creation_date->diffInDays($current_date);
