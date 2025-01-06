@@ -38,7 +38,9 @@ class ContractControllerNew extends Controller
         $filters = $request->only([
             'status', 'date_from', 'date_to', 'num',
             'provided_amount_from', 'provided_amount_to',
-            'estimated_amount_from', 'estimated_amount_to'
+            'estimated_amount_from', 'estimated_amount_to',
+            'name', 'surname', 'patronymic','passport'
+
         ]);
 
         $contracts = $this->contractService->getContracts($filters);

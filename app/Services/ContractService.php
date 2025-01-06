@@ -32,7 +32,8 @@ class   ContractService
         $query->filterStatus($filters['status'] ?? 'all')
             ->filterByDate('date', $filters['date_from'] ?? null, $filters['date_to'] ?? null)
             ->filterByRange('provided_amount', $filters['provided_amount_from'] ?? null, $filters['provided_amount_to'] ?? null)
-            ->filterByRange('estimated_amount', $filters['estimated_amount_from'] ?? null, $filters['estimated_amount_to'] ?? null);
+            ->filterByRange('estimated_amount', $filters['estimated_amount_from'] ?? null, $filters['estimated_amount_to'] ?? null)
+            ->filterByClient($filters);
 
         if (!empty($filters['num'])) {
             $query->where('num', $filters['num']);

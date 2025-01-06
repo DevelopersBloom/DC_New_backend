@@ -159,4 +159,32 @@ class Contract extends Model
         }
         return $query;
     }
+    public function scopeFilterByClient($query, $filters)
+    {
+        if (!empty($filters['name'])) {
+            $query->whereHas('client', function ($q) use ($filters) {
+                $q->where('name', 'LIKE', '%' . $filters['name'] . '%');
+            });
+        }
+
+        if (!empty($filters['surname'])) {
+            $query->whereHas('client', function ($q) use ($filters) {
+                $q->where('surname', 'LIKE', '%' . $filters['surname'] . '%');
+            });
+        }
+        if (!empty($filters['patronymic'])) {
+            $query->whereHas('client', function ($q) use ($filters) {
+                $q->where('middle_name', 'LIKE', '%' . $filters['patronymic'] . '%');
+            });
+        }
+
+        if (!empty($filters['passport'])) {
+            $query->whereHas('client', function ($q) use ($filters) {
+                $q->where('passport_series', 'LIKE', '%' . $filters['passport'] . '%');
+            });
+        }
+
+        return $query;
+    }
+
 }
