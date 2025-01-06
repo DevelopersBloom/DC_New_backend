@@ -10,10 +10,36 @@ use App\Models\Payment;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use function Symfony\Component\String\b;
 
 class   ContractService
 {
+    public function getContracts($filters)
+    {
+        $query = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
+            ->with([
+                'payments' => function ($payment) {
+                    $payment->orderBy('date');
+                },
+                'client' => function ($query) {
+                    $query->withCount('contracts');
+                }
+            ])
+            ->orderBy('created_at', 'DESC');
+
+        // Apply filters
+        $query->filterStatus($filters['status'] ?? 'all')
+            ->filterByDate('date', $filters['date_from'] ?? null, $filters['date_to'] ?? null)
+            ->filterByRange('provided_amount', $filters['provided_amount_from'] ?? null, $filters['provided_amount_to'] ?? null)
+            ->filterByRange('estimated_amount', $filters['estimated_amount_from'] ?? null, $filters['estimated_amount_to'] ?? null);
+
+        if (!empty($filters['num'])) {
+            $query->where('num', $filters['num']);
+        }
+
+        return $query->paginate(10);
+    }
     public function storeContractItem(int $contract_id,array $data)
     {
         $item = new Item();

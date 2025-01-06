@@ -7,7 +7,6 @@ use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
 use App\Models\Contract;
-use App\Models\Deal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Services\ClientService;
@@ -36,61 +35,17 @@ class ContractControllerNew extends Controller
     }
     public function get(Request $request): JsonResponse
     {
-        $status = $request->input('status', 'all');
-        $dateFrom = $request->input('date_from');
-        $dateTo = $request->input('date_to');
-        $num = $request->input('num');
-        $query = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
-            ->orderBy('created_at', 'DESC')
-            ->with(['payments' => function($payment) {
-                $payment->orderBy('date');
-            }, 'client' => function($query) {
-                $query->withCount('contracts');
-            }]);
-        // Apply status-based filters
-        switch ($status) {
-            case 'initial':
-                $query->where('status', 'initial');
-                break;
-            case 'completed':
-                $query->where('status', 'completed');
-                break;
-            case 'executed':
-                $query->where('status', 'executed');
-                break;
-            case 'overdue':
-                $query->whereDate('deadline', '<=', today());
-                break;
-            case 'todays':
-                $query->whereHas('payments', function($q) {
-                    $q->whereDate('date', today());
-                });
-                break;
-        }
-        if ($num) {
-            $query->where('num', $num);
-        }
+        $filters = $request->only([
+            'status', 'date_from', 'date_to', 'num',
+            'provided_amount_from', 'provided_amount_to',
+            'estimated_amount_from', 'estimated_amount_to'
+        ]);
 
-        if ($dateFrom) {
-            $query->whereDate('created_at', '>=', $dateFrom);
-        }
-        if ($dateTo) {
-            $query->whereDate('created_at', '<=', $dateTo);
-        }
-        // Paginate and process the additional fields
-        $contracts = $query->paginate(10);
-        foreach ($contracts as $contract) {
-            if ($contract->category && $contract->evaluator) {
-                $contract->category_title = $contract->category->title;
-                $contract->evaluator_title = $contract->evaluator->full_name;
-            }
-        }
-
-        $totalContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)->count();
+        $contracts = $this->contractService->getContracts($filters);
 
         return response()->json([
             'contracts' => $contracts,
-            'total' => $totalContracts
+            'total' => $contracts->total()
         ]);
     }
     public function show($id): ContractDetailResource

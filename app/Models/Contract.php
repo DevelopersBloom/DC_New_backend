@@ -118,4 +118,45 @@ class Contract extends Model
     {
         return $this->hasMany(Note::class);
     }
+    public function scopeFilterStatus($query, $status)
+    {
+        switch ($status) {
+            case 'initial':
+                return $query->where('status', 'initial');
+            case 'completed':
+                return $query->where('status', 'completed');
+            case 'executed':
+                return $query->where('status', 'executed');
+            case 'overdue':
+                return $query->whereDate('deadline', '<=', today());
+            case 'todays':
+                return $query->whereHas('payments', function ($q) {
+                    $q->whereDate('date', today());
+                });
+            default:
+                return $query;
+        }
+    }
+
+    public function scopeFilterByRange($query, $field, $from, $to)
+    {
+        if ($from) {
+            $query->where($field, '>=', $from);
+        }
+        if ($to) {
+            $query->where($field, '<=', $to);
+        }
+        return $query;
+    }
+
+    public function scopeFilterByDate($query, $field, $from, $to)
+    {
+        if ($from) {
+            $query->whereDate($field, '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate($field, '<=', $to);
+        }
+        return $query;
+    }
 }
