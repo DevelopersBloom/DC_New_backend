@@ -20,6 +20,7 @@ class ContractDetailResource extends JsonResource
         return [
             'contract' => [
                 'id'               => $this->id,
+                'num'              => $this->num,
                 'estimated_amount' => $this->estimated_amount,
                 'provided_amount'  => $this->provided_amount,
                 'interest_rate'    => $this->interest_rate,

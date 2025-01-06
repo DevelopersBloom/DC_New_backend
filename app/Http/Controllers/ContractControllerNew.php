@@ -224,45 +224,4 @@ class ContractControllerNew extends Controller
         }
     }
 
-
-    public function createDeal1($amount,$type,$contract_id,$order_id = null,$cash = true,$purpose = null,$receiver = null,$source = null){
-        if($type === 'in'){
-            if($cash){
-                auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox + $amount;
-            }else{
-                auth()->user()->pawnshop->bank_cashbox = auth()->user()->pawnshop->bank_cashbox + $amount;
-            }
-        }else{
-            if($cash){
-                auth()->user()->pawnshop->cashbox = auth()->user()->pawnshop->cashbox - $amount;
-            }else{
-                auth()->user()->pawnshop->bank_cashbox = auth()->user()->pawnshop->bank_cashbox - $amount;
-            }
-
-        }
-        if($amount < 0){
-            $type = $type === 'in' ? 'out' : 'in';
-            $amount = -$amount;
-        }
-
-        auth()->user()->pawnshop->save();
-        Deal::create([
-            'type' => $type,
-            'amount' => $amount,
-            'date' => \Carbon\Carbon::now()->format('Y.m.d'),
-            'pawnshop_id' => auth()->user()->pawnshop_id,
-            'contract_id' => $contract_id,
-            'order_id' => $order_id,
-            'cashbox' => auth()->user()->pawnshop->cashbox,
-            'bank_cashbox' => auth()->user()->pawnshop->bank_cashbox,
-            'worth' => auth()->user()->pawnshop->worth,
-            'given' => auth()->user()->pawnshop->given,
-            'purpose' => $purpose,
-//            'cash' => $cash,
-            'receiver' => $receiver,
-            'source' => $source,
-            'created_by' => auth()->user()->id,
-        ]);
-    }
-
 }
