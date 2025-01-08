@@ -15,6 +15,7 @@ use App\Http\Controllers\ContractControllerNew;
 use App\Http\Controllers\DealController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\AdminControllerNew;
+use App\Http\Controllers\UserController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -108,6 +109,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search', [ClientControllerNew::class, 'search']);
+    Route::get('/users/get-fullname',[UserController::class, 'getClientsFullName']);
+
     Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::group(['prefix' => 'contracts'], function () {
         Route::get('/', [ContractControllerNew::class, 'get']);

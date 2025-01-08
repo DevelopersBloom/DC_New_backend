@@ -39,13 +39,11 @@ class MonthlySheet1Export implements FromView, WithEvents, WithColumnWidths, Sho
         $lastDayOfMonth = Carbon::create($year,$month,1)->endOfMonth()->format('d/m/Y');
         $pawnshop = Pawnshop::where('id',$this->pawnshop_id)->first();
         $lastDay_of_current_date = Carbon::createFromDate($year, $month)->endOfMonth()->toDateString();
-        $lastDay_of_previous_date = Carbon::createFromDate($year,$month)->endOfMonth()->toDateString();
-
-        $current_date = Carbon::createFromFormat('d.m.Y', $lastDay_of_current_date . '.' . $month . '.' . $year);
-        $previous_date = Carbon::createFromFormat('d.m.Y', $lastDay_of_previous_date . '.' . $month . '.' . $year);
-
+        $lastDay_of_previous_date = Carbon::createFromDate($year,$month)->subMonthNoOverflow()->endOfMonth()->toDateString();
+        $current_date = Carbon::createFromFormat('Y-m-d', $lastDay_of_current_date);
+        $previous_date = Carbon::createFromFormat('Y-m-d', $lastDay_of_previous_date);
         $current_contracts = Contract::where('pawnshop_id', $this->pawnshop_id)
-            ->whereDate('created_at', '<=', $current_date)
+            ->whereDate('date', '<=', $current_date)
             ->where(function ($query) use ($current_date) {
                 $query->where('status', 'initial')
                     ->orWhere(function ($query1) use ($current_date) {
@@ -55,7 +53,7 @@ class MonthlySheet1Export implements FromView, WithEvents, WithColumnWidths, Sho
                     });
             });
         $previous_contracts = Contract::where('pawnshop_id', $this->pawnshop_id)
-            ->whereDate('created_at', '<=', $previous_date)
+            ->whereDate('date', '<=', $previous_date)
             ->where(function ($query) use ($previous_date) {
                 $query->where('status', 'initial')
                     ->orWhere(function ($query1) use ($previous_date) {
@@ -66,13 +64,25 @@ class MonthlySheet1Export implements FromView, WithEvents, WithColumnWidths, Sho
             });
         $current_worth = $current_contracts->sum('estimated_amount');
         $current_given = $current_contracts->sum('provided_amount');
+        $previous_worth = $previous_contracts->sum('estimated_amount');
+        $previous_given = $previous_contracts->sum('provided_amount');
         $contract_ids = $current_contracts->get()->pluck('id');
+        $interest_amount_current_month = Payment::where('type', 'regular')
+            ->whereIn('contract_id', $contract_ids)
+            ->where('date', '<=', $current_date)
+            ->sum('paid');
+        $interest_amount_previous_month = Payment::where('type', 'regular')
+            ->whereIn('contract_id', $contract_ids)
+            ->where('date', '<=', $previous_date)
+            ->sum('paid');
         $partial_payments_amount = Payment::where('type','partial')->whereIn('contract_id',$contract_ids)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$current_date])->sum('amount');
         $current_given -= $partial_payments_amount;
         $cashbox_sum = 0;
         $insurance = 0;
         $funds = 0;
-        $deal = Deal::whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$current_date])->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')->first();
+        $deal = Deal::whereRaw("STR_TO_DATE(date, '%Y-%m-%d') <= ?", [$current_date])
+            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")
+            ->orderBy('id','DESC')->first();
         if($deal){
             $cashbox_sum = $deal->cashbox + $deal->bank_cashbox;
             $insurance = $deal->insurance;
@@ -87,29 +97,29 @@ class MonthlySheet1Export implements FromView, WithEvents, WithColumnWidths, Sho
                 'index' => '1',
                 'strong' => false,
                 'title' => 'Տրամադրված վարկերի ընդհանուր,ծավալ,այդ թվում՝',
-                'v1' => '',
-                'v2' => ''
+                'v1' => $previous_given,
+                'v2' => $current_given
             ],
             [
                 'index' => '1.1',
                 'strong' => false,
                 'title' => 'Երկարաձգված վարկերի ընդհանուր ծավալ',
-                'v1' => '',
-                'v2' => ''
+                'v1' => '?',
+                'v2' => '?'
             ],
             [
                 'index' => '1.2',
                 'strong' => false,
                 'title' => 'Ժամկետանց վարկերի ընդհանուր ծավալը',
-                'v1' => '',
-                'v2' => ''
+                'v1' => '?',
+                'v2' => '?'
             ],
             [
                 'index' => '2',
                 'strong' => false,
                 'title' => 'Տրամադրված վարկերի դիմաց հաշվեգրված տոկոսներ,այդ թվում՝',
-                'v1' => '',
-                'v2' => ''
+                'v1' => $interest_amount_previous_month,
+                'v2' => $interest_amount_current_month,
             ],
             [
                 'index' => '3',
