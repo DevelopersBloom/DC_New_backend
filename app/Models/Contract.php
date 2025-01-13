@@ -25,6 +25,7 @@ class Contract extends Model
     const PENALTY = 'Տուգանք';
     const STATUS_INITIAL = 'initial';
     const STATUS_COMPLETED = 'completed';
+    const STATUS_TAKEN  = 'taken';
 
     protected $fillable=[
         'collected',
@@ -34,6 +35,7 @@ class Contract extends Model
         'one_time_payment',
         'executed',
         'deadline',
+        'deadline_days',
         'status',
         'date',
         'close_date',

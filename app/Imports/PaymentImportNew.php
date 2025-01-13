@@ -89,7 +89,7 @@ class PaymentImportNew implements ToCollection
                         $this->createDeal($amount+$penalty,
                             $amount,null,$penalty,
                             null, 'in', $contract->id,$contract->client->id,
-                            $new_order->id, $cash,null,$purpose,'payment',null,$payment->id,null,1);
+                            $new_order->id, $cash,null,$purpose,'payment',null,$payment->id,null,1,$date);
                     } elseif($status == 'Չվճարված') {
                         $from_date = clone $date;
                         $from_date = $from_date->subMonth()->format('d.m.Y');

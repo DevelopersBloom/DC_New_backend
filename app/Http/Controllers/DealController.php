@@ -322,7 +322,7 @@ DealController extends Controller
             'pawnshop_id' => auth()->user()->pawnshop_id,
             'order' => $order_id,
             'amount' => $amount,
-            'date' => Carbon::now()->format('d.m.Y'),
+            'date' => Carbon::now()->format('Y-m-d'),
             'purpose' => $purpose,
             'receiver' => $receiver
         ]);

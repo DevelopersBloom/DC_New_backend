@@ -29,8 +29,9 @@ class PawnshopSeeder extends Seeder
         $pawnshop->card_account_number = '1570073548790300';
         $pawnshop->worth = '0';
         $pawnshop->given = '0';
-        $pawnshop->cashbox = '5000000';
-        $pawnshop->bank_cashbox = '2000000';
+        $pawnshop->cashbox = '500000000';
+        $pawnshop->bank_cashbox = '200000000';
+        $pawnshop->insurance = '50000000';
         $pawnshop->order_in = 1;
         $pawnshop->order_out = 1;
         $pawnshop->bank_order_in = 1;
@@ -50,8 +51,9 @@ class PawnshopSeeder extends Seeder
         $pawnshop->card_account_number = '1570073548790400';
         $pawnshop->worth = '0';
         $pawnshop->given = '0';
-        $pawnshop->cashbox = '5000000';
-        $pawnshop->bank_cashbox = '2000000';
+        $pawnshop->cashbox = '500000000';
+        $pawnshop->bank_cashbox = '200000000';
+        $pawnshop->insurance = '50000000';
         $pawnshop->order_in = 1;
         $pawnshop->order_out = 1;
         $pawnshop->bank_order_in = 1;

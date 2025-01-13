@@ -96,6 +96,8 @@ class ContractImportNew implements ToCollection
 
             // Store or update client
             $client = $this->clientService->storeOrUpdate($client_data);
+            $deadline_days = $row[22];
+
             // Prepare contract data
             $contract_data = [
                 'date' => $date,
@@ -108,11 +110,11 @@ class ContractImportNew implements ToCollection
                 'description' => $row[24] ?? null,
                 'pawnshop_id' => 1,
                 'mother' => $row[17],
-                'left' => $row[17]
+                'left' => $row[17],
+                'deadline' => $deadline_days
             ];
 
             // Calculate contract deadline
-            $deadline_days = $row[22];
             $deadline = (clone $date)->addDays($deadline_days);
             // Create contract
             $contract = $this->contractService->createContract($client->id, $contract_data, $deadline);

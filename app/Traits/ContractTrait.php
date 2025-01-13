@@ -67,7 +67,7 @@ trait ContractTrait
         ]);
         if ($historyTypeName !== 'opening') {
             // Create a deal for the order
-            $this->createDeal($amount,null,null,null,null, $type, $contract->id,$client_id, $order_id, $cash,null, $purpose,'contract',$history->id,null,null,$pawnshop_id);
+            $this->createDeal($amount,null,null,null,null, $type, $contract->id,$client_id, $order_id, $cash,null, $purpose,'contract',$history->id,null,null,$pawnshop_id,$date);
         }
     }
 
@@ -87,7 +87,7 @@ trait ContractTrait
         return $contract;
     }
 
-    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$client_id,$order_id = null,$cash = true,$receiver = null,$purpose = null,$filter_type = null,$history_id = null,$payment_id = null,$source = null,$pawnshop_id = null)
+    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$client_id,$order_id = null,$cash = true,$receiver = null,$purpose = null,$filter_type = null,$history_id = null,$payment_id = null,$source = null,$pawnshop_id = null,$date=null)
     {
         $pawnshop = $pawnshop_id ? Pawnshop::find($pawnshop_id) : auth()->user()->pawnshop;
         if($type === 'in'){
@@ -116,7 +116,7 @@ trait ContractTrait
             'delay_days'      => $delay_days,
             'penalty'         => $penalty,
             'discount'        => $discount,
-            'date'            => Carbon::now()->format('d.m.Y'),
+            'date'            => $date ?? Carbon::now()->format('Y-m-d'),
             'pawnshop_id'     => $pawnshop->id,
             'contract_id'     => $contract_id,
             'order_id'        => $order_id,

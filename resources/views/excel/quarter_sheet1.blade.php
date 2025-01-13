@@ -63,7 +63,7 @@
         <td></td>
         <td></td>
         <td>Ամսաթիվը</td>
-        <td style="border-bottom: 1px dotted #000000"></td>
+        <td style="border-bottom: 1px dotted #000000">{{$date}}</td>
         <td></td>
         <td></td>
         <td></td>

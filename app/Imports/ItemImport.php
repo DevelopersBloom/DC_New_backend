@@ -54,6 +54,8 @@ class ItemImport implements ToCollection
                 'issued_by' => $row[15],
                 'date_of_issuance' => $row[16],
             ];
+            $contract->category_id = $category->id;
+            $contract->save();
             $this->contractService->storeContractItem($contract->id, $data);
         }
     }

@@ -16,6 +16,7 @@ use App\Http\Controllers\DealController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\AdminControllerNew;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ExcelController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -142,6 +143,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::post('/add-cost', [DealController::class, 'addCostNDM']);
     Route::post('/make-expense', [DealController::class, 'makeExpense']);
     Route::post('/add-cash-box', [DealController::class, 'addCashBox']);
+    Route::post('/download-monthly-export', [ExcelController::class, 'downloadMonthlyExport']);
+    Route::post('/download-quarter-export', [ExcelController::class, 'downloadQuarterExport']);
+
 });
 
 

@@ -20,7 +20,7 @@ class MonthlyExport implements WithMultipleSheets
     {
         return [
             'Sheet1' => new MonthlySheet1Export($this->year,$this->month,$this->pawnshop_id),
-            'Sheet2' => new MonthlySheet2Export(),
+            'Sheet2' => new MonthlySheet2Export($this->year,$this->month,$this->pawnshop_id),
             'Sheet3' => new MonthlySheet3Export($this->year, $this->month, $this->pawnshop_id),
         ];
     }

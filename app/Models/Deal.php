@@ -14,6 +14,7 @@ class Deal extends Model
     const IN_DEAL = 'in';
     const OUT_DEAL = 'out';
     const EXPENSE_DEAL = 'expense';
+    const TAKEN_PURPOSE = 'Իրացված';
 
     protected $fillable = [
         'type',
@@ -41,7 +42,8 @@ class Deal extends Model
         'updated_by',
         'filter_type',
         'payment_id',
-        'history_id'
+        'history_id',
+        'category_id'
     ];
     protected $casts = [
         'cash' => 'boolean'

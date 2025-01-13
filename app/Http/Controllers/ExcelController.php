@@ -19,8 +19,12 @@ class ExcelController extends Controller
         $file_name = $lastDayOfMonth.' ամսական.xlsx';
         return Excel::download(new MonthlyExport($year,$month,$pawnshop_id), $file_name);
     }
-    public function downloadQuarterExport(){
-        $file_name = 'test.xlsx';
-        return Excel::download(new QuarterExport(), $file_name);
+    public function downloadQuarterExport(Request $request){
+        $year = $request->year;
+        $month = $request->month;
+        $pawnshop_id = $request->pawnshop_id;
+        $lastDayOfMonth = Carbon::create($year,$month,1)->endOfMonth()->format('d.m.Y');
+        $file_name = $lastDayOfMonth.' եռամսյակ.xlsx';
+        return Excel::download(new QuarterExport($year,$month,$pawnshop_id), $file_name);
     }
 }

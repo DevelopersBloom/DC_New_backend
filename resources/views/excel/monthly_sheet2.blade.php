@@ -92,10 +92,10 @@
     <tr>
         <td></td>
         <td colspan="2">Հանձնման ամսաթիվը</td>
-        <td style="border-bottom: 1px dotted #000000"></td>
+        <td style="border-bottom: 1px dotted #000000">{{$date_given}}</td>
         <td></td>
         <td colspan="2">Գրավատան ղեկավար</td>
-        <td style="border-bottom: 1px dotted #000000"></td>
+        <td style="border-bottom: 1px dotted #000000">{{$representative}}</td>
     </tr>
     <tr>
         <td></td>

@@ -41,12 +41,13 @@ return new class extends Migration
             $table->string('filter_type')->nullable();
             $table->unsignedBigInteger('payment_id')->nullable();
             $table->unsignedBigInteger('history_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
 
             $table->foreign('history_id')->references('id')->on('histories')->onDelete('cascade');
             $table->foreign('payment_id')->references('id')->on('payments');
             $table->foreign('contract_id')->references('id')->on('contracts')->onDelete('cascade');
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
-
+            $table->foreign('category_id')->references('id')->on('categories')->nullOnDelete();
             $table->softDeletes();
             $table->timestamps();
         });

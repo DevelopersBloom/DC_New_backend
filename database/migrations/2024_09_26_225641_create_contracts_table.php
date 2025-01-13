@@ -23,6 +23,7 @@ return new class extends Migration
             $table->decimal('penalty', 15, 2)->nullable(); // Adjust precision and scale for decimal
             $table->decimal('discount', 15, 2)->nullable(); // Adjust precision and scale for decimal
             $table->date('deadline');
+            $table->string('deadline_days')->nullable();
             $table->decimal('lump_rate', 15, 2)->nullable(); // Adjust precision and scale for decimal
             $table->text('description')->nullable();
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');

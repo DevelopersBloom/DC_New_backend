@@ -26,7 +26,7 @@ class   ContractService
                     $query->withCount('contracts');
                 }
             ])
-            ->orderBy('created_at', 'DESC');
+            ->orderBy('num', 'DESC');
 
         // Apply filters
         $query->filterStatus($filters['status'] ?? 'all')
@@ -124,6 +124,7 @@ class   ContractService
             'interest_rate' => $data['interest_rate'],
             'penalty' => $data['penalty'],
             'deadline' => $deadline,
+            'deadline_days' => $data['deadline'],
             'lump_rate' => $data['lump_rate'],
             'description' => $data['description'] ?? null,
             'status' => $status,

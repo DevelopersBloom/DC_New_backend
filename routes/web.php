@@ -31,8 +31,8 @@ Route::get('/api/download-contract/{id}', [FileController::class, 'downloadContr
 Route::get('/api/download-bond/{id}', [FileController::class, 'downloadBond']);
 Route::get('/api/download-order/{id}', [FileController::class, 'downloadOrder']);
 
-Route::post('/api/download-monthly-export', [ExcelController::class, 'downloadMonthlyExport']);
-Route::post('/api/download-quarter-export', [ExcelController::class, 'downloadQuarterExport']);
+//Route::post('/api/download-monthly-export', [ExcelController::class, 'downloadMonthlyExport']);
+//Route::post('/api/download-quarter-export', [ExcelController::class, 'downloadQuarterExport']);
 Route::group(['middleware' => 'jwt.auth', 'prefix' => 'api'], function () {
     Route::post('/create-contract', [ContractController::class, 'create']);
     Route::post('/update-contract', [ContractController::class, 'update']);

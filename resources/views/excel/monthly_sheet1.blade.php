@@ -58,7 +58,7 @@
         <td></td>
         <td></td>
         <td>Ամսաիվը</td>
-        <td style="border-bottom: 1px dotted #000000">10/1010/10</td>
+        <td style="border-bottom: 1px dotted #000000">{{$date}}</td>
     </tr>
     <tr></tr>
     <tr></tr>
@@ -93,10 +93,10 @@
     <tr>
         <td></td>
         <td colspan="2">Հանձնման ամսաթիվը</td>
-        <td style="border-bottom: 1px dotted #000000">given</td>
+        <td style="border-bottom: 1px dotted #000000">{{$date_given}}</td>
         <td></td>
         <td colspan="2">Գրավատան ղեկավար</td>
-        <td style="border-bottom: 1px dotted #000000">representative</td>
+        <td style="border-bottom: 1px dotted #000000">{{$representative}}</td>
     </tr>
     <tr>
         <td></td>

@@ -48,6 +48,7 @@ class ContractDetailResource extends JsonResource
                 return [
                     'id'      => $payment->id,
                     'amount'  => $payment->amount,
+                    'paid'    => $payment->paid,
                     'penalty' => $payment->penalty,
                     'date'    => $payment->date,
                     'status'  => $payment->status,

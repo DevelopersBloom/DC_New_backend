@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
 use App\Models\User;
@@ -41,17 +42,16 @@ class MonthlySheet3Export implements FromView, WithEvents, WithColumnWidths, Sho
         $pawnshop = Pawnshop::where('id',$this->pawnshop_id)->first();
         for($i = 1; $i <= $days; $i++){
             $day = $i < 10 ? '0'.$i : $i;
-//            $date = Carbon::parse($year.'-'.$month.'-'.$day);
-            $date = Carbon::createFromFormat('d.m.Y', $day . '.' . $month . '.' . $year);
+            $date = Carbon::parse($year.'-'.$month.'-'.$day);
 
             $contracts_query = Contract::where('pawnshop_id', $this->pawnshop_id)
-                ->whereDate('created_at', '<=', $date)
+                ->whereDate('date', '<=', $date)
                 ->where(function ($query) use ($date) {
                     $query->where('status', 'initial')
                         ->orWhere(function ($query1) use ($date) {
                             $query1->whereIn('status', ['completed', 'executed'])
                                 ->whereNotNull('deleted_at')
-                                ->whereDate('closed_at','>',$date);
+                                ->whereDate('date','>',$date);
                         });
                 });
 
@@ -60,10 +60,17 @@ class MonthlySheet3Export implements FromView, WithEvents, WithColumnWidths, Sho
             $contract_ids = $contracts_query->get()->pluck('id');
             $partial_payments_amount = Payment::where('type','partial')->whereIn('contract_id',$contract_ids)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])->sum('amount');
             $given -= $partial_payments_amount;
+
             $cashbox_sum = 0;
             $insurance = 0;
             $funds = 0;
-            $deal = Deal::whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')->first();
+            $deal = Deal::whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])
+                ->orderByRaw("STR_TO_DATE(date, '%Y-%m-%d') DESC")
+                ->orderBy('id','DESC')->first();
+            $ndm = Deal::whereRaw("STR_TO_DATE(date, '%Y-%m-%d') <= ?", [$date])
+                ->where('purpose', Order::NDM_PURPOSE)
+                ->selectRaw("SUM(CASE WHEN type = 'in' THEN amount WHEN type = 'cost_out' THEN -amount ELSE 0 END) as total")
+                ->value('total');
             if($deal){
                 $cashbox_sum = $deal->cashbox + $deal->bank_cashbox;
                 $insurance = $deal->insurance;
@@ -77,7 +84,7 @@ class MonthlySheet3Export implements FromView, WithEvents, WithColumnWidths, Sho
                 'worth' => intval(round($worth/1000)),
                 'given' => intval(round($given/1000)),
                 'insurance' => intval(round($insurance/1000)),
-                'funds' => intval(round($funds/1000)),
+                'funds' => intval(round($ndm/1000)),
                 'cashbox_sum' => intval(round($cashbox_sum/1000))
             ];
         }
