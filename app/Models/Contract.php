@@ -123,13 +123,13 @@ class Contract extends Model
     public function scopeFilterStatus($query, $status)
     {
         switch ($status) {
-            case 'initial':
+            case 'Ակտիվ':
                 return $query->where('status', 'initial');
-            case 'completed':
+            case 'Փակված':
                 return $query->where('status', 'completed');
-            case 'executed':
+                case 'Իրացված':
                 return $query->where('status', 'executed');
-            case 'overdue':
+            case 'Ժամկետնանց':
                 return $query->whereDate('deadline', '<=', today());
             case 'todays':
                 return $query->whereHas('payments', function ($q) {
@@ -179,7 +179,6 @@ class Contract extends Model
                 $q->where('middle_name', 'LIKE', '%' . $filters['patronymic'] . '%');
             });
         }
-
         if (!empty($filters['passport'])) {
             $query->whereHas('client', function ($q) use ($filters) {
                 $q->where('passport_series', 'LIKE', '%' . $filters['passport'] . '%');
@@ -188,5 +187,41 @@ class Contract extends Model
 
         return $query;
     }
+    public function scopeFilterByContractItem($query, $type = null, $subspecies = null, $model = null)
+    {
+        if (!empty($type)) {
+            $query->whereHas('category', function ($q) use ($type) {
+                $q->where('title', $type);
+            });
+        }
 
+        if (!empty($subspecies)) {
+            $query->whereHas('items', function ($q) use ($subspecies) {
+                $q->where('subcategory', 'LIKE', '%' . $subspecies . '%');
+            });
+        }
+
+        if (!empty($model)) {
+            $query->whereHas('items', function ($q) use ($model) {
+                $q->where('model', 'LIKE', '%' . $model . '%');
+            });
+        }
+
+        return $query;
+    }
+
+    public function scopeFilterByDelayDays($query, $delayDays)
+    {
+        if ($delayDays) {
+            return $query->whereHas('payments', function ($q) use ($delayDays) {
+                $q->where('status', 'initial')
+                    ->whereRaw("
+                DATEDIFF(
+                    CURDATE(),
+                    STR_TO_DATE(`date`, '%Y-%m-%d')
+                ) >= ?", [$delayDays]);
+            });
+        }
+        return $query;
+    }
 }

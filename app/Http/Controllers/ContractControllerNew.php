@@ -39,10 +39,10 @@ class ContractControllerNew extends Controller
             'status', 'date_from', 'date_to', 'num',
             'provided_amount_from', 'provided_amount_to',
             'estimated_amount_from', 'estimated_amount_to',
-            'name', 'surname', 'patronymic','passport'
+            'name', 'surname', 'patronymic','passport','phone',
+            'type','subspecies','model','delay'
 
         ]);
-
         $contracts = $this->contractService->getContracts($filters);
 
         return response()->json([

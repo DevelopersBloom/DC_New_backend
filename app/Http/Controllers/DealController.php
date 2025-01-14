@@ -258,12 +258,19 @@ DealController extends Controller
 //    }
     public function addCashbox(Request $request)
     {
+        $cash = $request->cash; //$cash=true -> դրամարկղի համալրում։անկանխիկ հաշվի համալրում
         $name = $request->name;
         $amount = $request->amount;
         $receiver = $request->receiver;
         $save = $request->save_template;
-        $this->createCashboxOrder($name,$amount, 'out', $receiver,'անկանխիկ հաշվի համալրում');
-        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,'հաշվի համալրում');
+        $purpose_out = "Դրամարկղ";
+        $purpose_in = "Անկանխիկ հաշվիվ";
+        if ($cash) {
+            $purpose_out = "Անկանխիկ հաշվիվ";
+            $purpose_in = "Դրամարկղ";
+        }
+        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
+        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
 
         return response()->json(["success" => "success"]);
     }
@@ -301,11 +308,11 @@ DealController extends Controller
         return response()->json(['success' => 'success']);
     }
 
-    private function createCashboxOrder($name,$amount, $type, $receiver,$purpose)
+    private function createCashboxOrder($name,$amount, $type, $receiver,$purpose,$cash)
     {
-        $order_id = $this->getOrder($type === 'out', $type);
+        $order_id = $this->getOrder($cash, $type);
         $order = $this->createOrder($type, $name, $amount, $order_id, $purpose, $receiver);
-        $this->createDeal($amount, null, null, null, null, $type, null, null,$order->id,$type === 'out', $receiver,$purpose);
+        $this->createDeal($amount, null, null, null, null, $type, null, null,$order->id,$cash, $receiver,$purpose);
     }
 
     private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type)

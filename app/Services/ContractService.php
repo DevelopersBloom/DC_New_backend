@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Category;
-use App\Models\CategoryRate;
 use App\Models\Contract;
 use App\Models\Item;
 use App\Models\Payment;
@@ -11,7 +10,6 @@ use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use function Symfony\Component\String\b;
 
 class   ContractService
 {
@@ -24,7 +22,9 @@ class   ContractService
                 },
                 'client' => function ($query) {
                     $query->withCount('contracts');
-                }
+                },
+                'category',
+                'items'
             ])
             ->orderBy('num', 'DESC');
 
@@ -33,7 +33,9 @@ class   ContractService
             ->filterByDate('date', $filters['date_from'] ?? null, $filters['date_to'] ?? null)
             ->filterByRange('provided_amount', $filters['provided_amount_from'] ?? null, $filters['provided_amount_to'] ?? null)
             ->filterByRange('estimated_amount', $filters['estimated_amount_from'] ?? null, $filters['estimated_amount_to'] ?? null)
-            ->filterByClient($filters);
+            ->filterByClient($filters)
+            ->filterByContractItem($filters['type'] ?? null,$filters['subspecies'] ?? null,$filters['model'] ?? null)
+            ->filterByDelayDays($filters['delay']??null);
 
         if (!empty($filters['num'])) {
             $query->where('num', $filters['num']);
@@ -130,6 +132,7 @@ class   ContractService
             'status' => $status,
             'closed_at' => $data['closed_at'] ?? null,
             'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
+            'user_id' => auth()->user()->id ?? 1,
         ];
 
         // Create and return the contract

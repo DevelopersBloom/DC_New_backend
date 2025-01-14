@@ -16,6 +16,7 @@ return new class extends Migration
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
             $table->integer('num')->nullable();
+            $table->foreignId('user_id')->nullable()->constrained('users');
             $table->unsignedBigInteger('client_id');
             $table->decimal('estimated_amount', 15, 2); // Adjust precision and scale for decimal
             $table->decimal('provided_amount', 15, 2); // Adjust precision and scale for decimal
