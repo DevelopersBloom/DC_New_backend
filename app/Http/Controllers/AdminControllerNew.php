@@ -562,7 +562,7 @@ class AdminControllerNew extends Controller
 
         $filter_type = $request->query('filter','history');
 
-        $dealsQuery = Deal::select('id','amount','client_id','order_id','cash','contract_id','delay_days',
+        $dealsQuery = Deal::select('id','amount','type','receiver','client_id','order_id','cash','contract_id','delay_days',
         'interest_amount','purpose','penalty','discount','created_by')
             ->with('client:id,name,surname')
             ->with('contract:id,mother')
