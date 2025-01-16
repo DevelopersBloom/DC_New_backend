@@ -647,10 +647,10 @@ class AdminControllerNew extends Controller
         $pawnshop = $deal->pawnshop;
         $payment = $deal->payment;
 
-        if ($deal->type === 'payment') {
+        if ($deal->filter_type === 'payment') {
             $lastPayment = Payment::where('contract_id', $deal->contract_id)
                 ->where('paid','>','0')
-                ->orderByDesc('date')
+                ->orderByDesc('updated_at')
                 ->first();
 
             if ($payment && $payment->id === $lastPayment->id) {
