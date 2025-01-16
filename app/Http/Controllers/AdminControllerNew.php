@@ -585,7 +585,7 @@ class AdminControllerNew extends Controller
             default:
                 break;
         }
-
+        $dealsQuery->orderBy('date', 'desc')->orderBy('id', 'desc');
         $deals = $dealsQuery->get();
 
         return response()->json([
