@@ -656,6 +656,9 @@ class AdminControllerNew extends Controller
             if ($payment && $payment->id === $lastPayment->id) {
                 $payment->amount += $deal->amount;
                 $payment->paid -= $deal->amount;
+                if ($payment->amount > 0) {
+                    $payment->status = 'initial';
+                }
                 $payment->save();
             }
         }
