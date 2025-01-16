@@ -73,10 +73,6 @@ class Deal extends Model
                 if ($deal->order) {
                     $deal->order->delete();
                 }
-
-                if ($deal->payment) {
-                    $deal->payment->delete();
-                }
 //            }
         });
     }
