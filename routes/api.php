@@ -117,6 +117,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/', [ContractControllerNew::class, 'get']);
         Route::post('/', [ContractControllerNew::class, 'store']);
         Route::get('/download/{id}', [FileController::class, 'downloadContract']);
+        Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles']);
         Route::get('/{id}', [ContractControllerNew::class, 'show']);
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment']);
         Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);

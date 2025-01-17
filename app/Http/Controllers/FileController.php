@@ -7,13 +7,22 @@ use App\Models\Order;
 use App\Traits\FileTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use PhpOffice\PhpWord\Exception\CopyFileException;
+use PhpOffice\PhpWord\Exception\CreateTemporaryFileException;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Settings;
 use PhpOffice\PhpWord\TemplateProcessor;
+use ZipArchive;
+use ZipStream\File;
 
 class FileController extends Controller
 {
     use FileTrait;
+
+    /**
+     * @throws CopyFileException
+     * @throws CreateTemporaryFileException
+     */
     public function downloadContract($id)
     {
         $contract = Contract::where('id', $id)
@@ -54,7 +63,7 @@ class FileController extends Controller
             'given' => $this->makeMoney($contract->provided_amount),
             'given_text' => $this->numberToText($contract->provided_amount),
             'price' => $contract->provided_amount,
-            'contract_id' => $contract->id,
+            'contract_id' => $contract->num,
             'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
             'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->created_at)),
             'dl_dt' => Carbon::parse($contract->deadline)->format('d'),
@@ -99,7 +108,7 @@ class FileController extends Controller
         $filename = time() . 'contract_bond.docx';
         $pathToSave = public_path('/files/download/' . $filename);
         $templateProcessor->saveAs($pathToSave);
-        $downloadName = $contract->id . '_Գրավատոմս_և_Պայմանագիր.docx';
+        $downloadName = $contract->num . '_Գրավատոմս_և_Պայմանագիր.docx';
         $headers = [
             'Content-Type' => 'application/vnd.malformations-office document.multiprocessing.document',
             'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
@@ -109,79 +118,6 @@ class FileController extends Controller
         //return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
 
-    public function downloadContract1($id)
-    {
-        $templateProcessor = new TemplateProcessor(public_path('/files/contract_template.docx'));
-        $contract = Contract::where('id', $id)->with('payments', 'pawnshop')->first();
-        $pawnshop = $contract->pawnshop;
-        $client_name = $contract->name . ' ' . $contract->surname . ' ' . $contract->middle_name;
-        $client_numbers = $contract->phone1;
-        if ($contract->phone2) {
-            $client_numbers .= ', ' . $contract->phone2;
-        }
-        $pawnshop_numbers = $pawnshop->telephone;
-        if ($pawnshop->phone1) {
-            $pawnshop_numbers .= ', ' . $pawnshop->phone1;
-        }
-        if ($pawnshop->phone2) {
-            $pawnshop_numbers .= ', ' . $pawnshop->phone2;
-        }
-        $o_t_p = $contract->given >= 400000 ? '2' : '2,5';
-        $yearly_rate = $contract->rate * 365;
-        $cash = $contract->cash ? 'կանխիկ' : 'անկանխիկ';
-        $templateProcessor->setValues([
-            'city' => $pawnshop->city,
-            'date' => $contract->date,
-            'license' => $pawnshop->license,
-            'address' => $pawnshop->address,
-            'representative' => $pawnshop->representative,
-            'client_name' => $client_name,
-            'client_dob' => $contract->dob,
-            'client_passport' => $contract->passport,
-            'client_given' => $contract->passport_given,
-            'client_address' => $contract->address,
-            'client_numbers' => $client_numbers,
-            'given' => $this->makeMoney($contract->given),
-            'contract_id' => $contract->ADB_ID,
-            'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
-            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date)),
-            'dl_dt' => Carbon::parse($contract->deadline)->format('d'),
-            'psh_numbers' => $pawnshop_numbers,
-            'psh_mail' => $pawnshop->email,
-            'psh_bank' => $pawnshop->bank,
-            'psh_card' => $pawnshop->card_account_number,
-            'client_bank' => $contract->bank,
-            'client_card' => $contract->card,
-            'rate' => $contract->rate,
-            'yr_rate' => $yearly_rate,
-            'penalty' => $contract->penalty,
-            'o_t_p' => $o_t_p,
-            'cash' => $cash
-        ]);
-        $table_values = [];
-        $i = 1;
-        foreach ($contract->payments as $payment) {
-            $table_values[] = [
-                'p_n' => $i . '.',
-                'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
-                'p_m' => $payment->amount,
-                'p_text' => $this->numberToText($payment->amount)
-            ];
-            $i++;
-        }
-        $templateProcessor->cloneRowAndSetValues('p_n', $table_values);
-        $filename = time() . 'contract.docx';
-        $pathToSave = public_path('/files/download/' . $filename);
-        $templateProcessor->saveAs($pathToSave);
-        $downloadName = $contract->ADB_ID . '_Պայմանագիր.docx';
-        $headers = [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Disposition' => 'attachment; filename='.$downloadName,
-        ];
-
-        // Return the document as a response and delete the temporary file after sending
-        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
-    }
 
     public function downloadBond($id)
     {
@@ -263,7 +199,7 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => $order->date,
             'client_name' => $order->client_name,
-            'contract_id' => $contract->id,
+            'contract_id' => $contract->num,
             'purpose' => $order->purpose,
             'amount_text' => $this->numberToText($order->amount),
         ]);
@@ -320,7 +256,7 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => $order->date,
             'client_name' => $order->client_name,
-            'contract_id' => $contract->id,
+            'contract_id' => $contract->num,
             'cl_dob' => $contract->client->date_of_birth,
             'cl_pas' => $contract->client->passport_series,
             'cl_giv' => $contract->client->passport_issued,
@@ -384,7 +320,59 @@ class FileController extends Controller
         // Return the document as a response and delete the temporary file after sending
         return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
+    public function downloadAllFiles($id)
+    {
+        $contract = Contract::where('id', $id)->firstOrFail();
 
+        $zipFileName = "contract_{$contract->num}_files.zip";
+        $zipFilePath = public_path("/files/download/" . $zipFileName);
+
+        $zip = new ZipArchive;
+
+        if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+
+            // Generate contract document
+            $contractFile = $this->downloadContract($id);
+            $contractFilePath = $contractFile->getFile()->getPathname();
+            $zip->addFile($contractFilePath, "{$contract->num}_Գրավատոմս_և_Պայմանագիր.docx");
+
+//            // Generate bond document
+//            $bondFile = $this->downloadBond($id);
+//            $bondFilePath = $bondFile->getFile()->getPathname();
+//            $zip->addFile($bondFilePath, "{$id}_Գրավատոմս.docx");
+
+            // If contract has orders, add order documents
+            $orders = Order::where('contract_id', $id)->get();
+            foreach ($orders as $order) {
+                $orderFile = $this->downloadOrder($order->id);
+                if ($orderFile) {
+//                    $orderFilePath = $orderFile->getFile()->getPathname();
+//                    $zip->addFile($orderFilePath, "{$order->order}_Order.docx");
+//                    dd($orderFile->headers->get('content-disposition'));
+                    $orderFilePath = $orderFile->getFile()->getPathname();
+//
+//                    // Extract the actual filename from the response (if method returns filename)
+//                    $orderFileName = basename($orderFilePath);
+                    $orderFileName = null;
+                    if ($orderFile->headers->has('content-disposition')) {
+                        $contentDisposition = $orderFile->headers->get('content-disposition');
+
+                        if (preg_match('/filename="?(?<filename>[^"]+)"?/', $contentDisposition, $matches)) {
+                            $orderFileName = $matches['filename'];
+                        }
+                    }
+
+                    // Add the file to the ZIP with the correct name
+                    $zip->addFile($orderFilePath, $orderFileName);
+                }
+            }
+
+            $zip->close();
+        }
+
+        // Return the zip file for download and delete after sending
+        return response()->download($zipFilePath)->deleteFileAfterSend(true);
+    }
 //    public function downloadCostOrderInOld($id)
 //    {
 //        $templateProcessor = new TemplateProcessor(public_path('/files/cost_in_template.docx'));
