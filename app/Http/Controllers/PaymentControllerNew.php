@@ -181,7 +181,7 @@ class PaymentControllerNew extends Controller
             'order' => $order_id,
             'amount' => $partialAmount,
             'rep_id' => '2211',
-            'date' => Carbon::now()->format('d.m.Y'),
+            'date' => Carbon::now()->format('Y-m-d'),
             'client_name' => $client_name,
             'purpose' => 'Մասնակի մարում',
         ];
@@ -192,7 +192,7 @@ class PaymentControllerNew extends Controller
             'type_id' => $history_type->id,
             'order_id' => $new_order->id,
             'contract_id' => $contract->id,
-            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y'),
+            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
         ]);
         $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id,$payment_id);
 
