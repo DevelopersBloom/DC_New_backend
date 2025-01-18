@@ -251,6 +251,7 @@ class FileController extends Controller
         $contract = Contract::where('id', $order->contract_id)->with('client')->first();
         $templateProcessor->setValues([
             'amount' => $this->makeMoney($order->amount),
+            'purpose' => $order->purpose,
             'rep_id' => $order->rep_id,
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
