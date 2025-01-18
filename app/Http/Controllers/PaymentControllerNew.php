@@ -120,9 +120,9 @@ class PaymentControllerNew extends Controller
                     'amount' => $refundAmount,
                     'type_id' => $refund_type->id,
                     'user_id' => auth()->user()->id,
-                    'order_id' => $newOrder->id,
+                    'order_id' => $refundOrder->id,
                     'contract_id' => $contract->id,
-                    'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+                    'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
                 ]);
                 $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
 
