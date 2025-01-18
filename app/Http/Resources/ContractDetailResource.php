@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\HistoryType;
+use Carbon\Carbon;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -59,7 +60,13 @@ class ContractDetailResource extends JsonResource
                 return [
                     'id'   => $history->id,
                     'type' => $history->type->title,
-                    'date' => $history->date,
+                    'date' => Carbon::parse($history->date)->format('d-m-Y'),
+                    'interest_amount' => $history->interest_amount ?? 0,
+                    'penalty_amount' => $history->penalty ?? 0,
+                    'discount' => $history->discount ?? 0,
+                    'delay_days' => $history->delay_days ?? 0,
+                    'total' => $history->interest_amount + $history->penalty + $history->discount,
+//
 //                    'user' => [
 //                        'id' => $history->user->id,
 //                        'name' => $history->user->name,
@@ -70,8 +77,8 @@ class ContractDetailResource extends JsonResource
                     'order' => [
                         'id' => $history->order->id ?? null,
                         'amount' => $history->order->amount ?? null,
-                        'status' => $history->order->status ?? null,
-                        'created_at' => $history->order->created_at ?? null,
+                       // 'status' => $history->order->status ?? null,
+                        'created_at' => $history->order->date ?? null,
                     ]
 
                 ];
