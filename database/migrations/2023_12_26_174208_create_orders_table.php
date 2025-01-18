@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('order')->nullable();
             $table->integer('amount')->nullable();
             $table->string('rep_id')->nullable();
-            $table->string('date')->nullable();
+            $table->date('date')->nullable();
             $table->string('client_name')->nullable();
             $table->string('purpose')->nullable();
             $table->string('receiver')->nullable();

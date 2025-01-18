@@ -249,7 +249,6 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template_new.docx'));
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->with('client')->first();
-
         $templateProcessor->setValues([
             'amount' => $this->makeMoney($order->amount),
             'rep_id' => $order->rep_id,
