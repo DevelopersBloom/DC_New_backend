@@ -249,10 +249,11 @@ trait FileTrait
     }
 
     public function generateOrder($contract,$amount, $purpose,$type,$cash){
-        $client_name = $contract->name.' '.$contract->surname.' '.$contract->middle_name;
+        $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,$type);
         $res = [
             'contract_id' => $contract->id,
+            'num' => $contract->num,
             'type' => $type,
             'title' => 'Օրդեր',
             'pawnshop_id' => auth()->user()->pawnshop_id,

@@ -13,7 +13,8 @@ class Order extends Model
     const EXPENSE_PURPOSE = 'Ելքագրել ծախս';
     const EXPENSE_FILTER = "expense";
     CONST NDM_FILTER = "ndm";
-
+    CONST REFUND_LUMP = 'Միանվագ վճարի ետվերադարձ';
+    CONST REFUND_LUMP_FILTER = "refund_lump";
     protected $fillable = [
         'contract_id',
         'type',

@@ -84,8 +84,7 @@ class PaymentImportNew implements ToCollection
                         ];
                         $new_order = Order::create($res);
                         $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];
-                        $history = $this->createHistory( $request,$new_order->id,$amount,null,$penalty,
-                           null);
+                        $history = $this->createHistory($request,$new_order->id,$amount,null,$penalty, null);
                         $this->createDeal($amount+$penalty,
                             $amount,null,$penalty,
                             null, 'in', $contract->id,$contract->client->id,

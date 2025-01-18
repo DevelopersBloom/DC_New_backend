@@ -95,6 +95,10 @@ class TypeSeeder extends Seeder
                 'title' => 'Միանվագ Վճար',
             ],
             [
+                'name' => 'one_time_payment_refund',
+                'title' => 'Միանվագ Վճարի ետվերադաևձ',
+            ],
+            [
                 'name' => 'mother_payment',
                 'title' => 'ՄԳ տրամադրում'
             ],

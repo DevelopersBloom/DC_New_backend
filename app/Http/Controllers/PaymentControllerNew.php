@@ -109,6 +109,31 @@ class PaymentControllerNew extends Controller
 
         $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,$payment_id);
 
+        // Check if early payment is eligible for a refund
+        if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
+            $refundAmount = $this->calculateRefundAmount($contract->provided_amount,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
+            if ($refundAmount > 0) {
+                $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash);
+                $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
+
+                $history = History::create([
+                    'amount' => $refundAmount,
+                    'type_id' => $refund_type->id,
+                    'user_id' => auth()->user()->id,
+                    'order_id' => $newOrder->id,
+                    'contract_id' => $contract->id,
+                    'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+                ]);
+                $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
+
+                return response()->json([
+                    'success' => 'success',
+                    'message' => 'Full payment created successfully with a lump sum refund',
+                    'refund_amount' => $refundAmount
+                ]);
+            }
+        }
+
         // Fetch the updated contract with full details
         $updatedContract = $this->getFullContract($request->contract_id);
 
@@ -118,6 +143,18 @@ class PaymentControllerNew extends Controller
         ]);
     }
 
+    /**
+     * Calculate the refund amount for early full payment
+     */
+    private function calculateRefundAmount($providedAmont,$lumpRate,$deadline,$deadlineDays)
+    {
+        $lump_amount = $providedAmont * $lumpRate/100;
+        $remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now());
+
+        $refundAmount = $lump_amount/$deadlineDays*$remainingDays;
+
+        return round($refundAmount, 2);
+    }
     public function payPartial(Request $request): JsonResponse
     {
         $has_penalty_amount = $this->countPenalty($request->contract_id);
