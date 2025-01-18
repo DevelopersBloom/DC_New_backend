@@ -260,7 +260,7 @@ trait FileTrait
             'order' => $order_id,
             'amount' => $amount,
             'rep_id' => '2211',
-            'date' => Carbon::now()->format('d.m.Y'),
+            'date' => Carbon::now()->format('Y.m.d'),
             'client_name' => $client_name,
             'purpose' => $purpose,
         ];
