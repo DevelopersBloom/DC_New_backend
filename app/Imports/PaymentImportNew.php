@@ -54,7 +54,6 @@ class PaymentImportNew implements ToCollection
                         ]);
                         $contract->collected += $amount;
                         $purpose = Contract::REGULAR_PAYMENT;
-
                         if ($penalty > 0) {
                             $payment = $contract->payments()->create([
                                 'status' => 'completed',
@@ -72,6 +71,7 @@ class PaymentImportNew implements ToCollection
 
                         $res = [
                             'contract_id' => $contract->id,
+                            'num' => $contract->num,
                             'type' => 'in',
                             'title' => 'Օրդեր',
                             'pawnshop_id' => 1,

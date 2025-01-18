@@ -50,12 +50,12 @@ class FileController extends Controller
         $o_t_p = $contract->provided_amount >= 400000 ? '2' : '2,5';
         $templateProcessor->setValues([
             'city' => $pawnshop->city,
-            'date' => $contract->created_at,
+            'date' => Carbon::parse($contract->date)->format('d.m.Y'),
             'license' => $pawnshop->license,
             'address' => $pawnshop->address,
             'representative' => $pawnshop->representative,
             'client_name' => $client_name,
-            'client_dob' => $client->date_of_birth,
+            'client_dob' => Carbon::parse($client->date_of_birth)->format('d.m.Y'),
             'client_passport' => $client->passport_series,
             'client_given' => $client->passport_issued,
             'client_address' => $client->country . ', ' . $client->city . ', ' . $client->street,
@@ -197,7 +197,7 @@ class FileController extends Controller
             'amount' => $this->makeMoney($order->amount),
             'rep_id' => $order->rep_id,
             'order' => $order->order,
-            'date' => $order->date,
+            'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'client_name' => $order->client_name,
             'contract_id' => $contract->num,
             'purpose' => $order->purpose,
@@ -225,7 +225,7 @@ class FileController extends Controller
             'amount' => $this->makeMoney($order->amount),
             'rep_id' => $order->rep_id,
             'order' => $order->order,
-            'date' => $order->date,
+            'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'client_name' => $order->client_name,
             'contract_id' => $contract->ADB_ID,
             'cl_dob' => $contract->dob,
@@ -254,10 +254,10 @@ class FileController extends Controller
             'amount' => $this->makeMoney($order->amount),
             'rep_id' => $order->rep_id,
             'order' => $order->order,
-            'date' => $order->date,
+            'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'client_name' => $order->client_name,
             'contract_id' => $contract->num,
-            'cl_dob' => $contract->client->date_of_birth,
+            'cl_dob' => Carbon::parse($contract->client->date_of_birth)->format('d.m.Y'),
             'cl_pas' => $contract->client->passport_series,
             'cl_giv' => $contract->client->passport_issued,
             'amount_text' => $this->numberToText($order->amount),
@@ -282,7 +282,7 @@ class FileController extends Controller
             'amount' => $this->makeMoney($order->amount),
             'receiver' => $order->receiver,
             'order' => $order->order,
-            'date' => $order->date,
+            'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'purpose' => $order->purpose,
             'amount_text' => $this->numberToText($order->amount),
         ]);
@@ -305,7 +305,7 @@ class FileController extends Controller
             'amount' => $this->makeMoney($order->amount),
             'receiver' => $order->receiver,
             'order' => $order->order,
-            'date' => $order->date,
+            'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'purpose' => $order->purpose,
             'amount_text' => $this->numberToText($order->amount),
         ]);
@@ -331,12 +331,10 @@ class FileController extends Controller
 
         if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
 
-            // Generate contract document
             $contractFile = $this->downloadContract($id);
             $contractFilePath = $contractFile->getFile()->getPathname();
             $zip->addFile($contractFilePath, "{$contract->num}_Գրավատոմս_և_Պայմանագիր.docx");
 
-//            // Generate bond document
 //            $bondFile = $this->downloadBond($id);
 //            $bondFilePath = $bondFile->getFile()->getPathname();
 //            $zip->addFile($bondFilePath, "{$id}_Գրավատոմս.docx");
@@ -351,7 +349,6 @@ class FileController extends Controller
 //                    dd($orderFile->headers->get('content-disposition'));
                     $orderFilePath = $orderFile->getFile()->getPathname();
 //
-//                    // Extract the actual filename from the response (if method returns filename)
 //                    $orderFileName = basename($orderFilePath);
                     $orderFileName = null;
                     if ($orderFile->headers->has('content-disposition')) {
@@ -362,7 +359,6 @@ class FileController extends Controller
                         }
                     }
 
-                    // Add the file to the ZIP with the correct name
                     $zip->addFile($orderFilePath, $orderFileName);
                 }
             }
@@ -370,7 +366,6 @@ class FileController extends Controller
             $zip->close();
         }
 
-        // Return the zip file for download and delete after sending
         return response()->download($zipFilePath)->deleteFileAfterSend(true);
     }
 //    public function downloadCostOrderInOld($id)
