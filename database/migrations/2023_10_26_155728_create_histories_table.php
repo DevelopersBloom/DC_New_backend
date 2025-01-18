@@ -19,7 +19,7 @@ return new class extends Migration
             $table->integer('type_id');
             $table->integer('user_id')->nullable();
             $table->integer('order_id')->nullable();
-            $table->string('date');
+            $table->date('date');
             $table->integer('amount')->nullable();
             $table->integer('discount')->nullable();
             $table->integer('penalty')->nullable();
