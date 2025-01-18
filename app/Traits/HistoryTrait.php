@@ -16,7 +16,7 @@ trait HistoryTrait
         if (auth()->user()){
             $history->user_id =  auth()->user()->id;
         }
-        $history->date = $request->date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
+        $history->date = $request->date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
         $history->order_id = $order_id;
         $history->interest_amount = $interest_amount;
         $history->penalty = $penalty;

@@ -43,7 +43,6 @@ class PaymentControllerNew extends Controller
         $order_id = $this->generateOrderInNew($request,$payments)->id;
         $history = $this->createHistory($request, $order_id,$result['interest_amount'],$result['delay_days'],$result['penalty'],
             $result['discount']);
-
         $this->createDeal($amount ?? $result['$payments_sum'],
            $result['interest_amount'],$result['delay_days'],$result['penalty'],
            $result['discount'], 'in', $contract->id,$contract->client->id,
