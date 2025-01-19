@@ -33,7 +33,7 @@ class FileController extends Controller
         $pawnshop = $contract->pawnshop;
 
         $client = $contract->client;
-        $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
+        $client_name = $client->client->name . ' ' . $client->client->surname . ' ' . ($client->client->middle_name ?? '');
         $client_numbers = $client->phone;
         if ($client->additional_phone) {
             $client_numbers .= ', ' . $client->additional_phone;
@@ -125,7 +125,7 @@ class FileController extends Controller
         $contract = Contract::where('id', $id)->with(['payments', 'pawnshop', 'items' => function ($query) {
             $query->with('category');
         }])->first();
-        $client_name = $contract->name . ' ' . $contract->surname . ' ' . $contract->middle_name;
+        $client_name = $contract->client->name . ' ' . $contract->client->surname . ' ' . $contract->client->middle_name;
         $templateProcessor->setValues([
             'client_name' => $client_name,
             'client_dob' => $contract->dob,

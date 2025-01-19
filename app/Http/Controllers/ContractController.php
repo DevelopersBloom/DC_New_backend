@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\CreateClient;
 use App\Models\Category;
 use App\Models\Client;
 use App\Models\Contract;
@@ -177,7 +176,7 @@ class ContractController extends Controller
             }
         }
         $historyType = HistoryType::where('name','opening')->first();
-        $client_name = $contract->name.' '.$contract->surname.' '.$contract->middle_name;
+        $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,'out');
         $res = [
             'contract_id' => $contract->id,

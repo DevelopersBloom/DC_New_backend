@@ -27,7 +27,7 @@ class ExecuteItemRequest extends FormRequest
             'contract_id' => 'required|exists:contracts,id',
             'amount' => 'required|numeric|min:0',
             'buyer_info' => 'required|string|max:255',
-            'cash' => 'required|boolean',
+            'rep_id' => 'required|string|max:255',
         ];
     }
 }

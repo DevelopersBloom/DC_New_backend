@@ -161,7 +161,7 @@ class ContractControllerNew extends Controller
             $this->contractService->createPayment($contract);
 
             // Create orders and history entries
-            $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
+            $client_name = $client->client->name . ' ' . $client->client->surname . ($client->client->middle_name ? ' ' . $client->client->middle_name : '');
             $cash = $contract->provided_amount < 20000 ? true : false;
 
             $this->createOrderAndHistory($contract,$client->id, $client_name, $cash,$category_id);

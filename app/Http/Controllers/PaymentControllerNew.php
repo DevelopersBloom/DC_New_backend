@@ -173,7 +173,7 @@ class PaymentControllerNew extends Controller
         // Call the payment service to handle the partial payment
         $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash);
         $history_type = HistoryType::where('name','partial_payment')->first();
-        $client_name = $contract->name.' '.$contract->surname.' '.$contract->middle_name;
+        $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,'in');
         $res = [
             'contract_id' => $contract->id,
@@ -213,10 +213,12 @@ class PaymentControllerNew extends Controller
             $contractId = $request->contract_id;
             $executedAmount = $request->amount;
             $buyerInfo = $request->buyer_info;
-            $cash = $request->cash;
+            $num = $request->rep_id;
+            $cash = false;
 
 
             $contract = Contract::findOrFail($contractId);
+            $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
             if ($contract->status === Contract::STATUS_EXECUTED) {
                 throw new \Exception("This contract has already been executed.");
             }
@@ -233,10 +235,14 @@ class PaymentControllerNew extends Controller
                 'pawnshop_id' => auth()->user()->pawnshop_id,
                 'order' => $order_id,
                 'amount' => $executedAmount,
-                'rep_id' => '2211',
+                //'rep_id' => '2211',
+                'rep_id' => $num,
                 'date' => Carbon::now()->format('Y-m-d'),
                 'receiver' => $buyerInfo,
                 'purpose' => Order::EXECUTION_PURPOSE,
+                'client_name' => $client_name,
+                'num' => $contract->num
+
             ];
             $order = Order::create($res);
             $type = HistoryType::where('name', 'execution')->first();
