@@ -34,6 +34,7 @@ return new class extends Migration
             $table->decimal('collected', 15, 2)->nullable(); // Adjust precision and scale for decimal
             $table->integer('penalty_amount')->default(0);
             $table->date('closed_at')->nullable();
+            $table->string('executed')->nullable();
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
             $table->date('date')->nullable();

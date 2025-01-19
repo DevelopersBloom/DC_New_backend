@@ -25,6 +25,7 @@ class Contract extends Model
     const PENALTY = 'Տուգանք';
     const STATUS_INITIAL = 'initial';
     const STATUS_COMPLETED = 'completed';
+    const STATUS_EXECUTED = 'executed';
     const STATUS_TAKEN  = 'taken';
 
     protected $fillable=[

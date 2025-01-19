@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ExecuteItemRequest;
 use App\Models\Contract;
 use App\Models\History;
 use App\Models\HistoryType;
@@ -14,6 +15,7 @@ use App\Traits\HistoryTrait;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PaymentControllerNew extends Controller
 {
@@ -203,6 +205,65 @@ class PaymentControllerNew extends Controller
             'success' => 'success',
             'message' => 'Partial payment processed successfully!'
         ]);
+    }
+    public function executeItem(ExecuteItemRequest $request)
+    {
+        DB::beginTransaction();
+        try {
+            $contractId = $request->contract_id;
+            $executedAmount = $request->amount;
+            $buyerInfo = $request->buyer_info;
+            $cash = $request->cash;
+
+
+            $contract = Contract::findOrFail($contractId);
+            if ($contract->status === Contract::STATUS_EXECUTED) {
+                throw new \Exception("This contract has already been executed.");
+            }
+            $contract->status = 'executed';
+            $contract->executed = $request->amount;
+            $contract->left = 0;
+            $contract->closed_at = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
+            $contract->save();
+            $order_id = $this->getOrder($cash,'in');
+            $res = [
+                'contract_id' => $contract->id,
+                'type' => 'in',
+                'title' => 'Օրդեր',
+                'pawnshop_id' => auth()->user()->pawnshop_id,
+                'order' => $order_id,
+                'amount' => $executedAmount,
+                'rep_id' => '2211',
+                'date' => Carbon::now()->format('Y-m-d'),
+                'receiver' => $buyerInfo,
+                'purpose' => Order::EXECUTION_PURPOSE,
+            ];
+            $order = Order::create($res);
+            $type = HistoryType::where('name', 'execution')->first();
+
+            $history = History::create([
+                'amount' => $executedAmount,
+                'user_id' => auth()->user()->id,
+                'type_id' => $type->id,
+                'order_id' => $order->id,
+                'contract_id' => $contract->id,
+                'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
+            ]);
+            $this->createDeal($executedAmount, null,null, null,null,'in', $contract->id,null, $order->id, $cash,$buyerInfo, Order::EXECUTION_PURPOSE,'execution',$history->id,null);
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Execution processed successfully!'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Execution failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 }

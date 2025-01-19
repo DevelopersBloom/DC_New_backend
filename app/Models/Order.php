@@ -15,6 +15,7 @@ class Order extends Model
     CONST NDM_FILTER = "ndm";
     CONST REFUND_LUMP = 'Միանվագ վճարի ետվերադարձ';
     CONST REFUND_LUMP_FILTER = "refund_lump";
+    const EXECUTION_PURPOSE = 'Իրացում';
     protected $fillable = [
         'contract_id',
         'type',
