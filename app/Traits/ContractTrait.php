@@ -49,7 +49,7 @@ trait ContractTrait
                 'order' => $order_id,
                 'amount' => $amount,
                 'rep_id' => '2211',
-                'date' => $date ?? \Illuminate\Support\Carbon::now()->format('d.m.Y'),
+                'date' => $date ?? \Illuminate\Support\Carbon::now()->format('Y-m-d'),
                 'client_name' => $client_name,
                 'purpose' => $purpose,
             ]);
@@ -170,7 +170,7 @@ trait ContractTrait
         $payment->cash = $cash;
         $payment->type = $type;
         $payment->pawnshop_id = auth()->user()->pawnshop_id;
-        $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('d.m.Y');
+        $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
         $payment->status = $status;
         if($payer){
             $payment->another_payer = true;
@@ -343,7 +343,7 @@ trait ContractTrait
         {
             $payment = [
                 'contract_id' => $contract->id,
-                'from_date' => $currentDate->format('d.m.Y'),
+                'from_date' => $currentDate->format('Y-m-d'),
             ];
 
             // Determine the next payment date, or use the deadline if it's the last payment
