@@ -65,8 +65,8 @@ class ContractDetailResource extends JsonResource
                     'penalty_amount' => $history->penalty ?? 0,
                     'discount' => $history->discount ?? 0,
                     'delay_days' => $history->delay_days ?? 0,
-                   /// 'total' => $history->interest_amount + $history->penalty + $history->discount,
-                    'total' => $history->order->amount,
+                    'total' => $history->interest_amount + $history->penalty + $history->discount,
+                   // 'total' => $history->order->amount,
 //
 //                    'user' => [
 //                        'id' => $history->user->id,
