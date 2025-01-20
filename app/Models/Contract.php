@@ -124,17 +124,25 @@ class Contract extends Model
     public function scopeFilterStatus($query, $status)
     {
         switch ($status) {
-            case 'Ակտիվ':
+            case 'ակտիվ':
+            case 'initial':
                 return $query->where('status', 'initial');
             case 'Փակված':
+            case 'completed':
                 return $query->where('status', 'completed');
-                case 'Իրացված':
+            case 'Իրացված':
+            case 'executed':
                 return $query->where('status', 'executed');
             case 'Ժամկետնանց':
-                return $query->whereDate('deadline', '<=', today());
+            case 'overdue':
+                return $query->whereHas('payments', function ($q) {
+                    $q->whereDate('date', '<', today()->subDay())
+                    ->where('status', 'initial');
+                });
             case 'todays':
                 return $query->whereHas('payments', function ($q) {
-                    $q->whereDate('date', today());
+                    $q->whereDate('date', today())
+                        ->where('status','initial');
                 });
             default:
                 return $query;
