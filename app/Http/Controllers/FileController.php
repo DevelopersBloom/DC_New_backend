@@ -33,7 +33,7 @@ class FileController extends Controller
         $pawnshop = $contract->pawnshop;
 
         $client = $contract->client;
-        $client_name = $client->client->name . ' ' . $client->client->surname . ' ' . ($client->client->middle_name ?? '');
+        $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->client->middle_name ?? '');
         $client_numbers = $client->phone;
         if ($client->additional_phone) {
             $client_numbers .= ', ' . $client->additional_phone;
