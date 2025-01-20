@@ -43,11 +43,19 @@ class ContractControllerNew extends Controller
             'type','subspecies','model','delay'
 
         ]);
-        $contracts = $this->contractService->getContracts($filters);
+//        $contracts = $this->contractService->getContracts($filters);
+//
+//        return response()->json([
+//            'contracts' => $contracts,
+//            'total' => $contracts->total()
+//        ]);
+        $data = $this->contractService->getContracts($filters);
 
         return response()->json([
-            'contracts' => $contracts,
-            'total' => $contracts->total()
+            'contracts' => $data['contracts'],
+            'total' => $data['totalContracts'],
+            'active' => $data['activeContracts'],
+            'executed' => $data['executedContracts'],
         ]);
     }
     public function show($id): ContractDetailResource

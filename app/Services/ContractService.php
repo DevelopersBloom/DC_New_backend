@@ -40,8 +40,24 @@ class   ContractService
         if (!empty($filters['num'])) {
             $query->where('num', 'like', $filters['num'] . '%');
         }
+        $contracts = $query->paginate(10);
 
-        return $query->paginate(10);
+        // Get total counts
+        $totalContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)->count();
+        $activeContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
+            ->where('status', 'initial')
+            ->count();
+        $executedContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
+            ->where('status', 'executed')
+            ->count();
+
+        return [
+            'contracts' => $query->paginate(10),
+            'totalContracts' => $totalContracts,
+            'activeContracts' => $activeContracts,
+            'executedContracts' => $executedContracts,
+        ];
+//        return $query->paginate(10);
     }
     public function storeContractItem(int $contract_id,array $data)
     {
