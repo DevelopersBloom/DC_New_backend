@@ -33,7 +33,7 @@ DealController extends Controller
         $dealType = $request->input('type', Deal::HISTORY);
         $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
             ->select('id','cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days')
-                ->with(['order:id,client_name,order,contract_id,purpose','contract:id,discount,penalty_amount,discount,mother'])
+                ->with(['order:id,client_name,order,contract_id,purpose','contract:id,num,discount,penalty_amount,discount,mother'])
             ->when($request->dateFrom,function ($query) use ($request){
                 $query->where(function ($query) use ($request) {
                     $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);
