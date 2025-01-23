@@ -124,6 +124,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial']);
         Route::post('/execute',[PaymentControllerNew::class,'executeItem']);
         Route::get('/history-detail/{id}',[ContractControllerNew::class,'getHistoryDetails']);
+        Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount']);
     });
 
     Route::group(['prefix' => 'notes'], function () {

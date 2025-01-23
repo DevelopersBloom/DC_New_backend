@@ -196,7 +196,8 @@ class   ContractService
 
             $diffDays = $paymentDate->diffInDays($currentDate);
             $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
-            $payment['date'] = $paymentDate->format('Y-m-d');            $payment['days'] = $diffDays;
+            $payment['date'] = $paymentDate->format('Y-m-d');
+            $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
             $payment['pawnshop_id'] = $pawnshop_id;
             $payment['mother'] = 0;
