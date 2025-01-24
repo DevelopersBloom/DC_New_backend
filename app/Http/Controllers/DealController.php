@@ -18,7 +18,7 @@ DealController extends Controller
     use ContractTrait,OrderTrait;
     public function getCashBox(int $pawnshop_id)
     {
-        $pawnshop = Pawnshop::findOrFail($pawnshop_id);
+        $pawnshop = Pawnshop::findOrFail(auth()->user()->pawnshop_id);
         $cash_box = $pawnshop->cashbox;
         $bank_cash_box = $pawnshop->bank_cashbox;
         $total_amount = $cash_box + $bank_cash_box;
