@@ -311,17 +311,17 @@ DealController extends Controller
     private function createCashboxOrder($name,$amount, $type, $receiver,$purpose,$cash)
     {
         $order_id = $this->getOrder($cash, $type);
-        $order = $this->createOrder($type, $name, $amount, $order_id, $purpose, $receiver);
+        $order = $this->createOrder($type, $name, $amount, $order_id, $purpose, $receiver,$cash);
         $this->createDeal($amount, null, null, null, null, $type, null, null,$order->id,$cash, $receiver,$purpose);
     }
 
     private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type)
     {
-        $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver);
+        $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver,$cash);
         $this->createDeal($amount, null, null, null, null,$type,null,null,$order->id, $cash,$receiver,$purpose,$filter_type);
     }
 
-    private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver)
+    private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver,$cash)
     {
         return Order::create([
             'type' => $type,
@@ -331,7 +331,8 @@ DealController extends Controller
             'amount' => $amount,
             'date' => Carbon::now()->format('Y-m-d'),
             'purpose' => $purpose,
-            'receiver' => $receiver
+            'receiver' => $receiver,
+            'cash' => $cash
         ]);
     }
 

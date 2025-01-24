@@ -202,7 +202,6 @@ class ContractControllerNew extends Controller
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000;
             $category_id = $contract->category_id;
-
             // Update contract deadline and date
             $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
             $contract->date = Carbon::now();
@@ -213,6 +212,7 @@ class ContractControllerNew extends Controller
 
             // Create order history
             $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
+
             auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;
             auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;
             auth()->user()->pawnshop->save();

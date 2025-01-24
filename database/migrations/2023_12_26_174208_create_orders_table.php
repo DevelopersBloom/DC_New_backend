@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('title')->nullable();
             $table->integer('pawnshop_id')->nullable();
             $table->string('order')->nullable();
+            $table->boolean('cash')->nullable();
             $table->integer('amount')->nullable();
             $table->string('rep_id')->nullable();
             $table->date('date')->nullable();

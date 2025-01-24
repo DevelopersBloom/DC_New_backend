@@ -186,6 +186,7 @@ class PaymentControllerNew extends Controller
             'date' => Carbon::now()->format('Y-m-d'),
             'client_name' => $client_name,
             'purpose' => 'Մասնակի մարում',
+            'cash' => $cash
         ];
         $new_order = Order::create($res);
         $history = History::create([
@@ -241,7 +242,8 @@ class PaymentControllerNew extends Controller
                 'receiver' => $buyerInfo,
                 'purpose' => Order::EXECUTION_PURPOSE,
                 'client_name' => $client_name,
-                'num' => $contract->num
+                'num' => $contract->num,
+                'cash' => $cash
 
             ];
             $order = Order::create($res);

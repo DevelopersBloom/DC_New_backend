@@ -221,6 +221,7 @@ trait FileTrait
             'date' => Carbon::now()->format('d.m.Y'),
             'client_name' => $client_name,
             'purpose' => $purpose,
+            'cash' => $request->cash
         ];
         $new_order = Order::create($res);
         return $new_order;
@@ -243,6 +244,7 @@ trait FileTrait
             'date' => Carbon::now()->format('Y-m-d'),
             'client_name' => $client_name,
             'purpose' => $purpose,
+            'cash' => $request->cash
         ];
         $new_order = Order::create($res);
         return $new_order;
@@ -263,6 +265,7 @@ trait FileTrait
             'date' => Carbon::now()->format('Y.m.d'),
             'client_name' => $client_name,
             'purpose' => $purpose,
+            'cash' => $cash
         ];
         $new_order = Order::create($res);
         return $new_order;

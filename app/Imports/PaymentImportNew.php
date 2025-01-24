@@ -81,6 +81,7 @@ class PaymentImportNew implements ToCollection
                             'date' => $date->format('Y.m.d'),
                             'client_name' => $contract->client['name'] . $contract->client['surname'],
                             'purpose' => $purpose,
+                            'cash' => $cash
                         ];
                         $new_order = Order::create($res);
                         $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];

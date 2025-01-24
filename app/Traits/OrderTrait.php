@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Models\Order;
 use App\Models\Pawnshop;
 
 trait OrderTrait
@@ -28,7 +29,7 @@ trait OrderTrait
 //        auth()->user()->pawnshop->save();
 //        return $order;
 //    }
-    public function getOrder($cash, $type, $pawnshop_id = null)
+    public function getOrder1($cash, $type, $pawnshop_id = null)
     {
         $pawnshop = $pawnshop_id ? Pawnshop::find($pawnshop_id) : auth()->user()->pawnshop;
         if (!$pawnshop) {
@@ -56,7 +57,18 @@ trait OrderTrait
 
         $pawnshop->save();
 
-        return $order;
+        dd( $order);
+    }
+    public function getOrder($cash, $type, $pawnshop_id = null)
+    {
+        $type = $type === 'in' ? 'in' : 'out';
+        $lastOrder = Order::
+            where('cash',$cash)
+            ->latest('id')
+            ->value('order');
+        $nextOrder = $lastOrder ? (int) preg_replace('/[^0-9]/', '', $lastOrder) + 1 : 1;
+
+        return( $cash ? $nextOrder :  'Ա' . $nextOrder);
     }
 
 }

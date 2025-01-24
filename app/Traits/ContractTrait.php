@@ -59,6 +59,7 @@ trait ContractTrait
                 'date' => $date ?? \Illuminate\Support\Carbon::now()->format('Y-m-d'),
                 'client_name' => $client_name,
                 'purpose' => $purpose,
+                'cash' => $cash
             ]);
         }
         $order_id = $order->id ?? null;

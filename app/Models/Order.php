@@ -29,7 +29,8 @@ class Order extends Model
         'purpose',
         'receiver',
         'cashbox',
-        'num'
+        'num',
+        'cash'
     ];
     public function pawnshop()
     {
