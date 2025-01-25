@@ -652,10 +652,20 @@ class AdminControllerNew extends Controller
                 ->where('paid','>','0')
                 ->orderByDesc('updated_at')
                 ->first();
+            if ($deal->penalty > 0) {
+                $lastPenalty = Payment::where('contract_id', $deal->contract_id)
+                    ->where('paid','>','0')
+                    ->where('type','penalty')
+                    ->orderByDesc('updated_at')
+                    ->first();
+                if ($lastPenalty) {
+                    $lastPenalty->delete();
+                }
+            }
 
             if ($payment && $payment->id === $lastPayment->id) {
-                $payment->amount += $deal->amount;
-                $payment->paid -= $deal->amount;
+                $payment->amount += $deal->interest_amount;
+                $payment->paid -= $deal->interest_amount;
                 if ($payment->amount > 0) {
                     $payment->status = 'initial';
                 }
