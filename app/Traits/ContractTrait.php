@@ -136,7 +136,7 @@ trait ContractTrait
             'cash'            => boolval($cash),
             'receiver'        => $receiver,
             'source'          => $source,
-            'created_by'      => auth()->user()->id ?? null,
+            'created_by'      => auth()->user()->id ?? 1,
             'client_id'       => $client_id,
             'filter_type'     => $filter_type,
             'history_id'      => $history_id,
