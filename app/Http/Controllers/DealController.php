@@ -32,7 +32,7 @@ DealController extends Controller
     public function index(Request $request){
         $dealType = $request->input('type', Deal::HISTORY);
         $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
-            ->select('id','cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days')
+            ->select('id','cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days','created_by')
                 ->with(['order:id,client_name,order,contract_id,purpose','contract:id,num,discount,penalty_amount,discount,mother'])
             ->with('createdBy:id,name,surname')
             ->when($request->dateFrom,function ($query) use ($request){
