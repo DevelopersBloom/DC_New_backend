@@ -19,13 +19,30 @@ class DiscountController extends Controller
         $this->paymentService = $paymentService;
         $this->discountService = new DiscountService($this->paymentService);
     }
+    public function getDiscountRequests()
+    {
+        return Discount::select('id', 'amount', 'user_id')
+            ->with('user:id,name,surname') // Ensure relationship name is correct
+            ->where('status', Discount::PENDING)
+            ->where('pawnshop_id', auth()->user()->pawnshop_id)
+            ->orderByDesc('created_at')
+            ->get();
+//            ->map(function ($discount) {
+//                return [
+//                    'id' => $discount->id,
+//                    'amount' => $discount->amount,
+//                    'name' => $discount->user?->name,  // Safe access with null check
+//                    'surname' => $discount->user?->surname,
+//                ];
+//            });
+    }
+
 
     public function requestDiscount(StoreDiscountRequest $request): JsonResponse
     {
+
         $validatedData = $request->validated();
-
         $this->discountService->requestDiscount($validatedData);
-
         $message = ($validatedData['amount'] > 5000)
             ? 'Discount request sent successfully!'
             : 'Discount applied successfully!';
