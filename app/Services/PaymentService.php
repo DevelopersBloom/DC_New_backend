@@ -48,7 +48,7 @@ class PaymentService {
         ];
     }
 
-    private function processPenalty($contractId, $amount, $penalty, $payer, $cash) {
+    public function processPenalty($contractId, $amount, $penalty, $payer, $cash) {
         if ($amount <= $penalty) {
             $this->createPayment($contractId, $amount, 'penalty', $payer, $cash);
             return 0;
@@ -136,14 +136,16 @@ class PaymentService {
         $payment->paid = $amount;
         $payment->type = $type;
         $payment->cash = $cash;
+
         $payment->pawnshop_id = auth()->user()->pawnshop_id;
         $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->status = $status;
+
         if ($payer) {
             $payment->another_payer = true;
-            $payment->name = $payer['name'];
-            $payment->surname = $payer['surname'];
-            $payment->phone = $payer['phone'];
+            $payment->name = $payer['name'] ?? null;
+            $payment->surname = $payer['surname'] ?? null;
+            $payment->phone = $payer['phone'] ?? null;
         }
 
         $payment->save();

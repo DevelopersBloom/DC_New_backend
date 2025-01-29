@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Discount extends Model
 {
     use HasFactory;
+    const PENDING = 'pending';
+    const ACCEPTED = 'accepted';
+    const REJECTED = 'rejected';
+
     protected $fillable = [
         'amount',
         'user_id',

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->integer('user_id');
             $table->integer('contract_id');
             $table->integer('pawnshop_id');
-            $table->string('status')->default('initial');
+            $table->string('status')->default('pending');
             $table->timestamps();
         });
     }

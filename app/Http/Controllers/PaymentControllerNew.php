@@ -135,9 +135,6 @@ class PaymentControllerNew extends Controller
             }
         }
 
-        // Fetch the updated contract with full details
-        $updatedContract = $this->getFullContract($request->contract_id);
-
         return response()->json([
             'success' => 'success',
             'message' => 'Full payment created successfully',

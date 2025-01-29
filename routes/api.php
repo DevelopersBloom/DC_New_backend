@@ -17,6 +17,7 @@ use App\Http\Controllers\NoteController;
 use App\Http\Controllers\AdminControllerNew;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExcelController;
+use App\Http\Controllers\DiscountController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -84,6 +85,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('get-deals',[AdminControllerNew::class,'getDeals']);
         Route::put('update-deals',[AdminControllerNew::class,'updateDeals']);
         Route::delete('delete-deal/{id}',[AdminControllerNew::class,'deleteDeal']);
+
+        //Discount
+        Route::post('answer-discount',[DiscountController::class,'answerDiscount']);
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
 //        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
@@ -125,6 +129,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/execute',[PaymentControllerNew::class,'executeItem']);
         Route::get('/history-detail/{id}',[ContractControllerNew::class,'getHistoryDetails']);
         Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount']);
+        Route::post('/request-discount', [DiscountController::class, 'requestDiscount']);
     });
 
     Route::group(['prefix' => 'notes'], function () {
