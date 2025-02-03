@@ -40,7 +40,8 @@ class PaymentImportNew implements ToCollection
                 $amount = $row[3];
                 $status = $row[4];
                 $penalty = $row[5];
-                $cash = $row[6];
+                $cash = $row[6] ?? null;
+
                 if ($pgi_id !== 'ՄԳ') {
                     if ( $status == 'Վճարված') {
                         $payment = $contract->payments()->create([
@@ -54,6 +55,7 @@ class PaymentImportNew implements ToCollection
                         ]);
                         $contract->collected += $amount;
                         $purpose = Contract::REGULAR_PAYMENT;
+
                         if ($penalty > 0) {
                             $payment = $contract->payments()->create([
                                 'status' => 'completed',
@@ -103,6 +105,7 @@ class PaymentImportNew implements ToCollection
                             'type' => 'regular',
                             'from_date' => $from_date,
                         ]);
+
                         if ($penalty > 0) {
                             $contract->penalty_amount = $contract->penalty_amount + $penalty;
                         }

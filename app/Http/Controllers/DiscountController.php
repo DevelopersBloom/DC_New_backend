@@ -43,11 +43,11 @@ class DiscountController extends Controller
 
         $validatedData = $request->validated();
         $this->discountService->requestDiscount($validatedData);
-        $message = ($validatedData['amount'] > 5000)
-            ? 'Discount request sent successfully!'
-            : 'Discount applied successfully!';
+//        $message = ($validatedData['amount'] > 5000)
+//            ? 'Discount request sent successfully!'
+//            : 'Discount applied successfully!';
         return response()->json([
-            'message' => $message,
+            'message' => 'Discount applied successfully!',
         ],201);
     }
 

@@ -17,7 +17,8 @@ class DiscountService
 
     public function requestDiscount(array $data)
     {
-        $status = $data['amount'] <= 5000 ? Discount::ACCEPTED : Discount::PENDING;
+        //$status = $data['amount'] <= 5000 ? Discount::ACCEPTED : Discount::PENDING;
+        $status = Discount::ACCEPTED;
         $discount =  Discount::create([
             'amount' => $data['amount'],
             'user_id' => Auth()->user()->id,

@@ -149,6 +149,7 @@ class   ContractService
             'closed_at' => $data['closed_at'] ?? null,
             'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
             'user_id' => auth()->user()->id ?? 1,
+            'category_id' => $data['category_id'] ?? null
         ];
 
         // Create and return the contract
