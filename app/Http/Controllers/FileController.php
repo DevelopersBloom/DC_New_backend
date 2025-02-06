@@ -67,7 +67,7 @@ class FileController extends Controller
             'contract_id' => $contract->num,
             'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
 //            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date )),
-            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date)) + 1, //should include start date
+            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date)), //should include start date
             'dl_dt' => Carbon::parse($contract->deadline)->format('d'),
             'psh_numbers' => $pawnshop_numbers,
             'psh_mail' => $pawnshop->email,
