@@ -33,7 +33,7 @@ class FileController extends Controller
         $pawnshop = $contract->pawnshop;
 
         $client = $contract->client;
-        $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->client->middle_name ?? '');
+        $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
         $client_numbers = $client->phone;
         if ($client->additional_phone) {
             $client_numbers .= ', ' . $client->additional_phone;
@@ -58,14 +58,16 @@ class FileController extends Controller
             'client_dob' => Carbon::parse($client->date_of_birth)->format('d.m.Y'),
             'client_passport' => $client->passport_series,
             'client_given' => $client->passport_issued,
-            'client_address' => $client->country . ', ' . $client->city . ', ' . $client->street,
+            'client_address' => ($client->country === 'Armenia' ? 'Հայաստան' : $client->country)
+                . ', ' . $client->city . ', ' . $client->street,
             'client_numbers' => $client_numbers,
             'given' => $this->makeMoney($contract->provided_amount),
             'given_text' => $this->numberToText($contract->provided_amount),
             'price' => $contract->provided_amount,
             'contract_id' => $contract->num,
             'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
-            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->created_at)),
+//            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date )),
+            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date)) + 1, //should include start date
             'dl_dt' => Carbon::parse($contract->deadline)->format('d'),
             'psh_numbers' => $pawnshop_numbers,
             'psh_mail' => $pawnshop->email,
