@@ -209,7 +209,6 @@ class ContractControllerNew extends Controller
 
             // Create contract payments
             $this->contractService->createPayment($contract);
-
             // Create order history
             $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
 
