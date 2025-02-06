@@ -60,7 +60,8 @@ class ContractDetailResource extends JsonResource
                 return [
                     'id'   => $history->id,
                     'type' => $history->type->title,
-                    'date' => $history->date,
+//                    'date' => $history->date,
+                    'date' => Carbon::parse($history->date)->format('d-m-Y'),
                     'interest_amount' => $history->interest_amount ?? 0,
                     'penalty_amount' => $history->penalty ?? 0,
                     'discount' => $history->discount ?? 0,
