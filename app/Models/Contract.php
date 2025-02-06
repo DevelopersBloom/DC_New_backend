@@ -27,6 +27,7 @@ class Contract extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_EXECUTED = 'executed';
     const STATUS_TAKEN  = 'taken';
+    protected $appends = ['is_overdue'];
 
     protected $fillable=[
         'collected',
@@ -148,7 +149,13 @@ class Contract extends Model
                 return $query;
         }
     }
-
+    public function getIsOverdueAttribute()
+    {
+        return $this->payments()
+            ->whereDate('date', '<', Carbon::today()->subDay())
+            ->where('status', 'initial')
+            ->exists();
+    }
     public function scopeFilterByRange($query, $field, $from, $to)
     {
         if ($from) {

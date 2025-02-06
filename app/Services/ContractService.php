@@ -42,6 +42,7 @@ class   ContractService
         }
         $contracts = $query->paginate(10);
 
+
         // Get total counts
         $totalContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)->count();
         $activeContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
