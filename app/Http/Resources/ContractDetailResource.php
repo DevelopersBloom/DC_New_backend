@@ -112,7 +112,7 @@ class ContractDetailResource extends JsonResource
                         'weight' => $item->weight,
                         'clear_weight' => $item->clear_weight,
                         'hallmark' => $item->hallmark,
-                        'description' => $item->description,
+//                        'description' => $item->description,
 
                     ];
                 } elseif ($item->category->name === 'car') {
@@ -129,7 +129,7 @@ class ContractDetailResource extends JsonResource
                         'ownership' => $item->ownership,
                         'issued_by' => $item->issued_by,
                         'date_of_issuance' => $item->date_of_issuance,
-                        'description' => $item->description,
+//                        'description' => $item->description,
 
                     ];
                 } else {
@@ -137,7 +137,8 @@ class ContractDetailResource extends JsonResource
                         'id' => $item->id,
                         'category' => $item->category->title,
                         'subcategory' => $item->subcategory,
-                        'description' => $item->description,
+                        'model' => $item->model
+//                        'description' => $item->description,
                     ];
                 }
             }),
