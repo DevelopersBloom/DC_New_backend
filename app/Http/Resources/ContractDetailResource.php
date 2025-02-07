@@ -27,6 +27,7 @@ class ContractDetailResource extends JsonResource
                 'interest_rate'    => $this->interest_rate,
                 'penalty'          => $this->penalty,
                 'lump_rate'        => $this->lump_rate,
+                'description'      => $this->description
             ],
             'client' => [
                 'id'                => $this->client->id,
@@ -102,8 +103,6 @@ class ContractDetailResource extends JsonResource
                         'category' => $item->category->title,
                         'subcategory' => $item->subcategory,
                         'model' => $item->model,
-                        'description' => $item->description,
-
                     ];
                 } elseif ($item->category->name === 'gold') {
                     return [
