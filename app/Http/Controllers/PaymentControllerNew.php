@@ -89,6 +89,11 @@ class PaymentControllerNew extends Controller
         }
         auth()->user()->pawnshop->given = auth()->user()->pawnshop->given - $contract->left;
         auth()->user()->pawnshop->save();
+
+        Payment::where('contract_id', $contract->id)
+            ->where('last_payment', 1)
+            ->update(['mother' => 0]);
+
         $payment_id = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash);
 
         // Generate history for the payment
