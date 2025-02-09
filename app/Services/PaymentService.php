@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\User;
 use App\Traits\ContractTrait;
 use Illuminate\Support\Carbon;
 
@@ -135,9 +137,10 @@ class PaymentService {
         $payment->amount = $amount;
         $payment->paid = $amount;
         $payment->type = $type;
-        $payment->cash = $cash;
+        $payment->cash = $cash ?? true;
 
-        $payment->pawnshop_id = auth()->user()->pawnshop_id;
+        $user = auth()->user() ?? User::where('id',1)->first();
+        $payment->pawnshop_id = $user->pawnshop_id;
         $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->status = $status;
 
@@ -191,10 +194,9 @@ class PaymentService {
         $contract->left -= $partialAmount;
         $contract->collected += $partialAmount;
         $contract->save();
-
-        auth()->user()->pawnshop->given -= $partialAmount;
-        auth()->user()->pawnshop->save();
-
+        $pawnshop =  auth()->user()->pawnshop ?? Pawnshop::where('id',1)->first();
+        $pawnshop->given -= $partialAmount;
+        $pawnshop->save();
         // Create the partial payment record
 
         return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash);
