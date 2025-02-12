@@ -13,6 +13,8 @@ class Deal extends Model
     const HISTORY =  'history';
     const IN_DEAL = 'in';
     const OUT_DEAL = 'out';
+    const COST_OUT_DEAL = 'cost_out';
+    const APPA_DEAL = 'appa';
     const EXPENSE_DEAL = 'expense';
     const TAKEN_PURPOSE = 'Իրացված';
 

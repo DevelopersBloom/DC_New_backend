@@ -153,7 +153,7 @@ class PaymentControllerNew extends Controller
     {
         $lump_amount = $providedAmont * $lumpRate/100;
         //$remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now());
-        $remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now()->startOfDay())+1;
+        $remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now()->startOfDay());
 
         $refundAmount = $lump_amount/$deadlineDays*$remainingDays;
 

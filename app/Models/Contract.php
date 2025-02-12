@@ -240,4 +240,13 @@ class Contract extends Model
         }
         return $query;
     }
+    public function scopeDailySummaryForMonth($query, $year, $month)
+    {
+        return $query->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->selectRaw('DATE(date) as day, COUNT(*) as count, SUM(estimated_amount) as total_estimated, SUM(provided_amount) as total_provided')
+            ->groupBy('day')
+            ->orderBy('day');
+    }
+
 }

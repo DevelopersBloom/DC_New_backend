@@ -131,6 +131,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount']);
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount']);
     });
+    Route::get('/get-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox']);
+
     Route::get('/get-discount-requests', [DiscountController::class, 'getDiscountRequests']);
 
     Route::group(['prefix' => 'notes'], function () {

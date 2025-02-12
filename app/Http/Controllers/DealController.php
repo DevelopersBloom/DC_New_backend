@@ -15,7 +15,50 @@ use Illuminate\Http\Request;
 class
 DealController extends Controller
 {
-    use ContractTrait,OrderTrait;
+    use OrderTrait,ContractTrait;
+    public function calculatePawnshopCashbox($month,$year)
+    {
+        $cashboxData = [];
+        $now = Carbon::now();
+        $daysInMonth = ($year == $now->year && $month == $now->month)
+            ? $now->day
+            : Carbon::createFromDate($year, $month, 1)->daysInMonth;
+
+        for ($day = $daysInMonth; $day >= 1; $day--) {
+            $date = Carbon::create($year, $month, $day)->format('Y-m-d');
+            $contractData = Contract::whereDate('date', $date)
+                ->selectRaw('SUM(estimated_amount) as total_estimated,
+                        SUM(provided_amount) as total_provided')
+                ->first();
+
+            $totals = Deal::whereDate('date', '<=', $date)
+                ->where('type', Deal::IN_DEAL)
+                ->selectRaw(
+                    "SUM(CASE WHEN filter_type='appa' THEN amount ELSE 0 END) AS appa,
+                     SUM(CASE WHEN filter_type='ndm' THEN amount ELSE 0 END) AS ndmIn,
+                     SUM(amount) AS totalCashboxIn")
+                ->first();
+
+            $totalOuts = Deal::whereIn('type', [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
+                ->whereDate('date', '<=', $date)
+                ->selectRaw(
+                    "SUM(CASE WHEN filter_type='ndm' THEN amount ELSE 0 END) AS ndmOut,
+                     SUM(amount) AS totalCashboxOut")
+                ->first();
+
+           $cashboxData[$date] = [
+                'estimated_amount' => $contractData->total_estimated ?? 0,
+                'provided_amount' => $contractData->total_provided ?? 0,
+                'appa' => $totals->appa ?? 0,
+                'ndm' => ($totals->ndmIn ?? 0) - ($totalOuts->ndmOut ?? 0),
+                'cashbox' => $totals->totalCashboxIn  - $totalOuts->totalCashboxOut,
+            ];
+        }
+        return $cashboxData;
+
+
+    }
+
     public function getCashBox(int $pawnshop_id)
     {
         $pawnshop = Pawnshop::findOrFail(auth()->user()->pawnshop_id);
