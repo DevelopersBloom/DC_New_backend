@@ -19,6 +19,7 @@ DealController extends Controller
     public function calculatePawnshopCashbox($month,$year)
     {
         $cashboxData = [];
+        $pawnshopId = auth()->user()->pawnshop_id;
         $now = Carbon::now();
         $daysInMonth = ($year == $now->year && $month == $now->month)
             ? $now->day
@@ -29,10 +30,12 @@ DealController extends Controller
             $contractData = Contract::whereDate('date', $date)
                 ->selectRaw('SUM(estimated_amount) as total_estimated,
                         SUM(provided_amount) as total_provided')
+                ->where('pawnshop_id',$pawnshopId)
                 ->first();
 
             $totals = Deal::whereDate('date', '<=', $date)
                 ->where('type', Deal::IN_DEAL)
+                ->where('pawnshop_id',$pawnshopId)
                 ->selectRaw(
                     "SUM(CASE WHEN filter_type='appa' THEN amount ELSE 0 END) AS appa,
                      SUM(CASE WHEN filter_type='ndm' THEN amount ELSE 0 END) AS ndmIn,
@@ -41,6 +44,7 @@ DealController extends Controller
 
             $totalOuts = Deal::whereIn('type', [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
                 ->whereDate('date', '<=', $date)
+                ->where('pawnshop_id',$pawnshopId)
                 ->selectRaw(
                     "SUM(CASE WHEN filter_type='ndm' THEN amount ELSE 0 END) AS ndmOut,
                      SUM(amount) AS totalCashboxOut")
