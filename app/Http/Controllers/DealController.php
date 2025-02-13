@@ -59,16 +59,46 @@ DealController extends Controller
 
     }
 
+//    public function getCashBox(int $pawnshop_id)
+//    {
+//        $pawnshop = Pawnshop::findOrFail(auth()->user()->pawnshop_id);
+//        $cash_box = $pawnshop->cashbox;
+//        $bank_cash_box = $pawnshop->bank_cashbox;
+//        $total_amount = $cash_box + $bank_cash_box;
+//        return response()->json([
+//            'cashBox' => $cash_box,
+//            'bankCashBox' => $bank_cash_box,
+//            'totalAmount' => $total_amount
+//        ]);
+//    }
     public function getCashBox(int $pawnshop_id)
     {
-        $pawnshop = Pawnshop::findOrFail(auth()->user()->pawnshop_id);
-        $cash_box = $pawnshop->cashbox;
-        $bank_cash_box = $pawnshop->bank_cashbox;
+        $now = Carbon::now()->format('Y-m-d');
+
+        $deals = Deal::whereDate('date', '<=', $now)
+            ->where('pawnshop_id',$pawnshop_id)
+            ->whereIn('type', [Deal::IN_DEAL, Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
+            ->selectRaw("
+            SUM(CASE WHEN type = ? AND cash = true THEN amount ELSE 0 END) as total_cash_in,
+            SUM(CASE WHEN type IN (?, ?, ?) AND cash = true THEN amount ELSE 0 END) as total_cash_out,
+            SUM(CASE WHEN type = ? AND cash = false THEN amount ELSE 0 END) as total_bank_in,
+            SUM(CASE WHEN type IN (?, ?, ?) AND cash = false THEN amount ELSE 0 END) as total_bank_out
+        ", [
+                Deal::IN_DEAL,
+                Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL,
+                Deal::IN_DEAL,
+                Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL
+            ])
+            ->first();
+
+        $cash_box = ($deals->total_cash_in ?? 0) - ($deals->total_cash_out ?? 0);
+        $bank_cash_box = ($deals->total_bank_in ?? 0) - ($deals->total_bank_out ?? 0);
         $total_amount = $cash_box + $bank_cash_box;
+
         return response()->json([
             'cashBox' => $cash_box,
             'bankCashBox' => $bank_cash_box,
-            'totalAmount' => $total_amount
+            'totalAmount' => $total_amount,
         ]);
     }
 

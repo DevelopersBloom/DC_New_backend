@@ -562,8 +562,23 @@ class AdminControllerNew extends Controller
 
         $filter_type = $request->query('filter','history');
 
-        $dealsQuery = Deal::select('id','amount','type','receiver','client_id','order_id','cash','contract_id','delay_days',
-        'interest_amount','purpose','penalty','discount','created_by')
+        $dealsQuery = Deal::select(
+            'id',
+            DB::raw("DATE(date) as date"),
+            'amount',
+            'type',
+            'receiver',
+            'client_id',
+            'order_id',
+            'cash',
+            'contract_id',
+            'delay_days',
+            'interest_amount',
+            'purpose',
+            'penalty',
+            'discount',
+            'created_by'
+        )
             ->with('client:id,name,surname')
             ->with('contract:id,mother,num')
             ->with('createdBy:id,name,surname');
@@ -599,6 +614,7 @@ class AdminControllerNew extends Controller
             'deals.*.id' => 'required|exists:deals,id',
             'deals.*.amount' => 'required|numeric|min:0',
             'deals.*.cash' => 'required|boolean',
+            'deals.*.date' => 'required|date_format:Y-m-d'
         ]);
 
         foreach ($validated['deals'] as $dealData) {
@@ -637,6 +653,7 @@ class AdminControllerNew extends Controller
             $deal->update([
                 'amount' => $dealData['amount'],
                 'cash' => $dealData['cash'],
+                'date' => $dealData['date']
             ]);
         }
         return response()->json(['message' => 'Deals updated successfully']);

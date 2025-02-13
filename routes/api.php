@@ -131,7 +131,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount']);
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount']);
     });
-    Route::get('/get-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox']);
 
     Route::get('/get-discount-requests', [DiscountController::class, 'getDiscountRequests']);
 
@@ -150,6 +149,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/{id}', [PaymentController::class, 'getPayments']);
     });
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
+    Route::get('/get-cashBox-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox']);
     Route::get('/get-deals', [DealController::class, 'index']);
     Route::post('/add-cost', [DealController::class, 'addCostNDM']);
     Route::post('/make-expense', [DealController::class, 'makeExpense']);

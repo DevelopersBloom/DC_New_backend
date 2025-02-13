@@ -53,29 +53,27 @@ class Deal extends Model
     protected static function boot()
     {
         parent::boot();
-
-        static::deleting(function ($deal) {
-//            if ($deal->isForceDeleting()) {
-//                if ($deal->history) {
-//                    $deal->history->forceDelete();
-//                }
-//
-//                if ($deal->order) {
-//                    $deal->order->forceDelete();
-//                }
-//
-//                if ($deal->payment) {
-//                    $deal->payment->forceDelete();
-//                }
-//            } else {
-                if ($deal->history) {
-                    $deal->history->delete();
-                }
+        static::updating(function ($deal) {
+            if ($deal->isDirty('date')) { // Check if date is changing
+                $newDate = $deal->date;
 
                 if ($deal->order) {
-                    $deal->order->delete();
+                    $deal->order->update(['date' => $newDate]);
                 }
-//            }
+
+                if ($deal->history) {
+                    $deal->history->update(['date' => $newDate]);
+                }
+            }
+        });
+        static::deleting(function ($deal) {
+            if ($deal->history) {
+                $deal->history->delete();
+            }
+
+            if ($deal->order) {
+                $deal->order->delete();
+            }
         });
     }
     public function order(): BelongsTo
