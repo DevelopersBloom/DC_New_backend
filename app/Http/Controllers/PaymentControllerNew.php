@@ -231,6 +231,18 @@ class PaymentControllerNew extends Controller
             $contract->left = 0;
             $contract->closed_at = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
             $contract->save();
+
+            Payment::where('contract_id',$contractId)
+                ->where('paid','<=',0)
+                ->where('status','initial')
+                ->delete();
+
+            Payment::where('contract_id',$contractId)
+                ->where('paid','>',0)
+                ->where('status','initial')
+                ->update([
+                    'status' => 'completed'
+                ]);
             $order_id = $this->getOrder($cash,'in');
             $res = [
                 'contract_id' => $contract->id,
