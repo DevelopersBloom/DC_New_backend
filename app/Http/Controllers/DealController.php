@@ -58,7 +58,9 @@ DealController extends Controller
                 'cashbox' => $totals->totalCashboxIn  - $totalOuts->totalCashboxOut,
             ];
         }
-        return $cashboxData;
+        return [
+            "data" => $cashboxData
+            ];
 
 
     }
