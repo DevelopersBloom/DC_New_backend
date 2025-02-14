@@ -27,7 +27,8 @@ class ContractDetailResource extends JsonResource
                 'interest_rate'    => $this->interest_rate,
                 'penalty'          => $this->penalty,
                 'lump_rate'        => $this->lump_rate,
-                'description'      => $this->description
+                'description'      => $this->description,
+                'status'           => $this->status
             ],
             'client' => [
                 'id'                => $this->client->id,
