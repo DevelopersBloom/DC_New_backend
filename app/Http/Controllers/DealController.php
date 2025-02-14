@@ -59,8 +59,8 @@ DealController extends Controller
             ];
         }
         return [
-            "data" => $cashboxData
-            ];
+            "data" => [$cashboxData]
+        ];
 
 
     }
