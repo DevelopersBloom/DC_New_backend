@@ -50,7 +50,8 @@ DealController extends Controller
                      SUM(amount) AS totalCashboxOut")
                 ->first();
 
-           $cashboxData[$date] = [
+           $cashboxData = [
+                'date' => $date,
                 'estimated_amount' => $contractData->total_estimated ?? 0,
                 'provided_amount' => $contractData->total_provided ?? 0,
                 'appa' => $totals->appa ?? 0,
