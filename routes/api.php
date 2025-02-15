@@ -136,7 +136,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/get-discount-requests', [DiscountController::class, 'getDiscountRequests']);
 
     Route::group(['prefix' => 'notes'], function () {
-       Route::get('/{id}',[NoteController::class,'index']);
+       Route::get('/{contract_id}',[NoteController::class,'index']);
        Route::post('/',[NoteController::class,'store']);
        Route::put('/{id}',[NoteController::class,'update']);
        Route::delete('/{id}',[NoteController::class,'destroy']);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\NoteResource;
 use App\Models\Note;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,12 +15,15 @@ class NoteController extends Controller
      * @param int $contract_id
      * @return JsonResponse
      */
+
     public function index(int $contract_id): JsonResponse
     {
         $notes = Note::where('contract_id', $contract_id)->get();
-        return response()->json(['notes' => $notes]);
-    }
 
+        return response()->json([
+            'notes' => NoteResource::collection($notes),
+        ]);
+    }
     /**
      * Store a newly created note for a specific contract
      *
@@ -38,7 +42,7 @@ class NoteController extends Controller
 
         return response()->json([
             'message' => 'Note created successfully',
-            'note'    => $note
+            'note'    => new NoteResource($note)
         ],201);
     }
 
@@ -62,7 +66,7 @@ class NoteController extends Controller
 
         return response()->json([
             'message' => 'Note updated successfully',
-            'note'    => $note
+            'note'    => new NoteResource($note),
         ]);
     }
 
