@@ -517,8 +517,8 @@ class AdminControllerNew extends Controller
             ->with(['users:id,name,surname,middle_name,role,pawnshop_id'])
             ->get()
             ->map(function ($pawnshop) {
-                $enter = $pawnshop->orders()->where('type', 'in')->sum('amount') ?? 0;
-                $exist = $pawnshop->orders()->where('type', 'cost_out')->sum('amount') ?? 0;
+                $enter = $pawnshop->deals()->where('type', 'in')->where('filter_type',Deal::NDM_DEAL)->sum('amount') ?? 0;
+                $exist = $pawnshop->deals()->where('type', 'cost_out')->where('filter_type',Deal::NDM_DEAL)->sum('amount') ?? 0;
                 $pawnshop->ndm = $enter - $exist;
                 return $pawnshop;
             });

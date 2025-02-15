@@ -14,6 +14,7 @@ class Deal extends Model
     const IN_DEAL = 'in';
     const OUT_DEAL = 'out';
     const COST_OUT_DEAL = 'cost_out';
+    const NDM_DEAL = 'ndm';
     const APPA_DEAL = 'appa';
     const EXPENSE_DEAL = 'expense';
     const TAKEN_PURPOSE = 'Իրացված';
