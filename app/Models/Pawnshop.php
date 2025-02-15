@@ -46,6 +46,10 @@ class Pawnshop extends Model
     {
         return $this->hasMany(Order::class);
     }
+    public function deals()
+    {
+        return $this->hasMany(Deal::class);
+    }
     public function countNDM()
     {
         $enter = $this->orders()->where('type','in')
