@@ -152,11 +152,14 @@ class ContractControllerNew extends Controller
             $deadline = Carbon::now('Asia/Yerevan')->addDays($contractRequest->validated()['deadline'])->format('Y-m-d H:i:s');
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
             // Store contract items
+            $category_id = null;
             $items = $itemRequest->validated()['items'];
             foreach ($items as $item_data) {
                 $category_id = $item_data['category_id'];
                 $this->contractService->storeContractItem($contract->id, $item_data);
             }
+            $contract->category_id = $category_id;
+            $contract->save();
 //            auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contractRequest->provided_amount;
 //            auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contractRequest->estimated_amount;
 //            auth()->user()->pawnshop->save();
