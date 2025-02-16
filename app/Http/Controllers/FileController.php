@@ -45,7 +45,7 @@ class FileController extends Controller
             $pawnshop_numbers .= ', ' . $pawnshop->phone2;
         }
 
-        $yearly_rate = $contract?->category->name == 'electronics' ? 158.39 : $contract->interest_rate * 365;
+        $yearly_rate = $contract?->category?->name == 'electronics' ? 158.39 : $contract->interest_rate * 365;
         $cash = $contract->provided_amount > 20000 ? 'անկանխիկ' : 'կանխիկ';
         $o_t_p = $contract->provided_amount >= 400000 ? '2' : '2,5';
         $templateProcessor->setValues([
