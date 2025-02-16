@@ -117,7 +117,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/users/get-fullname',[UserController::class, 'getClientsFullName']);
 
     Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
-    Route::get('/download-contract/{id}', [FileController::class, 'downloadContract']);
     Route::group(['prefix' => 'contracts'], function () {
         Route::get('/', [ContractControllerNew::class, 'get']);
         Route::post('/', [ContractControllerNew::class, 'store']);

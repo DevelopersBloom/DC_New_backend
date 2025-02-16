@@ -98,7 +98,7 @@ class ContractDetailResource extends JsonResource
                 ];
             }),
             'items' => $this->items->map(function ($item) {
-                if ($item->category->name === 'phone') {
+                if ($item->category->name === 'electronics') {
                     return [
                         'id' => $item->id,
                         'category' => $item->category->title,
