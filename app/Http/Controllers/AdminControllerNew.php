@@ -556,6 +556,33 @@ class AdminControllerNew extends Controller
             'pawnshop' => $pawnshop
         ]);
     }
+    public function updatePawnshops(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'pawnshops' => 'required|array',
+            'pawnshops.*.id' => 'required|exists:pawnshops,id',
+            'pawnshops.*.city' => 'required|string|max:255',
+            'pawnshops.*.license' => 'required|string|max:255',
+            'pawnshops.*.assurance_money' => 'nullable|numeric|min:0',
+        ]);
+
+        $updatedPawnshops = [];
+        foreach ($validated['pawnshops'] as $pawnshopData) {
+            $pawnshop = Pawnshop::withTrashed()->find($pawnshopData['id']);
+            if ($pawnshop) {
+                $pawnshop->city = $pawnshopData['city'];
+                $pawnshop->license = $pawnshopData['license'];
+                if (isset($pawnshopData['assurance_money'])) {
+                    $pawnshop->assurance_money = $pawnshopData['assurance_money'];
+                }
+                $pawnshop->save();
+            }
+        }
+
+        return response()->json([
+            'message' => 'Pawnshops updated successfully',
+        ]);
+    }
 
     public function getDeals(Request $request): JsonResponse
     {

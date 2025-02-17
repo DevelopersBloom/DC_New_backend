@@ -80,6 +80,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         //Pawnshops
         Route::get('/get-pawnshops', [AdminControllerNew::class, 'getPawnshops']);
         Route::put('update-pawnshop/{id}',[AdminControllerNew::class,'updatePawnshop']);
+        Route::put('update-pawnshops', [AdminControllerNew::class, 'updatePawnshops']);
+
 
         //Deals
         Route::get('get-deals',[AdminControllerNew::class,'getDeals']);
