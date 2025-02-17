@@ -512,7 +512,7 @@ class AdminControllerNew extends Controller
 
     public function getPawnshops(): JsonResponse
     {
-        $pawnshops = Pawnshop::select(['id', 'city', 'license', 'cashbox', 'bank_cashbox', 'assurance_money'])
+        $pawnshops = Pawnshop::select(['id', 'city', 'license', 'assurance_money'])
             ->withCount('users')
             ->with(['users:id,name,surname,middle_name,role,pawnshop_id'])
             ->get()

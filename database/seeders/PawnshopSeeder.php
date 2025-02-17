@@ -36,6 +36,7 @@ class PawnshopSeeder extends Seeder
         $pawnshop->order_out = 1;
         $pawnshop->bank_order_in = 1;
         $pawnshop->bank_order_out = 1;
+        $pawnshop->assurance_money = 0;
         $pawnshop->save();
 
         $pawnshop = new Pawnshop();
@@ -58,6 +59,7 @@ class PawnshopSeeder extends Seeder
         $pawnshop->order_out = 1;
         $pawnshop->bank_order_in = 1;
         $pawnshop->bank_order_out = 1;
+        $pawnshop->assurance_money = 0;
         $pawnshop->save();
 
 
