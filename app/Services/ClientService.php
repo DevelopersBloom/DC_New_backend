@@ -96,4 +96,24 @@ class ClientService
 
         return $client;
     }
+    public function updateClientData(int $client_id, array $data)
+    {
+        $client = Client::findOrFail($client_id);
+
+        $client->passport_series = $data['passport_series'] ?? $client->passport_series;
+        $client->passport_validity = $data['passport_validity'] ?? $client->passport_validity;
+        $client->passport_issued = $data['passport_issued'] ?? $client->passport_issued;
+        $client->country = $data['country'] ?? $client->country;
+        $client->city = $data['city'] ?? $client->city;
+        $client->street = $data['street'] ?? $client->street;
+        $client->building = $data['building'] ?? $client->building;
+        $client->email = $data['email'] ?? $client->email;
+        $client->phone = $data['phone'] ?? $client->phone;
+        $client->additional_phone = $data['additional_phone'] ?? $client->additional_phone;
+
+        $client->save();
+
+        return $client;
+    }
+
 }

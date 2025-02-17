@@ -115,6 +115,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search', [ClientControllerNew::class, 'search']);
     Route::get('/users/get-fullname',[UserController::class, 'getClientsFullName']);
+    Route::put('/clients/{id}/update', [ClientControllerNew::class, 'updateClientData']);
 
     Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::group(['prefix' => 'contracts'], function () {

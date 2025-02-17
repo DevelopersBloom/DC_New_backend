@@ -589,7 +589,7 @@ class AdminControllerNew extends Controller
                 break;
 
             case 'cost_out':
-                $dealsQuery->whereIn('type', 'cost_out','out');
+                $dealsQuery->whereIn('type', ['cost_out','out']);
                 break;
 
             case 'expense':

@@ -41,5 +41,26 @@ class ClientControllerNew extends Controller
 
         return ClientResource::collection($clients);
     }
+    public function updateClientData(Request $request, int $client_id)
+    {
+        $validatedData = $request->validate([
+            'passport_series' => 'nullable|string|max:255',
+            'passport_validity' => 'nullable|date',
+            'passport_issued' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'street' => 'nullable|string|max:255',
+            'building' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:20',
+            'additional_phone' => 'nullable|string|max:20',
+        ]);
 
+        try {
+            $client = $this->clientService->updateClientData($client_id, $validatedData);
+            return response()->json(['message' => 'Client data updated successfully', 'client' => $client], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Client not found or update failed'], 400);
+        }
+    }
 }
