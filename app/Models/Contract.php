@@ -59,8 +59,8 @@ class Contract extends Model
         'lump_rate',
         'closed_at',
         'mother',
-        'left'
-
+        'left',
+        'description'
     ];
 
     public function payments(): HasMany

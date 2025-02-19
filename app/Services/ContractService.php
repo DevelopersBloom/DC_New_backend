@@ -131,7 +131,6 @@ class   ContractService
         // Calculate the next contract number
         $maxNum = Contract::max('num') ?? 0;
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
-
         $values = [
             'date' => $data['date'] ?? now()->toDateString(),
             'client_id' => $client_id,
