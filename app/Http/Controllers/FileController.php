@@ -86,7 +86,7 @@ class FileController extends Controller
         $table_values = [];
         foreach ($contract->items as $item) {
             $table_values[] = [
-                'item_description' => $item->model . $item->description,
+                'item_description' => $item->model . $contract->description,
                 'i_t' => $item->hallmark,
                 'i_w' => $item->weight,
                 'i_cw' => $item->clear_weight
