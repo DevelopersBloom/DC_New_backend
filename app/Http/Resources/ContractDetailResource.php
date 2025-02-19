@@ -42,7 +42,7 @@ class ContractDetailResource extends JsonResource
                 'phone'             => $this->client->phone,
                 'additional_phone'  => $this->client->additional_phone,
                 'email'             => $this->client->email,
-                'date_of_birth'     => $this->client->date_of_birth,
+                'date_of_birth'     => Carbon::parse($this->client->date_of_birth)->format('d-m-Y'),
                 'passport_series'   => $this->client->passport_series,
                 'passport_validity' => $this->client->passport_validity,
                 'passport_issued'   => $this->client->passport_issued,
@@ -53,7 +53,7 @@ class ContractDetailResource extends JsonResource
                     'amount'  => $payment->amount,
                     'paid'    => $payment->paid,
                     'penalty' => $payment->penalty,
-                    'date'    => $payment->date,
+                    'date'    => Carbon::parse($payment->date)->format('d-m-Y'),
                     'status'  => $payment->status,
                     'mother'  => $payment->mother
                 ];
