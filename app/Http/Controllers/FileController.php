@@ -63,7 +63,7 @@ class FileController extends Controller
             'client_numbers' => $client_numbers,
             'given' => $this->makeMoney((int) $contract->provided_amount),
             'given_text' => $this->numberToText($contract->provided_amount),
-            'price' => $contract->provided_amount,
+            'price' => $this->makeMoney((int) $contract->provided_amount),
             'contract_id' => $contract->num,
             'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
 //            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date )),
