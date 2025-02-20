@@ -9,6 +9,7 @@ use App\Http\Resources\ContractDetailResource;
 use App\Models\Contract;
 use App\Models\History;
 use App\Models\HistoryType;
+use App\Models\Payment;
 use App\Services\ClientService;
 use App\Services\ContractService;
 use App\Services\FileService;
@@ -169,7 +170,7 @@ class ContractControllerNew extends Controller
                 $this->fileService->uploadContractFiles($contract->id, $filesData);
             }
             // Create contract payments
-//            $this->contractService->createPayment($contract);
+            $this->contractService->createPayment($contract);
 
             // Create orders and history entries
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
@@ -201,6 +202,7 @@ class ContractControllerNew extends Controller
         DB::beginTransaction();
         try {
             $contract = Contract::findOrFail($validatedData['contract_id']);
+            $contract->payments()->delete();
             $client = $contract->client;
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000;
