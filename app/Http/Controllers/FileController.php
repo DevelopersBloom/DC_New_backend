@@ -28,9 +28,11 @@ class FileController extends Controller
         $contract = Contract::where('id', $id)
             ->with(['client', 'items', 'pawnshop', 'payments'])
             ->firstOrFail();
-
-        $templateProcessor = new TemplateProcessor(public_path('/files/contract_bond_template.docx'));
-        $pawnshop = $contract->pawnshop;
+        $hasCar = $contract->items->contains(function ($item) {
+            return $item->category->name === 'car';
+        });
+        $templateFile = $hasCar ? 'contract_bond_car_template.docx' : 'contract_bond_template.docx';
+        $templateProcessor = new TemplateProcessor(public_path('/files/' . $templateFile));        $pawnshop = $contract->pawnshop;
 
         $client = $contract->client;
         $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
@@ -84,16 +86,48 @@ class FileController extends Controller
         ]);
         // Set values for the bond section
         $table_values = [];
+//        foreach ($contract->items as $item) {
+//            $table_values[] = [
+//                'item_description' => $item->category->title . ',' . $item->subcategory .
+//                    ($item->model ? ',' . $item->model : ''),
+//                'i_t' => $item->hallmark,
+//                'i_w' => $item->weight,
+//                'i_cw' => $item->clear_weight
+//            ];
+//        }
+        $table_values = [];
+        $car_values = [];
         foreach ($contract->items as $item) {
-            $table_values[] = [
-                'item_description' => $item->category->title . ',' . $item->subcategory .
-                    ($item->model ? ',' . $item->model : ''),
-                'i_t' => $item->hallmark,
-                'i_w' => $item->weight,
-                'i_cw' => $item->clear_weight
-            ];
+            if ($item->category->name === 'car') {
+                $car_values = [
+                    'item_description' => $item->category->title . ','  . ($item->model ? ',' . $item->model : ''),
+                    'i_c' => $item->car_make,
+                    'i_m' => $item->model,
+                    'i_man' => $item->manufacture,
+                    'i_col' => $item->color,
+                    'i_l' => $item->license_plate,
+                    'i_i' => $item->identification,
+                    'i_p' => $item->power,
+                    'i_r' => $item->registration,
+                    'i_o' => $item->ownership,
+                    'i_iss' => $item->issued_by,
+                    'i_d' => Carbon::parse($item->date_of_issuance)->format('d.m.Y'),
+                ];
+            } else {
+                $table_values[] = [
+                    'item_description' => $item->category->title . ',' . $item->subcategory . ($item->model ? ',' . $item->model : ''),
+                    'i_t' => $item->hallmark,
+                    'i_w' => $item->weight,
+                    'i_cw' => $item->clear_weight,
+                ];
+            }
         }
-        $templateProcessor->cloneRowAndSetValues('item_description', $table_values);
+        if ($hasCar) {
+            $templateProcessor->setValues($car_values);
+        } else {
+            $templateProcessor->cloneRowAndSetValues('item_description', $table_values);
+        }
+        //$templateProcessor->cloneRowAndSetValues('item_description', $table_values);
 
         $payment_values = [];
         $i = 1;

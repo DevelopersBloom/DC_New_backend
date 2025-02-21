@@ -33,8 +33,8 @@ class ContractSeeder extends Seeder
                 $county = 'Հայաստան';
                 $city = 'ք.Երևան';
                 $street = 'Արշակունյաց '.Str::random(rand(10,13)).' '.rand(10,60).'/'.rand(1,4);
-                $phone1 = '077 '.rand(100000,999999);
-                $phone2 = '098 '.rand(100000,999999);
+                $phone1 = '+374 77 '.rand(100000,999999);
+                $phone2 = '+374 98 '.rand(100000,999999);
                 $email = Str::random(rand(6,10)).'@gmail.com';
                // $comment = Str::random(rand(6,10));
                 $dob = Carbon::parse(date('Y-m-d',mt_rand(Carbon::parse('1960-01-01')->timestamp, Carbon::parse('2000-11-01')->timestamp)))->format('Y-m-d');
