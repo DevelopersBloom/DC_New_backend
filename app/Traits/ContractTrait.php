@@ -22,9 +22,14 @@ trait ContractTrait
     /**
      * Helper method to create order and history entries
      */
-    private function createOrderAndHistory($contract, $client_id,$client_name, $cash,$category_id,$num = null,$pawnshop_id = null,$date = null)
+    private function createOrderAndHistory($contract, $client_id,$client_name, $cash,$category_id,$num = null,$pawnshop_id = null,$date = null,$isOpen=false)
     {
-        $historyTypes = HistoryType::whereIn('name', ['one_time_payment', 'mother_payment'])->get();
+        $historyTypeNames = $isOpen
+            ? ['opening', 'one_time_payment', 'mother_payment']
+            : ['one_time_payment', 'mother_payment'];
+
+        $historyTypes = HistoryType::whereIn('name', $historyTypeNames)->get();
+
         $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
         $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
         $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT,$num,$pawnshop_id,$date);

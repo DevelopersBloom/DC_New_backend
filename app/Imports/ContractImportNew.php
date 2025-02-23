@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Category;
+use App\Models\Contract;
 use App\Services\ClientService;
 use App\Services\ContractService;
 use App\Traits\ContractTrait;
@@ -136,7 +137,7 @@ class ContractImportNew implements ToCollection
             }
 
             // Create order and history
-            $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, 1,$date);
+            $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, 1,$date,true);
         }
     }
 }
