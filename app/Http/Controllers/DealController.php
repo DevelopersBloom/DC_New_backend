@@ -346,14 +346,22 @@ DealController extends Controller
         $amount = $request->amount;
         $receiver = $request->receiver;
         $save = $request->save_template;
-        $purpose_out = "Դրամարկղ";
-        $purpose_in = "Անկանխիկ հաշվիվ";
+//        $purpose_out = "Դրամարկղ";
+//        $purpose_in = "Անկանխիկ հաշվիվ";
+//        if ($cash) {
+//            $purpose_out = "Անկանխիկ հաշվիվ";
+//            $purpose_in = "Դրամարկղ";
+//        }
+        $purpose_out = "Անկանխիկ հաշվիվ";
+        $purpose_in = "Դրամարկղ";
         if ($cash) {
-            $purpose_out = "Անկանխիկ հաշվիվ";
-            $purpose_in = "Դրամարկղ";
+            $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
+        } else {
+            $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_out,$cash);
+            $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_in, !$cash);
         }
-        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
-        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
+//        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
+//        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
 
         return response()->json(["success" => "success"]);
     }
