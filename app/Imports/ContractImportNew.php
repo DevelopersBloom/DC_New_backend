@@ -34,8 +34,8 @@ class ContractImportNew implements ToCollection
         foreach ($collection->skip(2) as $row) {
             $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[0]));
             $date_of_birth = null;
-            if ($row[11] != "՝"  ) {
-                $date_of_birth = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[11]));
+            if (trim($row[11]) != "՝") {
+                $date_of_birth = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(trim($row[11])))->format('Y-m-d');
             }
             //$passport_validity = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[6]));
 //            $date_of_birth = null;
