@@ -65,8 +65,8 @@ class   ContractService
         // Check if an item with the given serial number or IMEI exists
         $query = Item::query();
 
-        if (!empty($data['sn'])) {
-            $query->orWhere('sn', $data['sn']);
+        if (!empty($data['serialNumber'])) {
+            $query->orWhere('sn', $data['serialNumber']);
         }
         if (!empty($data['imei'])) {
             $query->orWhere('imei', $data['imei']);
@@ -75,7 +75,7 @@ class   ContractService
         $item = $query->first();
         $category = Category::findOrFail($data['category_id']);
 
-        if ($category->name == 'electronics' && (!empty($data['sn']) || !empty($data['imei'])) && $item) {
+        if ($category->name == 'electronics' && (!empty($data['serialNumber']) || !empty($data['imei'])) && $item) {
             $item->update($data);
         } else {
             $item = new Item();
@@ -98,7 +98,7 @@ class   ContractService
                         $item->model = $subcategoryItem->model;
                     }
                     $item->subcategory = $subcategory->name;
-                    $item->sn = $data['sn'] ?? null;
+                    $item->sn = $data['serialNumber'] ?? null;
                     $item->imei = $data['imei'] ?? null;
                     break;
 
