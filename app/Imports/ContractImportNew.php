@@ -81,17 +81,26 @@ class ContractImportNew implements ToCollection
             $phone_info = $row[13];
             $phone_arr = [];
             $additional_phone = null;
+            $phones = array_map('trim', explode(',', $phone_info));
 
-            if (preg_match_all('#\d{3} \d{2} \d{2} \d{2}|\d{3}  \d{2} \d{2} \d{2}#', $phone_info, $matches)) {
-                $phone_arr = $matches[0];
+            foreach ($phones as $phone) {
+                if (preg_match('#^\d{2,3}\s+\d{2}\s+\d{2}\s+\d{2}$#', $phone)) {
+                    $phone_arr[] = $phone;
+                }
             }
+
+//            if (preg_match_all('#\d{3} \d{2} \d{2} \d{2}|\d{3}  \d{2} \d{2} \d{2}#', $phone_info, $matches)) {
+//                $phone_arr = $matches[0];
+//                dd($phone_arr);
+//            }
 
             $phone = count($phone_arr) > 0 ? trim($phone_arr[0]) : null;
             $additional_phone = count($phone_arr) > 1 ? trim($phone_arr[1]) : null;
 
 //            $passport_data = $row[5];
             $passport_series = $row[5];
-            $passport_issued = preg_replace('/\D/', '', $row[7]); // Removes non-numeric characters տրվ․
+            $passport_issued = preg_replace('/\D/', '', $row[7]);
+          // Removes non-numeric characters տրվ․
 //            if($passport_data){
 //                if(preg_match('#[a-zA-Z]{2}\d{7}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)) {
 //                    $passport_series = $matches[0][0];
