@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class ContractImportNew implements ToCollection
 {
@@ -34,8 +35,34 @@ class ContractImportNew implements ToCollection
         foreach ($collection->skip(2) as $row) {
             $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[0]));
             $date_of_birth = null;
-            if (trim($row[11]) != "՝") {
-                $date_of_birth = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(trim($row[11])))->format('Y-m-d');
+//            if (trim($row[11]) != "՝") {
+//                $date_of_birth = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(trim($row[11])))->format('Y-m-d');
+//            }
+//                            if (isset($row[11]) && is_numeric(trim($row[11]))) {
+//            $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[2]));
+//                } else {
+//                    dd("Invalid date value: ", $row[11]); // Debugging to check what value is causing the error
+//                }
+            if (isset($row[11]) && !empty($row[11])) {
+                $rawValue = trim($row[11]);
+
+                // Log the raw value for debugging
+
+                try {
+                    if (is_numeric($rawValue)) {
+                        // Convert from Excel date format
+                        $date_of_birth = Carbon::parse(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
+                    } else {
+                        // Assume it's a regular date string and parse it
+                        $date_of_birth = Carbon::createFromFormat('d/m/Y', $rawValue)->format('Y-m-d');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error processing date', [
+                        'raw_value' => $rawValue,
+                        'error' => $e->getMessage(),
+                    ]);
+                    dd("Invalid date format: ", $rawValue);
+                }
             }
             //$passport_validity = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[6]));
 //            $date_of_birth = null;
