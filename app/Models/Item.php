@@ -26,7 +26,9 @@ class Item extends Model
         'ownership',
         'issued_by',
         'date_of_issuance',
-        'description'
+        'description',
+        'sn',
+        'imei'
     ];
     public function category(){
         return $this->belongsTo(Category::class);

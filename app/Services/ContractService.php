@@ -62,7 +62,19 @@ class   ContractService
     }
     public function storeContractItem(int $contract_id,array $data)
     {
-        $item = new Item();
+        $item = Item::where(function ($query) use ($data) {
+            if (!empty($data['sn'])) {
+                $query->where('sn', $data['sn']);
+            }
+            if (!empty($data['imei'])) {
+                $query->orWhere('imei', $data['imei']);
+            }
+        })->first();
+
+        if (!$item) {
+            $item = new Item();
+        }
+        //$item = new Item();
         $item->category_id = $data['category_id'];
         $item->contract_id = $contract_id;
         $category = Category::findOrFail($data['category_id']);

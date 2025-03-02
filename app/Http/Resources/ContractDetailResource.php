@@ -104,7 +104,9 @@ class ContractDetailResource extends JsonResource
                         'category' => $item->category->title,
                         'subcategory' => $item->subcategory,
                         'model' => $item->model,
-                        'description' => $this->description
+                        'description' => $this->description,
+                        'sn' => $this->sn,
+                        'imei' => $this->imei
                     ];
                 } elseif ($item->category->name === 'gold') {
                     return [

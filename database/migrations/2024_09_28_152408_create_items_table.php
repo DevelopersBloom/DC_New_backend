@@ -33,6 +33,8 @@ return new class extends Migration
             $table->string('issued_by')->nullable();
             $table->string('date_of_issuance')->nullable();
             $table->text('description')->nullable();
+            $table->string('sn')->nullable()->unique();
+            $table->string('imei', 15)->nullable()->unique();
             $table->timestamps();
 
             $table->foreign('category_id')->references('id')->on('categories');
