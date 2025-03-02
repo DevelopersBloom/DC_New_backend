@@ -64,7 +64,6 @@ class   ContractService
     {
         // Check if an item with the given serial number or IMEI exists
         $query = Item::query();
-
         if (!empty($data['serialNumber'])) {
             $query->orWhere('sn', $data['serialNumber']);
         }
@@ -77,6 +76,8 @@ class   ContractService
 
         if ($category->name == 'electronics' && (!empty($data['serialNumber']) || !empty($data['imei'])) && $item) {
             $item->update($data);
+            $item->sn = $data['serialNumber'];
+            $item->save();
         } else {
             $item = new Item();
 
@@ -147,7 +148,6 @@ class   ContractService
         // Attach the item to the contract in the pivot table
         $contract = Contract::findOrFail($contract_id);
         $contract->items()->syncWithoutDetaching([$item->id]);
-
         return $item;
     }
 
