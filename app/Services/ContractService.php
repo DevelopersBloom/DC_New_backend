@@ -73,12 +73,13 @@ class   ContractService
         }
 
         $item = $query->first();
-        if ($item->category->name == 'electronics' && (!empty($data['sn']) || !empty($data['imei'])) && $item) {
+        $category = Category::findOrFail($data['category_id']);
+
+        if ($category->name == 'electronics' && (!empty($data['sn']) || !empty($data['imei'])) && $item) {
             $item->update($data);
         } else {
             $item = new Item();
 
-            $category = Category::findOrFail($data['category_id']);
             $item->category_id = $category->id;
             switch ($category->name) {
                 case 'electronics':
