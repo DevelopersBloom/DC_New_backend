@@ -60,84 +60,164 @@ class   ContractService
         ];
 //        return $query->paginate(10);
     }
-    public function storeContractItem(int $contract_id,array $data)
+    public function storeContractItem(int $contract_id, array $data)
     {
-        $item = Item::where(function ($query) use ($data) {
-            if (!empty($data['sn'])) {
-                $query->where('sn', $data['sn']);
-            }
-            if (!empty($data['imei'])) {
-                $query->orWhere('imei', $data['imei']);
-            }
-        })->first();
+        // Check if an item with the given serial number or IMEI exists
+        $query = Item::query();
 
-        if (!$item) {
+        if (!empty($data['sn'])) {
+            $query->orWhere('sn', $data['sn']);
+        }
+        if (!empty($data['imei'])) {
+            $query->orWhere('imei', $data['imei']);
+        }
+
+        $item = $query->first();
+        if ($item->category->name == 'electronics' && (!empty($data['sn']) || !empty($data['imei'])) && $item) {
+            $item->update($data);
+        } else {
             $item = new Item();
-        }
-        //$item = new Item();
-        $item->category_id = $data['category_id'];
-        $item->contract_id = $contract_id;
-        $category = Category::findOrFail($data['category_id']);
-        switch ($category->name)
-        {
-            case 'electronics':
-                $subcategory = Subcategory::firstOrCreate(
-                    [
-                        'name'        => $data['subcategory'],
-                        'category_id' => $data['category_id'],
-                    ]
-                );
 
-                if ($data['model']) {
-                    $subcategoryItem = SubcategoryItem::firstOrCreate([
-                        'subcategory_id' => $subcategory->id,
-                        'model' => $data['model'],
-                    ]);
-                    $item->model = $subcategoryItem->model;
-                }
-                $item->subcategory =  $subcategory->name;
-                break;
-            case 'gold':
-                $subcategory = Subcategory::firstOrCreate(
-                    [
-                        'name' => $data['subcategory'],
-                        'category_id' => $data['category_id']
-                    ]
-                );
-                $item->subcategory =  $subcategory->name;
-                $item->weight = $data['weight'] ?? null;
-                $item->clear_weight = $data['clear_weight'] ?? null;
-                $item->hallmark = $data['hallmark'] ?? null;
-                break;
-            case 'car':
-                $subcategory = Subcategory::firstOrCreate(
-                    [
-                        'name'        => $data['model'],
-                        'category_id' => $data['category_id'],
-                    ]
-                );
-                if ($data['car_make']) {
-                    $subcategoryItem = SubcategoryItem::firstOrCreate([
-                        'subcategory_id' => $subcategory->id,
-                        'model' => $data['car_make'],
-                    ]);
-                    $item->car_make = $subcategoryItem->model;
-                }
-                $item->model = $subcategory->name ?? null;
-                $item->manufacture = $data['manufacture'] ?? null;
-                $item->power = $data['power'] ?? null;
-                $item->license_plate = $data['license_plate'] ?? null;
-                $item->color = $data['color'] ?? null;
-                $item->registration = $data['registration_certificate'] ?? null;
-                $item->identification = $data['identification_number'] ?? null;
-                $item->ownership = $data['ownership_certificate']?? null;
-                $item->issued_by = $data['issued_by']?? null;
-                $item->date_of_issuance = $data['date_of_issuance'] ?? null;
-                break;
+            $category = Category::findOrFail($data['category_id']);
+            $item->category_id = $category->id;
+            switch ($category->name) {
+                case 'electronics':
+                    $subcategory = Subcategory::firstOrCreate(
+                        [
+                            'name'        => $data['subcategory'],
+                            'category_id' => $data['category_id'],
+                        ]
+                    );
+
+                    if (!empty($data['model'])) {
+                        $subcategoryItem = SubcategoryItem::firstOrCreate([
+                            'subcategory_id' => $subcategory->id,
+                            'model' => $data['model'],
+                        ]);
+                        $item->model = $subcategoryItem->model;
+                    }
+                    $item->subcategory = $subcategory->name;
+                    $item->sn = $data['sn'] ?? null;
+                    $item->imei = $data['imei'] ?? null;
+                    break;
+
+                case 'gold':
+                    $subcategory = Subcategory::firstOrCreate(
+                        [
+                            'name' => $data['subcategory'],
+                            'category_id' => $data['category_id']
+                        ]
+                    );
+                    $item->subcategory = $subcategory->name;
+                    $item->weight = $data['weight'] ?? null;
+                    $item->clear_weight = $data['clear_weight'] ?? null;
+                    $item->hallmark = $data['hallmark'] ?? null;
+                    break;
+
+                case 'car':
+                    $subcategory = Subcategory::firstOrCreate(
+                        [
+                            'name'        => $data['model'],
+                            'category_id' => $data['category_id'],
+                        ]
+                    );
+                    if (!empty($data['car_make'])) {
+                        $subcategoryItem = SubcategoryItem::firstOrCreate([
+                            'subcategory_id' => $subcategory->id,
+                            'model' => $data['car_make'],
+                        ]);
+                        $item->car_make = $subcategoryItem->model;
+                    }
+                    $item->model = $subcategory->name ?? null;
+                    $item->manufacture = $data['manufacture'] ?? null;
+                    $item->power = $data['power'] ?? null;
+                    $item->license_plate = $data['license_plate'] ?? null;
+                    $item->color = $data['color'] ?? null;
+                    $item->registration = $data['registration_certificate'] ?? null;
+                    $item->identification = $data['identification_number'] ?? null;
+                    $item->ownership = $data['ownership_certificate'] ?? null;
+                    $item->issued_by = $data['issued_by'] ?? null;
+                    $item->date_of_issuance = $data['date_of_issuance'] ?? null;
+                    break;
+            }
+            $item->save();
         }
-        $item->save();
+
+        // Attach the item to the contract in the pivot table
+        $contract = Contract::findOrFail($contract_id);
+        $contract->items()->syncWithoutDetaching([$item->id]);
+
         return $item;
     }
+
+//    public function storeContractItem(int $contract_id,array $data)
+//    {
+//
+//        $item = new Item();
+//        $item->category_id = $data['category_id'];
+//        $item->contract_id = $contract_id;
+//        $category = Category::findOrFail($data['category_id']);
+//        switch ($category->name)
+//        {
+//            case 'electronics':
+//                $subcategory = Subcategory::firstOrCreate(
+//                    [
+//                        'name'        => $data['subcategory'],
+//                        'category_id' => $data['category_id'],
+//                    ]
+//                );
+//
+//                if ($data['model']) {
+//                    $subcategoryItem = SubcategoryItem::firstOrCreate([
+//                        'subcategory_id' => $subcategory->id,
+//                        'model' => $data['model'],
+//                    ]);
+//                    $item->model = $subcategoryItem->model;
+//                }
+//                $item->subcategory =  $subcategory->name;
+//                $item->subcategory_item_id = $subcategoryItem->id;
+//                break;
+//            case 'gold':
+//                $subcategory = Subcategory::firstOrCreate(
+//                    [
+//                        'name' => $data['subcategory'],
+//                        'category_id' => $data['category_id']
+//                    ]
+//                );
+//                $item->subcategory =  $subcategory->name;
+//                $item->weight = $data['weight'] ?? null;
+//                $item->clear_weight = $data['clear_weight'] ?? null;
+//                $item->hallmark = $data['hallmark'] ?? null;
+//                break;
+//            case 'car':
+//                $subcategory = Subcategory::firstOrCreate(
+//                    [
+//                        'name'        => $data['model'],
+//                        'category_id' => $data['category_id'],
+//                    ]
+//                );
+//                if ($data['car_make']) {
+//                    $subcategoryItem = SubcategoryItem::firstOrCreate([
+//                        'subcategory_id' => $subcategory->id,
+//                        'model' => $data['car_make'],
+//                    ]);
+//                    $item->car_make = $subcategoryItem->model;
+//                }
+//                $item->model = $subcategory->name ?? null;
+//                $item->manufacture = $data['manufacture'] ?? null;
+//                $item->power = $data['power'] ?? null;
+//                $item->license_plate = $data['license_plate'] ?? null;
+//                $item->color = $data['color'] ?? null;
+//                $item->registration = $data['registration_certificate'] ?? null;
+//                $item->identification = $data['identification_number'] ?? null;
+//                $item->ownership = $data['ownership_certificate']?? null;
+//                $item->issued_by = $data['issued_by']?? null;
+//                $item->date_of_issuance = $data['date_of_issuance'] ?? null;
+//                break;
+//        }
+//        $item->save();
+//        return $item;
+//    }
     public function createContract(int $client_id, array $data, $deadline)
     {
         // Calculate the next contract number

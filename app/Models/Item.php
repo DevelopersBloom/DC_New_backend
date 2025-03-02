@@ -34,8 +34,12 @@ class Item extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function contract()
+//    public function contract()
+//    {
+//        return $this->belongsTo(Contract::class);
+//    }
+    public function contracts()
     {
-        return $this->belongsTo(Contract::class);
+        return $this->belongsToMany(Contract::class, 'contract_item');
     }
 }

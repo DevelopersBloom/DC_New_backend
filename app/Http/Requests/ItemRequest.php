@@ -31,8 +31,8 @@ class ItemRequest extends FormRequest
 
             // Phone-specific rules
             'items.*.model' => 'nullable|string|max:255',
-            'imei' => 'nullable|digits:15',
-            'sn' => 'nullable|alpha_num',
+            'items.*.imei' => 'nullable|digits:15',
+            'items.*.sn' => 'nullable|alpha_num',
 
             // Gold-specific rules
             'items.*.weight' => 'required_if:items.*.category.name,gold|nullable|numeric|min:0',

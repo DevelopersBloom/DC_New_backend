@@ -113,9 +113,13 @@ class Contract extends Model
         return $this->belongsTo(Pawnshop::class);
     }
 
-    public function items(): HasMany
+//    public function items(): HasMany
+//    {
+//        return $this->hasMany(Item::class);
+//    }
+    public function items()
     {
-        return $this->hasMany(Item::class);
+        return $this->belongsToMany(Item::class, 'contract_item');
     }
 
     public function notes(): HasMany
