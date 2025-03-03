@@ -42,7 +42,7 @@ class ItemRequest extends FormRequest
             // Car-specific rules
             'items.*.car_make' => 'required_if:items.*.category.name,car|nullable|string|max:255',
             'items.*.manufacture' => 'required_if:items.*.category.name,car|nullable|integer|min:1900|max:' . date('Y'),
-            'items.*.power' => 'required_if:items.*.category.name,car|nullable|numeric|min:0',
+            'items.*.power' => 'required_if:items.*.category.name,car|nullable|string',
             'items.*.license_plate' => 'required_if:items.*.category.name,car|nullable|string|max:20',
             'items.*.color' => 'required_if:items.*.category.name,car|nullable|string|max:50',
             'items.*.registration' => 'required_if:items.*.category.name,car|nullable|string|max:50',
