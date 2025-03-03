@@ -31,7 +31,12 @@ trait ContractTrait
         $historyTypes = HistoryType::whereIn('name', $historyTypeNames)->get();
 
         $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
-        $lump_amount = $contract->provided_amount * ($lump_rate->lump_rate / 100);
+        $lump_amount_original = $contract->provided_amount * ($lump_rate->lump_rate / 100);
+
+        $lump_amount = ($lump_amount_original >= 1375)
+            ? ceil($lump_amount_original / 10) * 10
+            : floor($lump_amount_original / 10) * 10;
+
         if ($isOpen) {
             $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$num,$pawnshop_id,$date);
         }

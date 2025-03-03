@@ -151,13 +151,19 @@ class PaymentControllerNew extends Controller
      */
     private function calculateRefundAmount($providedAmont,$lumpRate,$deadline,$deadlineDays)
     {
-        $lump_amount = $providedAmont * $lumpRate/100;
+        $lump_amount_original = $providedAmont * $lumpRate/100;
+        $lump_amount = ($lump_amount_original >= 1375)
+            ? ceil($lump_amount_original / 10) * 10
+            : floor($lump_amount_original / 10) * 10;
         //$remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now());
         $remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now()->startOfDay());
 
-        $refundAmount = $lump_amount/$deadlineDays*$remainingDays;
+        $refund_amount_original = $lump_amount/$deadlineDays*$remainingDays;
+        $refund_amount = ($refund_amount_original >= 1375)
+            ? ceil($refund_amount_original / 10) * 10
+            : floor($refund_amount_original / 10) * 10;
 
-        return round($refundAmount, 2);
+        return round($refund_amount, 2);
     }
     public function payPartial(Request $request): JsonResponse
     {
