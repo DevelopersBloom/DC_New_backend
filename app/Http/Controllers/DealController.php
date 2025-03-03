@@ -28,7 +28,7 @@ DealController extends Controller
 
         for ($day = $daysInMonth; $day >= 1; $day--) {
             $date = Carbon::create($year, $month, $day)->format('Y-m-d');
-            $contractData = Contract::whereDate('date', $date)
+            $contractData = Contract::whereDate('date','<=', $date)
                 ->selectRaw('SUM(estimated_amount) as total_estimated,
                         SUM(provided_amount) as total_provided')
                 ->where('pawnshop_id',$pawnshopId)
