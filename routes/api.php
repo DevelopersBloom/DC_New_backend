@@ -133,6 +133,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/history-detail/{id}',[ContractControllerNew::class,'getHistoryDetails']);
         Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount']);
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount']);
+        Route::put('/update-number/{id}',[ContractControllerNew::class,'updateContractNumber']);
     });
 
     Route::get('/get-discount-requests', [DiscountController::class, 'getDiscountRequests']);

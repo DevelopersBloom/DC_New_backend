@@ -130,7 +130,7 @@ trait ContractTrait
             $amount = -$amount;
         }
         $pawnshop->save();
-        Deal::create([
+        return Deal::create([
             'type'            => $type,
             'amount'          => $amount,
             'interest_amount' => $interest_amount,

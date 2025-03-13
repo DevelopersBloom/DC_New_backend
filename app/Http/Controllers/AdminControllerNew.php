@@ -8,7 +8,9 @@ use App\Http\Requests\UpdateAdminRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Category;
 use App\Models\CategoryRate;
+use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\DealAction;
 use App\Models\File;
 use App\Models\LumpRate;
 use App\Models\Order;
@@ -17,6 +19,7 @@ use App\Models\Payment;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -639,94 +642,131 @@ class AdminControllerNew extends Controller
         $validated = $request->validate([
             'deals' => 'required|array',
             'deals.*.id' => 'required|exists:deals,id',
-            'deals.*.amount' => 'required|numeric|min:0',
-            'deals.*.cash' => 'required|boolean',
             'deals.*.date' => 'required|date_format:Y-m-d'
         ]);
 
         foreach ($validated['deals'] as $dealData) {
             $deal = Deal::findOrFail($dealData['id']);
+            if (!$deal) continue;
             if ($deal->filter_type === 'payment') {
-//                $lastPayment = Payment::where('contract_id', $deal->contract_id)
-//                    ->where('paid','>','0')
-//                    ->orderBy('date', 'desc')
-//                    ->first();
-//                if ($deal->payment_id !== $lastPayment->id) {
-//                    return response()->json([
-//                        'error' => 'Unauthorized action. Only the last payment can be updated.'
-//                    ], 403);
-//                }
-//                $lastPayment->amount += $lastPayment->paid;
-//                $lastPayment->paid = 0;
-//                $lastPayment->amount -= $deal->amount;
-//                $lastPayment->paid += $deal->amount;
-//                $lastPayment->save();
-                return response()->json([
-                    'error' => 'Unauthorized action. Only the last payment can be updated.'
-                ], 403);
+                $dealActions = DealAction::where('deal_id',$dealData['id'])->get();
+                foreach ($dealActions as $dealAction) {
+                    $dealAction->date = $dealData['date'];
+                    $dealAction->update(['date' => $dealData['date']]);
+                    if ($dealAction->actionable) {
+                        $dealAction->actionable->update(['date' => $dealData['date']]);
+                    }
+                }
             }
-            $pawnshop = $deal->pawnshop;
-
-            if ($deal->type === 'in') {
-                $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
-                $dealData['cash'] ? $pawnshop->cashbox += $dealData['amount'] : $pawnshop->bank_cashbox += $dealData['amount'];
-            } else {
-                $deal->cash ? $pawnshop->cashbox += $deal->amount : $pawnshop->bank_cashbox += $deal->amount;
-                $dealData['cash'] ? $pawnshop->cashbox -= $dealData['amount'] : $pawnshop->bank_cashbox -= $dealData['amount'];
-            }
-
-            $pawnshop->save();
-
-            $deal->update([
-                'amount' => $dealData['amount'],
-                'cash' => $dealData['cash'],
-                'date' => $dealData['date']
-            ]);
+            $deal->update(['date' => $dealData['date']]);
         }
         return response()->json(['message' => 'Deals updated successfully']);
     }
-    public function deleteDeal($id): JsonResponse
+    public function calcAmount($amount,$days,$rate){
+        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
+    }
+
+    public function deleteDeal($id)
     {
-        $deal = Deal::findOrFail($id);
-        $pawnshop = $deal->pawnshop;
-        $payment = $deal->payment;
-
-        if ($deal->filter_type === 'payment') {
-            $lastPayment = Payment::where('contract_id', $deal->contract_id)
-                ->where('paid','>','0')
-                ->orderByDesc('updated_at')
-                ->first();
-            if ($deal->penalty > 0) {
-                $lastPenalty = Payment::where('contract_id', $deal->contract_id)
-                    ->where('paid','>','0')
-                    ->where('type','penalty')
-                    ->orderByDesc('updated_at')
-                    ->first();
-                if ($lastPenalty) {
-                    $lastPenalty->delete();
-                }
-            }
-
-            if ($payment && $payment->id === $lastPayment->id) {
-                $payment->amount += $deal->interest_amount;
-                $payment->paid -= $deal->interest_amount;
-                if ($payment->amount > 0) {
-                    $payment->status = 'initial';
-                }
-                $payment->save();
-            }
+        $deal = Deal::find($id);
+        if (!$deal) {
+            return response()->json(['message' => 'Deal not found'], 404);
         }
 
-        if ($deal->type === 'in') {
-            $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
-        } else {
-            $deal->cash ? $pawnshop->cashbox += $deal->amount : $pawnshop->bank_cashbox += $deal->amount;
+        if ($deal->filter_type === 'full_payment') {
+            return $this->handleFullPaymentDeal($deal);
         }
 
-        $pawnshop->save();
+        if (in_array($deal->filter_type, ['payment', 'partial_payment'])) {
+            return $this->handlePartialPaymentDeal($deal);
+        }
+//        if ($deal->type === 'in') {
+//            $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
+//        } else {
+//            $deal->cash ? $pawnshop->cashbox += $deal->amount : $pawnshop->bank_cashbox += $deal->amount;
+//        }
+//
+//        $pawnshop->save();
 
         $deal->delete();
 
         return response()->json(['message' => 'Deal deleted successfully']);
     }
+
+    private function handleFullPaymentDeal(Deal $deal)
+    {
+        $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
+        foreach ($dealActions as $dealAction) {
+            if ($dealAction->type === 'full') {
+                Payment::where('contract_id', $deal->contract_id)
+                    ->where('status', 'initial')
+                    ->restore();
+                $this->restoreHistory($dealAction->history);
+            } elseif ($dealAction->type === 'refund') {
+                Deal::where('id', $dealAction->deal_id)->delete();
+            }
+            Payment::where('id',$dealAction->actionable_id)->delete();
+            $dealAction->delete();
+        }
+
+        $deal->delete();
+        return response()->json(['message' => 'Deal deleted successfully'], 200);
+    }
+
+    private function handlePartialPaymentDeal(Deal $deal)
+    {
+        $dealActions = DealAction::where('deal_id', $deal->id)->orderByDesc('id')->get();
+
+        if ($dealActions->isEmpty()) {
+            return response()->json(['message' => 'Sorry, you cannot delete this deal.'], 403);
+        }
+
+        foreach ($dealActions as $dealAction) {
+            $this->restoreHistory($dealAction->history);
+
+            if ($dealAction->type === 'partial' && $dealAction->actionable) {
+                $dealAction->actionable->delete();
+            }
+
+            $dealAction->delete();
+        }
+
+        $deal->delete();
+        return response()->json(['message' => 'Deal deleted successfully'], 200);
+    }
+
+    private function restoreHistory($history)
+    {
+        if (!$history) {
+            return;
+        }
+        foreach ($history as $key => $historyItem) {
+            match ($key) {
+            'payment_changes' => collect($historyItem)->each(fn($item) =>
+                Payment::where('id', $item['payment_id'])
+                    ->update([
+                        'amount' => $item['old_amount'],
+                        'paid' => $item['old_paid'],
+                        'date' => $item['old_date'],
+                        'status' => 'initial',
+                        'mother' => $item['old_mother'] ?? 0
+                    ])
+                ),
+                'contract_changes' => Contract::where('id', $historyItem['contract_id'])
+                    ->update([
+                        'left' => $historyItem['old_left'],
+                        'collected' => $historyItem['old_collected'],
+                        'status' => $historyItem['old_status'],
+                        'closed_at' => null,
+                    ]),
+                'mother_amount' => Payment::where('id', $historyItem['payment_id'])
+                    ->update([
+                        'mother' => $historyItem['old_mother'],
+                        'status' => 'initial'
+                    ]),
+                default => null
+            };
+        }
+    }
+
 }

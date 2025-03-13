@@ -203,7 +203,7 @@ class ContractControllerNew extends Controller
         DB::beginTransaction();
         try {
             $contract = Contract::findOrFail($validatedData['contract_id']);
-            $contract->payments()->delete();
+            $contract->payments()->forcedelete();
             $client = $contract->client;
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000;
@@ -233,6 +233,27 @@ class ContractControllerNew extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+    public function updateContractNumber(Request $request, $id): JsonResponse
+    {
+        $validatedData = $request->validate([
+            'contract_number' => 'required|integer']);
+
+        $contract = Contract::findOrFail($id);
+
+        if (Contract::where('num', $validatedData['contract_number'])->where('id', '!=', $id)->exists()) {
+            return response()->json([
+                'message' => 'Contract number already exists.',
+            ], 422);
+        }
+
+        $contract->num = $validatedData['contract_number'];
+        $contract->save();
+
+        return response()->json([
+            'message' => 'Contract number updated successfully.',
+            'contract' => $contract,
+        ]);
     }
 
 }

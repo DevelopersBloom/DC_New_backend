@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ExecuteItemRequest;
 use App\Models\Contract;
+use App\Models\DealAction;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
@@ -38,18 +39,34 @@ class PaymentControllerNew extends Controller
         $paymentIds = $request->payments;
 
         $payments = Payment::whereIn('id', $paymentIds)->get();
-        $result = $this->paymentService->processPayments(
-            $contract,$amount,$payer,$cash,$payments
-        );
-        $payment_id = $result['id'];
         $order_id = $this->generateOrderInNew($request,$payments)->id;
-        $history = $this->createHistory($request, $order_id,$result['interest_amount'],$result['delay_days'],$result['penalty'],
-            $result['discount']);
-        $this->createDeal($amount ?? $result['$payments_sum'],
-           $result['interest_amount'],$result['delay_days'],$result['penalty'],
-           $result['discount'], 'in', $contract->id,$contract->client->id,
-            $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,$payment_id,null,1);
-       $this->updateContractStatus($contract);
+        $history = $this->createHistory($request, $order_id);
+        $deal = $this->createDeal($amount,null,null,null,null,
+            'in', $contract->id,$contract->client->id,
+            $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,null,null,1);
+
+        $result = $this->paymentService->processPayments(
+            $contract,$amount,$payer,$cash,$payments,$deal->id
+        );
+        $history->interest_amount = $result['interest_amount'];
+        $history->penalty = $result['penalty'];
+        $history->discount  = $result['discount'];
+        $history->delay_days = $result['delay_days'];
+        $history->save();
+        $deal->interest_amount = $result['interest_amount'];
+        $deal->penalty = $result['penalty'];
+        $deal->discount = $result['discount'];
+        $deal->delay_days = $result['delay_days'];
+        $deal->save();
+        $payment_id = $result['id'];
+//        $order_id = $this->generateOrderInNew($request,$payments)->id;
+//        $history = $this->createHistory($request, $order_id,$result['interest_amount'],$result['delay_days'],$result['penalty'],
+//            $result['discount']);
+//        $this->createDeal($amount ?? $result['$payments_sum'],
+//           $result['interest_amount'],$result['delay_days'],$result['penalty'],
+//           $result['discount'], 'in', $contract->id,$contract->client->id,
+//            $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,$payment_id,null,1);
+//       $this->updateContractStatus($contract);
        return response()->json([
            'success' => 'success',
            'message' => 'Successfully created payment!'
@@ -90,13 +107,7 @@ class PaymentControllerNew extends Controller
         auth()->user()->pawnshop->given = auth()->user()->pawnshop->given - $contract->left;
         auth()->user()->pawnshop->save();
 
-        Payment::where('contract_id', $contract->id)
-            ->where('last_payment', 1)
-            ->update(['mother' => 0]);
 
-        $payment_id = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash);
-
-        // Generate history for the payment
         $type = HistoryType::where('name', 'full_payment')->first();
         $purpose = 'Վարկի մարում՝ տոկոսագւմար և մայր գումար';
         if ($request->hasPenalty) {
@@ -113,7 +124,15 @@ class PaymentControllerNew extends Controller
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
         ]);
 
-        $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,$payment_id);
+        $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
+
+        $payment_id = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
+
+        $deal->payment_id = $payment_id;
+        $deal->save();
+        $contract->closed_at = now();
+        $contract->save();
+        // Generate history for the payment
 
         // Check if early payment is eligible for a refund
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
@@ -130,8 +149,16 @@ class PaymentControllerNew extends Controller
                     'contract_id' => $contract->id,
                     'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
                 ]);
-                $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
-
+                $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
+                DealAction::create([
+                    'deal_id' => $deal->id,
+                    'actionable_id' => $payment_id,
+                    'actionable_type' => Payment::class,
+                    'amount' => $refundAmount,
+                    'type' => 'refund',
+                    'description' => 'Refund payment',
+                    'date' => \Illuminate\Support\Carbon::now()->format('Y-m-d'),
+                ]);
                 return response()->json([
                     'success' => 'success',
                     'message' => 'Full payment created successfully with a lump sum refund',
@@ -180,7 +207,6 @@ class PaymentControllerNew extends Controller
         $cash = $request->cash;
 
         // Call the payment service to handle the partial payment
-        $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash);
         $history_type = HistoryType::where('name','partial_payment')->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,'in');
@@ -206,8 +232,12 @@ class PaymentControllerNew extends Controller
             'contract_id' => $contract->id,
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
         ]);
-        $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id,$payment_id);
+        $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id);
 
+        $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash,$deal->id);
+
+        $deal->payment_id = $payment_id;
+        $deal->save();
         // Update contract status and check if any payments remain
         $this->updateContractStatus($contract);
 
