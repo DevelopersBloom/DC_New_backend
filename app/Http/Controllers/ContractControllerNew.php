@@ -255,5 +255,31 @@ class ContractControllerNew extends Controller
             'contract' => $contract,
         ]);
     }
+    public function updateContractItem(Request $request, $id)
+    {
+        $validatedData = $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'description' => 'nullable|string',
+            'subcategory' => 'nullable|string',
+            'model' => 'nullable|string',
+            'serialNumber' => 'nullable|string',
+            'imei' => 'nullable|string',
+            'weight' => 'nullable|numeric',
+            'clear_weight' => 'nullable|numeric',
+            'hallmark' => 'nullable|string',
+            'car_make' => 'nullable|string',
+            'manufacture' => 'nullable|integer',
+            'power' => 'nullable|numeric',
+            'license_plate' => 'nullable|string',
+            'color' => 'nullable|string',
+            'registration_certificate' => 'nullable|string',
+            'identification_number' => 'nullable|string',
+            'ownership_certificate' => 'nullable|string',
+            'issued_by' => 'nullable|string',
+            'date_of_issuance' => 'nullable|date',
+        ]);
+
+        return $this->contractService->updateContractItem($id, $validatedData);
+    }
 
 }
