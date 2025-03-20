@@ -45,9 +45,9 @@ class ItemRequest extends FormRequest
             'items.*.power' => 'required_if:items.*.category.name,car|nullable|string',
             'items.*.license_plate' => 'required_if:items.*.category.name,car|nullable|string|max:20',
             'items.*.color' => 'required_if:items.*.category.name,car|nullable|string|max:50',
-            'items.*.registration' => 'required_if:items.*.category.name,car|nullable|string|max:50',
-            'items.*.identification' => 'required_if:items.*.category.name,car|nullable|string|max:50',
-            'items.*.ownership' => 'required_if:items.*.category.name,car|nullable|string|max:50',
+            'items.*.registration_certificate' => 'required_if:items.*.category.name,car|nullable|string|max:50',
+            'items.*.identification_certificate' => 'required_if:items.*.category.name,car|nullable|string|max:50',
+            'items.*.ownership_certificate' => 'required_if:items.*.category.name,car|nullable|string|max:50',
             'items.*.issued_by' => 'required_if:items.*.category.name,car|nullable|string|max:255',
             'items.*.date_of_issuance' => 'required_if:items.*.category.name,car|nullable|date',
         ];
