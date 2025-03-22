@@ -269,7 +269,7 @@ class ContractControllerNew extends Controller
             'hallmark' => 'nullable|string',
             'car_make' => 'nullable|string',
             'manufacture' => 'nullable|integer',
-            'power' => 'nullable|numeric',
+            'power' => 'nullable|string',
             'license_plate' => 'nullable|string',
             'color' => 'nullable|string',
             'registration_certificate' => 'nullable|string',
