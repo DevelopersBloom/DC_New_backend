@@ -60,4 +60,9 @@ class Pawnshop extends Model
             ->sum('amount');
         return $enter - $exist;
     }
+    public function clientPawnshops()
+    {
+        return $this->hasMany(ClientPawnshop::class, 'pawnshop_id');
+    }
+
 }

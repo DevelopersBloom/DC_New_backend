@@ -132,6 +132,7 @@ class ContractImportNew implements ToCollection
                 'email' => $row[12],
                 'phone' => $phone,
                 'additional_phone' => $additional_phone,
+                'date' => $date
             ];
             // Store or update client
             $client = $this->clientService->storeOrUpdate($client_data);

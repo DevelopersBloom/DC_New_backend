@@ -204,6 +204,17 @@ class Contract extends Model
                 $q->where('passport_series', 'LIKE', '%' . $filters['passport'] . '%');
             });
         }
+        if (!empty($filters['phone'])) {
+            $query->where('phone', 'LIKE', '%' . $filters['phone'] . '%');
+        }
+
+        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+            $query->whereBetween('date', [$filters['start_date'], $filters['end_date']]);
+        } elseif (!empty($filters['start_date'])) {
+            $query->where('date', '>=', $filters['start_date']);
+        } elseif (!empty($filters['end_date'])) {
+            $query->where('date', '<=', $filters['end_date']);
+        }
 
         return $query;
     }

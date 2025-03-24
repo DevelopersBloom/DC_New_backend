@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('cleint_pownshop', function (Blueprint $table) {
+        Schema::create('client_pawnshop', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('client_id');
             $table->unsignedBigInteger('pawnshop_id');
@@ -22,6 +22,7 @@ return new class extends Migration
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
 
             $table->unique(['client_id', 'pawnshop_id']);
+            $table->timestamps();
         });
     }
 
@@ -32,6 +33,6 @@ return new class extends Migration
      */
     public function down()
     {
-        //
+        Schema::dropIfExists('client_pawnshop');
     }
 };
