@@ -33,7 +33,8 @@ return new class extends Migration
             $table->string('account_number')->nullable();
             $table->string('card_number')->nullable();
             $table->string('iban')->nullable();
-
+            $table->boolean('has_contract')->default(true);
+            $table->date('date')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
