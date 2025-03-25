@@ -94,8 +94,8 @@ class ContractImportNew implements ToCollection
 //                dd($phone_arr);
 //            }
 
-            $phone = count($phone_arr) > 0 ? trim($phone_arr[0]) : null;
-            $additional_phone = count($phone_arr) > 1 ? trim($phone_arr[1]) : null;
+            $phone = count($phone_arr) > 0 ? "(+374) " . trim($phone_arr[0]) : null;
+            $additional_phone = count($phone_arr) > 1 ? "(+374) "  . trim($phone_arr[1]) : null;
 
 //            $passport_data = $row[5];
             $passport_series = $row[5];

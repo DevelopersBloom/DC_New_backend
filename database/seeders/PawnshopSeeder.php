@@ -22,8 +22,8 @@ class PawnshopSeeder extends Seeder
         $pawnshop->license = 'ԳԳ-Ե 302';
         $pawnshop->representative = 'Վ. Սահակյան';
         $pawnshop->telephone = '(010) 49-07-77';
-        $pawnshop->phone1 = '096 99 91 80';
-        $pawnshop->phone2 = '094 97 19 51';
+        $pawnshop->phone1 = '(+734) 96 99 91 80';
+        $pawnshop->phone2 = '(+374) 94 97 19 51';
         $pawnshop->email = 'diamondcredit1@mail.ru';
         $pawnshop->bank = 'Ամերիաբանկ';
         $pawnshop->card_account_number = '1570073548790300';
@@ -45,8 +45,8 @@ class PawnshopSeeder extends Seeder
         $pawnshop->license = 'ԳԳ-Ե 246';
         $pawnshop->representative = 'Վ. Սահակյան';
         $pawnshop->telephone = '(0312) 4-33-43';
-        $pawnshop->phone1 = '096 99 91 81';
-        $pawnshop->phone2 = '098 95 19 91';
+        $pawnshop->phone1 = '(+374) 96 99 91 81';
+        $pawnshop->phone2 = '(+374) 98 95 19 91';
         $pawnshop->email = 'diamondcredit@mail.ru';
         $pawnshop->bank = 'Ամերիաբանկ';
         $pawnshop->card_account_number = '1570073548790400';
