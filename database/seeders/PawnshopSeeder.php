@@ -21,7 +21,7 @@ class PawnshopSeeder extends Seeder
         $pawnshop->address = 'Արշակունյաց պ. 53/35';
         $pawnshop->license = 'ԳԳ-Ե 302';
         $pawnshop->representative = 'Վ. Սահակյան';
-        $pawnshop->telephone = '(010) 49-07-77';
+        $pawnshop->telephone = '(+374) 10 49-07-77';
         $pawnshop->phone1 = '(+734) 96 99 91 80';
         $pawnshop->phone2 = '(+374) 94 97 19 51';
         $pawnshop->email = 'diamondcredit1@mail.ru';
@@ -44,7 +44,7 @@ class PawnshopSeeder extends Seeder
         $pawnshop->address = 'Գորկու 68/3';
         $pawnshop->license = 'ԳԳ-Ե 246';
         $pawnshop->representative = 'Վ. Սահակյան';
-        $pawnshop->telephone = '(0312) 4-33-43';
+        $pawnshop->telephone = '(+374) 10 24-33-43';
         $pawnshop->phone1 = '(+374) 96 99 91 81';
         $pawnshop->phone2 = '(+374) 98 95 19 91';
         $pawnshop->email = 'diamondcredit@mail.ru';
