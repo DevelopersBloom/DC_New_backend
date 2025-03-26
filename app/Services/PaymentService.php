@@ -313,8 +313,9 @@ class PaymentService {
         ];
 
         // Update contract with partial payment
-        $contract->left -= $partialAmount;
+        $contract->left = max(0,$contract->left-$partialAmount);
         $contract->collected += $partialAmount;
+        $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
         $contract->save();
         $pawnshop =  auth()->user()->pawnshop ?? Pawnshop::where('id',1)->first();
         $pawnshop->given -= $partialAmount;

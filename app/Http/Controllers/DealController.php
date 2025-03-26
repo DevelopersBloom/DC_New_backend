@@ -32,6 +32,7 @@ DealController extends Controller
                 ->selectRaw('SUM(estimated_amount) as total_estimated,
                         SUM(provided_amount) as total_provided')
                 ->where('pawnshop_id',$pawnshopId)
+                ->where('status','initial')
                 ->first();
 
             $totals = Deal::whereDate('date', '<=', $date)
