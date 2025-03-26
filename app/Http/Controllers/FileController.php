@@ -283,7 +283,7 @@ class FileController extends Controller
     }
     public function downloadOrderOut($id)
     {
-        $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template_new.docx'));
+        $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template.docx'));
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->with('client')->first();
         $templateProcessor->setValues([
