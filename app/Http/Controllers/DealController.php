@@ -17,6 +17,47 @@ class
 DealController extends Controller
 {
     use OrderTrait,ContractTrait;
+    public function calculateDailtCashbox($id,$date)
+    {
+        $totalCashbox = Deal::whereDate('date', '<=', $date)
+            ->where('id', '<=',$id)
+            ->where('type', Deal::IN_DEAL)
+            ->where('cash',true)
+            ->where('pawnshop_id',auth()->user()->pawnshop_id)
+            ->selectRaw("SUM(amount) AS totalCashboxIn")
+            ->first();
+        $totalBankCashbox = Deal::whereDate('date', '<=', $date)
+            ->where('type', Deal::IN_DEAL)
+            ->where('id', '<=',$id)
+            ->where('cash',false)
+            ->where('pawnshop_id',auth()->user()->pawnshop_id)
+            ->selectRaw("SUM(amount) AS totalCashboxIn")
+            ->first();
+
+        $totalCashboxOuts = Deal::whereIn('type', [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
+            ->whereDate('date', '<=', $date)
+            ->where('id', '<=',$id)
+            ->where('cash',true)
+            ->where('pawnshop_id',auth()->user()->pawnshop_id)
+            ->selectRaw(
+                    "SUM(amount) AS totalCashboxOut")
+            ->first();
+        $totalBankCashboxOuts = Deal::whereIn('type', [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
+            ->whereDate('date', '<=', $date)
+            ->where('id', '<=',$id)
+            ->where('cash',false)
+            ->where('pawnshop_id',auth()->user()->pawnshop_id)
+            ->selectRaw(
+                "SUM(amount) AS totalCashboxOut")
+            ->first();
+
+        return [
+            'cashbox' => $totalCashbox->totalCashboxIn  - $totalCashboxOuts->totalCashboxOut,
+            'bank_cashbox' => $totalBankCashbox->totalCashboxIn  - $totalBankCashboxOuts->totalCashboxOut,
+
+        ];
+
+    }
     public function calculatePawnshopCashbox($month,$year)
     {
         $cashboxData = [];
@@ -242,27 +283,10 @@ DealController extends Controller
         // Calculate cashbox for each deal individually
         $deals->getCollection()->transform(function ($deal) use ($pawnshopId) {
             $dealDate = $deal->date; // Get deal date
-
-            $dealData = Deal::whereDate('date', '<=', $dealDate)
-                ->where('pawnshop_id', $pawnshopId)
-                ->whereIn('type', [Deal::IN_DEAL, Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
-                ->selectRaw("
-                SUM(CASE WHEN type = ? AND cash = true THEN amount ELSE 0 END) as total_cash_in,
-                SUM(CASE WHEN type IN (?, ?, ?) AND cash = true THEN amount ELSE 0 END) as total_cash_out,
-                SUM(CASE WHEN type = ? AND cash = false THEN amount ELSE 0 END) as total_bank_in,
-                SUM(CASE WHEN type IN (?, ?, ?) AND cash = false THEN amount ELSE 0 END) as total_bank_out
-            ", [
-                    Deal::IN_DEAL,
-                    Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL,
-                    Deal::IN_DEAL,
-                    Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL
-                ])
-                ->first();
-
-            $deal->cashbox = ($dealData->total_cash_in ?? 0) - ($dealData->total_cash_out ?? 0);
-            $deal->bank_cashbox = ($dealData->total_bank_in ?? 0) - ($dealData->total_bank_out ?? 0);
-            $deal->total_amount = $deal->cashBox + $deal->bankCashBox;
-
+            $data = $this->calculateDailtCashbox($deal->id,$dealDate);
+            $deal->cashbox = $data['cashbox'];
+            $deal->bank_cashbox = $data['bank_cashbox'];
+            $deal->total = $deal->cashbox +  $deal->bank_cashbox;
             return $deal;
         });
 
