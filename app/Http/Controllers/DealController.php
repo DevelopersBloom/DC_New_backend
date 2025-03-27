@@ -17,47 +17,81 @@ class
 DealController extends Controller
 {
     use OrderTrait,ContractTrait;
-    public function calculateDailtCashbox($id,$date)
+    public function index(Request $request)
     {
-        $totalCashbox = Deal::whereDate('date', '<=', $date)
-            ->where('id', '<=',$id)
-            ->where('type', Deal::IN_DEAL)
-            ->where('cash',true)
-            ->where('pawnshop_id',auth()->user()->pawnshop_id)
-            ->selectRaw("SUM(amount) AS totalCashboxIn")
-            ->first();
-        $totalBankCashbox = Deal::whereDate('date', '<=', $date)
-            ->where('type', Deal::IN_DEAL)
-            ->where('id', '<=',$id)
-            ->where('cash',false)
-            ->where('pawnshop_id',auth()->user()->pawnshop_id)
-            ->selectRaw("SUM(amount) AS totalCashboxIn")
-            ->first();
+        $pawnshopId = auth()->user()->pawnshop_id;
+        $dealType = $request->input('type', Deal::HISTORY);
 
-        $totalCashboxOuts = Deal::whereIn('type', [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
-            ->whereDate('date', '<=', $date)
-            ->where('id', '<=',$id)
-            ->where('cash',true)
-            ->where('pawnshop_id',auth()->user()->pawnshop_id)
-            ->selectRaw(
-                    "SUM(amount) AS totalCashboxOut")
-            ->first();
-        $totalBankCashboxOuts = Deal::whereIn('type', [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
-            ->whereDate('date', '<=', $date)
-            ->where('id', '<=',$id)
-            ->where('cash',false)
-            ->where('pawnshop_id',auth()->user()->pawnshop_id)
-            ->selectRaw(
-                "SUM(amount) AS totalCashboxOut")
-            ->first();
+        $deals = Deal::where('pawnshop_id', $pawnshopId)
+            ->select(
+                'id',
+                DB::raw("DATE(date) as date"),
+                'amount',
+                'pawnshop_id',
+                'cash',
+                'order_id',
+                'contract_id',
+                'type',
+                'interest_amount',
+                'delay_days',
+                'created_by'
+            )
+            ->with([
+                'order:id,client_name,order,contract_id,purpose',
+                'contract:id,num,discount,penalty_amount,mother',
+                'createdBy:id,name,surname'
+            ])
+            ->when($request->dateFrom, fn($query) =>
+            $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')])
+            )
+            ->when($request->dateTo, fn($query) =>
+            $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')])
+            )
+            ->when($dealType !== Deal::HISTORY, fn($query) =>
+            $query->where('type', $dealType)
+            )
+            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        // Transform deals to include calculated cashbox
+        $deals->getCollection()->transform(fn($deal) => $this->attachCashboxData($deal, $pawnshopId));
+
+        return response()->json(['deals' => $deals]);
+    }
+
+    private function attachCashboxData($deal, $pawnshopId)
+    {
+        $data = $this->calculateDailyCashbox($deal->id, $deal->date, $pawnshopId);
+        $deal->cashbox = $data['cashbox'];
+        $deal->bank_cashbox = $data['bank_cashbox'];
+        $deal->total = $deal->cashbox + $deal->bank_cashbox;
+        return $deal;
+    }
+
+    private function calculateDailyCashbox($id, $date, $pawnshopId)
+    {
+        $inCash = $this->sumAmount($date, $id, [Deal::IN_DEAL], true, $pawnshopId);
+        $inBank = $this->sumAmount($date, $id, [Deal::IN_DEAL], false, $pawnshopId);
+        $outCash = $this->sumAmount($date, $id, [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL], true, $pawnshopId);
+        $outBank = $this->sumAmount($date, $id, [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL], false, $pawnshopId);
 
         return [
-            'cashbox' => $totalCashbox->totalCashboxIn  - $totalCashboxOuts->totalCashboxOut,
-            'bank_cashbox' => $totalBankCashbox->totalCashboxIn  - $totalBankCashboxOuts->totalCashboxOut,
-
+            'cashbox' => ($inCash ?? 0) - ($outCash ?? 0),
+            'bank_cashbox' => ($inBank ?? 0) - ($outBank ?? 0),
         ];
-
     }
+
+    private function sumAmount($date, $id, array $types, $isCash, $pawnshopId)
+    {
+        return Deal::whereDate('date', '<=', $date)
+            ->where('id', '<=', $id)
+            ->whereIn('type', $types)
+            ->where('cash', $isCash)
+            ->where('pawnshop_id', $pawnshopId)
+            ->sum('amount');
+    }
+
     public function calculatePawnshopCashbox($month,$year)
     {
         $cashboxData = [];
@@ -109,18 +143,6 @@ DealController extends Controller
 
     }
 
-//    public function getCashBox(int $pawnshop_id)
-//    {
-//        $pawnshop = Pawnshop::findOrFail(auth()->user()->pawnshop_id);
-//        $cash_box = $pawnshop->cashbox;
-//        $bank_cash_box = $pawnshop->bank_cashbox;
-//        $total_amount = $cash_box + $bank_cash_box;
-//        return response()->json([
-//            'cashBox' => $cash_box,
-//            'bankCashBox' => $bank_cash_box,
-//            'totalAmount' => $total_amount
-//        ]);
-//    }
     public function getCashBox(int $pawnshop_id)
     {
         $now = Carbon::now()->format('Y-m-d');
@@ -237,208 +259,7 @@ DealController extends Controller
 //        ]);
 //
 //    }
-    public function index(Request $request)
-    {
-        $dealType = $request->input('type', Deal::HISTORY);
-        $pawnshopId = auth()->user()->pawnshop_id;
 
-        $deals = Deal::where('pawnshop_id', $pawnshopId)
-            ->select(
-                'id',
-                DB::raw("DATE(date) as date"),
-                'amount',
-                'pawnshop_id',
-                'cash',
-                'order_id',
-                'contract_id',
-                'type',
-                'interest_amount',
-                'delay_days',
-                'created_by'
-            )
-            ->with([
-                'order:id,client_name,order,contract_id,purpose',
-                'contract:id,num,discount,penalty_amount,discount,mother',
-                'createdBy:id,name,surname'
-            ])
-            ->when($request->dateFrom, function ($query) use ($request) {
-                $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);
-            })
-            ->when($request->dateTo, function ($query) use ($request) {
-                $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')]);
-            })
-            ->when($dealType === Deal::IN_DEAL, function ($query) {
-                $query->where('type', Deal::IN_DEAL);
-            })
-            ->when($dealType === Deal::OUT_DEAL, function ($query) {
-                $query->where('type', Deal::OUT_DEAL);
-            })
-            ->when($dealType === Deal::EXPENSE_DEAL, function ($query) {
-                $query->where('type', Deal::EXPENSE_DEAL);
-            })
-            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")
-            ->orderBy('id', 'DESC')
-            ->paginate(10);
-
-        // Calculate cashbox for each deal individually
-        $deals->getCollection()->transform(function ($deal) use ($pawnshopId) {
-            $dealDate = $deal->date; // Get deal date
-            $data = $this->calculateDailtCashbox($deal->id,$dealDate);
-            $deal->cashbox = $data['cashbox'];
-            $deal->bank_cashbox = $data['bank_cashbox'];
-            $deal->total = $deal->cashbox +  $deal->bank_cashbox;
-            return $deal;
-        });
-
-        return response()->json([
-            'deals' => $deals
-        ]);
-    }
-
-//    public function addCashbox(Request $request)
-//    {
-//        $amount = $request->amount;
-//        $purpose = $request->purpose;
-//        $source = $request->source;
-//        $receiver = $request->receiver;
-//        $save_template = $request->save_template;
-//        $name = $request->name;
-//        $order_id = $this->getOrder(true,'out');
-//        $res = [
-//            'type' => 'cost_out',
-//            'title' => $name,
-//            'pawnshop_id' => auth()->user()->pawnshop_id,
-//            'order' => $order_id,
-//            'amount' => $amount,
-//            'date' => Carbon::now()->format('d.m.Y'),
-//            'purpose' => $purpose,
-//            'receiver' => $receiver
-//        ];
-//        $new_order = Order::create($res);
-//        $this->createDeal($amount,null,null,'out',null,$new_order->id,true,$purpose,$receiver,$source);
-//        $order_id = $this->getOrder(false,'in');
-//        $res = [
-//            'type' => 'cost_in',
-//            'title' => $name,
-//            'pawnshop_id' => auth()->user()->pawnshop_id,
-//            'order' => $order_id,
-//            'amount' => $amount,
-//            'date' => Carbon::now()->format('d.m.Y'),
-//            'purpose' => $purpose,
-//            'receiver' => auth()->user()->pawnshop->bank
-//        ];
-//        $new_order = Order::create($res);
-//        $this->createDeal($amount,null,null,'in',null,$new_order->id,false,$purpose,$receiver,$source);
-//        return response()->json([
-//            "success" => "success",
-//        ]);
-//    }
-//    public function addCost(Request $request)
-//    {
-//        $amount = $request->amount;
-//        $purpose = $request->purpose;
-//        $source = $request->source;
-//        $receiver = $request->receiver;
-//        $cash = $request->cash;
-//        $save_template = $request->save_template;
-//        $name = $request->name;
-//
-//        $order_id = $this->getOrder($cash,'out');
-//        $res = [
-//            'type' => 'cost_out',
-//            'title' => 'Օրդեր',
-//            'pawnshop_id' => auth()->user()->pawnshop_id,
-//            'order' => $order_id,
-//            'amount' => $amount,
-//            'date' => Carbon::now()->format('d.m.Y'),
-//            'purpose' => $purpose,
-//            'receiver' => $receiver
-//        ];
-//        $new_order = Order::create($res);
-//        $this->createDeal($amount,null,null,'cost_out',null,$new_order->id,$cash,$purpose,$receiver);
-//        return response()->json([
-//            'success' => 'success'
-//        ]);
-//    }
-//    public function addCostOld(Request $request){
-//        $type = $request->type;
-//        $source = $request->source;
-//        $amount = $request->amount;
-//        $purpose = null;
-//        $cash = $request->cash;
-//        $otherPurpose = $request->otherPurpose;
-//        $receiver = $request->receiver;
-//        $purposeTranslation = $request->purposeTranslation;
-//        if($request -> purpose === 'other'){
-//            $purpose = $otherPurpose;
-//        }else{
-//            $purpose = $purposeTranslation;
-//        }
-//        if($type === 'out'){
-//            if($request->purpose === 'bank_cashbox_charging'){
-//                $order_id = $this->getOrder(true,'out');
-//                $res = [
-//                    'type' => 'cost_out',
-//                    'title' => 'Օրդեր',
-//                    'pawnshop_id' => auth()->user()->pawnshop_id,
-//                    'order' => $order_id,
-//                    'amount' => $amount,
-//                    'date' => Carbon::now()->format('d.m.Y'),
-//                    'purpose' => 'Անկանխիկ հաշվի համալրում',
-//                    'receiver' => $receiver
-//                ];
-//                $new_order = Order::create($res);
-//                $this->createDeal($amount,'out',null,$new_order->id,true,'Անկանխիկ հաշվի համալրում',$receiver);
-//                $order_id = $this->getOrder(false,'in');
-//                $res = [
-//                    'type' => 'cost_in',
-//                    'title' => 'Օրդեր',
-//                    'pawnshop_id' => auth()->user()->pawnshop_id,
-//                    'order' => $order_id,
-//                    'amount' => $amount,
-//                    'date' => Carbon::now()->format('d.m.Y'),
-//                    'purpose' => 'Հաշվի համալրում',
-//                    'receiver' => auth()->user()->pawnshop->bank
-//                ];
-//                $new_order = Order::create($res);
-//                $this->createDeal($amount,'in',null,$new_order->id,false,'Հաշվի համալրում',auth()->user()->pawnshop->bank);
-//            }else{
-//                $order_id = $this->getOrder($cash,'out');
-//                $res = [
-//                    'type' => 'cost_out',
-//                    'title' => 'Օրդեր',
-//                    'pawnshop_id' => auth()->user()->pawnshop_id,
-//                    'order' => $order_id,
-//                    'amount' => $amount,
-//                    'date' => Carbon::now()->format('d.m.Y'),
-//                    'purpose' => $purpose,
-//                    'receiver' => $receiver
-//                ];
-//                $new_order = Order::create($res);
-//                $this->createDeal($amount,'out',null,$new_order->id,$cash,$purpose,$receiver);
-//            }
-//        }else{
-//            $order_id = $this->getOrder($cash,'in');
-//            $res = [
-//                'type' => 'cost_in',
-//                'title' => 'Օրդեր',
-//                'pawnshop_id' => auth()->user()->pawnshop_id,
-//                'order' => $order_id,
-//                'amount' => $amount,
-//                'date' => Carbon::now()->format('d.m.Y'),
-//                'purpose' => $purpose,
-//                'source' => $source,
-//                'receiver' => '«Դայմոնդ Կրեդիտ» ՍՊԸ'
-//            ];
-//            $new_order = Order::create($res);
-//            $this->createDeal($amount,'in',null,$new_order->id,$cash,$purpose,null,$source);
-//        }
-//
-//        return response()->json([
-//            'success' => 'success'
-//        ]);
-//
-//    }
     public function addCashbox(Request $request)
     {
         $cash = $request->cash; //$cash=true -> դրամարկղի համալրում։անկանխիկ հաշվի համալրում
