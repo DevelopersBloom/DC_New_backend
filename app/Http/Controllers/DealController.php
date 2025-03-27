@@ -111,91 +111,166 @@ DealController extends Controller
         ]);
     }
 
-    public function index(Request $request){
+//    public function index(Request $request){
+//        $dealType = $request->input('type', Deal::HISTORY);
+//        $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
+//            ->select('id',DB::raw("DATE(date) as date"),
+//                'cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days','created_by')
+//                ->with(['order:id,client_name,order,contract_id,purpose','contract:id,num,discount,penalty_amount,discount,mother'])
+//            ->with('createdBy:id,name,surname')
+//            ->when($request->dateFrom,function ($query) use ($request){
+//                $query->where(function ($query) use ($request) {
+//                    $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);
+//                })->get();
+//            })
+//            ->when($request->dateTo,function ($query) use ($request){
+//                $query->where(function ($query) use ($request) {
+//                    $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')]);
+//                })->get();
+//            })
+//            ->when($dealType === Deal::IN_DEAL, function ($query) {
+//                $query->where('type', 'in');
+//            })
+//            ->when($dealType === Deal::OUT_DEAL, function ($query) {
+//                $query->where('type', 'out');
+//            })
+//            ->when($dealType === Deal::EXPENSE_DEAL, function ($query) {
+//                $query->where('type', 'cost_out');
+//            })
+//            ->when($request->hasAny(['name', 'surname', 'middle_name', 'passport_series', 'phone']), function ($query) use ($request) {
+//                $query->whereHas('contract.client', function ($query) use ($request) {
+//                    if ($request->filled('name')) {
+//                        $query->where('name', 'like', '%' . $request->name . '%');
+//                    }
+//                    if ($request->filled('surname')) {
+//                        $query->where('surname', 'like', '%' . $request->surname . '%');
+//                    }
+//                    if ($request->filled('middle_name')) {
+//                        $query->where('middle_name', 'like', '%' . $request->middle_name . '%');
+//                    }
+//                    if ($request->filled('passport_series')) {
+//                        $query->where('passport_series', 'like', '%' . $request->passport_series . '%');
+//                    }
+//                    if ($request->filled('phone')) {
+//                        $query->where('phone', 'like', '%' . $request->phone . '%');
+//                    }
+//                    if ($request->filled('status')) {
+//                        $query->where('status', 'like', '%' . $request->status . '%');
+//                    }
+//                    if ($request->filled('category_id')) {
+//                        $query->where('category_id', 'like', '%' . $request->category_id . '%');
+//                    }
+//                    if ($request->filled('estimated_amount_from')) {
+//                        $query->where('estimated_amount', '>=', $request->estimated_amount_from);
+//                    }
+//                    if ($request->filled('estimated_amount_to')) {
+//                        $query->where('estimated_amount', '<=', $request->estimated_amount_to);
+//                    }
+//                    if ($request->filled('provided_amount_from')) {
+//                        $query->where('provided_amount', '>=', $request->provided_amount_from);
+//                    }
+//                    if ($request->filled('provided_amount_to')) {
+//                        $query->where('provided_amount', '<=', $request->provided_amount_to);
+//                    }
+//                    if ($request->filled('date_from')) {
+//                        $query->where('created_at', '>=', Carbon::parse($request->date_from)->setTimezone('Asia/Yerevan'));
+//                    }
+//                    if ($request->filled('date_to')) {
+//                        $query->where('created_at', '<=', Carbon::parse($request->date_to)->setTimezone('Asia/Yerevan'));
+//                    }
+//                });
+//            })
+//            ->when($request->filled('deal_days'), function ($query) use ($request) {
+//                $query->where('delay_days', $request->deal_days);
+//            })
+//            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')
+//            ->paginate(10);
+//
+//        $deals->getCollection()->transform(function ($deal) {
+//            $deal->total_amount = $deal->cashbox + $deal->bank_cashbox;
+//            return $deal;
+//        });
+//
+//        return response()->json([
+//            'deals' => $deals
+//        ]);
+//
+//    }
+    public function index(Request $request)
+    {
         $dealType = $request->input('type', Deal::HISTORY);
-        $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
-            ->select('id',DB::raw("DATE(date) as date"),
-                'cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days','created_by')
-                ->with(['order:id,client_name,order,contract_id,purpose','contract:id,num,discount,penalty_amount,discount,mother'])
-            ->with('createdBy:id,name,surname')
-            ->when($request->dateFrom,function ($query) use ($request){
-                $query->where(function ($query) use ($request) {
-                    $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);
-                })->get();
+        $pawnshopId = auth()->user()->pawnshop_id;
+
+        $deals = Deal::where('pawnshop_id', $pawnshopId)
+            ->select(
+                'id',
+                DB::raw("DATE(date) as date"),
+                'amount',
+                'pawnshop_id',
+                'cash',
+                'order_id',
+                'contract_id',
+                'type',
+                'interest_amount',
+                'delay_days',
+                'created_by'
+            )
+            ->with([
+                'order:id,client_name,order,contract_id,purpose',
+                'contract:id,num,discount,penalty_amount,discount,mother',
+                'createdBy:id,name,surname'
+            ])
+            ->when($request->dateFrom, function ($query) use ($request) {
+                $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);
             })
-            ->when($request->dateTo,function ($query) use ($request){
-                $query->where(function ($query) use ($request) {
-                    $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')]);
-                })->get();
+            ->when($request->dateTo, function ($query) use ($request) {
+                $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')]);
             })
             ->when($dealType === Deal::IN_DEAL, function ($query) {
-                $query->where('type', 'in');
+                $query->where('type', Deal::IN_DEAL);
             })
             ->when($dealType === Deal::OUT_DEAL, function ($query) {
-                $query->where('type', 'out');
+                $query->where('type', Deal::OUT_DEAL);
             })
             ->when($dealType === Deal::EXPENSE_DEAL, function ($query) {
-                $query->where('type', 'cost_out');
+                $query->where('type', Deal::EXPENSE_DEAL);
             })
-            ->when($request->hasAny(['name', 'surname', 'middle_name', 'passport_series', 'phone']), function ($query) use ($request) {
-                $query->whereHas('contract.client', function ($query) use ($request) {
-                    if ($request->filled('name')) {
-                        $query->where('name', 'like', '%' . $request->name . '%');
-                    }
-                    if ($request->filled('surname')) {
-                        $query->where('surname', 'like', '%' . $request->surname . '%');
-                    }
-                    if ($request->filled('middle_name')) {
-                        $query->where('middle_name', 'like', '%' . $request->middle_name . '%');
-                    }
-                    if ($request->filled('passport_series')) {
-                        $query->where('passport_series', 'like', '%' . $request->passport_series . '%');
-                    }
-                    if ($request->filled('phone')) {
-                        $query->where('phone', 'like', '%' . $request->phone . '%');
-                    }
-                    if ($request->filled('status')) {
-                        $query->where('status', 'like', '%' . $request->status . '%');
-                    }
-                    if ($request->filled('category_id')) {
-                        $query->where('category_id', 'like', '%' . $request->category_id . '%');
-                    }
-                    if ($request->filled('estimated_amount_from')) {
-                        $query->where('estimated_amount', '>=', $request->estimated_amount_from);
-                    }
-                    if ($request->filled('estimated_amount_to')) {
-                        $query->where('estimated_amount', '<=', $request->estimated_amount_to);
-                    }
-                    if ($request->filled('provided_amount_from')) {
-                        $query->where('provided_amount', '>=', $request->provided_amount_from);
-                    }
-                    if ($request->filled('provided_amount_to')) {
-                        $query->where('provided_amount', '<=', $request->provided_amount_to);
-                    }
-                    if ($request->filled('date_from')) {
-                        $query->where('created_at', '>=', Carbon::parse($request->date_from)->setTimezone('Asia/Yerevan'));
-                    }
-                    if ($request->filled('date_to')) {
-                        $query->where('created_at', '<=', Carbon::parse($request->date_to)->setTimezone('Asia/Yerevan'));
-                    }
-                });
-            })
-            ->when($request->filled('deal_days'), function ($query) use ($request) {
-                $query->where('delay_days', $request->deal_days);
-            })
-            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')
+            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")
+            ->orderBy('id', 'DESC')
             ->paginate(10);
 
-        $deals->getCollection()->transform(function ($deal) {
-            $deal->total_amount = $deal->cashbox + $deal->bank_cashbox;
+        // Calculate cashbox for each deal individually
+        $deals->getCollection()->transform(function ($deal) use ($pawnshopId) {
+            $dealDate = $deal->date; // Get deal date
+
+            $dealData = Deal::whereDate('date', '<=', $dealDate)
+                ->where('pawnshop_id', $pawnshopId)
+                ->whereIn('type', [Deal::IN_DEAL, Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
+                ->selectRaw("
+                SUM(CASE WHEN type = ? AND cash = true THEN amount ELSE 0 END) as total_cash_in,
+                SUM(CASE WHEN type IN (?, ?, ?) AND cash = true THEN amount ELSE 0 END) as total_cash_out,
+                SUM(CASE WHEN type = ? AND cash = false THEN amount ELSE 0 END) as total_bank_in,
+                SUM(CASE WHEN type IN (?, ?, ?) AND cash = false THEN amount ELSE 0 END) as total_bank_out
+            ", [
+                    Deal::IN_DEAL,
+                    Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL,
+                    Deal::IN_DEAL,
+                    Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL
+                ])
+                ->first();
+
+            $deal->cashBox = ($dealData->total_cash_in ?? 0) - ($dealData->total_cash_out ?? 0);
+            $deal->bankCashBox = ($dealData->total_bank_in ?? 0) - ($dealData->total_bank_out ?? 0);
+            $deal->totalAmount = $deal->cashBox + $deal->bankCashBox;
+
             return $deal;
         });
 
         return response()->json([
             'deals' => $deals
         ]);
-
     }
+
 //    public function addCashbox(Request $request)
 //    {
 //        $amount = $request->amount;
