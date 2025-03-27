@@ -259,9 +259,9 @@ DealController extends Controller
                 ])
                 ->first();
 
-            $deal->cashBox = ($dealData->total_cash_in ?? 0) - ($dealData->total_cash_out ?? 0);
-            $deal->bankCashBox = ($dealData->total_bank_in ?? 0) - ($dealData->total_bank_out ?? 0);
-            $deal->totalAmount = $deal->cashBox + $deal->bankCashBox;
+            $deal->cashbox = ($dealData->total_cash_in ?? 0) - ($dealData->total_cash_out ?? 0);
+            $deal->bank_cashbox = ($dealData->total_bank_in ?? 0) - ($dealData->total_bank_out ?? 0);
+            $deal->total_amount = $deal->cashBox + $deal->bankCashBox;
 
             return $deal;
         });
