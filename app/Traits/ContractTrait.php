@@ -22,7 +22,7 @@ trait ContractTrait
     /**
      * Helper method to create order and history entries
      */
-    private function createOrderAndHistory($contract, $client_id,$client_name, $cash,$category_id,$num = null,$pawnshop_id = null,$date = null,$isOpen=false)
+    private function createOrderAndHistory($contract, $client_id, $client_name, $cash, $category_id, $num = null, $pawnshop_id = null, $date = null, $isOpen = false)
     {
         $historyTypeNames = $isOpen
             ? ['opening', 'one_time_payment', 'mother_payment']
@@ -38,16 +38,17 @@ trait ContractTrait
             : floor($lump_amount_original / 10) * 10;
 
         if ($isOpen) {
-            $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$num,$pawnshop_id,$date);
+            $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING, $num, $pawnshop_id, $date);
         }
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT,$num,$pawnshop_id,$date);
+        $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT, $num, $pawnshop_id, $date);
 //        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$num,$pawnshop_id,$date);
-        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT,$num,$pawnshop_id,$date);
+        $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT, $num, $pawnshop_id, $date);
     }
-    private function createOrderAndHistoryEntry($contract, $client_id,$client_name, $cash,$category_id,$num = null,$pawnshop_id = null,$date = null)
+
+    private function createOrderAndHistoryEntry($contract, $client_id, $client_name, $cash, $category_id, $num = null, $pawnshop_id = null, $date = null)
     {
         $this->createOrderHistoryEntry(
-            $contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$num,$pawnshop_id,$date
+            $contract, $client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING, $num, $pawnshop_id, $date
         );
 
     }
@@ -55,9 +56,9 @@ trait ContractTrait
     /**
      * Helper method to create individual order and history entries
      */
-    private function createOrderHistoryEntry($contract,$client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose,$num = null,$pawnshop_id,$date = null)
+    private function createOrderHistoryEntry($contract, $client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose, $num = null, $pawnshop_id, $date = null)
     {
-        $order_id = $this->getOrder($cash, $type,$pawnshop_id);
+        $order_id = $this->getOrder($cash, $type, $pawnshop_id);
         if ($historyTypeName !== 'opening') {
             // Create an order
             $order = Order::create([
@@ -88,92 +89,94 @@ trait ContractTrait
         ]);
         if ($historyTypeName !== 'opening') {
             // Create a deal for the order
-            $this->createDeal($amount,null,null,null,null, $type, $contract->id,$client_id, $order_id, $cash,null, $purpose,'contract',$history->id,null,null,$pawnshop_id,$date);
+            $this->createDeal($amount, null, null, null, null, $type, $contract->id, $client_id, $order_id, $cash, null, $purpose, 'contract', $history->id, null, null, $pawnshop_id, $date);
         }
     }
 
     public function getFullContract($id)
     {
-        $contract = Contract::where('pawnshop_id',auth()->user()->pawnshop_id)->where('id', $id)
-            ->with(['client','files','category','evaluator','payments' => function($payment){
+        $contract = Contract::where('pawnshop_id', auth()->user()->pawnshop_id)->where('id', $id)
+            ->with(['client', 'files', 'category', 'evaluator', 'payments' => function ($payment) {
                 $payment->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') ASC");
-            },'history' => function($query){
-                $query->with(['type','user','order'])->orderBy('id','DESC');
-            },'items' => function($query){
+            }, 'history' => function ($query) {
+                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
+            }, 'items' => function ($query) {
                 $query->with('category');
-            },'discounts',])->first();
-        if($contract && $contract->evaluator){
+            }, 'discounts',])->first();
+        if ($contract && $contract->evaluator) {
             $contract->evaluator_title = $contract->evaluator->full_name;
         }
         return $contract;
     }
 
-    public function createDeal($amount,$interest_amount,$delay_days,$penalty,$discount,$type,$contract_id,$client_id,$order_id = null,$cash = true,$receiver = null,$purpose = null,$filter_type = null,$history_id = null,$payment_id = null,$source = null,$pawnshop_id = null,$date=null)
+    public function createDeal($amount, $interest_amount, $delay_days, $penalty, $discount, $type, $contract_id, $client_id, $order_id = null, $cash = true, $receiver = null, $purpose = null, $filter_type = null, $history_id = null, $payment_id = null, $source = null, $pawnshop_id = null, $date = null)
     {
         $pawnshop = $pawnshop_id ? Pawnshop::find($pawnshop_id) : auth()->user()->pawnshop;
-        if($type === 'in'){
-            if($cash){
+        if ($type === 'in') {
+            if ($cash) {
                 $pawnshop->cashbox = $pawnshop->cashbox + $amount;
-            }else{
+            } else {
                 $pawnshop->bank_cashbox = $pawnshop->bank_cashbox + $amount;
             }
-        }else{
-            if($cash){
+        } else {
+            if ($cash) {
                 $pawnshop->cashbox = $pawnshop->cashbox - $amount;
-            }else{
+            } else {
                 $pawnshop->bank_cashbox = $pawnshop->bank_cashbox - $amount;
             }
 
         }
-        if($amount < 0){
+        if ($amount < 0) {
             $type = $type === 'in' ? 'out' : 'in';
             $amount = -$amount;
         }
         $pawnshop->save();
         return Deal::create([
-            'type'            => $type,
-            'amount'          => $amount,
+            'type' => $type,
+            'amount' => $amount,
             'interest_amount' => $interest_amount,
-            'delay_days'      => $delay_days,
-            'penalty'         => $penalty,
-            'discount'        => $discount,
-            'date'            => $date ?? Carbon::now()->format('Y-m-d'),
-            'pawnshop_id'     => $pawnshop->id,
-            'contract_id'     => $contract_id,
-            'order_id'        => $order_id,
-            'cashbox'         => $pawnshop->cashbox,
-            'bank_cashbox'    => $pawnshop->bank_cashbox,
-            'worth'           => $pawnshop->worth,
-            'given'           => $pawnshop->given,
-            'purpose'         => $purpose,
-            'cash'            => boolval($cash),
-            'receiver'        => $receiver,
-            'source'          => $source,
-            'created_by'      => auth()->user()->id ?? 1,
-            'client_id'       => $client_id,
-            'filter_type'     => $filter_type,
-            'history_id'      => $history_id,
-            'payment_id'      => $payment_id,
+            'delay_days' => $delay_days,
+            'penalty' => $penalty,
+            'discount' => $discount,
+            'date' => $date ?? Carbon::now()->format('Y-m-d'),
+            'pawnshop_id' => $pawnshop->id,
+            'contract_id' => $contract_id,
+            'order_id' => $order_id,
+            'cashbox' => $pawnshop->cashbox,
+            'bank_cashbox' => $pawnshop->bank_cashbox,
+            'worth' => $pawnshop->worth,
+            'given' => $pawnshop->given,
+            'purpose' => $purpose,
+            'cash' => boolval($cash),
+            'receiver' => $receiver,
+            'source' => $source,
+            'created_by' => auth()->user()->id ?? 1,
+            'client_id' => $client_id,
+            'filter_type' => $filter_type,
+            'history_id' => $history_id,
+            'payment_id' => $payment_id,
         ]);
     }
-    public function setContractPenalty($id) {
+
+    public function setContractPenalty($id)
+    {
         $contract = Contract::where('id', $id)->with('payments')->first();
         $now = Carbon::now();
         $dateToCheck = null;
-        if($contract){
-            for($i = 0; $i < count($contract->payments);$i++){
+        if ($contract) {
+            for ($i = 0; $i < count($contract->payments); $i++) {
                 $payment = $contract->payments[$i];
-                if($now ->gt(Carbon::parse($payment->date)) && $payment->status === 'initial'){
+                if ($now->gt(Carbon::parse($payment->date)) && $payment->status === 'initial') {
                     $dateToCheck = Carbon::parse($payment->date);
                     break;
                 }
             }
-            if ($dateToCheck){
+            if ($dateToCheck) {
                 $difference = $now->diffInDays($dateToCheck);
                 $penalty = $contract->left * $difference * $contract->penalty * 0.01;
                 $contract->penalty_amount = $penalty;
                 $contract->save();
-            }else{
+            } else {
                 $contract->penalty_amount = 0;
                 $contract->save();
             }
@@ -181,9 +184,9 @@ trait ContractTrait
     }
 
 
-
-    public function createPayment($contract_id,$amount,$type,$payer,$cash){
-        $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
+    public function createPayment($contract_id, $amount, $type, $payer, $cash)
+    {
+        $status = ($type === 'penalty' || $type === 'full') ? 'completed' : 'initial';
         $payment = new Payment();
         $payment->amount = $amount;
         $payment->paid = $amount;
@@ -193,7 +196,7 @@ trait ContractTrait
         $payment->pawnshop_id = auth()->user()->pawnshop_id;
         $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
         $payment->status = $status;
-        if($payer){
+        if ($payer) {
             $payment->another_payer = true;
             $payment->name = $payer['name'];
             $payment->surname = $payer['surname'];
@@ -204,15 +207,53 @@ trait ContractTrait
         return $payment;
     }
 
-    public function completePayment(){
-
-    }
-
-    public function calcAmount($amount,$days,$rate): int
+    public function completePayment()
     {
-        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
+
     }
-    public function calculateCurrentPayment($contract): array
+
+    public function calcAmount($amount, $days, $rate): int
+    {
+        return intval(ceil($days * $rate * $amount * 0.01 / 10) * 10);
+    }
+
+    public function calculateCurrentPayment($contract)
+    {
+        $penaltyAmount = $this->countPenalty($contract->id);
+        $contractCreationDate = Carbon::parse($contract->date);
+        $currentDate = Carbon::now();
+
+        $partialPayments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'partial')
+            ->orderBy('date', 'asc')
+            ->get();
+        $remainingAmount = $contract->mother;
+        $totalPayment = 0;
+        $lastPaymentDate = $contractCreationDate;
+        if ($partialPayments) {
+            foreach ($partialPayments as $partialPayment) {
+                $daysPassed = $contractCreationDate->diffInDays($partialPayment->date);
+                $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
+
+                $remainingAmount -= $partialPayment->paid;
+                $lastPaymentDate = Carbon::parse($partialPayment->date);
+
+            }
+        }
+        //38640+2448-40330
+        $daysPassed = $lastPaymentDate->diffInDays($currentDate);
+        $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
+        $totalPaid = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')->sum('paid');
+        $currentAmount = $totalPayment - $totalPaid - $penaltyAmount['penalty_amount'];
+        return [
+            "current_amount" => $currentAmount,
+            "penalty_amount" => $penaltyAmount['penalty_amount']
+        ];
+
+    }
+
+    public function calculateCurrentPayment1($contract): array
     {
         $penalty_amount = $this->countPenalty($contract->id);
         $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->date);
@@ -221,19 +262,19 @@ trait ContractTrait
         $days_passed = $contract_creation_date->diffInDays($current_date);
         $calculatedAmount = $this->calcAmount($contract->left, $days_passed, $contract->interest_rate);
         $total_paid = Payment::where('contract_id', $contract->id)
-            ->where('type','regular')->sum('paid');
+            ->where('type', 'regular')->sum('paid');
 //        $penalty_paid = Payment::with('contract_id',$contract->id)
 //            ->where('type','penalty')->sum('paid');
-        $penalty = $penalty_amount ;
+        $penalty = $penalty_amount;
         $current_amount = $calculatedAmount - $total_paid + $penalty['penalty_amount'];
-
         return ["current_amount" => $current_amount > 0 ? $current_amount : 0,
-                "penalty_amount"=>$penalty['penalty_amount']];
+            "penalty_amount" => $penalty['penalty_amount']];
     }
-    public function calculateCurrentPayment1($contract): array
+
+    public function calculateCurrentPayment2($contract): array
     {
         $penalty_amount = $this->countPenalty($contract->id);
-        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->created_at);
+        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->date);
         $current_date = Carbon::now();
         $days_passed = $contract_creation_date->diffInDays($current_date);
 
@@ -270,7 +311,7 @@ trait ContractTrait
         ];
     }
 
-    public function countPenalty($contract_id,$import_date = null)
+    public function countPenalty($contract_id, $import_date = null)
     {
         $contract = Contract::where('id', $contract_id)
             ->with('payments')->first();
@@ -297,7 +338,7 @@ trait ContractTrait
                         $penalty_calculated = true; // Set flag to true after first calculation
                     }
                     // Add to the total penalty and delay days
-                 //   $total_penalty_amount += $penalty_amount;
+                    //   $total_penalty_amount += $penalty_amount;
                     $total_delay_days += $delay_days;
                 }
             }
@@ -324,8 +365,8 @@ trait ContractTrait
     public function countPenalty1($contract_id)
     {
         $contract = Contract::where('id', $contract_id)->with('payments')->first();
-        $penalty_paid = Payment::with('contract_id',$contract->id)
-            ->where('type','penalty')->sum('paid');
+        $penalty_paid = Payment::with('contract_id', $contract->id)
+            ->where('type', 'penalty')->sum('paid');
         $now = \Carbon\Carbon::now();
         $dateToCheck = null;
         $penalty_amount = 0;
@@ -333,7 +374,7 @@ trait ContractTrait
             for ($i = 0; $i < count($contract->payments); $i++) {
                 $payment = $contract->payments[$i];
 
-                if ($now ->gt(\Carbon\Carbon::parse($payment->date)) && $payment->status === 'initial') {
+                if ($now->gt(\Carbon\Carbon::parse($payment->date)) && $payment->status === 'initial') {
                     $dateToCheck = Carbon::parse($payment->date);
 
                     break;
@@ -341,30 +382,30 @@ trait ContractTrait
 
             }
             $difference = 0;
-            if ($dateToCheck){
+            if ($dateToCheck) {
                 $difference = $now->diffInDays($dateToCheck);
-                $penalty_amount =( $this->calcAmount($contract->left, $difference, $contract->penalty) - $penalty_paid);
+                $penalty_amount = ($this->calcAmount($contract->left, $difference, $contract->penalty) - $penalty_paid);
                 $contract->penalty_amount = $penalty_amount;
                 $contract->save();
-            }else{
+            } else {
                 $contract->penalty_amount = 0;
                 $contract->save();
             }
 
             return [
                 'penalty_amount' => $penalty_amount > 0 ? $penalty_amount : 0,
-                'delay_days' => $difference ,
+                'delay_days' => $difference,
             ];
         }
     }
+
     public function createImportPayment(Contract $contract)
     {
         $fromDate = Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan');
         $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
         $currentDate = $fromDate;
         $pgi_id = 1;
-        while ($currentDate->lt($toDate))
-        {
+        while ($currentDate->lt($toDate)) {
             $payment = [
                 'contract_id' => $contract->id,
                 'from_date' => $currentDate->format('Y-m-d'),
@@ -372,11 +413,12 @@ trait ContractTrait
 
             // Determine the next payment date, or use the deadline if it's the last payment
             $nextPaymentDate = (clone $currentDate)->addMonths();
-            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+            $paymentDate = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
 
             $diffDays = $paymentDate->diffInDays($currentDate);
             $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
-            $payment['date'] = $paymentDate->format('Y-m-d');            $payment['days'] = $diffDays;
+            $payment['date'] = $paymentDate->format('Y-m-d');
+            $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
             $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
             $payment['mother'] = 0;

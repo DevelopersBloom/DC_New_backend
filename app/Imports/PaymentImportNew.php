@@ -48,7 +48,7 @@ class PaymentImportNew implements ToCollection
 
                 if ($pgi_id == 'Մասնակի մարում') {
                     $user = User::where('id',1)->first();
-                    $payment_id = $this->paymentService->payPartial($contract,$amount,$user,$cash);
+                    $payment_id = $this->paymentService->payPartial($contract,$amount,$user,$cash,null,$date);
                     $history_type = HistoryType::where('name','partial_payment')->first();
                     $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
                     $order_id = $this->getOrder($cash,'in');
@@ -60,7 +60,7 @@ class PaymentImportNew implements ToCollection
                         'order' => $order_id,
                         'amount' => $amount,
                         'rep_id' => '2211',
-                        'date' => Carbon::now()->format('Y-m-d'),
+                        'date' =>$date->format('Y.m.d'),
                         'client_name' => $client_name,
                         'purpose' => 'Մասնակի մարում',
                         'cash' => $cash
@@ -72,7 +72,7 @@ class PaymentImportNew implements ToCollection
                         'type_id' => $history_type->id,
                         'order_id' => $new_order->id,
                         'contract_id' => $contract->id,
-                        'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
+                        'date' =>$date->format('Y.m.d'),
                     ]);
                     $this->createDeal($amount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id,$payment_id,null,1,$date);
 

@@ -195,7 +195,7 @@ class PaymentService {
 
 
     }
-    public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null)
+    public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null,$date=null)
     {
        // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
         if ($type === 'penalty' || $type === 'full' || $type === 'partial') {
@@ -213,7 +213,7 @@ class PaymentService {
         $user = auth()->user() ?? User::where('id',1)->first();
         $payment->pawnshop_id = $user->pawnshop_id;
        // $payment->paid_date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
-        $payment->date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
+        $payment->date = $date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->status = $status;
 
         if ($payer) {
@@ -231,14 +231,14 @@ class PaymentService {
                'amount' => $amount,
                'type' => $type,
                'description' => $type . 'payment',
-               'date' => Carbon::now()->format('Y-m-d'),
+               'date' => $date ?? Carbon::now()->format('Y-m-d'),
                'history' => $history,
            ]);
        }
         return $payment->id;
     }
 
-    public function payPartial($contract, $partialAmount, $payer, $cash,$deal_id=null)
+    public function payPartial($contract, $partialAmount, $payer, $cash,$deal_id=null,$date=null)
     {
         $now = Carbon::now();
         $payments = Payment::where('contract_id', $contract->id)->where('type', 'regular')->get();
@@ -324,7 +324,7 @@ class PaymentService {
 //        if ($isActionable) {
 //            return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history, $deal_id);
 //        }
-        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history,$deal_id);
+        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history,$deal_id,$date);
 
     }
 
