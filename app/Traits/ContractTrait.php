@@ -232,17 +232,16 @@ trait ContractTrait
         $lastPaymentDate = $contractCreationDate;
         if ($partialPayments) {
             foreach ($partialPayments as $partialPayment) {
-                $daysPassed = $contractCreationDate->diffInDays($partialPayment->date);
+                $daysPassed = $lastPaymentDate->diffInDays($partialPayment->date);
                 $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
-
                 $remainingAmount -= $partialPayment->paid;
                 $lastPaymentDate = Carbon::parse($partialPayment->date);
-
             }
         }
         //38640+2448-40330
         $daysPassed = $lastPaymentDate->diffInDays($currentDate);
         $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
+
         $totalPaid = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')->sum('paid');
         $currentAmount = $totalPayment - $totalPaid - $penaltyAmount['penalty_amount'];
