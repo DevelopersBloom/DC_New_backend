@@ -221,7 +221,13 @@ trait ContractTrait
     {
         $penaltyAmount = $this->countPenalty($contract->id);
         $contractCreationDate = Carbon::parse($contract->date);
-        $currentDate = Carbon::now();
+        $contractEndDate = Payment::where('last_payment',1)->where('contract_id',$contract->id)->first();
+        if ($contractEndDate) {
+            $paymentDate = Carbon::parse($contractEndDate->date);
+            $currentDate = $paymentDate->lt(Carbon::now()) ? $paymentDate : Carbon::now();
+        } else {
+            $currentDate = Carbon::now();
+        }
 
         $partialPayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'partial')
@@ -238,7 +244,6 @@ trait ContractTrait
                 $lastPaymentDate = Carbon::parse($partialPayment->date);
             }
         }
-        //38640+2448-40330
         $daysPassed = $lastPaymentDate->diffInDays($currentDate);
         $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
 
