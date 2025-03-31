@@ -309,6 +309,8 @@ class PaymentService {
             'new_left' => $contract->left - $partialAmount,
             'old_collected' => $contract->collected,
             'new_collected' => $contract->collected + $partialAmount,
+            'old_provided' => $contract->provided_amount,
+            'new_provided' =>  max(0, $contract->provided_amount - $partialAmount),
             'updated_at' => now()->toDateTimeString()
         ];
 
