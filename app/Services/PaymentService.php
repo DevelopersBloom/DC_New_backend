@@ -55,10 +55,10 @@ class PaymentService {
 
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash,$deal_id) {
         if ($amount <= $penalty) {
-            $this->createPayment($contractId, $amount, 'penalty', $payer, $cash,$deal_id);
+            $this->createPayment($contractId, $amount, 'penalty', $payer, $cash,[],$deal_id);
             return 0;
         } else {
-            $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash,$deal_id);
+            $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash,[],$deal_id);
             return $amount - $penalty;
         }
     }
@@ -311,6 +311,7 @@ class PaymentService {
             'new_collected' => $contract->collected + $partialAmount,
             'updated_at' => now()->toDateTimeString()
         ];
+
 
         // Update contract with partial payment
         $contract->left = max(0,$contract->left-$partialAmount);

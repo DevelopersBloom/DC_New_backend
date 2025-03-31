@@ -724,7 +724,7 @@ class AdminControllerNew extends Controller
         foreach ($dealActions as $dealAction) {
             $this->restoreHistory($dealAction->history);
 
-            if ($dealAction->type === 'partial' && $dealAction->actionable) {
+            if (($dealAction->type === 'partial' || $dealAction->type === 'penalty') && $dealAction->actionable) {
                 $dealAction->actionable->delete();
             }
 
