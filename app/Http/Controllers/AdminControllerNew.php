@@ -756,7 +756,7 @@ class AdminControllerNew extends Controller
                     ->update([
                         'left' => $historyItem['old_left'],
                         'collected' => $historyItem['old_collected'],
-                        'status' => $historyItem['old_status'],
+                        'status' => 'initial',
                         'provided_amount' => $historyItem['old_provided'],
                         'closed_at' => null,
                     ]),

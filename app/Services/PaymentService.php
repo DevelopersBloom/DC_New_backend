@@ -303,7 +303,7 @@ class PaymentService {
                 $payment->save();
             }
         }
-        $history['contract_change'] = [
+        $history['contract_changes'] = [
             'contract_id' => $contract->id,
             'old_left' => $contract->left,
             'new_left' => $contract->left - $partialAmount,
