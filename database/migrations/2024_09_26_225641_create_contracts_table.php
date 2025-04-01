@@ -18,20 +18,20 @@ return new class extends Migration
             $table->integer('num')->nullable();
             $table->foreignId('user_id')->nullable()->constrained('users');
             $table->unsignedBigInteger('client_id');
-            $table->decimal('estimated_amount', 15, 2); // Adjust precision and scale for decimal
-            $table->decimal('provided_amount', 15, 2); // Adjust precision and scale for decimal
-            $table->decimal('interest_rate', 5, 2)->nullable(); // Adjust precision and scale for decimal
-            $table->decimal('penalty', 15, 2)->nullable(); // Adjust precision and scale for decimal
-            $table->decimal('discount', 15, 2)->nullable(); // Adjust precision and scale for decimal
+            $table->decimal('estimated_amount', 15, 2);
+            $table->decimal('provided_amount', 15, 2);
+            $table->decimal('interest_rate', 5, 2)->nullable();
+            $table->decimal('penalty', 15, 2)->nullable();
+            $table->decimal('discount', 15, 2)->nullable();
             $table->date('deadline');
             $table->string('deadline_days')->nullable();
-            $table->decimal('lump_rate', 15, 2)->nullable(); // Adjust precision and scale for decimal
+            $table->decimal('lump_rate', 15, 2)->nullable();
             $table->text('description')->nullable();
             $table->enum('status', ['initial', 'completed', 'executed'])->default('initial');
             $table->unsignedBigInteger('pawnshop_id');
-            $table->decimal('mother', 15, 2)->nullable(); // Adjust precision and scale for decimal
-            $table->decimal('left', 15, 2)->nullable(); // Adjust precision and scale for decimal
-            $table->decimal('collected', 15, 2)->nullable(); // Adjust precision and scale for decimal
+            $table->decimal('mother', 15, 2)->nullable();
+            $table->decimal('left', 15, 2)->nullable();
+            $table->decimal('collected', 15, 2)->nullable();
             $table->integer('penalty_amount')->default(0);
             $table->date('closed_at')->nullable();
             $table->string('executed')->nullable();

@@ -35,6 +35,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('sn')->nullable()->unique();
             $table->string('imei', 15)->nullable()->unique();
+            $table->decimal('provided_amount', 15, 2)->nullable();
             $table->timestamps();
 
             $table->foreign('category_id')->references('id')->on('categories');

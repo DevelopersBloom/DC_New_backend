@@ -28,6 +28,7 @@ class ItemRequest extends FormRequest
             'items.*.category_id' => 'required|exists:categories,id',
             'items.*.subcategory' => 'nullable|string|max:255',
             'items.*.description' => 'nullable|string|max:1000',
+            'items.*.rated' => 'nullable|numeric',
 
             // Phone-specific rules
             'items.*.model' => 'nullable|string|max:255',

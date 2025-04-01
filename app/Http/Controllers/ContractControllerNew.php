@@ -255,31 +255,34 @@ class ContractControllerNew extends Controller
             'contract' => $contract,
         ]);
     }
-    public function updateContractItem(Request $request, $id)
+    public function updateContractItems(Request $request)
     {
         $validatedData = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'description' => 'nullable|string',
-            'subcategory' => 'nullable|string',
-            'model' => 'nullable|string',
-            'serialNumber' => 'nullable|string',
-            'imei' => 'nullable|string',
-            'weight' => 'nullable|numeric',
-            'clear_weight' => 'nullable|numeric',
-            'hallmark' => 'nullable|string',
-            'car_make' => 'nullable|string',
-            'manufacture' => 'nullable|integer',
-            'power' => 'nullable|string',
-            'license_plate' => 'nullable|string',
-            'color' => 'nullable|string',
-            'registration_certificate' => 'nullable|string',
-            'identification_number' => 'nullable|string',
-            'ownership_certificate' => 'nullable|string',
-            'issued_by' => 'nullable|string',
-            'date_of_issuance' => 'nullable|date',
+            'items' => 'required|array',
+            'items.*.id' => 'required|exists:items,id',
+            'items.*.category_id' => 'required|exists:categories,id',
+            'items.*.description' => 'nullable|string',
+            'items.*.subcategory' => 'nullable|string',
+            'items.*.model' => 'nullable|string',
+            'items.*.serialNumber' => 'nullable|string',
+            'items.*.imei' => 'nullable|string',
+            'items.*.weight' => 'nullable|numeric',
+            'items.*.clear_weight' => 'nullable|numeric',
+            'items.*.hallmark' => 'nullable|string',
+            'items.*.car_make' => 'nullable|string',
+            'items.*.manufacture' => 'nullable|integer',
+            'items.*.power' => 'nullable|string',
+            'items.*.license_plate' => 'nullable|string',
+            'items.*.color' => 'nullable|string',
+            'items.*.registration_certificate' => 'nullable|string',
+            'items.*.identification_number' => 'nullable|string',
+            'items.*.ownership_certificate' => 'nullable|string',
+            'items.*.issued_by' => 'nullable|string',
+            'items.*.date_of_issuance' => 'nullable|date',
+            'items.*.rated' => 'nullable|numeric',
         ]);
 
-        return $this->contractService->updateContractItem($id, $validatedData);
+        return $this->contractService->updateContractItems($validatedData['items']);
     }
 
 }

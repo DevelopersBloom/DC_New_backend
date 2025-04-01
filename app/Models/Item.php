@@ -28,7 +28,8 @@ class Item extends Model
         'date_of_issuance',
         'description',
         'sn',
-        'imei'
+        'imei',
+        'provided_amount'
     ];
     public function category(){
         return $this->belongsTo(Category::class);

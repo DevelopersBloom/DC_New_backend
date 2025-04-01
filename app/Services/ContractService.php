@@ -143,6 +143,8 @@ class   ContractService
                     $item->date_of_issuance = $data['date_of_issuance'] ?? null;
                     break;
             }
+            $item->description = $data['description'] ?? null;
+            $item->provided_amount = $data['rated'] ?? null;
             $item->save();
         }
 
@@ -151,102 +153,112 @@ class   ContractService
         $contract->items()->syncWithoutDetaching([$item->id]);
         return $item;
     }
-
-    public function updateContractItem(int $itemId,array $data)
+    public function updateContractItems(array $items)
     {
         DB::beginTransaction();
         try {
-            $item = Item::where('id', $itemId)->first();
-            if ($item->category_id != $data['category_id']) {
-                // Reset all category-specific fields to null
-                $item->fill([
-                    'subcategory' => null,
-                    'model' => null,
-                    'weight' => null,
-                    'clear_weight' => null,
-                    'hallmark' => null,
-                    'car_make' => null,
-                    'manufacture' => null,
-                    'power' => null,
-                    'license_plate' => null,
-                    'color' => null,
-                    'registration' => null,
-                    'identification' => null,
-                    'ownership' => null,
-                    'issued_by' => null,
-                    'date_of_issuance' => null,
-                    'sn' => null,
-                    'imei' => null
-                ]);
+            foreach ($items as $data) {
+                $item = Item::where('id', $data['id'])->first();
+                if ($item->category_id != $data['category_id']) {
+                    $item->fill([
+                        'subcategory' => null,
+                        'model' => null,
+                        'weight' => null,
+                        'clear_weight' => null,
+                        'hallmark' => null,
+                        'car_make' => null,
+                        'manufacture' => null,
+                        'power' => null,
+                        'license_plate' => null,
+                        'color' => null,
+                        'registration' => null,
+                        'identification' => null,
+                        'ownership' => null,
+                        'issued_by' => null,
+                        'date_of_issuance' => null,
+                        'sn' => null,
+                        'imei' => null,
+                        'description' => null,
+                        'provided_amount' => null,
+                    ]);
+                    $item->save();
+                }
+                $category = Category::where('id', $data['category_id'])->first();
+                $item->category_id = $category->id;
+
+                if (!empty($data['description'])) {
+                    foreach ($item->contracts as $contract) {
+                        $contract->description = $data['description'] ?? $contract->description;
+                        $contract->save();
+                    }
+                }
+
+                switch ($category->name) {
+                    case 'electronics':
+                        $subcategory = Subcategory::firstOrCreate([
+                            'name'        => $data['subcategory'],
+                            'category_id' => $data['category_id'],
+                        ]);
+                        if (!empty($data['model'])) {
+                            $subcategoryItem = SubcategoryItem::firstOrCreate([
+                                'subcategory_id' => $subcategory->id,
+                                'model' => $data['model'],
+                            ]);
+                            $item->model = $subcategoryItem->model;
+                        }
+                        $item->subcategory = $subcategory->name;
+                        $item->sn = $data['serialNumber'] ?? $item->sn;
+                        $item->imei = $data['imei'] ?? $item->imei;
+                        break;
+
+                    case 'gold':
+                        $subcategory = Subcategory::firstOrCreate([
+                            'name' => $data['subcategory'],
+                            'category_id' => $data['category_id'],
+                        ]);
+                        $item->subcategory = $subcategory->name;
+                        $item->weight = $data['weight'] ?? $item->weight;
+                        $item->clear_weight = $data['clear_weight'] ?? $item->clear_weight;
+                        $item->hallmark = $data['hallmark'] ?? $item->hallmark;
+                        break;
+
+                    case 'car':
+                        $subcategory = Subcategory::firstOrCreate([
+                            'name' => $data['model'],
+                            'category_id' => $data['category_id'],
+                        ]);
+                        if (!empty($data['car_make'])) {
+                            $subcategoryItem = SubcategoryItem::firstOrCreate([
+                                'subcategory_id' => $subcategory->id,
+                                'model' => $data['car_make'],
+                            ]);
+                            $item->car_make = $subcategoryItem->model;
+                        }
+                        $item->model = $subcategory->name ?? null;
+                        $item->manufacture = $data['manufacture'] ?? $item->manufacture;
+                        $item->power = $data['power'] ?? $item->power;
+                        $item->license_plate = $data['license_plate'] ?? $item->license_plate;
+                        $item->color = $data['color'] ?? $item->color;
+                        $item->registration = $data['registration_certificate'] ?? $item->registration;
+                        $item->identification = $data['identification_number'] ?? $item->identification;
+                        $item->ownership = $data['ownership_certificate'] ?? $item->ownership;
+                        $item->issued_by = $data['issued_by'] ?? $item->issued_by;
+                        $item->date_of_issuance = $data['date_of_issuance'] ?? $item->date_of_issuance;
+                        break;
+                }
+                $item->description = $data['description'] ?? $item->description;
+                $item->provided_amount = $data['rated'] ?? $item->provided_amount;
                 $item->save();
             }
-            $category = Category::where('id',$data['category_id'])->first();
-            $item->category_id = $category->id;
-            if (!empty($data['description'])) {
-                foreach ($item->contracts as $contract) {
-                    $contract->description = $data['description'] ?? $contract->description;
-                    $contract->save();
-                }
-            }
-            switch ($category->name) {
-                case 'electronics':
-                    $subcategory = Subcategory::firstOrCreate([
-                        'name'        => $data['subcategory'],
-                        'category_id' => $data['category_id'],
-                    ]);
-                    if (!empty($data['model'])) {
-                        $subcategoryItem = SubcategoryItem::firstOrCreate([
-                            'subcategory_id' => $subcategory->id,
-                            'model' => $data['model'],
-                        ]);
-                        $item->model = $subcategoryItem->model;
-                    }
-                    $item->subcategory = $subcategory->name;
-                    $item->sn = $data['serialNumber'] ?? $item->sn;
-                    $item->imei = $data['imei'] ?? $item->imei;
-                    break;
-                case 'gold':
-                    $subcategory = Subcategory::firstOrCreate([
-                        'name' => $data['subcategory'],
-                        'category_id' => $data['category_id'],
-                    ]);
-                    $item->subcategory = $subcategory->name;
-                    $item->weight = $data['weight'] ?? $item->weight;
-                    $item->clear_weight = $data['clear_weight'] ?? $item->clear_weight;
-                    $item->hallmark = $data['hallmark'] ?? $item->hallmark;
-                    break;
-                case 'car':
-                    $subcategory = Subcategory::firstOrCreate([
-                        'name' => $data['model'],
-                        'category_id' => $data['category_id'],
-                    ]);
-                    if (!empty($data['car_make'])) {
-                        $subcategoryItem = SubcategoryItem::firstOrCreate([
-                            'subcategory_id' => $subcategory->id,
-                            'model' => $data['car_make'],
-                        ]);
-                        $item->car_make = $subcategoryItem->model;
-                    }
-                    $item->model = $subcategory->name ?? null;
-                    $item->manufacture = $data['manufacture'] ?? $item->manufacture;
-                    $item->power = $data['power'] ?? $item->power;
-                    $item->license_plate = $data['license_plate'] ?? $item->license_plate;
-                    $item->color = $data['color'] ?? $item->color;
-                    $item->registration = $data['registration_certificate'] ?? $item->registration;
-                    $item->identification = $data['identification_number'] ?? $item->identification;
-                    $item->ownership = $data['ownership_certificate'] ?? $item->ownership;
-                    $item->issued_by = $data['issued_by'] ?? $item->issued_by;
-                    $item->date_of_issuance = $data['date_of_issuance'] ?? $item->date_of_issuance;
-                    break;
-            }
-            $item->save();
+
             DB::commit();
-            return response()->json(['message' => 'Item updated successfully.',]);
+            return response()->json(['message' => 'Items updated successfully.']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error updating item', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Error updating items', 'error' => $e->getMessage()], 500);
         }
     }
+
 //    public function storeContractItem(int $contract_id,array $data)
 //    {
 //
