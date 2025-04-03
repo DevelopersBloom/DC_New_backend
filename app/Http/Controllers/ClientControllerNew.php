@@ -53,6 +53,14 @@ class ClientControllerNew extends Controller
             'message' => $hasContract ? 'Client added successfully' : 'Non-client added successfully'
         ], 201);
     }
+    public function show(Request $request, int $clientId)
+    {
+        $contractStatus = $request->query('status', 'initial');
+
+        $clientInfo = $this->clientService->getClientInfo($clientId, $contractStatus);
+
+        return response()->json($clientInfo);
+    }
     public function index(Request $request): JsonResponse
     {
         $pawnshopId = auth()->user()->pawnshop_id;

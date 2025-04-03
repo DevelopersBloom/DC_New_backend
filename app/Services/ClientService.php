@@ -44,58 +44,48 @@ class ClientService
 
 
     }
+    public function getClientInfo(int $clientId, string $contractStatus = 'initial')
+    {
+        return Client::with([
+            'contracts' => function ($query) use ($contractStatus) {
+                $validStatuses = ['initial', 'executed', 'completed'];
+                if (in_array($contractStatus, $validStatuses)) {
+                    $query->where('status', $contractStatus);
+                } else {
+                    $query->where('status', 'initial');
+                }
 
-//    public function storeOrUpdate(array $data): Client
-//    {
-//
-//        $client = Client::where('passport_series', $data['passport_series'])
-//            ->where('passport_issued', $data['passport_issued'])
-//            ->first();
-//        if ($client) {
-//            $client->name = $data['name'];
-//            $client->surname = $data['surname'];
-//            $client->middle_name = $data['middle_name'] ?? null;
-//            $client->passport_issued = $data['passport_issued'];
-//            $client->date_of_birth = $data['date_of_birth'];
-//            $client->email = $data['email'];
-//            $client->phone = $data['phone'];
-//            $client->additional_phone = $data['additional_phone'] ?? null;
-//            $client->country = $data['country'];
-//            $client->city = $data['city'];
-//            $client->street = $data['street'];
-//            $client->building = $data['building'] ?? null;
-//            $client->bank_name = $data['bank_name'] ?? null;
-//            $client->card_number = $data['card_number'] ?? null;
-//            $client->account_number = $data['account_number'] ?? null;
-//            $client->iban = $data['iban'] ?? null;
-//            $client->has_contract = $data['has_contract'] ?? true;
-//            $client->save();
-//        } else {
-//            $client = new Client();
-//            $client->name = $data['name'];
-//            $client->surname = $data['surname'];
-//            $client->middle_name = $data['middle_name'] ?? null;
-//            $client->passport_series = $data['passport_series'];
-//            $client->passport_validity = $data['passport_validity'] ?? null;
-//            $client->passport_issued = $data['passport_issued'];
-//            $client->date_of_birth = $data['date_of_birth'];
-//            $client->email = $data['email'];
-//            $client->phone = $data['phone'];
-//            $client->additional_phone = $data['additional_phone'] ?? null;
-//            $client->country = $data['country'];
-//            $client->city = $data['city'];
-//            $client->street = $data['street'];
-//            $client->building = $data['building'] ?? null;
-//            $client->bank_name = $data['bank_name'] ?? null;
-//            $client->card_number = $data['card_number'] ?? null;
-//            $client->account_number = $data['account_number'] ?? null;
-//            $client->iban = $data['iban'] ?? null;
-//            $client->has_contract = $data['has_contract'] ?? null;
-//
-//            $client->save();
-//        }
-//        return $client;
-//    }
+                $query->select(
+                    'id',
+                    'num',
+                    'client_id',
+                    'estimated_amount',
+                    'provided_amount',
+                    'interest_rate',
+                    'penalty',
+                    'category_id',
+                    'deadline',
+                    'status',
+                )->with('category:id,name');
+            }
+        ])->findOrFail($clientId, [
+            'id',
+            'name',
+            'surname',
+            'middle_name',
+            'passport_series',
+            'passport_validity',
+            'passport_issued',
+            'email',
+            'phone',
+            'country',
+            'city',
+            'street',
+            'phone',
+            'additional_phone',
+            'date_of_birth'
+        ]);
+    }
 
     /**
      * @param string|null $firstInput

@@ -68,7 +68,8 @@ class Client extends Model
         return $this->hasMany(ClientPawnshop::class, 'client_id');
     }
 
-    public function contracts(){
+    public function contracts(): HasMany
+    {
         return $this->hasMany(Contract::class);
     }
 

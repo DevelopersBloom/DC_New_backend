@@ -121,6 +121,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::prefix('clients')->group(function () {
         Route::put('/{id}/update', [ClientControllerNew::class, 'updateClientData']);
         Route::get('/', [ClientControllerNew::class, 'index']);
+        Route::get('/{id}',[ClientControllerNew::class,'show']);
         Route::post('/store-client', [ClientControllerNew::class, 'storeClient']);
         Route::post('/store-non-client', [ClientControllerNew::class, 'storeNonClient']);
     });

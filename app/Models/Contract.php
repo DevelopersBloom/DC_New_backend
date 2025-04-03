@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\ContractTrait;
 use Carbon\Carbon;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -15,6 +16,7 @@ class Contract extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use ContractTrait;
 
     const CONTRACT_OPENING = 'Պայմանագրի բացում';
     const LUMP_PAYMENT = 'Միանվագ վճար';
@@ -27,7 +29,7 @@ class Contract extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_EXECUTED = 'executed';
     const STATUS_TAKEN  = 'taken';
-    protected $appends = ['is_overdue'];
+    protected $appends = ['is_overdue','not_payed_amount'];
 
     protected $fillable=[
         'collected',
@@ -113,10 +115,6 @@ class Contract extends Model
         return $this->belongsTo(Pawnshop::class);
     }
 
-//    public function items(): HasMany
-//    {
-//        return $this->hasMany(Item::class);
-//    }
     public function items()
     {
         return $this->belongsToMany(Item::class, 'contract_item');
@@ -262,6 +260,16 @@ class Contract extends Model
             ->selectRaw('DATE(date) as day, COUNT(*) as count, SUM(estimated_amount) as total_estimated, SUM(provided_amount) as total_provided')
             ->groupBy('day')
             ->orderBy('day');
+    }
+
+    public function getNotPayedAmountAttribute()
+    {
+        $notPayed = $this->payments()
+            ->where('status', 'initial')
+            ->selectRaw('SUM(amount + mother) as total')
+            ->value('total');
+        $penalty = $this->countPenalty($this->id)['penalty_amount'];
+        return $notPayed+$penalty;
     }
 
 }
