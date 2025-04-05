@@ -43,17 +43,35 @@ class ContractImportNew implements ToCollection
 //                } else {
 //                    dd("Invalid date value: ", $row[11]); // Debugging to check what value is causing the error
 //                }
+//            if (isset($row[11]) && !empty($row[11])) {
+//                $rawValue = trim($row[11]);
+//
+//                // Log the raw value for debugging
+//
+//                try {
+//                    if (is_numeric($rawValue)) {
+//                        // Convert from Excel date format
+//                        $date_of_birth = Carbon::parse(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
+//                    } else {
+//                        // Assume it's a regular date string and parse it
+//                        $date_of_birth = Carbon::createFromFormat('d/m/Y', $rawValue)->format('Y-m-d');
+//                    }
+//                } catch (\Exception $e) {
+//                    Log::error('Error processing date', [
+//                        'raw_value' => $rawValue,
+//                        'error' => $e->getMessage(),
+//                    ]);
+//                    dd("Invalid date format: ", $rawValue);
+//                }
+//            }
             if (isset($row[11]) && !empty($row[11])) {
                 $rawValue = trim($row[11]);
-
-                // Log the raw value for debugging
-
                 try {
+                    $rawValue = str_replace('.', '/', $rawValue);
+
                     if (is_numeric($rawValue)) {
-                        // Convert from Excel date format
                         $date_of_birth = Carbon::parse(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
                     } else {
-                        // Assume it's a regular date string and parse it
                         $date_of_birth = Carbon::createFromFormat('d/m/Y', $rawValue)->format('Y-m-d');
                     }
                 } catch (\Exception $e) {
