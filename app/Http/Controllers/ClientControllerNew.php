@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ClientsExport;
 use App\Http\Requests\ClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Models\Client;
@@ -10,6 +11,8 @@ use App\Services\ClientService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Exception;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ClientControllerNew extends Controller
 {
@@ -133,5 +136,16 @@ class ClientControllerNew extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => 'Client not found or update failed'], 400);
         }
+    }
+
+    /**
+     * @throws Exception
+     * @throws \PhpOffice\PhpSpreadsheet\Writer\Exception
+     */
+    public function exportClients()
+    {
+        $pawnshopId = auth()->user()->pawnshop_id;
+
+        return Excel::download(new ClientsExport($pawnshopId), 'clients.xlsx');
     }
 }
