@@ -64,8 +64,9 @@ class ContractImportNew implements ToCollection
 //                    dd("Invalid date format: ", $rawValue);
 //                }
 //            }
-            if (isset($row[11]) && !empty($row[11])) {
+            if (isset($row[11]) && !empty($row[11]) && trim($row[11]) !== '՝') {
                 $rawValue = trim($row[11]);
+
                 try {
                     $rawValue = str_replace('.', '/', $rawValue);
 
