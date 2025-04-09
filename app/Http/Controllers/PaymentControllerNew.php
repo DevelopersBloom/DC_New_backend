@@ -88,12 +88,12 @@ class PaymentControllerNew extends Controller
     }
     public function makeFullPayment(Request $request): JsonResponse
     {
-        $has_penalty_amount = $this->countPenalty($request->contract_id);
-        if ($has_penalty_amount['penalty_amount'] > 0) {
-            return response()->json([
-                'message' => 'You have an unpaid penalty amount! ',
-            ], 404);
-        }
+//        $has_penalty_amount = $this->countPenalty($request->contract_id);
+//        if ($has_penalty_amount['penalty_amount'] > 0) {
+//            return response()->json([
+//                'message' => 'You have an unpaid penalty amount! ',
+//            ], 404);
+//        }
         $contract = Contract::findOrFail($request->contract_id);
         $amount = $request->amount;
         $payer = $request->payer;
