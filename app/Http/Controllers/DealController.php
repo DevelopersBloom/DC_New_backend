@@ -275,16 +275,20 @@ DealController extends Controller
 //        }
         $purpose_out = "Անկանխիկ հաշվիվ";
         $purpose_in = "Դրամարկղ";
+        $order_id = null;
         if ($cash) {
-            $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
+            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
         } else {
-            $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_out,$cash);
+            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_out,$cash);
             $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_in, !$cash);
         }
 //        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
 //        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
 
-        return response()->json(["success" => "success"]);
+        return response()->json([
+            "success" => "success",
+            "order_id" => $order_id
+        ]);
     }
     public function addCostNDM(Request $request)
     {
@@ -298,9 +302,12 @@ DealController extends Controller
         $purpose = Order::NDM_PURPOSE;
         $filter_type = Order::NDM_FILTER;
         $order_id = $this->getOrder($request->cash, $type);
-        $this->createOrderAndDeal($order_id, $type === 'out' ? 'cost_out' : 'in', $name, $amount, $purpose, $receiver, $cash,$filter_type);
+        $order_id = $this->createOrderAndDeal($order_id, $type === 'out' ? 'cost_out' : 'in', $name, $amount, $purpose, $receiver, $cash,$filter_type);
 
-        return response()->json(['success' => 'success']);
+        return response()->json([
+            'success' => 'success',
+            'order_od' => $order_id
+        ]);
     }
 
     public function makeExpense(Request $request)
@@ -315,9 +322,12 @@ DealController extends Controller
 
         $filter_type = Order::EXPENSE_FILTER;
         $order_id = $this->getOrder($request->cash, $type);
-        $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type);
+        $order_id = $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type);
 
-        return response()->json(['success' => 'success']);
+        return response()->json([
+            'success' => 'success',
+            'order_id' => $order_id
+        ]);
     }
 
     private function createCashboxOrder($name,$amount, $type, $receiver,$purpose,$cash)
@@ -325,12 +335,14 @@ DealController extends Controller
         $order_id = $this->getOrder($cash, $type);
         $order = $this->createOrder($type, $name, $amount, $order_id, $purpose, $receiver,$cash);
         $this->createDeal($amount, null, null, null, null, $type, null, null,$order->id,$cash, $receiver,$purpose);
+        return $order->id;
     }
 
     private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type)
     {
         $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver,$cash);
         $this->createDeal($amount, null, null, null, null,$type,null,null,$order->id, $cash,$receiver,$purpose,$filter_type);
+        return $order->id;
     }
 
     private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver,$cash)

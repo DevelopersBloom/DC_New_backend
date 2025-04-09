@@ -648,7 +648,7 @@ class AdminControllerNew extends Controller
         foreach ($validated['deals'] as $dealData) {
             $deal = Deal::findOrFail($dealData['id']);
             if (!$deal) continue;
-            if ($deal->filter_type === 'payment') {
+            if ($deal->filter_type === 'payment' || $deal->filter_type == 'partial_payment' || $deal->filter_type == 'full_payment') {
                 $dealActions = DealAction::where('deal_id',$dealData['id'])->get();
                 foreach ($dealActions as $dealAction) {
                     $dealAction->date = $dealData['date'];

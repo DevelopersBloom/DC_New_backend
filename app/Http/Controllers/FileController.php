@@ -236,7 +236,7 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'client_name' => $order->client_name,
-            'contract_id' => $contract->num,
+            'contract_id' => $contract->num ?? null,
             'purpose' => $order->purpose,
             'amount_text' => $this->numberToText($order->amount),
         ]);
