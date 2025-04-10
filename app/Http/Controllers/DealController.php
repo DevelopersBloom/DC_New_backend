@@ -306,7 +306,7 @@ DealController extends Controller
 
         return response()->json([
             'success' => 'success',
-            'order_od' => $order_id
+            'order_id' => $order_id
         ]);
     }
 

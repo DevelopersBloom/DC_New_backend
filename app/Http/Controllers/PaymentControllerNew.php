@@ -136,7 +136,7 @@ class PaymentControllerNew extends Controller
 
         // Check if early payment is eligible for a refund
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
-            $refundAmount = $this->calculateRefundAmount($contract->provided_amount,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
+            $refundAmount = $this->calculateRefundAmount($contract->estimated_amount,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
             if ($refundAmount > 0) {
                 $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash);
                 $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
