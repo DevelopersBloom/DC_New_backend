@@ -586,11 +586,10 @@ class AdminControllerNew extends Controller
             'message' => 'Pawnshops updated successfully',
         ]);
     }
-
     public function getDeals(Request $request): JsonResponse
     {
-
-        $filter_type = $request->query('filter','history');
+        $filter_type = $request->query('filter', 'history');
+        $perPage = $request->query('per_page', 15); // default to 15 items per page
 
         $dealsQuery = Deal::select(
             'id',
@@ -619,7 +618,7 @@ class AdminControllerNew extends Controller
                 break;
 
             case 'cost_out':
-                $dealsQuery->whereIn('type', ['cost_out','out']);
+                $dealsQuery->whereIn('type', ['cost_out', 'out']);
                 break;
 
             case 'expense':
@@ -630,13 +629,66 @@ class AdminControllerNew extends Controller
             default:
                 break;
         }
+
         $dealsQuery->orderBy('date', 'desc')->orderBy('id', 'desc');
-        $deals = $dealsQuery->get();
+
+        $deals = $dealsQuery->paginate($perPage);
 
         return response()->json([
             'deals' => $deals
         ]);
     }
+
+//    public function getDeals(Request $request): JsonResponse
+//    {
+//
+//        $filter_type = $request->query('filter','history');
+//
+//        $dealsQuery = Deal::select(
+//            'id',
+//            DB::raw("DATE(date) as date"),
+//            'amount',
+//            'type',
+//            'receiver',
+//            'client_id',
+//            'order_id',
+//            'cash',
+//            'contract_id',
+//            'delay_days',
+//            'interest_amount',
+//            'purpose',
+//            'penalty',
+//            'discount',
+//            'created_by'
+//        )
+//            ->with('client:id,name,surname')
+//            ->with('contract:id,mother,num')
+//            ->with('createdBy:id,name,surname');
+//
+//        switch ($filter_type) {
+//            case 'cost_in':
+//                $dealsQuery->where('type', 'in');
+//                break;
+//
+//            case 'cost_out':
+//                $dealsQuery->whereIn('type', ['cost_out','out']);
+//                break;
+//
+//            case 'expense':
+//                $dealsQuery->where('type', 'cost_out')->where('filter_type', Order::EXPENSE_FILTER);
+//                break;
+//
+//            case 'history':
+//            default:
+//                break;
+//        }
+//        $dealsQuery->orderBy('date', 'desc')->orderBy('id', 'desc');
+//        $deals = $dealsQuery->get();
+//
+//        return response()->json([
+//            'deals' => $deals
+//        ]);
+//    }
     public function updateDeals(Request $request): JsonResponse
     {
         $validated = $request->validate([
