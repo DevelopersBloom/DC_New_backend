@@ -126,6 +126,9 @@ class ClientService
     {
         $client = Client::findOrFail($client_id);
 
+        $client->name = $data['name'] ?? $client->name;
+        $client->surname = $data['surname'] ?? $client->surname;
+        $client->middle_name = $data['middle_name'] ?? $client->middle_name;
         $client->passport_series = $data['passport_series'] ?? $client->passport_series;
         $client->passport_validity = $data['passport_validity'] ?? $client->passport_validity;
         $client->passport_issued = $data['passport_issued'] ?? $client->passport_issued;
