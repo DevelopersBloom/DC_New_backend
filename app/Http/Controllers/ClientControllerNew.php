@@ -118,6 +118,9 @@ class ClientControllerNew extends Controller
     public function updateClientData(Request $request, int $client_id)
     {
         $validatedData = $request->validate([
+            'name' => 'nullable|string|max:255',
+            'surname' => 'nullable|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
             'passport_series' => 'nullable|string|max:255',
             'passport_validity' => 'nullable|date',
             'passport_issued' => 'nullable|string|max:255',
