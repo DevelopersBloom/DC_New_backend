@@ -589,7 +589,7 @@ class AdminControllerNew extends Controller
     public function getDeals(Request $request): JsonResponse
     {
         $filter_type = $request->query('filter', 'history');
-        $perPage = $request->query('per_page', 15); // default to 15 items per page
+        $perPage = $request->query('per_page', 15);
 
         $dealsQuery = Deal::select(
             'id',
