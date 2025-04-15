@@ -127,7 +127,6 @@ class PaymentControllerNew extends Controller
         $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
 
         $result = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
-dd($result);
         $deal->payment_id = $result['payment_id'];
         $deal->interest_amount = $result['interest_amount'];
         $deal->penalty = $result['penalty'];
