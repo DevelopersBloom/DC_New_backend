@@ -338,7 +338,7 @@ class PaymentService {
         $result = $this->countPenalty($contract->id);
         $penalty = $result['penalty_amount'];
         $delayDays = $result['delay_days'];
-        $interestAmount = $this->calculateCurrentPayment($contract);
+        $interestAmount = $this->calculateCurrentPayment($contract)['current_amount'];
         $lastPayment = Payment::where('contract_id', $contract->id)
             ->where('last_payment', 1)->first();
         $oldMother = $lastPayment->mother;
