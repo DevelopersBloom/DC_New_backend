@@ -335,6 +335,10 @@ class PaymentService {
 
     public function processFullPayment($contract, $amount, $payer, $cash,$deal_id = null)
     {
+        $result = $this->countPenalty($contract->id);
+        $penalty = $result['penalty_amount'];
+        $delayDays = $result['delay_days'];
+        $interestAmount = $this->calculateCurrentPayment($contract);
         $lastPayment = Payment::where('contract_id', $contract->id)
             ->where('last_payment', 1)->first();
         $oldMother = $lastPayment->mother;
@@ -368,7 +372,6 @@ class PaymentService {
 //            'old_mother' => $last_payment->mother,
 //            'new_mother' => 0,
 //        ];
-
         // process full payment
         $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash,$history,$deal_id);
 
@@ -377,7 +380,12 @@ class PaymentService {
         $contract->collected += $amount;
         $contract->save();
 
-        return $payment;
+        return [
+            'payment_id' => $payment,
+            'penalty' => $penalty,
+            'delay_days' => $delayDays,
+            'interest_amount' => $interestAmount
+        ];
     }
     public function calcAmount($amount,$days,$rate): int
     {

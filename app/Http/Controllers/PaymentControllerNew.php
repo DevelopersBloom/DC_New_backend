@@ -126,10 +126,20 @@ class PaymentControllerNew extends Controller
 
         $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
 
-        $payment_id = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
+        $result = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
 
-        $deal->payment_id = $payment_id;
+        $deal->payment_id = $result['payment_id'];
+        $deal->interest_amount = $result['interest_amount'];
+        $deal->penalty = $result['penalty'];
+        $deal->delay_days = $result['delay_days'];
         $deal->save();
+
+        $history->interest_amount = $result['interest_amount'];
+        $history->penalty = $result['penalty'];
+        $history->discount  = $result['discount'];
+        $history->delay_days = $result['delay_days'];
+        $history->save();
+
         $contract->closed_at = now();
         $contract->save();
         // Generate history for the payment
@@ -152,7 +162,7 @@ class PaymentControllerNew extends Controller
                 $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
                 DealAction::create([
                     'deal_id' => $deal->id,
-                    'actionable_id' => $payment_id,
+                    'actionable_id' => $result['payment_id'],
                     'actionable_type' => Payment::class,
                     'amount' => $refundAmount,
                     'type' => 'refund',
