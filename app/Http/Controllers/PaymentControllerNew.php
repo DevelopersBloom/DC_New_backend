@@ -135,7 +135,6 @@ class PaymentControllerNew extends Controller
 
         $history->interest_amount = $result['interest_amount'];
         $history->penalty = $result['penalty'];
-        $history->discount  = $result['discount'];
         $history->delay_days = $result['delay_days'];
         $history->save();
 
