@@ -132,6 +132,11 @@ class Client extends Model
         }
         return $query;
     }
+    public function classification(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ClientClassification::class);
+    }
+
 
 
 }
