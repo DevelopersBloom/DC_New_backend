@@ -130,6 +130,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
     Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::group(['prefix' => 'contracts'], function () {
+        Route::get('/export', [ContractControllerNew::class, 'exportContracts']);
         Route::get('/', [ContractControllerNew::class, 'get']);
         Route::post('/', [ContractControllerNew::class, 'store']);
         Route::get('/download/{id}', [FileController::class, 'downloadContract']);
@@ -144,6 +145,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount']);
         Route::put('/update-number/{id}',[ContractControllerNew::class,'updateContractNumber']);
         Route::put('/update-items', [ContractControllerNew::class, 'updateContractItems']);
+
     });
 
     Route::get('/get-discount-requests', [DiscountController::class, 'getDiscountRequests']);

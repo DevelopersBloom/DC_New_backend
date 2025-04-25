@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\DailyExport;
+use App\Exports\DailyExportSheet1;
 use App\Http\Requests\ClientRequest;
 use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
@@ -21,6 +23,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ContractControllerNew extends Controller
 {
@@ -283,6 +286,12 @@ class ContractControllerNew extends Controller
         ]);
 
         return $this->contractService->updateContractItems($validatedData['items']);
+    }
+    public function exportContracts(Request $request)
+    {
+        $date = $request->input('date') ?? now()->toDateString();
+
+        return Excel::download(new DailyExport(), 'contracts_export_' . $date . '.xlsx');
     }
 
 }

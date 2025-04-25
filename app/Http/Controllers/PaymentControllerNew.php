@@ -104,10 +104,6 @@ class PaymentControllerNew extends Controller
                 'message' => 'Contract not found',
             ], 404);
         }
-        auth()->user()->pawnshop->given = auth()->user()->pawnshop->given - $contract->left;
-        auth()->user()->pawnshop->save();
-
-
         $type = HistoryType::where('name', 'full_payment')->first();
         $purpose = 'Վարկի մարում՝ տոկոսագւմար և մայր գումար';
         if ($request->hasPenalty) {
