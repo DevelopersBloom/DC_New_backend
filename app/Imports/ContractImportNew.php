@@ -33,42 +33,32 @@ class ContractImportNew implements ToCollection
     public function collection(Collection $collection)
     {
         foreach ($collection->skip(2) as $row) {
-            $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[0]));
+          //  $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[0]));
+            if (isset($row[0]) && !empty($row[0])) {
+                $rawDate = trim($row[0]);
+                try {
+                    if (is_numeric($rawDate)) {
+                        $date = Carbon::parse(Date::excelToDateTimeObject($rawDate));
+                    } else {
+                        $rawDate = str_replace(['.', '․'], '/', $rawDate); // fix both dot types
+                        $date = Carbon::createFromFormat('d/m/Y', $rawDate);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error processing main date', [
+                        'raw_value' => $rawDate,
+                        'error' => $e->getMessage(),
+                    ]);
+                    dd("Invalid date value: ", $rawDate);
+                }
+            }
+
             $date_of_birth = null;
-//            if (trim($row[11]) != "՝") {
-//                $date_of_birth = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject(trim($row[11])))->format('Y-m-d');
-//            }
-//                            if (isset($row[11]) && is_numeric(trim($row[11]))) {
-//            $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[2]));
-//                } else {
-//                    dd("Invalid date value: ", $row[11]); // Debugging to check what value is causing the error
-//                }
-//            if (isset($row[11]) && !empty($row[11])) {
-//                $rawValue = trim($row[11]);
-//
-//                // Log the raw value for debugging
-//
-//                try {
-//                    if (is_numeric($rawValue)) {
-//                        // Convert from Excel date format
-//                        $date_of_birth = Carbon::parse(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
-//                    } else {
-//                        // Assume it's a regular date string and parse it
-//                        $date_of_birth = Carbon::createFromFormat('d/m/Y', $rawValue)->format('Y-m-d');
-//                    }
-//                } catch (\Exception $e) {
-//                    Log::error('Error processing date', [
-//                        'raw_value' => $rawValue,
-//                        'error' => $e->getMessage(),
-//                    ]);
-//                    dd("Invalid date format: ", $rawValue);
-//                }
-//            }
             if (isset($row[11]) && !empty($row[11]) && trim($row[11]) !== '՝') {
                 $rawValue = trim($row[11]);
 
                 try {
-                    $rawValue = str_replace('.', '/', $rawValue);
+                    // Replace normal dot and Armenian full stop
+                    $rawValue = str_replace(['.', '․'], '/', $rawValue);
 
                     if (is_numeric($rawValue)) {
                         $date_of_birth = Carbon::parse(Date::excelToDateTimeObject($rawValue))->format('Y-m-d');
@@ -83,9 +73,30 @@ class ContractImportNew implements ToCollection
                     dd("Invalid date format: ", $rawValue);
                 }
             }
-            //$passport_validity = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[6]));
-//            $date_of_birth = null;
-            $closed_at = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[23]));
+
+            $closed_at = null;
+            if (isset($row[23]) && !empty($row[23])) {
+                $rawClosedAt = trim($row[23]);
+
+                try {
+                    // Replace normal dot and Armenian full stop
+                    $rawClosedAt = str_replace(['.', '․'], '/', $rawClosedAt);
+
+                    if (is_numeric($rawClosedAt)) {
+                        $closed_at = Carbon::parse(Date::excelToDateTimeObject($rawClosedAt));
+                    } else {
+                        $closed_at = Carbon::createFromFormat('d/m/Y', $rawClosedAt);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error processing closed_at date', [
+                        'raw_value' => $rawClosedAt,
+                        'error' => $e->getMessage(),
+                    ]);
+                    dd("Invalid closed_at value: ", $rawClosedAt);
+                }
+
+            }
+
             // Extract contract and client details
             $contract_num = $row[1];
             $pawnshop_id = $row[2];
@@ -108,35 +119,12 @@ class ContractImportNew implements ToCollection
                 }
             }
 
-//            if (preg_match_all('#\d{3} \d{2} \d{2} \d{2}|\d{3}  \d{2} \d{2} \d{2}#', $phone_info, $matches)) {
-//                $phone_arr = $matches[0];
-//                dd($phone_arr);
-//            }
-
             $phone = count($phone_arr) > 0 ? "(+374) " . trim($phone_arr[0]) : null;
             $additional_phone = count($phone_arr) > 1 ? "(+374) "  . trim($phone_arr[1]) : null;
 
-//            $passport_data = $row[5];
             $passport_series = $row[5];
             $passport_issued = preg_replace('/\D/', '', $row[7]);
-          // Removes non-numeric characters տրվ․
-//            if($passport_data){
-//                if(preg_match('#[a-zA-Z]{2}\d{7}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)) {
-//                    $passport_series = $matches[0][0];
-//                }elseif(preg_match('#[a-zA-Z]{2}\d{6}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)) {
-//                    $passport_series = $matches[0][0];
-//                }elseif (preg_match('#\d{9}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)){
-//                    $passport_series = $matches[0][0];
-//                }elseif (preg_match('#\d{8}#', str_replace(' ', '', $passport_data), $matches, PREG_OFFSET_CAPTURE)){
-//                    $passport_series = $matches[0][0];
-//                }elseif(preg_match('#\d{2} \d{2} \d{6}#', $passport_data, $matches, PREG_OFFSET_CAPTURE)){
-//                    $passport_series = $matches[0][0];
-//                }
-//                $password_given_check = substr($passport_data,-3);
-//                if(preg_match('#\d{3}#', $password_given_check, $matches, PREG_OFFSET_CAPTURE)) {
-//                    $passport_issued = $password_given_check;
-//                }
-//            }
+
             $client_data = [
                 'name' => $client_name,
                 'surname' => $client_surname,
@@ -194,6 +182,7 @@ class ContractImportNew implements ToCollection
 
             // Create order and history
             $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, 1,$date,true);
+
         }
     }
 }

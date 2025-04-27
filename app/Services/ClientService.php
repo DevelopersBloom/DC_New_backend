@@ -17,9 +17,9 @@ class ClientService
         $client =  Client::updateOrCreate(
             [
                 'passport_series' => $data['passport_series'],
-                'passport_issued' => $data['passport_issued']
             ],
             [
+                'passport_issued' => $data['passport_issued'],
                 'name' => $data['name'],
                 'surname' => $data['surname'],
                 'middle_name' => $data['middle_name'] ?? null,
