@@ -27,6 +27,7 @@ class PaymentImport implements ToCollection
         foreach ($collection as $row) {
             if($row[0] !== 'PGI_ID'){
                 $ADB_ID = $row[1];
+                if ($ADB_ID == 17023) dd(1);
                 $contract = Contract::where('ADB_ID', $ADB_ID)->first();
                 if($contract){
                     $PGI_ID = $row[0];
