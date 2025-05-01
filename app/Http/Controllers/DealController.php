@@ -276,11 +276,12 @@ DealController extends Controller
         $purpose_out = "Անկանխիկ հաշվիվ";
         $purpose_in = "Դրամարկղ";
         $order_id = null;
+        $order_id_out = null;
         if ($cash) {
             $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
         } else {
             $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_out,$cash);
-            $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_in, !$cash);
+            $order_id_out = $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_in, !$cash);
         }
 //        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
 //        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
