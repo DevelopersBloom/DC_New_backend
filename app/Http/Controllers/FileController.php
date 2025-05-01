@@ -134,7 +134,7 @@ class FileController extends Controller
         if ($hasCar) {
             $templateProcessor->setValues($car_values);
         } else {
-            $templateProcessor->cloneRowAndSetValues('item_description', $table_values);
+            $templateProcessor->cloneRowAndSetValues('item', $table_values);
         }
         //$templateProcessor->cloneRowAndSetValues('item_description', $table_values);
 
