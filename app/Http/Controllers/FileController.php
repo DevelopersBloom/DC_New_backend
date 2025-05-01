@@ -65,7 +65,6 @@ class FileController extends Controller
             'client_numbers' => $client_numbers,
             'given' => $this->makeMoney((int) $contract->provided_amount),
             'given_text' => $this->numberToText($contract->provided_amount),
-            'price' => $this->makeMoney((int) $contract->provided_amount),
             'contract_id' => $contract->num,
             'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
 //            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date )),
@@ -99,8 +98,11 @@ class FileController extends Controller
         $car_values = [];
         foreach ($contract->items as $item) {
             if ($item->category->name === 'car') {
+                $itemDesc =  $item->category->title . ($item->subcategory ? ',' . $item->subcategory : '')
+                    . ($item->model ? ',' . $item->model : '') . ($item->sn ? ',' . $item->sn : '')
+                    . ($item->imei ? ',' . $item->imei : '');
                 $car_values = [
-                    'item_description' => $item->category->title . ','  . ($item->model ? ',' . $item->model : ''),
+                    'item_description' => $itemDesc,
                     'i_c' => $item->car_make,
                     'i_m' => $item->model,
                     'i_man' => $item->manufacture,
@@ -112,6 +114,9 @@ class FileController extends Controller
                     'i_o' => $item->ownership,
                     'i_iss' => $item->issued_by,
                     'i_d' => Carbon::parse($item->date_of_issuance)->format('d.m.Y'),
+                    'price' => $item->provided_amount ? $this->makeMoney((int) $item->provided_amount) :
+                        $this->makeMoney((int) $contract->provided_amount),
+
                 ];
             } else {
                 $table_values[] = [
