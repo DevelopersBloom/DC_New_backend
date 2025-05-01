@@ -96,12 +96,12 @@ class FileController extends Controller
 //        }
         $table_values = [];
         $car_values = [];
+
         foreach ($contract->items as $item) {
             if ($item->category->name === 'car') {
                 $itemName =  $item->category->title . ($item->model ? ', ' . $item->model : '');
                 $car_values = [
                     'item' => $itemName,
-                    'item_description' => $contract->description,
                     'i_c' => $item->car_make,
                     'i_m' => $item->model,
                     'i_man' => $item->manufacture,
@@ -123,7 +123,6 @@ class FileController extends Controller
                     . ($item->imei ? ', ' . $item->imei : '');
                 $table_values[] = [
                     'item' => $itemName,
-                    'item_description' => $contract->description,
                     'i_t' => $item->hallmark,
                     'i_w' => $item->weight,
                     'i_cw' => $item->clear_weight,
