@@ -288,7 +288,8 @@ DealController extends Controller
 
         return response()->json([
             "success" => "success",
-            "order_id" => $order_id
+            "order_id" => $order_id,
+            'order_id_out' => $order_id_out
         ]);
     }
     public function addCostNDM(Request $request)
@@ -323,12 +324,11 @@ DealController extends Controller
 
         $filter_type = Order::EXPENSE_FILTER;
         $order_id = $this->getOrder($request->cash, $type);
-        $order_id_out = $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type);
+        $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type);
 
         return response()->json([
             'success' => 'success',
-            'order_id' => $order_id,
-            'order_id_out' => $order_id_out
+            'order_id' => $order_id
         ]);
     }
 
