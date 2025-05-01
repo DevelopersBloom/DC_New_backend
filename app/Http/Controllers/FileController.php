@@ -200,6 +200,11 @@ class FileController extends Controller
 
     public function downloadOrder($id)
     {
+        if (!$id) {
+            return response()->json([
+                'message' => 'Provided id is null'
+            ]);
+        }
         $order = Order::where('id', $id)->first();
 
         if ($order) {
