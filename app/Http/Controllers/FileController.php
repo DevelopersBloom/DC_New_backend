@@ -309,10 +309,10 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'client_name' => $order->client_name,
-            'contract_id' => $contract->num,
-            'cl_dob' => Carbon::parse($contract->client->date_of_birth)->format('d.m.Y'),
-            'cl_pas' => $contract->client->passport_series,
-            'cl_giv' => $contract->client->passport_issued,
+            'contract_id' => $contract->num ?? null,
+            'cl_dob' => Carbon::parse($contract->client->date_of_birth)->format('d.m.Y') ?? null,
+            'cl_pas' => $contract->client->passport_series ?? null,
+            'cl_giv' => $contract->client->passport_issued ?? null,
             'amount_text' => $this->numberToText($order->amount),
         ]);
         $filename = time() . 'order_out.docx';
