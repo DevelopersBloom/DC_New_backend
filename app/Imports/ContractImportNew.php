@@ -164,7 +164,7 @@ class ContractImportNew implements ToCollection
                 'lump_rate' =>floatval($row[21]),
                 'description' => $row[24] ?? null,
                 'pawnshop_id' => $pawnshop_id,
-                'mother' => $row[17],
+                'mother' => $row[18],
                 'left' => $row[17],
                 'deadline' => $deadline_days,
                 'category_id' => $category_id
