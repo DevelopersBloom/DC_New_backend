@@ -303,17 +303,17 @@ class FileController extends Controller
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->with('client')->first();
         $templateProcessor->setValues([
-            'amount' => $this->makeMoney($order->amount),
-            'purpose' => $order->purpose,
-            'rep_id' => $order->rep_id,
-            'order' => $order->order,
-            'date' => Carbon::parse($order->date)->format('d.m.Y'),
-            'client_name' => $order->client_name,
+            'amount' => $this->makeMoney($order->amount) ?? null,
+            'purpose' => $order->purpose ?? null,
+            'rep_id' => $order->rep_id ?? null,
+            'order' => $order->order ?? null,
+            'date' => Carbon::parse($order->date)->format('d.m.Y') ?? null,
+            'client_name' => $order->client_name ?? null,
             'contract_id' => $contract->num ?? null,
             'cl_dob' => Carbon::parse($contract->client->date_of_birth)->format('d.m.Y') ?? null,
             'cl_pas' => $contract->client->passport_series ?? null,
             'cl_giv' => $contract->client->passport_issued ?? null,
-            'amount_text' => $this->numberToText($order->amount),
+            'amount_text' => $this->numberToText($order->amount) ?? null,
         ]);
         $filename = time() . 'order_out.docx';
         $pathToSave = public_path('/files/download/' . $filename);
