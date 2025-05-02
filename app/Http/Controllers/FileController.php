@@ -309,10 +309,12 @@ class FileController extends Controller
             'order' => $order->order ?? null,
             'date' => isset($order->date) ? Carbon::parse($order->date)->format('d.m.Y') : null,
             'client_name' => $order->client_name ?? null,
-            'contract_id' => $contract->num ?? null,
-            'cl_dob' => isset($contract->client->date_of_birth) ? Carbon::parse($contract->client->date_of_birth)->format('d.m.Y') : null,
-            'cl_pas' => $contract->client->passport_series ?? null,
-            'cl_giv' => $contract->client->passport_issued ?? null,
+            'contract_id' => $contract?->num,
+            'cl_dob' => $contract?->client?->date_of_birth
+                ? Carbon::parse($contract->client->date_of_birth)->format('d.m.Y')
+                : null,
+            'cl_pas' => $contract?->client?->passport_series ?? null,
+            'cl_giv' => $contract?->client?->passport_issued ?? null,
             'amount_text' => isset($order->amount) ? $this->numberToText($order->amount) : null,
         ]);
 
