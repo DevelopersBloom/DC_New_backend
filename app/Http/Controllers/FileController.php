@@ -303,18 +303,19 @@ class FileController extends Controller
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->with('client')->first();
         $templateProcessor->setValues([
-            'amount' => $this->makeMoney($order->amount) ?? null,
+            'amount' => isset($order) && isset($order->amount) ? $this->makeMoney($order->amount) : null,
             'purpose' => $order->purpose ?? null,
             'rep_id' => $order->rep_id ?? null,
             'order' => $order->order ?? null,
-            'date' => Carbon::parse($order->date)->format('d.m.Y') ?? null,
+            'date' => isset($order->date) ? Carbon::parse($order->date)->format('d.m.Y') : null,
             'client_name' => $order->client_name ?? null,
             'contract_id' => $contract->num ?? null,
-            'cl_dob' => Carbon::parse($contract->client->date_of_birth)->format('d.m.Y') ?? null,
+            'cl_dob' => isset($contract->client->date_of_birth) ? Carbon::parse($contract->client->date_of_birth)->format('d.m.Y') : null,
             'cl_pas' => $contract->client->passport_series ?? null,
             'cl_giv' => $contract->client->passport_issued ?? null,
-            'amount_text' => $this->numberToText($order->amount) ?? null,
+            'amount_text' => isset($order->amount) ? $this->numberToText($order->amount) : null,
         ]);
+
         $filename = time() . 'order_out.docx';
         $pathToSave = public_path('/files/download/' . $filename);
         $templateProcessor->saveAs($pathToSave);
