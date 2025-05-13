@@ -259,39 +259,112 @@ DealController extends Controller
 //        ]);
 //
 //    }
-
     public function addCashbox(Request $request)
     {
-        $cash = $request->cash; //$cash=true -> դրամարկղի համալրում։անկանխիկ հաշվի համալրում
-        $name = $request->name;
         $amount = $request->amount;
+        $name = $request->name;
         $receiver = $request->receiver;
-        $save = $request->save_template;
-//        $purpose_out = "Դրամարկղ";
-//        $purpose_in = "Անկանխիկ հաշվիվ";
-//        if ($cash) {
-//            $purpose_out = "Անկանխիկ հաշվիվ";
-//            $purpose_in = "Դրամարկղ";
-//        }
-        $purpose_out = "Անկանխիկ հաշվիվ";
-        $purpose_in = "Դրամարկղ";
-        $order_id = null;
-        $order_id_out = null;
-        if ($cash) {
-            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
-        } else {
-            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_out,$cash);
-            $order_id_out = $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_in, !$cash);
+
+        $isCash = (bool) $request->cash; // True = cashbox replenishment
+        $fromUnknownUser = (bool) $request->from_unknown_user;
+
+        $bank = auth()->user()->pawnshop->bank;
+        $orderId = null;
+        $orderIdOut = null;
+
+        // Case 1: Bank replenishment by unknown person (non-cash IN only)
+        if ($fromUnknownUser) {
+            $orderId = $this->createCashboxOrder(
+                $name,
+                $amount,
+                'in',
+                $bank,
+                'Անկանխիկ համալրում անհայտ անձից',
+                false
+            );
+
+            return response()->json([
+                'success' => true,
+                'order_id' => $orderId,
+            ]);
         }
-//        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
-//        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
+
+        // Case 2: Cash replenishment into cashbox (cash IN only)
+        if ($isCash) {
+            $orderId = $this->createCashboxOrder(
+                $name,
+                $amount,
+                'in',
+                $bank,
+                'Դրամարկղ համալրում',
+                true
+            );
+
+            return response()->json([
+                'success' => true,
+                'order_id' => $orderId,
+            ]);
+        }
+
+        // Case 3: Transfer from cashbox to bank (cash OUT + bank IN)
+        $orderId = $this->createCashboxOrder(
+            $name,
+            $amount,
+            'in',
+            $bank,
+            'Անկանխիկ հաշվիվ համալրում',
+            false
+        );
+
+        $orderIdOut = $this->createCashboxOrder(
+            $name,
+            $amount,
+            'out',
+            $receiver,
+            'Դրամարկղից փոխանցում',
+            true
+        );
 
         return response()->json([
-            "success" => "success",
-            "order_id" => $order_id,
-            'order_id_out' => $order_id_out
+            'success' => true,
+            'order_id' => $orderId,
+            'order_id_out' => $orderIdOut,
         ]);
     }
+
+
+//    public function addCashbox1(Request $request)
+//    {
+//        $cash = $request->cash; //$cash=true -> դրամարկղի համալրում։անկանխիկ հաշվի համալրում
+//        $name = $request->name;
+//        $amount = $request->amount;
+//        $receiver = $request->receiver;
+//        $save = $request->save_template;
+////        $purpose_out = "Դրամարկղ";
+////        $purpose_in = "Անկանխիկ հաշվիվ";
+////        if ($cash) {
+////            $purpose_out = "Անկանխիկ հաշվիվ";
+////            $purpose_in = "Դրամարկղ";
+////        }
+//        $purpose_out = "Անկանխիկ հաշվիվ";
+//        $purpose_in = "Դրամարկղ";
+//        $order_id = null;
+//        $order_id_out = null;
+//        if ($cash) {
+//            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
+//        } else {
+//            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_out,$cash);
+//            $order_id_out = $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_in, !$cash);
+//        }
+////        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
+////        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
+//
+//        return response()->json([
+//            "success" => "success",
+//            "order_id" => $order_id,
+//            'order_id_out' => $order_id_out
+//        ]);
+//    }
     public function addCostNDM(Request $request)
     {
         $name = $request->name;
