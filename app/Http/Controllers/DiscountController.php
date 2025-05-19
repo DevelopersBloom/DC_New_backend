@@ -40,7 +40,6 @@ class DiscountController extends Controller
 
     public function requestDiscount(StoreDiscountRequest $request): JsonResponse
     {
-
         $validatedData = $request->validated();
         $this->discountService->requestDiscount($validatedData);
 //        $message = ($validatedData['amount'] > 5000)

@@ -89,7 +89,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('delete-deal/{id}',[AdminControllerNew::class,'deleteDeal']);
 
         //Discount
+        Route::get('/get-discounts', [AdminControllerNew::class, 'getDiscounts']);
         Route::post('answer-discount',[DiscountController::class,'answerDiscount']);
+        Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount']);
+
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
 //        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);

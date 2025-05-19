@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Contract;
 use App\Models\Discount;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Payment;
+use Illuminate\Support\Facades\DB;
 
 class DiscountService
 {
@@ -27,7 +29,9 @@ class DiscountService
             'status' => $status,
         ]);
          if ($status === Discount::ACCEPTED) {
-             $this->applyDiscount($discount->contract, $discount->amount);
+             $discountHistory = $this->applyDiscount($discount->contract, $discount->amount);
+             $discount->history = $discountHistory;
+             $discount->save();
              $this->createHistory($discount);
          }
     }
@@ -46,42 +50,70 @@ class DiscountService
         return $discount;
     }
 
-    private function applyDiscount($contract,$discountAmount)
+    private function applyDiscount($contract, $discountAmount)
     {
         $penalty = $this->paymentService->countPenalty($contract->id);
         $penaltyAmount = $penalty['penalty_amount'];
+        $history = [];
+
         if ($penaltyAmount > 0 && $discountAmount > 0) {
             $cash = true;
             $payer = auth()->user() ?? null;
-            $discountAmount = $this->paymentService->processPenalty($contract->id, $discountAmount, $penaltyAmount, $payer, $cash);
+            $discount = $this->paymentService->processPenalty($contract->id, $discountAmount, $penaltyAmount, $payer, $cash);
+            $discountAmount = $discount['amount'];
+
+            $history[] = [
+                'type' => 'penalty',
+                'payment_id' => $discount['payment_id'],
+                'amount' => $penaltyAmount,
+            ];
         }
+
         while ($discountAmount > 0) {
             $firstUnpayedPayment = Payment::where('contract_id', $contract->id)
                 ->where('status', 'initial')
                 ->orderBy('date')
                 ->first();
 
-            if (!$firstUnpayedPayment)
-                break;
+            if (!$firstUnpayedPayment) break;
 
             if ($firstUnpayedPayment->amount <= 0 && $firstUnpayedPayment->mother > 0) {
                 $appliedAmount = min($discountAmount, $firstUnpayedPayment->mother);
                 $firstUnpayedPayment->decrement('mother', $appliedAmount);
                 $contract->increment('collected', $appliedAmount);
-                $contract->decrement('left',$appliedAmount);
+                $contract->decrement('left', $appliedAmount);
                 $discountAmount -= $appliedAmount;
+
+                $history[] = [
+                    'type' => 'mother',
+                    'contract_id' => $contract->id,
+                    'payment_id' => $firstUnpayedPayment->id,
+                    'amount' => $appliedAmount,
+                ];
             } else {
                 $appliedAmount = min($discountAmount, $firstUnpayedPayment->amount);
                 $firstUnpayedPayment->increment('paid', $appliedAmount);
                 $firstUnpayedPayment->decrement('amount', $appliedAmount);
                 $discountAmount -= $appliedAmount;
+
+                $history[] = [
+                    'type' => 'regular_payment',
+                    'payment_id' => $firstUnpayedPayment->id,
+                    'amount' => $appliedAmount,
+                ];
             }
 
-            // Mark payment as completed if fully paid
             if ($firstUnpayedPayment->amount <= 0 && $firstUnpayedPayment->mother <= 0) {
+                $history[] = [
+                    'type' => 'status',
+                    'payment_id' => $firstUnpayedPayment->id,
+                    'previous_status' => $firstUnpayedPayment->status,
+                ];
                 $firstUnpayedPayment->update(['status' => 'completed']);
             }
         }
+
+        return $history;
     }
     public function createHistory($discount)
     {

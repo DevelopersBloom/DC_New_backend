@@ -11,6 +11,7 @@ use App\Models\CategoryRate;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\DealAction;
+use App\Models\Discount;
 use App\Models\File;
 use App\Models\LumpRate;
 use App\Models\Order;
@@ -820,6 +821,68 @@ class AdminControllerNew extends Controller
                 default => null
             };
         }
+    }
+    public function deleteDiscount($id)
+    {
+        $discount = Discount::where('id', $id)->firstOrFail();
+
+        $history = json_decode($discount->history, true); // decode as associative array
+        DB::beginTransaction();
+        try {
+            foreach ($history as $item) {
+                switch ($item['type']) {
+                    case 'penalty':
+                        Payment::where('id', $item['payment_id'])->delete();
+                        break;
+
+                    case 'mother':
+                        $payment = Payment::find($item['payment_id']);
+                        $contract = Contract::find($item['contract_id']);
+
+                        if ($payment && $contract) {
+                            $payment->increment('mother', $item['amount']);
+                            $contract->decrement('collected', $item['amount']);
+                            $contract->increment('left', $item['amount']);
+                        }
+                        break;
+
+                    case 'regular_payment':
+                        $payment = Payment::find($item['payment_id']);
+                        if ($payment) {
+                            $payment->decrement('paid', $item['amount']);
+                            $payment->increment('amount', $item['amount']);
+                        }
+                        break;
+
+                    case 'status':
+                        $payment = Payment::find($item['payment_id']);
+                        if ($payment) {
+                            $payment->update(['status' => $item['previous_status'] ?? 'initial']);
+                        }
+                        break;
+                }
+            }
+
+            $discount->delete();
+            DB::commit();
+            return response()->json([
+                'message' => 'Discount deleted successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+    public function getDiscounts()
+    {
+        $discounts = Discount::selectRaw("id, contract_id, amount, DATE_FORMAT(created_at, '%d-%m-%Y') as date")
+            ->with('contract:id,num')
+            ->where('pawnshop_id', auth()->user()->pawnshop_id)
+            ->orderBy('id', 'desc')
+            ->get();
+        return response()->json([
+            'discounts' => $discounts
+        ]);
     }
 
 }
