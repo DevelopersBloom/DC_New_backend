@@ -587,7 +587,7 @@ class AdminControllerNew extends Controller
             'message' => 'Pawnshops updated successfully',
         ]);
     }
-    public function getDeals(Request $request): JsonResponse
+    public function getDeals1(Request $request): JsonResponse
     {
         $filter_type = $request->query('filter', 'history');
         $perPage = $request->query('per_page', 15);
@@ -639,57 +639,70 @@ class AdminControllerNew extends Controller
             'deals' => $deals
         ]);
     }
+    public function getDeals(Request $request): JsonResponse
+    {
+        $filterType = $request->query('filter', 'history');
+        $perPage = $request->query('per_page', 20);
 
-//    public function getDeals(Request $request): JsonResponse
-//    {
-//
-//        $filter_type = $request->query('filter','history');
-//
-//        $dealsQuery = Deal::select(
-//            'id',
-//            DB::raw("DATE(date) as date"),
-//            'amount',
-//            'type',
-//            'receiver',
-//            'client_id',
-//            'order_id',
-//            'cash',
-//            'contract_id',
-//            'delay_days',
-//            'interest_amount',
-//            'purpose',
-//            'penalty',
-//            'discount',
-//            'created_by'
-//        )
-//            ->with('client:id,name,surname')
-//            ->with('contract:id,mother,num')
-//            ->with('createdBy:id,name,surname');
-//
-//        switch ($filter_type) {
-//            case 'cost_in':
-//                $dealsQuery->where('type', 'in');
-//                break;
-//
-//            case 'cost_out':
-//                $dealsQuery->whereIn('type', ['cost_out','out']);
-//                break;
-//
-//            case 'expense':
-//                $dealsQuery->where('type', 'cost_out')->where('filter_type', Order::EXPENSE_FILTER);
-//                break;
-//
-//            case 'history':
-//            default:
-//                break;
-//        }
-//        $dealsQuery->orderBy('date', 'desc')->orderBy('id', 'desc');
-//        $deals = $dealsQuery->get();
-//
-//        return response()->json([
-//            'deals' => $deals
-//        ]);
-//    }
+        $dealsQuery = Deal::query()
+            ->select(
+                'id',
+                DB::raw("DATE(date) as date"),
+                'amount',
+                'type',
+                'receiver',
+                'client_id',
+                'order_id',
+                'cash',
+                'contract_id',
+                'delay_days',
+                'interest_amount',
+                'purpose',
+                'penalty',
+                'discount',
+                'created_by'
+            )
+            ->with([
+                'client:id,name,surname',
+                'contract:id,mother,num',
+                'createdBy:id,name,surname'
+            ]);
+
+        // Apply filters
+        match ($filterType) {
+            'cost_in'   => $dealsQuery->where('type', 'in'),
+            'cost_out'  => $dealsQuery->whereIn('type', ['cost_out', 'out']),
+            'expense'   => $dealsQuery->where('type', 'cost_out')->where('filter_type', Order::EXPENSE_FILTER),
+            default     => null,
+        };
+
+        $dealsQuery->orderByDesc('date')->orderByDesc('id');
+
+        $paginatedDeals = $dealsQuery->paginate($perPage);
+
+        // Group by same date and same contract
+        $groupedDeals = collect($paginatedDeals->items())
+            ->groupBy(fn($deal) => $deal->date . '-' . $deal->contract_id)
+            ->map(fn($group) => [
+                'date'        => $group->first()->date,
+                'contract_id' => $group->first()->contract_id,
+                'contract'    => $group->first()->contract,
+                'deals'       => $group->values()
+            ])
+            ->values();
+
+        return response()->json([
+            'deals' => $groupedDeals,
+            'pagination' => [
+                'current_page' => $paginatedDeals->currentPage(),
+                'last_page'    => $paginatedDeals->lastPage(),
+                'per_page'     => $paginatedDeals->perPage(),
+                'total'        => $paginatedDeals->total(),
+            ],
+        ]);
+    }
+
+
     public function updateDeals(Request $request): JsonResponse
     {
         $validated = $request->validate([
