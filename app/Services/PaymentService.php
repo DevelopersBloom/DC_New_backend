@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ContractAmountHistory;
 use App\Models\DealAction;
 use App\Models\Pawnshop;
 use App\Models\Payment;
@@ -323,7 +324,15 @@ class PaymentService {
             'new_provided' =>  max(0, $contract->provided_amount - $partialAmount),
             'updated_at' => now()->toDateTimeString()
         ];
-
+        ContractAmountHistory::create([
+            'contract_id' => $contract->id,
+            'amount' => $partialAmount,
+            'amount_type' => 'provided_amount',
+            'type' => 'out',
+            'date' => now()->toDateTimeString(),
+            'deal_id' => $deal_id,
+            'category_id' => $contract->category_id,
+        ]);
 
         // Update contract with partial payment
         $contract->left = max(0,$contract->left-$partialAmount);
@@ -373,10 +382,20 @@ class PaymentService {
             'new_left' => 0,
             'old_collected' => $contract->collected,
             'new_collected' => $contract->collected + $amount,
+            'provided_amount' => $contract->provided_amount,
             'old_status' => 'initial',
             'new_status' => 'completed',
             'updated_at' => now()->toDateTimeString()
         ];
+        ContractAmountHistory::create([
+            'contract_id' => $contract->id,
+            'amount' => $contract->provided_amount,
+            'amount_type' => 'provided_amount',
+            'type' => 'out',
+            'date' => now()->toDateTimeString(),
+            'deal_id' => $deal_id,
+            'category_id' => $contract->category_id,
+        ]);
 //        $history['payment_changes'] = [
 //            'payment_id' => $last_payment->id,
 //            'old_mother' => $last_payment->mother,
@@ -388,6 +407,7 @@ class PaymentService {
         $contract->status = 'completed';
         $contract->left = 0;
         $contract->collected += $amount;
+        $contract->provided_amount = 0;
         $contract->save();
 
         return [
