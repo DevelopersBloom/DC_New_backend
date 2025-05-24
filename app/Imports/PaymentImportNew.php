@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Contract;
+use App\Models\ContractAmountHistory;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
@@ -74,8 +75,16 @@ class PaymentImportNew implements ToCollection
                         'contract_id' => $contract->id,
                         'date' =>$date->format('Y.m.d'),
                     ]);
-                    $this->createDeal($amount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id,$payment_id,null,1,$date);
-
+                    $deal = $this->createDeal($amount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id,$payment_id,null,1,$date);
+                    ContractAmountHistory::create([
+                        'contract_id' => $contract->id,
+                        'amount' => $amount,
+                        'amount_type' => 'provided_amount',
+                        'type' => 'in',
+                        'date' => $date,
+                        'deal_id' => $deal->id,
+                        'category_id' => $contract->category_id,
+                    ]);
                 } else {
                     if (substr($pgi_id, -1) === '.') {
                         $pgi_id = rtrim($pgi_id, '.');

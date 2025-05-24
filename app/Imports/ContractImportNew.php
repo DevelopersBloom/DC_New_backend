@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Category;
 use App\Models\Contract;
+use App\Models\ContractAmountHistory;
 use App\Services\ClientService;
 use App\Services\ContractService;
 use App\Traits\ContractTrait;
@@ -181,8 +182,26 @@ class ContractImportNew implements ToCollection
             }
 
             // Create order and history
-            $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, 1,$date,true);
+            $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_fullname, $cash, null, $contract_num, 1,$date,true);
 
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->estimated_amount,
+                'amount_type' => 'estimated_amount',
+                'type' => 'in',
+                'date' => $contract->date,
+                'deal_id' => $deal_id,
+                'category_id' => $category_id,
+            ]);
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->provided_amount,
+                'amount_type' => 'provided_amount',
+                'type' => 'in',
+                'date' => $contract->date,
+                'deal_id' => $deal_id,
+                'category_id' => $category_id,
+            ]);
         }
     }
 }
