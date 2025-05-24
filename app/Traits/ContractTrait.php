@@ -42,7 +42,7 @@ trait ContractTrait
         }
         $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT, $num, $pawnshop_id, $date);
 //        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$num,$pawnshop_id,$date);
-        $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT, $num, $pawnshop_id, $date);
+        return $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT, $num, $pawnshop_id, $date);
     }
 
     private function createOrderAndHistoryEntry($contract, $client_id, $client_name, $cash, $category_id, $num = null, $pawnshop_id = null, $date = null)

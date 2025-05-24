@@ -181,25 +181,7 @@ class ContractControllerNew extends Controller
             $cash = $contract->provided_amount < 20000 ? true : false;
 //            $this->createOrderAndHistory($contract,$client->id, $client_name, $cash,$category_id);
 
-            $deal_id = $this->createOrderHistoryEntry($contract,$client->id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$contract->num,$pawnshop_id,$date);
-            ContractAmountHistory::create([
-                'contract_id' => $contract->id,
-                'amount' => $contract->provided_amount,
-                'amount_type' => 'provided_amount',
-                'type' => 'in',
-                'date' => $contract->date,
-                'deal_id' => $deal_id,
-                'category_id' => $category_id,
-            ]);
-            ContractAmountHistory::create([
-                'contract_id' => $contract->id,
-                'amount' => $contract->estimated_amount,
-                'amount_type' => 'estimated_amount',
-                'type' => 'in',
-                'date' => $contract->date,
-                'deal_id' => $deal_id,
-                'category_id' => $category_id,
-            ]);
+            $this->createOrderHistoryEntry($contract,$client->id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$contract->num,$pawnshop_id,$date);
             DB::commit();
 
             return response()->json([
@@ -238,8 +220,25 @@ class ContractControllerNew extends Controller
             // Create contract payments
             $this->contractService->createPayment($contract);
             // Create order history
-            $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-
+            $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->provided_amount,
+                'amount_type' => 'provided_amount',
+                'type' => 'in',
+                'date' => $contract->date,
+                'deal_id' => $deal_id,
+                'category_id' => $category_id,
+            ]);
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->estimated_amount,
+                'amount_type' => 'estimated_amount',
+                'type' => 'in',
+                'date' => $contract->date,
+                'deal_id' => $deal_id,
+                'category_id' => $category_id,
+            ]);
             auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;
             auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;
             auth()->user()->pawnshop->save();
