@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contract;
+use App\Models\ContractAmountHistory;
 use App\Models\Deal;
 use App\Models\Order;
 use App\Models\Pawnshop;
@@ -103,12 +104,30 @@ DealController extends Controller
 
         for ($day = $daysInMonth; $day >= 1; $day--) {
             $date = Carbon::create($year, $month, $day)->format('Y-m-d');
-            $contractData = Contract::whereDate('date','<=', $date)
-                ->selectRaw('SUM(estimated_amount) as total_estimated,
-                        SUM(provided_amount) as total_provided')
-                ->where('pawnshop_id',$pawnshopId)
-                ->where('status','initial')
-                ->first();
+            $data = ContractAmountHistory::selectRaw("
+                SUM(CASE
+                    WHEN amount_type = 'estimated_amount' AND type = 'in'  THEN amount
+                    WHEN amount_type = 'estimated_amount' AND type = 'out' THEN -amount
+                    ELSE 0
+                END) AS estimated_total,
+
+                SUM(CASE
+                    WHEN amount_type = 'provided_amount' AND type = 'in' THEN amount
+                    WHEN amount_type = 'provided_amount' AND type = 'out' THEN -amount
+                    ELSE 0
+                END) AS provided_total,
+
+                SUM(CASE
+                    WHEN amount_type = 'provided_amount' AND type = 'in' AND category_id = 1 THEN amount
+                    WHEN amount_type = 'provided_amount' AND type = 'out' AND category_id = 1 THEN -amount
+                    ELSE 0
+                END) AS gold_provided,
+                SUM(CASE
+                    WHEN amount_type = 'provided_amount' AND type = 'in' AND category_id = 2 THEN amount
+                    WHEN amount_type = 'provided_amount' AND type = 'out' AND category_id = 2 THEN -amount
+                    ELSE 0
+                END) AS electronics_provided
+            ")->whereDate('date', '<=', $date)->first();
 
             $totals = Deal::whereDate('date', '<=', $date)
                 ->where('type', Deal::IN_DEAL)
@@ -129,10 +148,13 @@ DealController extends Controller
 
            $cashboxData[] = [
                 'date' => $date,
-                'estimated_amount' => $contractData->total_estimated ?? 0,
-                'provided_amount' => $contractData->total_provided ?? 0,
-                'appa' => $totals->appa ?? 0,
-                'ndm' => ($totals->ndmIn ?? 0) - ($totalOuts->ndmOut ?? 0),
+                'estimated_amount' => $data->estimated_amount ?? 0,
+                'provided_amount' => $data->provided_amount ?? 0,
+                'gold_provided' => $data->gold_provided ?? 0,
+               'electronics_provided' => $data->electronics_provided ?? 0,
+//
+//                'appa' => $totals->appa ?? 0,
+//                'ndm' => ($totals->ndmIn ?? 0) - ($totalOuts->ndmOut ?? 0),
                 'cashbox' => $totals->totalCashboxIn  - $totalOuts->totalCashboxOut,
             ];
         }
