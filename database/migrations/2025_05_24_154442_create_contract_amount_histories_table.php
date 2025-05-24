@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('contract_amount_histories', function (Blueprint $table) {
             $table->id();
             $table->string('amount_type');
-            $table->decimal('amount');
+            $table->decimal('amount',15,2);
             $table->enum('type',['out','in']);
             $table->foreignId('contract_id')->nullable()->constrained('contracts')->cascadeOnDelete();
             $table->foreignId('deal_id')->nullable()->constrained('deals')->cascadeOnDelete();
