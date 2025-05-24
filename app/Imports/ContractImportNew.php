@@ -186,7 +186,7 @@ class ContractImportNew implements ToCollection
 
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
-                'amount' => $contract->estimated_amount,
+                'amount' =>  $row[17],
                 'amount_type' => 'estimated_amount',
                 'type' => 'in',
                 'date' => $contract->date,
@@ -195,7 +195,7 @@ class ContractImportNew implements ToCollection
             ]);
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
-                'amount' => $contract->provided_amount,
+                'amount' => $row[18],
                 'amount_type' => 'provided_amount',
                 'type' => 'in',
                 'date' => $contract->date,
