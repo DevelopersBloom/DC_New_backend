@@ -420,33 +420,6 @@ class   ContractService
         }
     }
 
-//    public function createPayment(Contract $contract)
-//    {
-//        $fromDate = Carbon::parse($contract->created_at);
-//        $toDate = Carbon::parse($contract->deadline);
-//        $currentDate = $fromDate;
-//
-//        while ($currentDate->lt($toDate))
-//        {
-//            $payment = [
-//                'contract_id' => $contract->id,
-//                'from_date' => $fromDate,
-//            ];
-//            $nextPaymentDate = (clone $currentDate)->addMonths();
-//            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
-//            $diffDays = $paymentDate->diffInDays($currentDate);
-//            $amount = $this->calcAmount($contract->provided_amount,$diffDays,$contract->interest_rate);
-//            $payment['date'] =  $paymentDate->format('d.m.Y');;
-//            $payment['days'] = $diffDays;
-//            $payment['amount'] = $amount;
-//            $payment['pawnshop_id'] = auth()->user()->pawnshop_id;
-//
-//            Payment::create($payment);
-//
-//            $currentDate = $nextPaymentDate;
-//        }
-//    }
-
     public function calcAmount($amount,$days,$rate): int
     {
         return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);

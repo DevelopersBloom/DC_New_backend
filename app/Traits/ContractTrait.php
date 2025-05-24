@@ -89,8 +89,10 @@ trait ContractTrait
         ]);
         if ($historyTypeName !== 'opening') {
             // Create a deal for the order
-            $this->createDeal($amount, null, null, null, null, $type, $contract->id, $client_id, $order_id, $cash, null, $purpose, 'contract', $history->id, null, null, $pawnshop_id, $date);
+            $deal = $this->createDeal($amount, null, null, null, null, $type, $contract->id, $client_id, $order_id, $cash, null, $purpose, 'contract', $history->id, null, null, $pawnshop_id, $date);
+            return $deal->id;
         }
+        return 0;
     }
 
     public function getFullContract($id)

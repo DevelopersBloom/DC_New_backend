@@ -9,6 +9,7 @@ use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
 use App\Models\Contract;
+use App\Models\ContractAmountHistory;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Payment;
@@ -180,7 +181,25 @@ class ContractControllerNew extends Controller
             $cash = $contract->provided_amount < 20000 ? true : false;
 //            $this->createOrderAndHistory($contract,$client->id, $client_name, $cash,$category_id);
 
-            $this->createOrderHistoryEntry($contract,$client->id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$contract->num,$pawnshop_id,$date);
+            $deal_id = $this->createOrderHistoryEntry($contract,$client->id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$contract->num,$pawnshop_id,$date);
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->provided_amount,
+                'amount_type' => 'provided_amount',
+                'type' => 'in',
+                'date' => $contract->date,
+                'deal_id' => $deal_id,
+                'category_id' => $category_id,
+            ]);
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->estimated_amount,
+                'amount_type' => 'estimated_amount',
+                'type' => 'in',
+                'date' => $contract->date,
+                'deal_id' => $deal_id,
+                'category_id' => $category_id,
+            ]);
             DB::commit();
 
             return response()->json([

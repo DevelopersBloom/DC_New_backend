@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Category;
 use App\Models\CategoryRate;
 use App\Models\Contract;
+use App\Models\ContractAmountHistory;
 use App\Models\Deal;
 use App\Models\DealAction;
 use App\Models\Discount;
@@ -774,7 +775,7 @@ class AdminControllerNew extends Controller
             Payment::where('id',$dealAction->actionable_id)->delete();
             $dealAction->delete();
         }
-
+        ContractAmountHistory::where('deal_id', $deal->id)->delete();
         $deal->delete();
         return response()->json(['message' => 'Deal deleted successfully'], 200);
     }
@@ -796,7 +797,7 @@ class AdminControllerNew extends Controller
 
             $dealAction->delete();
         }
-
+        ContractAmountHistory::where('deal_id', $deal->id)->delete();
         $deal->delete();
         return response()->json(['message' => 'Deal deleted successfully'], 200);
     }
