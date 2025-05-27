@@ -21,6 +21,7 @@ return new class extends Migration
             $table->foreignId('contract_id')->nullable()->constrained('contracts')->cascadeOnDelete();
             $table->foreignId('deal_id')->nullable()->constrained('deals')->cascadeOnDelete();
             $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
+            $table->foreignId('pawnshop_id')->nullable()->constrained('pawnshops')->nullOnDelete();
             $table->date('date');
             $table->softDeletes();
             $table->timestamps();

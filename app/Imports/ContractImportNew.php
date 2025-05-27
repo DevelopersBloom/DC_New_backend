@@ -192,6 +192,7 @@ class ContractImportNew implements ToCollection
                 'date' => $contract->date,
                 'deal_id' => $deal_id,
                 'category_id' => $category_id,
+                'pawnshop_id' => auth()->user()->pawnshop_id
             ]);
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
@@ -201,6 +202,9 @@ class ContractImportNew implements ToCollection
                 'date' => $contract->date,
                 'deal_id' => $deal_id,
                 'category_id' => $category_id,
+                'pawnshop_id' => auth()->user()->pawnshop_id
+
+
             ]);
         }
     }

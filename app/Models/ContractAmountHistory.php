@@ -17,6 +17,7 @@ class ContractAmountHistory extends Model
         'category_id',
         'deal_id',
         'date',
+        'pawnshop_id'
     ];
 
     protected $casts = [
