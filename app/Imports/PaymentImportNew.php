@@ -84,7 +84,7 @@ class PaymentImportNew implements ToCollection
                         'date' => $date,
                         'deal_id' => $deal->id,
                         'category_id' => $contract->category_id,
-                        'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+                        'pawnshop_id' => 1
 
                     ]);
                 } else {
