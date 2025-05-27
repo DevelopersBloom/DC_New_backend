@@ -127,7 +127,7 @@ DealController extends Controller
                     WHEN amount_type = 'estimated_amount' AND type = 'out' AND category_id = 2 THEN -amount
                     ELSE 0
                 END) AS electronics_estimated
-            ")->whereDate('date', '<=', $date)->first();
+            ")->whereDate('date', '<=', $date)->where('pawnshop_id',$pawnshopId)->first();
 
             $totals = Deal::whereDate('date', '<=', $date)
                 ->where('type', Deal::IN_DEAL)
