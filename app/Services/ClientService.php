@@ -46,9 +46,10 @@ class ClientService
     }
     public function getClientInfo(int $clientId, string $contractStatus = 'initial')
     {
-        return Client::with([
-            'contracts' => function ($query) use ($contractStatus) {
-                $validStatuses = ['initial', 'executed', 'completed'];
+        $validStatuses = ['initial', 'executed', 'completed'];
+
+        $client = Client::with([
+            'contracts' => function ($query) use ($contractStatus, $validStatuses) {
                 if (in_array($contractStatus, $validStatuses)) {
                     $query->where('status', $contractStatus);
                 } else {
@@ -65,7 +66,7 @@ class ClientService
                     'penalty',
                     'category_id',
                     'deadline',
-                    'status',
+                    'status'
                 )->with('category:id,name');
             }
         ])->findOrFail($clientId, [
@@ -85,6 +86,11 @@ class ClientService
             'additional_phone',
             'date_of_birth'
         ]);
+
+        // Format date_of_birth after retrieval
+        $client->date_of_birth = \Carbon\Carbon::parse($client->date_of_birth)->format('d.m.Y');
+
+        return $client;
     }
 
     /**
