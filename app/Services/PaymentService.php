@@ -383,7 +383,8 @@ class PaymentService {
             'new_left' => 0,
             'old_collected' => $contract->collected,
             'new_collected' => $contract->collected + $amount,
-            'provided_amount' => $contract->provided_amount,
+            'old_provided' => $contract->provided_amount,
+            'old_estimated' => $contract->estimated_amount,
             'old_status' => 'initial',
             'new_status' => 'completed',
             'updated_at' => now()->toDateTimeString()
@@ -392,6 +393,16 @@ class PaymentService {
             'contract_id' => $contract->id,
             'amount' => $contract->provided_amount,
             'amount_type' => 'provided_amount',
+            'type' => 'out',
+            'date' => now()->toDateTimeString(),
+            'deal_id' => $deal_id,
+            'category_id' => $contract->category_id,
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+        ]);
+        ContractAmountHistory::create([
+            'contract_id' => $contract->id,
+            'amount' => $contract->estimated_amount,
+            'amount_type' => 'estimated_amount',
             'type' => 'out',
             'date' => now()->toDateTimeString(),
             'deal_id' => $deal_id,
@@ -410,6 +421,7 @@ class PaymentService {
         $contract->left = 0;
         $contract->collected += $amount;
         $contract->provided_amount = 0;
+        $contract->estimated_amount = 0;
         $contract->save();
 
         return [

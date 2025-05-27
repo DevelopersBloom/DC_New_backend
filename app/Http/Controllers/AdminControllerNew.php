@@ -588,7 +588,7 @@ class AdminControllerNew extends Controller
             'message' => 'Pawnshops updated successfully',
         ]);
     }
-    public function getDeals1(Request $request): JsonResponse
+    public function getDeals(Request $request): JsonResponse
     {
         $filter_type = $request->query('filter', 'history');
         $perPage = $request->query('per_page', 15);
@@ -640,7 +640,7 @@ class AdminControllerNew extends Controller
             'deals' => $deals
         ]);
     }
-    public function getDeals(Request $request): JsonResponse
+    public function getDeals1(Request $request): JsonResponse
     {
         $filterType = $request->query('filter', 'history');
         $perPage = $request->query('per_page', 20);
@@ -723,6 +723,7 @@ class AdminControllerNew extends Controller
                     if ($dealAction->actionable) {
                         $dealAction->actionable->update(['date' => $dealData['date']]);
                     }
+                    ContractAmountHistory::where('deal_id', $deal->id)->update(['date' => $dealData['date']]);
                 }
             }
             $deal->update(['date' => $dealData['date']]);
