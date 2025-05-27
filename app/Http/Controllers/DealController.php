@@ -118,15 +118,15 @@ DealController extends Controller
                 END) AS provided,
 
                 SUM(CASE
-                    WHEN amount_type = 'provided_amount' AND type = 'in' AND category_id = 1 THEN amount
-                    WHEN amount_type = 'provided_amount' AND type = 'out' AND category_id = 1 THEN -amount
+                    WHEN amount_type = 'estimated_amount' AND type = 'in' AND category_id = 1 THEN amount
+                    WHEN amount_type = 'estimated_amount' AND type = 'out' AND category_id = 1 THEN -amount
                     ELSE 0
-                END) AS gold_provided,
+                END) AS gold_estimated,
                 SUM(CASE
-                    WHEN amount_type = 'provided_amount' AND type = 'in' AND category_id = 2 THEN amount
-                    WHEN amount_type = 'provided_amount' AND type = 'out' AND category_id = 2 THEN -amount
+                    WHEN amount_type = 'estimated_amount' AND type = 'in' AND category_id = 2 THEN amount
+                    WHEN amount_type = 'estimated_amount' AND type = 'out' AND category_id = 2 THEN -amount
                     ELSE 0
-                END) AS electronics_provided
+                END) AS electronics_estimated
             ")->whereDate('date', '<=', $date)->first();
 
             $totals = Deal::whereDate('date', '<=', $date)
@@ -150,8 +150,8 @@ DealController extends Controller
                 'date' => $date,
                 'estimated_amount' => $data->estimated ?? 0,
                 'provided_amount' => $data->provided ?? 0,
-                'gold_provided' => $data->gold_provided ?? 0,
-               'electronics_provided' => $data->electronics_provided ?? 0,
+                'gold_estimated' => $data->gold_estimated ?? 0,
+                'electronics_estimated' => $data->electronics_estimated ?? 0,
 //
 //                'appa' => $totals->appa ?? 0,
 //                'ndm' => ($totals->ndmIn ?? 0) - ($totalOuts->ndmOut ?? 0),
