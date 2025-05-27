@@ -229,7 +229,7 @@ class ContractControllerNew extends Controller
                 'date' => $contract->date,
                 'deal_id' => $deal_id,
                 'category_id' => $category_id,
-                'pawnshop_id' => auth()->user()->pawnshop_id
+                'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
             ]);
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
@@ -239,7 +239,7 @@ class ContractControllerNew extends Controller
                 'date' => $contract->date,
                 'deal_id' => $deal_id,
                 'category_id' => $category_id,
-                'pawnshop_id' => auth()->user()->pawnshop_id
+                'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
             ]);
             auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;
             auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;

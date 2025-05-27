@@ -332,7 +332,7 @@ class PaymentService {
             'date' => now()->toDateTimeString(),
             'deal_id' => $deal_id,
             'category_id' => $contract->category_id,
-            'pawnshop_id' => auth()->user()->pawnshop_id
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
         ]);
 
         // Update contract with partial payment
@@ -396,7 +396,7 @@ class PaymentService {
             'date' => now()->toDateTimeString(),
             'deal_id' => $deal_id,
             'category_id' => $contract->category_id,
-            'pawnshop_id' => auth()->user()->pawnshop_id
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
         ]);
 //        $history['payment_changes'] = [
 //            'payment_id' => $last_payment->id,
