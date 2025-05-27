@@ -88,7 +88,7 @@ class ClientService
         ]);
 
         // Format date_of_birth after retrieval
-        $client->date_of_birth = \Carbon\Carbon::parse($client->date_of_birth)->format('d.m.Y');
+        $client->date_of_birth = \Carbon\Carbon::parse($client->date_of_birth)->format('d-m-Y');
 
         return $client;
     }
