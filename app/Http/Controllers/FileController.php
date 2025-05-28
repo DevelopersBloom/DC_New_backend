@@ -99,7 +99,7 @@ class FileController extends Controller
 
         foreach ($contract->items as $item) {
             if ($item->category->name === 'car') {
-                $itemName =  $item->category->title . ($item->model ? ', ' . $item->model : '');
+                $itemName =  $item->category->title . ($item->model ? ', ' . $item->model : '') . ($contract->description ? '. ' . $contract->description : '');
                 $car_values = [
                     'item' => $itemName,
                     'desc' => $contract->description,
@@ -121,7 +121,7 @@ class FileController extends Controller
             } else {
                 $itemName =  $item->category->title . ($item->subcategory ? ', ' . $item->subcategory : '')
                     . ($item->model ? ', ' . $item->model : '') . ($item->sn ? ', ' . $item->sn : '')
-                    . ($item->imei ? ', ' . $item->imei : '');
+                    . ($item->imei ? ', ' . $item->imei : '') . ($contract->description ? '. ' . $contract->description : '');
                 $table_values[] = [
                     'item' => $itemName,
                     'desc' => $contract->description,
