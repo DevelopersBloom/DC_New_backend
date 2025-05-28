@@ -14,7 +14,12 @@ class ClientService
      */
     public function storeOrUpdate(array $data): Client
     {
-        $client =  Client::updateOrCreate(
+        // Format phone numbers
+        $data['phone'] = $this->formatPhoneNumber($data['phone'] ?? '');
+        $data['additional_phone'] = isset($data['additional_phone'])
+            ? $this->formatPhoneNumber($data['additional_phone'])
+            : null;
+        $client = Client::updateOrCreate(
             [
                 'passport_series' => $data['passport_series'],
             ],
@@ -27,7 +32,7 @@ class ClientService
                 'date_of_birth' => $data['date_of_birth'],
                 'email' => $data['email'],
                 'phone' => $data['phone'],
-                'additional_phone' => $data['additional_phone'] ?? null,
+                'additional_phone' => $data['additional_phone'],
                 'country' => $data['country'],
                 'city' => $data['city'],
                 'street' => $data['street'],
@@ -40,10 +45,23 @@ class ClientService
                 'date' => $data['date'] ?? now()->format('Y-m-d'),
             ]
         );
+
         return $client;
-
-
     }
+
+    private function formatPhoneNumber(string $phone): string
+    {
+        // Remove non-numeric characters except '+'
+        $cleaned = preg_replace('/[^\d+]/', '', $phone);
+
+        // Match and format Armenian number format
+        if (preg_match('/^\+374(\d{2})(\d{2})(\d{2})(\d{2})$/', $cleaned, $matches)) {
+            return "(+374) {$matches[1]} {$matches[2]} {$matches[3]} {$matches[4]}";
+        }
+
+        return $phone; // fallback if it doesn't match
+    }
+
     public function getClientInfo(int $clientId, string $contractStatus = 'initial')
     {
         $validStatuses = ['initial', 'executed', 'completed'];
