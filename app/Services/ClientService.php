@@ -161,8 +161,13 @@ class ClientService
         $client->street = $data['street'] ?? $client->street;
         $client->building = $data['building'] ?? $client->building;
         $client->email = $data['email'] ?? $client->email;
-        $client->phone = $data['phone'] ?? $client->phone;
-        $client->additional_phone = $data['additional_phone'] ?? $client->additional_phone;
+        $client->phone = isset($data['phone'])
+            ? $this->formatPhoneNumber($data['phone'])
+            : $client->phone;
+
+        $client->additional_phone = isset($data['additional_phone'])
+            ? $this->formatPhoneNumber($data['additional_phone'])
+            : $client->additional_phone;
 
         $client->save();
 
