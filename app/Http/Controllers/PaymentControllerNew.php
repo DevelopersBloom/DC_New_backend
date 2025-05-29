@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ExecuteItemRequest;
 use App\Models\Contract;
+use App\Models\ContractAmountHistory;
 use App\Models\DealAction;
 use App\Models\History;
 use App\Models\HistoryType;
@@ -314,7 +315,27 @@ class PaymentControllerNew extends Controller
                 'contract_id' => $contract->id,
                 'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
             ]);
-            $this->createDeal($executedAmount, null,null, null,null,'in', $contract->id,null, $order->id, $cash,$buyerInfo, Order::EXECUTION_PURPOSE,'execution',$history->id,null);
+            $deal = $this->createDeal($executedAmount, null,null, null,null,'in', $contract->id,null, $order->id, $cash,$buyerInfo, Order::EXECUTION_PURPOSE,'execution',$history->id,null);
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->estimated_amount,
+                'amount_type' => 'estimated_amount',
+                'type' => 'out',
+                'date' => now()->format('Y-m-d'),
+                'deal_id' => $deal->id ?? null,
+                'category_id' => $contract->category_id ?? null,
+                'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+            ]);
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $contract->provided_amount,
+                'amount_type' => 'provided_amount',
+                'type' => 'out',
+                'date' => now()->format('Y-m-d'),
+                'deal_id' => $deal->id ?? null,
+                'category_id' => $contract->category_id ?? null,
+                'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+            ]);
             DB::commit();
 
             return response()->json([

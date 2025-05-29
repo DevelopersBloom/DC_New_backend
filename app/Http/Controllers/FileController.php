@@ -63,8 +63,8 @@ class FileController extends Controller
             'client_address' => ($client->country === 'Armenia' ? 'Հայաստան' : $client->country)
                 . ', ' . $client->city . ', ' . $client->street,
             'client_numbers' => $client_numbers,
-            'given' => $this->makeMoney((int) $contract->provided_amount),
-            'given_text' => $this->numberToText($contract->provided_amount),
+            'given' => $this->makeMoney((int) $contract->mother),
+            'given_text' => $this->numberToText($contract->mother),
             'contract_id' => $contract->num,
             'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
 //            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date )),
