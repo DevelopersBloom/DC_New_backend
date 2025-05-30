@@ -96,7 +96,9 @@ class PaymentService {
         $oldDate = $payment['date'];
         $payment->paid += $payment['amount'] + $payment['penalty'];
         //$payment->paid_date = Carbon::now()->format('Y.m.d');
-        $payment->date = Carbon::now()->format('Y.m.d');
+        if ($payment->last_payment == 0) {
+            $payment->date = Carbon::now()->format('Y.m.d');
+        }
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
         $payment->amount = 0;
