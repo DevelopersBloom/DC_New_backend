@@ -221,6 +221,12 @@ trait ContractTrait
 
     public function calculateCurrentPayment($contract)
     {
+        if ($contract->closed_at) {
+            return [
+                "current_amount" => 0,
+                "penalty_amount" => 0
+            ];
+        }
         $penaltyAmount = $this->countPenalty($contract->id);
         $contractCreationDate = Carbon::parse($contract->date);
         $contractEndDate = Payment::where('last_payment',1)->where('contract_id',$contract->id)->first();

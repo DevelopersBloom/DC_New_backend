@@ -385,7 +385,7 @@ class PaymentService {
             'old_collected' => $contract->collected,
             'new_collected' => $contract->collected + $amount,
             'old_provided' => $contract->provided_amount,
-            'old_estimated' => $contract->estimated_amount,
+//            'old_estimated' => $contract->estimated_amount,
             'old_status' => 'initial',
             'new_status' => 'completed',
             'updated_at' => now()->toDateTimeString()
@@ -422,7 +422,7 @@ class PaymentService {
         $contract->left = 0;
         $contract->collected += $amount;
         $contract->provided_amount = 0;
-        $contract->estimated_amount = 0;
+//        $contract->estimated_amount = 0;
         $contract->save();
 
         return [

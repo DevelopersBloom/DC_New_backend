@@ -826,7 +826,7 @@ class AdminControllerNew extends Controller
                         'collected' => $historyItem['old_collected'],
                         'status' => 'initial',
                         'provided_amount' => $historyItem['old_provided'],
-                        'estimated_amount' => $historyItem['old_estimated'],
+//                        'estimated_amount' => $historyItem['old_estimated'],
                         'closed_at' => null,
                     ]),
                 'mother_amount' => Payment::where('id', $historyItem['payment_id'])
