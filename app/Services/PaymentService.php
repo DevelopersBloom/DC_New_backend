@@ -116,9 +116,10 @@ class PaymentService {
             'payment_id' => $payment->id,
             'old_amount' => $oldAmount,
             'new_amount' => $payment->amount,
-            'old_paid'       => $oldPaid,
+            'old_paid'   => $oldPaid,
             'new_paid'   => $payment->paid,
             'old_date'   => $oldDate,
+            'old_mother' => $payment->mother,
             'updated_at' => now()->toDateTimeString()
         ];
         DealAction::create([
