@@ -259,6 +259,8 @@ trait ContractTrait
             ->where('type', 'regular')->sum('paid');
         $currentAmount = $totalPayment - $totalPaid + $penaltyAmount['penalty_amount'];
         return [
+            "daysPassed" => $daysPassed,
+            "endDate" => $currentDate,
             "totalPayment" => $totalPayment,
             "totalPaid" => $totalPaid,
             "penaltyAmount" => $penaltyAmount,
