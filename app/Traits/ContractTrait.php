@@ -258,11 +258,10 @@ trait ContractTrait
         $totalPaid = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')->sum('paid');
         $currentAmount = $totalPayment - $totalPaid + $penaltyAmount['penalty_amount'];
-var_dump(1);
         return [
             "totalPayment" => $totalPayment,
             "totalPaid" => $totalPaid,
-"penaltyAmount" => $penaltyAmount,
+            "penaltyAmount" => $penaltyAmount,
             "current_amount" => $currentAmount > 0 ? $currentAmount : 0,
             "penalty_amount" => $penaltyAmount['penalty_amount']
         ];
