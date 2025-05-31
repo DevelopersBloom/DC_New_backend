@@ -55,6 +55,7 @@ class ContractDetailResource extends JsonResource
                     'penalty' => $payment->penalty,
                     'date'    => Carbon::parse($payment->date)->format('d-m-Y'),
                     'status'  => $payment->status,
+                    'type'    => $payment->type,
                     'mother'  => $payment->mother
                 ];
             }),
