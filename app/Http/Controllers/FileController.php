@@ -252,7 +252,7 @@ class FileController extends Controller
                 ->where('purpose', 'Միանվագ վճարի ետվերադարձ')
                 ->select('amount')
                 ->first();
-
+dd($lumpAmount);
             $lumpAmountValue = $lumpAmount?->amount ?? 0;
             $amount2 = $this->makeMoney($order->amount - $lumpAmountValue);
         } else {
