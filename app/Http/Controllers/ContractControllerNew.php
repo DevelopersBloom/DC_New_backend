@@ -72,11 +72,7 @@ class ContractControllerNew extends Controller
                 $query->orderBy('date', 'ASC');
             },
             'history' => function ($query) {
-                $query->whereHas('order', function ($q) {
-                    $q->where('type', '!=', Order::REFUND_LUMP_FILTER);
-                })
-                    ->with(['type', 'user', 'order'])
-                    ->orderBy('id', 'DESC');
+                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
             },
             'items',
             'files',
