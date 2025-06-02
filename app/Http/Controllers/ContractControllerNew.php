@@ -76,7 +76,7 @@ class ContractControllerNew extends Controller
 //            },
             'history' => function ($query) {
                 $query->whereDoesntHave('order', function ($q) {
-                    $q->where('type', 'refund_filter');
+                    $q->where('type', Order::REFUND_LUMP_FILTER);
                 })
                     ->with(['type', 'user', 'order'])
                     ->orderBy('id', 'DESC');
