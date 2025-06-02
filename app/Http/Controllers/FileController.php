@@ -253,14 +253,14 @@ class FileController extends Controller
                 ->select('amount')
                 ->first();
             $lumpAmountValue = $lumpAmount?->amount ?? 0;
-            $amount2 = $this->makeMoney($order->amount - $lumpAmountValue);
+            $amount1 = $this->makeMoney($order->amount - $lumpAmountValue);
         } else {
-            $amount2 = $this->makeMoney($order->amount);
+            $amount1 = $this->makeMoney($order->amount);
         }
 
         $templateProcessor->setValues([
-            'amount1' => $this->makeMoney($order->amount),
-            'amount2' => $amount2,
+            'amount1' => $amount1,
+            'amount2' => $this->makeMoney($order->amount),
             'rep_id' => $order->rep_id,
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
