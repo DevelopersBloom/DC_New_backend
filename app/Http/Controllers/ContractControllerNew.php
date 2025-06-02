@@ -71,7 +71,11 @@ class ContractControllerNew extends Controller
                 $query->orderBy('date', 'ASC');
             },
             'history' => function ($query) {
-                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
+                $query->whereHas('order', function ($q) {
+                    $q->where('type', '!=', 'refund_filter');
+                })
+                    ->with(['type', 'user', 'order'])
+                    ->orderBy('id', 'DESC');
             },
             'items',
             'files',
