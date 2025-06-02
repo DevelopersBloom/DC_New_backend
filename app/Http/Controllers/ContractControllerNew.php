@@ -12,6 +12,7 @@ use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\History;
 use App\Models\HistoryType;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Services\ClientService;
 use App\Services\ContractService;
@@ -72,7 +73,7 @@ class ContractControllerNew extends Controller
             },
             'history' => function ($query) {
                 $query->whereHas('order', function ($q) {
-                    $q->where('type', '!=', 'refund_filter');
+                    $q->where('type', '!=', Order::REFUND_LUMP_FILTER);
                 })
                     ->with(['type', 'user', 'order'])
                     ->orderBy('id', 'DESC');
