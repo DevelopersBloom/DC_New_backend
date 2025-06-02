@@ -71,8 +71,15 @@ class ContractControllerNew extends Controller
             'payments' => function ($query) {
                 $query->orderBy('date', 'ASC');
             },
+//            'history' => function ($query) {
+//                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
+//            },
             'history' => function ($query) {
-                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
+                $query->whereDoesntHave('order', function ($q) {
+                    $q->where('type', 'refund_filter');
+                })
+                    ->with(['type', 'user', 'order'])
+                    ->orderBy('id', 'DESC');
             },
             'items',
             'files',
