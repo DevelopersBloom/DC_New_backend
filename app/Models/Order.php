@@ -15,6 +15,12 @@ class Order extends Model
     CONST NDM_FILTER = "ndm";
     CONST REFUND_LUMP = 'Միանվագ վճարի ետվերադարձ';
     CONST REFUND_LUMP_FILTER = "refund_lump";
+    CONST FULL_FILTER = 'full';
+    CONST PARTIAL_FILTER = 'partial';
+    CONST REGULAR_FILTER = 'regular';
+    CONST EXECUTE_FILTER = 'execute';
+    const ONE_TIME_PAYMENT_FILTER = 'one_time_payment';
+    CONST MOTHER_PAYMENT = 'mother_payment';
     const EXECUTION_PURPOSE = 'Իրացում';
     protected $fillable = [
         'contract_id',
@@ -30,7 +36,8 @@ class Order extends Model
         'receiver',
         'cashbox',
         'num',
-        'cash'
+        'cash',
+        'filter',
     ];
     public function pawnshop()
     {

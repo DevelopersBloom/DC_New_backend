@@ -40,7 +40,7 @@ class PaymentControllerNew extends Controller
         $paymentIds = $request->payments;
 
         $payments = Payment::whereIn('id', $paymentIds)->get();
-        $order_id = $this->generateOrderInNew($request,$payments)->id;
+        $order_id = $this->generateOrderInNew($request,$payments,Order::REGULAR_FILTER)->id;
         $history = $this->createHistory($request, $order_id);
         $deal = $this->createDeal($amount,null,null,null,null,
             'in', $contract->id,$contract->client->id,
@@ -110,7 +110,7 @@ class PaymentControllerNew extends Controller
         if ($request->hasPenalty) {
             $purpose .= ', տուգանք';
         }
-        $newOrder = $this->generateOrder($contract, $amount, $purpose, 'in', $cash);
+        $newOrder = $this->generateOrder($contract, $amount, $purpose, 'in', $cash,Order::FULL_FILTER);
 
         $history = History::create([
             'amount' => $amount,
@@ -143,7 +143,7 @@ class PaymentControllerNew extends Controller
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
             $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
             if ($refundAmount > 0) {
-                $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash);
+                $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash,Order::REFUND_LUMP_FILTER);
                 $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
 
                 $history = History::create([
@@ -228,7 +228,8 @@ class PaymentControllerNew extends Controller
             'date' => Carbon::now()->format('Y-m-d'),
             'client_name' => $client_name,
             'purpose' => 'Մասնակի մարում',
-            'cash' => $cash
+            'cash' => $cash,
+            'filter' => Order::PARTIAL_FILTER
         ];
         $new_order = Order::create($res);
         $history = History::create([
@@ -301,8 +302,8 @@ class PaymentControllerNew extends Controller
                 'purpose' => Order::EXECUTION_PURPOSE,
                 'client_name' => $client_name,
                 'num' => $contract->num,
-                'cash' => $cash
-
+                'cash' => $cash,
+                'filter' => Order::EXPENSE_FILTER
             ];
             $order = Order::create($res);
             $type = HistoryType::where('name', 'execution')->first();

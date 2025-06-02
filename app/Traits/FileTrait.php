@@ -226,7 +226,7 @@ trait FileTrait
         $new_order = Order::create($res);
         return $new_order;
     }
-    public function generateOrderInNew($request,$payments)
+    public function generateOrderInNew($request,$payments,$filter=null)
     {
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
@@ -244,13 +244,14 @@ trait FileTrait
             'date' => Carbon::now()->format('Y-m-d'),
             'client_name' => $client_name,
             'purpose' => $purpose,
-            'cash' => $request->cash
+            'cash' => $request->cash,
+            'filter' => $filter ?? null
         ];
         $new_order = Order::create($res);
         return $new_order;
     }
 
-    public function generateOrder($contract,$amount, $purpose,$type,$cash){
+    public function generateOrder($contract,$amount, $purpose,$type,$cash,$filter=null){
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,$type);
         $res = [
@@ -265,7 +266,8 @@ trait FileTrait
             'date' => Carbon::now()->format('Y.m.d'),
             'client_name' => $client_name,
             'purpose' => $purpose,
-            'cash' => $cash
+            'cash' => $cash,
+            'filter' => $filter
         ];
         $new_order = Order::create($res);
         return $new_order;

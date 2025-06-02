@@ -64,7 +64,8 @@ class PaymentImportNew implements ToCollection
                         'date' =>$date->format('Y.m.d'),
                         'client_name' => $client_name,
                         'purpose' => 'Մասնակի մարում',
-                        'cash' => $cash
+                        'cash' => $cash,
+                        'filter' => Order::PARTIAL_FILTER
                     ];
                     $new_order = Order::create($res);
                     $history = History::create([
@@ -132,7 +133,8 @@ class PaymentImportNew implements ToCollection
                                 'date' => $date->format('Y.m.d'),
                                 'client_name' => $contract->client['name'] . $contract->client['surname'],
                                 'purpose' => $purpose,
-                                'cash' => $cash
+                                'cash' => $cash,
+                                'filter' => Order::REGULAR_FILTER
                             ];
                             $new_order = Order::create($res);
                             $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];

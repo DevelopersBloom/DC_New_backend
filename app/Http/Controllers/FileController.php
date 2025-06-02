@@ -246,13 +246,12 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_template.docx'));
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->first();
-dd($order->purpose);
-        if ($order->purpose == "Վարկի մարում՝ տոկոսագումար և մայր գումար") {
+
+        if ($order->filter == Order::FULL_FILTER) {
             $lumpAmount = Order::where('contract_id', $order->contract_id)
-                ->where('purpose', 'Միանվագ վճարի ետվերադարձ')
+                ->where('filter', Order::REFUND_LUMP_FILTER)
                 ->select('amount')
                 ->first();
-dd($lumpAmount);
             $lumpAmountValue = $lumpAmount?->amount ?? 0;
             $amount2 = $this->makeMoney($order->amount - $lumpAmountValue);
         } else {
