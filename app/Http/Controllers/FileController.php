@@ -246,7 +246,7 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_template.docx'));
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->first();
-
+dd($order->purpose);
         if ($order->purpose == "Վարկի մարում՝ տոկոսագումար և մայր գումար") {
             $lumpAmount = Order::where('contract_id', $order->contract_id)
                 ->where('purpose', 'Միանվագ վճարի ետվերադարձ')
