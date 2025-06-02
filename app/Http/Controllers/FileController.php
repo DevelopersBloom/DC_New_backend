@@ -246,8 +246,22 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_template.docx'));
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->first();
+
+        if ($order->purpose == "Վարկի մարում՝ տոկոսագումար և մայր գումար") {
+            $lumpAmount = Order::where('contract_id', $order->contract_id)
+                ->where('purpose', 'Միանվագ վճարի ետվերադարձ')
+                ->select('amount')
+                ->first();
+
+            $lumpAmountValue = $lumpAmount?->amount ?? 0;
+            $amount2 = $this->makeMoney($order->amount - $lumpAmountValue);
+        } else {
+            $amount2 = $this->makeMoney($order->amount);
+        }
+
         $templateProcessor->setValues([
             'amount' => $this->makeMoney($order->amount),
+            'amount2' => $amount2,
             'rep_id' => $order->rep_id,
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
