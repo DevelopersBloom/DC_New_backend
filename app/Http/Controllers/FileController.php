@@ -260,7 +260,7 @@ class FileController extends Controller
         }
 
         $templateProcessor->setValues([
-            'amount' => $this->makeMoney($order->amount),
+            'amount1' => $this->makeMoney($order->amount),
             'amount2' => $amount2,
             'rep_id' => $order->rep_id,
             'order' => $order->order,
