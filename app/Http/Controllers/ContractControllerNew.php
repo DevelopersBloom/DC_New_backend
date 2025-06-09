@@ -89,8 +89,8 @@ class ContractControllerNew extends Controller
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
         $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
-//        return $currentPaymentAmount;
-        return new ContractDetailResource($contract);
+        return $currentPaymentAmount;
+//        return new ContractDetailResource($contract);
     }
     public function getHistoryDetails(int $id)
     {
