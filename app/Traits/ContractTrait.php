@@ -358,7 +358,7 @@ trait ContractTrait
                 // Check if the payment is overdue and has 'initial' status
                 if ($now->gt($payment_date) && $payment->status === 'initial') {
                     if ($last_penalty_date && $last_penalty_date->gt($payment_date) && $penalty_date_calculated==0) {
-                        $start_date = $last_penalty_date;
+                        $payment_date = $last_penalty_date;
                         $penalty_date_calculated++;
                     } elseif ($last_penalty_date && $last_penalty_date->gt($payment_date) && $penalty_date_calculated > 0) {
                         break;
