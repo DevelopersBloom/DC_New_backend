@@ -379,7 +379,7 @@ trait ContractTrait
             }
 
             // Subtract already paid penalties
-            $total_penalty_amount -= $penalty_paid;
+//            $total_penalty_amount -= $penalty_paid;
 
             // Save the penalty amount to the contract
             $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
