@@ -372,7 +372,7 @@ trait ContractTrait
                     }
                     // Add to the total penalty and delay days
                     //   $total_penalty_amount += $penalty_amount;
-                    if ($penalty_calculated > 0) {
+                    if ($penalty_calculated == 0) {
                         $total_delay_days += $delay_days;
                     }
                 }
