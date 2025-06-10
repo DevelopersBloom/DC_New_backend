@@ -386,6 +386,7 @@ trait ContractTrait
             $contract->save();
 
             return [
+                'p' => $penalty_amount,
                 'penalty_amount' => $total_penalty_amount,
 //                'penalty_amount' => max($total_penalty_amount, 0),
                 'delay_days' => $total_delay_days,
