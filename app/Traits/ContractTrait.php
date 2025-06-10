@@ -368,7 +368,7 @@ trait ContractTrait
 
                         // Calculate the penalty for this overdue payment
                         $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                        if ($penalty_amount > 0 && !$penalty_calculated && $penalty_date_calculated <= 1) {
+                        if ($penalty_amount > 0 && !$penalty_calculated) {
                             $total_penalty_amount = $penalty_amount;
                             $penalty_calculated = true; // Set flag to true after first calculation
                         }
