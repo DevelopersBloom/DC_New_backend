@@ -336,6 +336,14 @@ trait ContractTrait
         $penalty_paid = Payment::where('contract_id', $contract->id)
             ->where('type', 'penalty')
             ->sum('paid');
+        $last_penalty = Payment::where('contract_id', $contract->id)
+            ->where('type', 'penalty')
+            ->where('paid', '>', 0)
+            ->orderByDesc('date')
+            ->first();
+
+        $last_penalty_date = $last_penalty ? \Carbon\Carbon::parse($last_penalty->date) : null;
+
         $now = $import_date ?? \Carbon\Carbon::now();
         $total_penalty_amount = 0;
         $total_delay_days = 0;
@@ -346,8 +354,11 @@ trait ContractTrait
                 $payment_date = \Carbon\Carbon::parse($payment->date);
                 // Check if the payment is overdue and has 'initial' status
                 if ($now->gt($payment_date) && $payment->status === 'initial') {
+                    $start_date = $last_penalty_date && $last_penalty_date->gt($payment_date)
+                        ? $last_penalty_date
+                        : $payment_date;
                     // Calculate the overdue days
-                    $delay_days = $now->diffInDays($payment_date);
+                    $delay_days = $now->diffInDays($start_date);
 
                     // Calculate the penalty for this overdue payment
                     $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
