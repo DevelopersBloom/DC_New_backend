@@ -451,7 +451,7 @@ trait ContractTrait
         ];
     }
 
-    public function countPenalty1($contract_id)
+    public function countPenalty2($contract_id)
     {
         $contract = Contract::where('id', $contract_id)->with('payments')->first();
         $penalty_paid = Payment::with('contract_id', $contract->id)
