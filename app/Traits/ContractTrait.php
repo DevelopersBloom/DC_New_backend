@@ -266,7 +266,8 @@ trait ContractTrait
 //            "totalPaid" => $totalPaid,
             "penaltyAmount" => $penaltyAmount,
             "current_amount" =>$currentAmount > 0 ? $currentAmount : 0,
-            "penalty_amount" => $penaltyAmount['penalty_amount']
+            "penalty_amount" => $penaltyAmount['penalty_amount'],
+            "delay_days" => $penaltyAmount['delay_days']
         ];
 
     }
@@ -380,7 +381,8 @@ trait ContractTrait
             $contract->save();
 
             return [
-                'penalty_amount' => max($total_penalty_amount, 0),
+                'penalty_amount' => $total_penalty_amount,
+//                'penalty_amount' => max($total_penalty_amount, 0),
                 'delay_days' => $total_delay_days,
             ];
         }
