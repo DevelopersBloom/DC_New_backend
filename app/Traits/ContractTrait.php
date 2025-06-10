@@ -363,8 +363,6 @@ trait ContractTrait
                     } elseif ($last_penalty_date && $last_penalty_date->gt($payment_date) && $penalty_date_calculated > 0) {
                         continue;
                     }
-                    if ($penalty_date_calculated <= 1)
-                    {
                         // Calculate the overdue days
                         $delay_days = $now->diffInDays($payment_date);
 
@@ -375,12 +373,12 @@ trait ContractTrait
                             $penalty_calculated = true; // Set flag to true after first calculation
                         }
                         // Add to the total penalty and delay days
-                        $total_penalty_amount += $penalty_amount;
                         if ($penalty_date_calculated <= 1) {
                             $total_delay_days += $delay_days;
-                        }
+                            $total_penalty_amount += $penalty_amount;
+
                     }
-                    }
+                }
 
             }
 
