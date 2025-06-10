@@ -357,7 +357,7 @@ trait ContractTrait
                         $penalty_calculated = true; // Set flag to true after first calculation
                     }
                     // Add to the total penalty and delay days
-                    //   $total_penalty_amount += $penalty_amount;
+                    $total_penalty_amount += $penalty_amount;
                     $total_delay_days += $delay_days;
                 }
             }
