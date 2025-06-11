@@ -329,7 +329,7 @@ trait ContractTrait
             "penalty_amount" => $penalty
         ];
     }
-    public function countPenalty($contract_id, $import_date = null)
+    public function countPenalty1($contract_id, $import_date = null)
     {
         $contract = Contract::where('id', $contract_id)
             ->with('payments')->first();
@@ -380,163 +380,75 @@ trait ContractTrait
         ];
     }
 
-            function countPenalty3($contract_id, $import_date = null)
+    public function countPenalty($contract_id, $import_date = null)
     {
-        $contract = Contract::where('id', $contract_id)
-            ->with('payments')->first();
-        $penalty_paid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'penalty')
-            ->sum('paid');
+        $contract = Contract::with('payments')->find($contract_id);
 
-        $now = $import_date ?? \Carbon\Carbon::now();
-        $total_penalty_amount = 0;
-        $total_delay_days = 0;
-        if ($contract) {
-            $penalty_calculated = false;
-            foreach ($contract->payments as $payment) {
-                // Parse the payment date
-                $payment_date = \Carbon\Carbon::parse($payment->date);
-                // Check if the payment is overdue and has 'initial' status
-                if ($now->gt($payment_date) && $payment->status === 'initial') {
-                    // Calculate the overdue days
-                    $delay_days = $now->diffInDays($payment_date);
-
-                    // Calculate the penalty for this overdue payment
-                    $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                    if ($penalty_amount > 0 && !$penalty_calculated) {
-                        $total_penalty_amount = $penalty_amount;
-                        $penalty_calculated = true; // Set flag to true after first calculation
-                    }
-                    // Add to the total penalty and delay days
-                    $total_penalty_amount += $penalty_amount;
-                    $total_delay_days += $delay_days;
-                }
-            }
-
-            // Subtract already paid penalties
-            $total_penalty_amount -= $penalty_paid;
-
-            // Save the penalty amount to the contract
-            $contract->penalty_amount = max($total_penalty_amount, 0);
-            $contract->save();
-
+        if (!$contract) {
             return [
-                'penalty_amount' => max($total_penalty_amount, 0),
-                'delay_days' => $total_delay_days,
+                'penalty_amount' => 0,
+                'delay_days' => 0,
             ];
         }
 
-        return [
-            'penalty_amount' => 0,
-            'delay_days' => 0,
-        ];
-    }
-    public function countPenalty1($contract_id, $import_date = null)
-    {
-        $contract = Contract::where('id', $contract_id)
-            ->with('payments')->first();
-        $penalty_paid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'penalty')
-            ->sum('paid');
+        $now = $import_date ? \Carbon\Carbon::parse($import_date) : now();
+
+        // Get the last penalty payment date
         $last_penalty = Payment::where('contract_id', $contract->id)
             ->where('type', 'penalty')
             ->where('paid', '>', 0)
             ->orderByDesc('date')
             ->first();
-
         $last_penalty_date = $last_penalty ? \Carbon\Carbon::parse($last_penalty->date) : null;
 
-        $now = $import_date ?? \Carbon\Carbon::now();
         $total_penalty_amount = 0;
         $total_delay_days = 0;
-        if ($contract) {
-            $penalty_calculated = false;
-            $penalty_date_calculated = 0;
+        $penalty_calculated = false;
+        $penalty_date_adjusted = false;
 
-            foreach ($contract->payments as $payment) {
-                // Parse the payment date
-                $payment_date = \Carbon\Carbon::parse($payment->date);
-                // Check if the payment is overdue and has 'initial' status
-                if ($now->gt($payment_date) && $payment->status === 'initial') {
-                    if ($last_penalty_date && $last_penalty_date->gt($payment_date) && $penalty_date_calculated==0) {
-                        $payment_date = $last_penalty_date;
-                        $penalty_date_calculated++;
-                    } elseif ($last_penalty_date && $last_penalty_date->gt($payment_date) && $penalty_date_calculated > 0) {
-                        continue;
-                    }
-                        // Calculate the overdue days
-                        $delay_days = $now->diffInDays($payment_date);
-
-                        // Calculate the penalty for this overdue payment
-                        $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                        if ($penalty_amount > 0 && !$penalty_calculated) {
-                            $total_penalty_amount = $penalty_amount;
-                            $penalty_calculated = true; // Set flag to true after first calculation
-                        }
-                        // Add to the total penalty and delay days
-                        if ($penalty_date_calculated < 1) {
-                            $total_delay_days += $delay_days;
-                            $total_penalty_amount += $penalty_amount;
-                    }
-                }
-
+        foreach ($contract->payments as $payment) {
+            // Only consider unpaid payments
+            if ($payment->status !== 'initial') {
+                continue;
             }
 
-            // Subtract already paid penalties
-//            $total_penalty_amount -= $penalty_paid;
+            $payment_date = \Carbon\Carbon::parse($payment->date);
 
-            // Save the penalty amount to the contract
-            $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
-            $contract->save();
+            // If payment date is before last penalty payment date, adjust it
+            if ($last_penalty_date && $payment_date->lt($last_penalty_date)) {
+                // Only adjust once
+                if (!$penalty_date_adjusted) {
+                    $payment_date = $last_penalty_date;
+                    $penalty_date_adjusted = true;
+                } else {
+                    // Skip this payment, already adjusted for one
+                    continue;
+                }
+            }
 
-            return [
-                'penalty_amount' => $total_penalty_amount,
-//                'penalty_amount' => max($total_penalty_amount, 0),
-                'delay_days' => $total_delay_days,
-            ];
+            // Only calculate if overdue
+            if ($now->gt($payment_date)) {
+                $delay_days = $now->diffInDays($payment_date);
+
+                // Calculate the penalty once
+                if (!$penalty_calculated) {
+                    $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
+                    $penalty_calculated = true;
+                    $total_penalty_amount += $penalty_amount;
+                }
+
+                $total_delay_days += $delay_days;
+            }
         }
+
+        // Set the result to contract
+        $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
+        $contract->save();
 
         return [
-            'penalty_amount' => 0,
-            'delay_days' => 0,
+            'penalty_amount' => $total_penalty_amount,
+            'delay_days' => $total_delay_days,
         ];
-    }
-
-    public function countPenalty2($contract_id)
-    {
-        $contract = Contract::where('id', $contract_id)->with('payments')->first();
-        $penalty_paid = Payment::with('contract_id', $contract->id)
-            ->where('type', 'penalty')->sum('paid');
-        $now = \Carbon\Carbon::now();
-        $dateToCheck = null;
-        $penalty_amount = 0;
-        if ($contract) {
-            for ($i = 0; $i < count($contract->payments); $i++) {
-                $payment = $contract->payments[$i];
-
-                if ($now->gt(\Carbon\Carbon::parse($payment->date)) && $payment->status === 'initial') {
-                    $dateToCheck = Carbon::parse($payment->date);
-
-                    break;
-                }
-
-            }
-            $difference = 0;
-            if ($dateToCheck) {
-                $difference = $now->diffInDays($dateToCheck);
-                $penalty_amount = ($this->calcAmount($contract->left, $difference, $contract->penalty) - $penalty_paid);
-                $contract->penalty_amount = $penalty_amount;
-                $contract->save();
-            } else {
-                $contract->penalty_amount = 0;
-                $contract->save();
-            }
-
-            return [
-                'penalty_amount' => $penalty_amount > 0 ? $penalty_amount : 0,
-                'delay_days' => $difference,
-            ];
-        }
     }
 
     public function createImportPayment(Contract $contract)
