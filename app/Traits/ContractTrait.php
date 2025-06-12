@@ -329,7 +329,7 @@ trait ContractTrait
             "penalty_amount" => $penalty
         ];
     }
-    public function countPenalty($contract_id, $import_date = null)
+    public function countPenalty1($contract_id, $import_date = null)
     {
         $contract = Contract::where('id', $contract_id)
             ->with('payments')->first();
@@ -380,7 +380,7 @@ trait ContractTrait
         ];
     }
 
-    public function countPenalty1($contract_id, $import_date = null)
+    public function countPenalty($contract_id, $import_date = null)
     {
         $contract = Contract::with('payments')->find($contract_id);
 
