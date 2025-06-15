@@ -362,15 +362,15 @@ trait ContractTrait
             }
 
             // Subtract already paid penalties
-            $total_penalty_amount -= $penalty_paid;
+           // $total_penalty_amount -= $penalty_paid;
 
             // Save the penalty amount to the contract
             $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
             $contract->save();
 
             return [
-                'penalty_amount' => $total_penalty_amount > 0 ? $total_penalty_amount : 0,
-                'delay_days' => $total_delay_days,
+                'penalty_amount' => $total_penalty_amount,
+                'delay_days' => $penalty_paid,
             ];
         }
 
@@ -419,7 +419,7 @@ trait ContractTrait
                 // Only adjust once
                 if (!$penalty_date_adjusted) {
                     $payment_date = $last_penalty_date;
-                    $penalty_date_adjusted = true;
+                    $penalty_date_adjusted  = true;
                 } else {
                     // Skip this payment, already adjusted for one
                     continue;
@@ -450,6 +450,7 @@ trait ContractTrait
             'delay_days' => $total_delay_days,
         ];
     }
+
 
     public function createImportPayment(Contract $contract)
     {
