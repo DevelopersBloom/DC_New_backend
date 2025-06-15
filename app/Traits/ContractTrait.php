@@ -428,6 +428,11 @@ trait ContractTrait
                 }
             }
 
+            return [
+                'penalty_amount' => $total_penalty_amount,
+                'delay_days' => $total_delay_days,
+                'payment date' => $payment_date,
+            ];
             // Only calculate if overdue
             if ($now->gt($payment_date)) {
                 $delay_days = $now->diffInDays($payment_date);
