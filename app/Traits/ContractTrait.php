@@ -442,8 +442,8 @@ trait ContractTrait
                 $total_delay_days += $delay_days;
             }
         }
-        $total_penalty_amount -= $penalty_paid;
-        $total_penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
+
+        $total_penalty_amount = $last_penalty_completed ? $total_penalty_amount : $total_penalty_amount - $penalty_paid;
         // Set the result to contract
         $contract->penalty_amount = $total_penalty_amount;
         $contract->save();
