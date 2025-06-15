@@ -432,6 +432,7 @@ trait ContractTrait
                 'penalty_amount' => $total_penalty_amount,
                 'delay_days' => $total_delay_days,
                 'payment date' => $payment_date,
+                'id' => $last_penalty->id,
                 'data' => $last_penalty_date . ' ,' . $payment_date->lt($last_penalty_date) . ' ,' . $last_penalty_completed
             ];
             // Only calculate if overdue
