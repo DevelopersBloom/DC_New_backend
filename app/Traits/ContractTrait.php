@@ -435,12 +435,7 @@ trait ContractTrait
                 // Calculate the penalty once
                 if (!$penalty_calculated) {
                     $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                    return [
-                        'penalty_amount' => $penalty_amount,
-                        'delay_days' => $delay_days,
-                        '$contract->left' => $contract->left,
-                        '$contract->penalty' => $contract->penalty
-                    ];
+
                     $penalty_calculated = true;
                     $total_penalty_amount += $penalty_amount;
                 }
@@ -457,10 +452,6 @@ trait ContractTrait
         return [
             'penalty_amount' => $total_penalty_amount,
             'delay_days' => $total_delay_days,
-            'completed' => $last_penalty_completed,
-            'payment_date' => $payment_date,
-            'last_penaly' => $last_penalty,
-            'penalyAMount' => $penalty_amount
         ];
     }
 
