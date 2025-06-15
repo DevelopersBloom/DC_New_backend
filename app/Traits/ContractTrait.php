@@ -453,7 +453,8 @@ trait ContractTrait
             'delay_days' => $total_delay_days,
             'completed' => $last_penalty_completed,
             'payment_date' => $payment_date,
-            'last_penaly' => $last_penalty
+            'last_penaly' => $last_penalty,
+            'penalyAMount' => $penalty_amount
         ];
     }
 
