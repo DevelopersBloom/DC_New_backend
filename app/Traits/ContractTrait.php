@@ -265,9 +265,9 @@ trait ContractTrait
 //            "totalPayment" => $totalPayment,
 //            "totalPaid" => $totalPaid,
             "penaltyAmount" => $penaltyAmount,
-            "current_amount" =>$currentAmount > 0 ? $currentAmount : 0,
-            "penalty_amount" => $penaltyAmount['penalty_amount'],
-            "delay_days" => $penaltyAmount['delay_days']
+//            "current_amount" =>$currentAmount > 0 ? $currentAmount : 0,
+//            "penalty_amount" => $penaltyAmount['penalty_amount'],
+//            "delay_days" => $penaltyAmount['delay_days']
         ];
 
     }
