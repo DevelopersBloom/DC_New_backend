@@ -436,7 +436,7 @@ trait ContractTrait
                 if (!$penalty_calculated) {
                     $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
                     return [
-                        'penlaty_amount' => $penalty_amount,
+                        'penalty_amount' => $penalty_amount,
                         'delay_days' => $delay_days
                     ];
                     $penalty_calculated = true;
