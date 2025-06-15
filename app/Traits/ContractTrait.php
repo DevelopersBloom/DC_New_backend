@@ -400,7 +400,7 @@ trait ContractTrait
             ->where('type', 'penalty')
             ->where('paid', '>', 0)
             ->orderByDesc('date')
-            ->oderByDesc('id')
+            ->orderByDesc('id')
             ->first();
 
         $last_penalty_date = $last_penalty ? \Carbon\Carbon::parse($last_penalty->date) : null;
