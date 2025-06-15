@@ -437,7 +437,9 @@ trait ContractTrait
                     $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
                     return [
                         'penalty_amount' => $penalty_amount,
-                        'delay_days' => $delay_days
+                        'delay_days' => $delay_days,
+                        '$contract->left' => $contract->left,
+                        '$contract->penalty' => $contract->penalty
                     ];
                     $penalty_calculated = true;
                     $total_penalty_amount += $penalty_amount;
