@@ -329,7 +329,7 @@ trait ContractTrait
             "penalty_amount" => $penalty
         ];
     }
-    public function countPenalty($contract_id, $import_date = null)
+    public function countPenalty1($contract_id, $import_date = null)
     {
         $contract = Contract::where('id', $contract_id)
             ->with('payments')->first();
@@ -380,7 +380,7 @@ trait ContractTrait
         ];
     }
 
-    public function countPenalty1($contract_id, $import_date = null)
+    public function countPenalty($contract_id, $import_date = null)
     {
         $contract = Contract::with('payments')->find($contract_id);
 
@@ -400,7 +400,7 @@ trait ContractTrait
             ->orderByDesc('date')
             ->first();
         $last_penalty_date = $last_penalty ? \Carbon\Carbon::parse($last_penalty->date) : null;
-        $last_penalty_completed = $last_penalty->is_completed;
+        $last_penalty_completed = $last_penalty->is_completed ?? false;
         $total_penalty_amount = 0;
         $total_delay_days = 0;
         $penalty_calculated = false;
