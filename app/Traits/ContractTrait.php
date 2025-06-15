@@ -401,6 +401,11 @@ trait ContractTrait
             ->where('paid', '>', 0)
             ->orderByDesc('date')
             ->first();
+        return [
+           '$last_penalty' => $last_penalty,
+           'penalty_amount' => 0,
+           'delay_days' => 0
+        ];
         $last_penalty_date = $last_penalty ? \Carbon\Carbon::parse($last_penalty->date) : null;
         $last_penalty_completed = $last_penalty->is_completed ?? false;
         $total_penalty_amount = 0;
