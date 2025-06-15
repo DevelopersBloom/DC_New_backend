@@ -443,9 +443,9 @@ trait ContractTrait
             }
         }
         $total_penalty_amount -= $penalty_paid;
-
+        $total_penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0
         // Set the result to contract
-        $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
+        $contract->penalty_amount = $total_penalty_amount;
         $contract->save();
 
         return [
