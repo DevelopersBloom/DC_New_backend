@@ -392,7 +392,9 @@ trait ContractTrait
         }
 
         $now = $import_date ? \Carbon\Carbon::parse($import_date) : now();
-
+        $penalty_paid = Payment::where('contract_id', $contract->id)
+            ->where('type', 'penalty')
+            ->sum('paid');
         // Get the last penalty payment date
         $last_penalty = Payment::where('contract_id', $contract->id)
             ->where('type', 'penalty')
@@ -440,6 +442,7 @@ trait ContractTrait
                 $total_delay_days += $delay_days;
             }
         }
+        $total_penalty_amount -= $penalty_paid;
 
         // Set the result to contract
         $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
