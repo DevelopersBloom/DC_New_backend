@@ -30,6 +30,7 @@ class Payment extends Model
         'passport',
         'phone',
         'another_payer',
+        'is_completed'
     ];
 
     public function contract(){

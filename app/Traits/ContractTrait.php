@@ -362,7 +362,7 @@ trait ContractTrait
             }
 
             // Subtract already paid penalties
-           // $total_penalty_amount -= $penalty_paid;
+            $total_penalty_amount -= $penalty_paid;
 
             // Save the penalty amount to the contract
             $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
@@ -370,7 +370,7 @@ trait ContractTrait
 
             return [
                 'penalty_amount' => $total_penalty_amount,
-                'delay_days' => $penalty_paid,
+                'delay_days' => $delay_days,
             ];
         }
 
@@ -400,7 +400,7 @@ trait ContractTrait
             ->orderByDesc('date')
             ->first();
         $last_penalty_date = $last_penalty ? \Carbon\Carbon::parse($last_penalty->date) : null;
-
+        $last_penalty_completed = $last_penalty->is_completed;
         $total_penalty_amount = 0;
         $total_delay_days = 0;
         $penalty_calculated = false;
@@ -415,7 +415,7 @@ trait ContractTrait
             $payment_date = \Carbon\Carbon::parse($payment->date);
 
             // If payment date is before last penalty payment date, adjust it
-            if ($last_penalty_date && $payment_date->lt($last_penalty_date)) {
+            if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
                 // Only adjust once
                 if (!$penalty_date_adjusted) {
                     $payment_date = $last_penalty_date;

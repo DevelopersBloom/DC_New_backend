@@ -13,8 +13,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('filter')->nullable()->after('purpose');
+        Schema::table('payments', function (Blueprint $table) {
+            $table->boolean('is_completed')->default(false);
         });
     }
 
@@ -25,8 +25,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn('filter');
+        Schema::table('payments', function (Blueprint $table) {
+            $table->dropColumn('is_completed');
         });
     }
 };

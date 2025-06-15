@@ -64,7 +64,7 @@ class PaymentService {
                 'payment_id' => $paymentId
             ];
         } else {
-            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash,[],$deal_id);
+            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash,[],$deal_id,null,true);
           //  return $amount - $penalty;
             return [
                 'penalty' => $penalty,
@@ -209,7 +209,7 @@ class PaymentService {
 
 
     }
-    public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null,$date=null)
+    public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null,$date=null,$is_completed = false)
     {
        // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
         if ($type === 'penalty' || $type === 'full' || $type === 'partial') {
@@ -223,7 +223,7 @@ class PaymentService {
         $payment->paid = $amount;
         $payment->type = $type;
         $payment->cash = $cash ?? true;
-
+        $payment->is_completed = $is_completed;
         $user = auth()->user() ?? User::where('id',1)->first();
         $payment->pawnshop_id = $user->pawnshop_id;
        // $payment->paid_date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
