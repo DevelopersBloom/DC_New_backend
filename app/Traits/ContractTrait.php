@@ -443,7 +443,7 @@ trait ContractTrait
             }
         }
 
-        $total_penalty_amount = $last_penalty_completed ? $total_penalty_amount : $total_penalty_amount - $penalty_paid;
+//        $total_penalty_amount = $last_penalty_completed ? $total_penalty_amount : $total_penalty_amount - $penalty_paid;
         // Set the result to contract
         $contract->penalty_amount = $total_penalty_amount;
         $contract->save();
@@ -451,6 +451,7 @@ trait ContractTrait
         return [
             'penalty_amount' => $total_penalty_amount,
             'delay_days' => $total_delay_days,
+            'completed' => $last_penalty_completed,
         ];
     }
 
