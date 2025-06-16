@@ -397,6 +397,7 @@ trait ContractTrait
         $last_penalty = Payment::where('contract_id', $contract->id)
             ->where('type', 'penalty')
             ->where('paid', '>', 0)
+            ->where('parent_id',0)
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->first();
