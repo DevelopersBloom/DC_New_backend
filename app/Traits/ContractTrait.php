@@ -408,6 +408,7 @@ trait ContractTrait
         $penalty_calculated = false;
         $penalty_date_adjusted = false;
         $parent_id = 0;
+        $parent_id = null;
 
         foreach ($contract->payments as $payment) {
             // Only consider unpaid payments
@@ -416,7 +417,6 @@ trait ContractTrait
             }
 
             $payment_date = \Carbon\Carbon::parse($payment->date);
-            $parent_id = null;
 
             // If payment date is before last penalty payment date, adjust it
             if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
