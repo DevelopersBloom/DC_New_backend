@@ -416,12 +416,7 @@ trait ContractTrait
             ->orderBy('date','asc')
             ->first();
 
-        return [
-            'penalty_amount' => $first_unpayed_payment->id,
-            'delay_days' => 0,
-            'parent_id' => 0,
-            't' => $first_unpayed_payment
-        ];
+
 //        foreach ($contract->payments as $payment) {
 //            // Only consider unpaid payments
 //            if ($payment->status !== 'initial') {
@@ -472,7 +467,7 @@ trait ContractTrait
         $contract->save();
 
         return [
-            'penalty_amount' => $penalty_amount > 0 ? $penalty_paid : 0,
+            'penalty_amount' => $penalty_amount > 0 ? $penalty_amount : 0,
             'delay_days' => $delay_days,
             'parent_id' => $parent_id
         ];
