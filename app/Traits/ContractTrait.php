@@ -412,10 +412,16 @@ trait ContractTrait
         $parent_id = null;
         $first_unpayed_payment = Payment::where('contract_id',$contract->id)
             ->where('status','initial')
-                ->where('amount','>','0')
+            ->where('amount','>','0')
             ->orderBy('date','asc')
             ->first();
 
+        return [
+            'penalty_amount' => $first_unpayed_payment->id,
+            'delay_days' => 0,
+            'parent_id' => 0,
+            't' => $first_unpayed_payment
+        ];
 //        foreach ($contract->payments as $payment) {
 //            // Only consider unpaid payments
 //            if ($payment->status !== 'initial') {
