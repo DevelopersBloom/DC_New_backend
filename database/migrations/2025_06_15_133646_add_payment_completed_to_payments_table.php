@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::table('payments', function (Blueprint $table) {
             $table->boolean('is_completed')->default(false)->after('paid');
-            $table->integer('parent_id')->default(0)->after('is_completed');
+            $table->unsignedBigInteger('parent_id')->nullable()->after('is_completed');
         });
     }
 
