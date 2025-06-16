@@ -329,6 +329,7 @@ trait ContractTrait
             "penalty_amount" => $penalty
         ];
     }
+
     public function countPenalty1($contract_id, $import_date = null)
     {
         $contract = Contract::where('id', $contract_id)
@@ -415,14 +416,14 @@ trait ContractTrait
             }
 
             $payment_date = \Carbon\Carbon::parse($payment->date);
-            $parent_id = $payment->id;
+            $parent_id = null;
 
             // If payment date is before last penalty payment date, adjust it
             if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
                 // Only adjust once
                 if (!$penalty_date_adjusted) {
                     $payment_date = $last_penalty_date;
-                    $id = $last_penalty->id;
+                    $parent_id = $last_penalty->id;
                     $penalty_date_adjusted  = true;
                 } else {
                     // Skip this payment, already adjusted for one
@@ -440,6 +441,7 @@ trait ContractTrait
 
                     $penalty_calculated = true;
                     $total_penalty_amount += $penalty_amount;
+                    $parent_id = $payment->id;
                 }
 
                 $total_delay_days += $delay_days;
