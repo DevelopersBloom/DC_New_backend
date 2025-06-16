@@ -439,29 +439,30 @@ trait ContractTrait
 //                }
 //            }
 
-      // Only calculate if overdue
+            // Only calculate if overdue
             if ($now->gt($payment_date)) {
                 $delay_days = $now->diffInDays($payment_date);
 
                 // Calculate the penalty once
 //                if (!$penalty_calculated) {
-                    $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
+                $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
 
 //                    $penalty_calculated = true;
 //                    $total_penalty_amount += $penalty_amount;
-                    $parent_id = $first_unpayed_payment->id;
+                $parent_id = $first_unpayed_payment->id;
 //                }
 
 //                $total_delay_days += $delay_days;
             }
+
+
+            $penalty_paid = Payment::where('contract_id', $contract->id)
+                ->where('type', 'penalty')
+                ->where('parent_id', $first_unpayed_payment->id)
+                ->sum('paid') ?? 0;
+
+            $penalty_amount -= $penalty_paid;
         }
-
-         $penalty_paid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'penalty')
-            ->where('parent_id',$first_unpayed_payment->id)
-            ->sum('paid') ?? 0;
-
-        $penalty_amount -= $penalty_paid;
         // Set the result to contract
         $contract->penalty_amount = $penalty_amount;
         $contract->save();
