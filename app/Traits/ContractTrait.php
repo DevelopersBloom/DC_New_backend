@@ -422,6 +422,7 @@ trait ContractTrait
 //            if ($payment->status !== 'initial') {
 //                continue;
 //            }
+        $penalty_amount = 0;
         if ($first_unpayed_payment) {
 
             $payment_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
