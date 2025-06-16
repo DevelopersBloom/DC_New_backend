@@ -406,6 +406,7 @@ trait ContractTrait
         $total_delay_days = 0;
         $penalty_calculated = false;
         $penalty_date_adjusted = false;
+        $parent_id = 0;
 
         foreach ($contract->payments as $payment) {
             // Only consider unpaid payments
@@ -414,7 +415,7 @@ trait ContractTrait
             }
 
             $payment_date = \Carbon\Carbon::parse($payment->date);
-            $id = $payment->id;
+            $parent_id = $payment->id;
 
             // If payment date is before last penalty payment date, adjust it
             if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
@@ -445,10 +446,10 @@ trait ContractTrait
             }
         }
 
-        $penalty_paid = Payment::where('contract_id', $contract->id)
+         $penalty_paid = $parent_id > 0 ? Payment::where('contract_id', $contract->id)
             ->where('type', 'penalty')
-            ->whereColumn('parent_id', 'id')
-            ->sum('paid') ?? 0;
+            ->where('parent_id',$parent_id)
+            ->sum('paid') : 0;
 
         $total_penalty_amount = $last_penalty_completed ? $total_penalty_amount : $total_penalty_amount - $penalty_paid;
         // Set the result to contract
@@ -458,6 +459,7 @@ trait ContractTrait
         return [
             'penalty_amount' => $total_penalty_amount > 0 ? $total_penalty_amount : 0,
             'delay_days' => $total_delay_days,
+            'parent_id' => $parent_id
         ];
     }
 
