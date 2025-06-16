@@ -430,17 +430,17 @@ trait ContractTrait
                 }
             }
 
-return [
-    'date' => $payment_date,
-    'id' => $last_penalty->id,
-    'lastDate' => $last_penalty_date,
-    'test' => $last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed,
-    'penalty_amount' =>  0,
-    'delay_days' => 0,
-];
-            // Only calculate if overdue
+      // Only calculate if overdue
             if ($now->gt($payment_date)) {
                 $delay_days = $now->diffInDays($payment_date);
+                return [
+                    'date' => $payment_date,
+                    'id' => $last_penalty->id,
+                    'lastDate' => $last_penalty_date,
+                    'test' => $last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed,
+                    'penalty_amount' =>  0,
+                    'delay_days' => $delay_days,
+                ];
 
                 // Calculate the penalty once
                 if (!$penalty_calculated) {
