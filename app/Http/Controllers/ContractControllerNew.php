@@ -87,7 +87,6 @@ class ContractControllerNew extends Controller
 
         ])->findOrFail($id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
-        return $currentPaymentAmount;
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
         $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
 //        return $currentPaymentAmount;
