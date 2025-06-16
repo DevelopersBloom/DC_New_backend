@@ -14,8 +14,8 @@ return new class extends Migration
     public function up()
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->boolean('is_completed')->default(false);
-            $table->integer('parent_id')->default(0);
+            $table->boolean('is_completed')->default(false)->after('paid');
+            $table->integer('parent_id')->default(0)->after('is_completed');
         });
     }
 
