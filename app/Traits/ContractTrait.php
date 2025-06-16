@@ -392,9 +392,6 @@ trait ContractTrait
         }
 
         $now = $import_date ? \Carbon\Carbon::parse($import_date) : now();
-        $penalty_paid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'penalty')
-            ->sum('paid');
         // Get the last penalty payment date
         $last_penalty = Payment::where('contract_id', $contract->id)
             ->where('type', 'penalty')
@@ -417,12 +414,14 @@ trait ContractTrait
             }
 
             $payment_date = \Carbon\Carbon::parse($payment->date);
+            $id = $payment->id;
 
             // If payment date is before last penalty payment date, adjust it
             if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
                 // Only adjust once
                 if (!$penalty_date_adjusted) {
                     $payment_date = $last_penalty_date;
+                    $id = $last_penalty->id;
                     $penalty_date_adjusted  = true;
                 } else {
                     // Skip this payment, already adjusted for one
@@ -437,14 +436,6 @@ trait ContractTrait
                 // Calculate the penalty once
                 if (!$penalty_calculated) {
                     $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                    return [
-                        'date' => $payment_date,
-                        'id' => $last_penalty->id,
-                        'lastDate' => $last_penalty_date,
-                        'test' => $last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed,
-                        'penalty_amount' =>  $penalty_amount,
-                        'delay_days' => $delay_days,
-                    ];
 
                     $penalty_calculated = true;
                     $total_penalty_amount += $penalty_amount;
@@ -453,6 +444,11 @@ trait ContractTrait
                 $total_delay_days += $delay_days;
             }
         }
+
+        $penalty_paid = Payment::where('contract_id', $contract->id)
+            ->where('type', 'penalty')
+            ->whereColumn('parent_id', 'id')
+            ->sum('paid') ?? 0;
 
         $total_penalty_amount = $last_penalty_completed ? $total_penalty_amount : $total_penalty_amount - $penalty_paid;
         // Set the result to contract

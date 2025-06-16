@@ -15,6 +15,7 @@ return new class extends Migration
     {
         Schema::table('payments', function (Blueprint $table) {
             $table->boolean('is_completed')->default(false);
+            $table->integer('parent_id')->default(0);
         });
     }
 
@@ -27,6 +28,7 @@ return new class extends Migration
     {
         Schema::table('payments', function (Blueprint $table) {
             $table->dropColumn('is_completed');
+            $table->dropColumn('parent_id');
         });
     }
 };
