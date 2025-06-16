@@ -56,7 +56,7 @@ class PaymentService {
     }
 
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash,$deal_id=null,$parent_id=null) {
-        if ($amount <= $penalty) {
+        if ($amount < $penalty) {
             $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash,[],$deal_id,null,false,$parent_id);
             //return 0;
             return [
