@@ -55,7 +55,7 @@ class PaymentService {
         ];
     }
 
-    public function processPenalty($contractId, $amount, $penalty, $payer, $cash,$deal_id=null,$parent_id=0) {
+    public function processPenalty($contractId, $amount, $penalty, $payer, $cash,$deal_id=null,$parent_id=null) {
         if ($amount <= $penalty) {
             $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash,[],$deal_id,null,false,$parent_id);
             //return 0;
@@ -210,7 +210,7 @@ class PaymentService {
 
 
     }
-    public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null,$date=null,$is_completed = false,$parent_id=0)
+    public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null,$date=null,$is_completed = false,$parent_id=null)
     {
        // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
         if ($type === 'penalty' || $type === 'full' || $type === 'partial') {
