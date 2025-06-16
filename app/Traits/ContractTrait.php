@@ -469,7 +469,7 @@ trait ContractTrait
         $contract->save();
 
         return [
-            'penalty_amount' => $penalty_amount > 0 ? $penalty_amount : 0,
+            'penalty_amount' =>0,
             'delay_days' => $delay_days,
             'parent_id' => $parent_id
         ];
