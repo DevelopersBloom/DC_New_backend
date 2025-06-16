@@ -420,17 +420,17 @@ trait ContractTrait
             $payment_date = \Carbon\Carbon::parse($payment->date);
 
             // If payment date is before last penalty payment date, adjust it
-            if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
-                // Only adjust once
-                if (!$penalty_date_adjusted) {
-                    $payment_date = $last_penalty_date;
-                    $parent_id = $last_penalty->id;
-                    $penalty_date_adjusted  = true;
-                } else {
-                    // Skip this payment, already adjusted for one
-                    continue;
-                }
-            }
+//            if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
+//                // Only adjust once
+//                if (!$penalty_date_adjusted) {
+//                    $payment_date = $last_penalty_date;
+//                    $parent_id = $last_penalty->id;
+//                    $penalty_date_adjusted  = true;
+//                } else {
+//                    // Skip this payment, already adjusted for one
+//                    continue;
+//                }
+//            }
 
       // Only calculate if overdue
             if ($now->gt($payment_date)) {
