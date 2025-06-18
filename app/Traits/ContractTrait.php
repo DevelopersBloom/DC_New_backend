@@ -409,7 +409,7 @@ trait ContractTrait
 
             if ($lasPayedPenalty) {
                 $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
-                $lastPayedPenaltyDate = $lasPayedPenalty->date;
+                $lastPayedPenaltyDate = \Carbon\Carbon::parse($lasPayedPenalty->date);
                 if ($isLastPenaltyCompeted && $lastPayedPenaltyDate->gt($payment_date)) {
                     $payment_date = $lastPayedPenaltyDate;
                 }
