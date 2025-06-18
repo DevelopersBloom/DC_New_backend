@@ -403,6 +403,14 @@ trait ContractTrait
         $lasPayedPenalty = Payment::where('contract_id',$contract->id)
             ->where('type','penalty')
             ->orderBy('date','desc')
+            ->orderBy('id','desc')
+            ->first();
+
+        $lastCompletedPayment =  Payment::where('contract_id',$contract->id)
+            ->where('is_completed',true)
+            ->where('type','penalty')
+            ->orderBy('date','desc')
+            ->orderBy('id','desc')
             ->first();
 
         $penalty_amount = 0;
@@ -415,6 +423,7 @@ trait ContractTrait
                 $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
                 $lastPayedPenaltyDate = \Carbon\Carbon::parse($lasPayedPenalty->date);
                 if ($lastPayedPenaltyDate->gt($penalty_start_date)) {
+
                     $penalty_start_date = $isLastPenaltyCompeted
                         ? $lastPayedPenaltyDate
                         : \Carbon\Carbon::parse(
@@ -443,6 +452,7 @@ trait ContractTrait
         $contract->save();
 
         return [
+            'is_compleyed' => $isLastPenaltyCompeted,
             'payment_date' => $penalty_start_date,
             'penalty_amount' => max($penalty_amount, 0),
             'delay_days' => $delay_days,
