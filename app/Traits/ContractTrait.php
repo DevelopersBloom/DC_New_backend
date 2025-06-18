@@ -409,7 +409,7 @@ trait ContractTrait
 
         if ($first_unpayed_payment) {
             $penalty_start_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
-
+            $parent_id = $first_unpayed_payment->id;
             if ($lasPayedPenalty) {
                 $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
                 $lastPayedPenaltyDate = \Carbon\Carbon::parse($lasPayedPenalty->date);
@@ -419,18 +419,20 @@ trait ContractTrait
                         : \Carbon\Carbon::parse(
                             Payment::where('id', $lasPayedPenalty->parent_id)->value('date')
                         );
+                    $parent_id = $lasPayedPenalty->parent_id;
                 }
-
             }
             if ($now->gt($penalty_start_date)) {
                 $delay_days = $now->diffInDays($penalty_start_date);
                 $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                $parent_id = $first_unpayed_payment->id;
-                $penalty_paid = Payment::where('contract_id', $contract->id)
-                    ->where('type', 'penalty')
-                    ->where('parent_id', $first_unpayed_payment->id)
-                    ->sum('paid') ?? 0;
-
+                if ($parent_id) {
+                    $penalty_paid = Payment::where('contract_id', $contract->id)
+                        ->where('type', 'penalty')
+                        ->where('parent_id', $parent_id)
+                        ->sum('paid') ?? 0;
+                } else {
+                    $penalty_paid = 0;
+                }
                 $penalty_amount -= $penalty_paid;
             }
         }
