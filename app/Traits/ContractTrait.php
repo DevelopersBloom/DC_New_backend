@@ -398,11 +398,24 @@ trait ContractTrait
             ->where('amount','>','0')
             ->orderBy('date','asc')
             ->first();
-
+        $lasy_payed_penalty = Payment::where('contract_id',$contract->id)
+            ->where('status','penalty')
+            ->orderBy('date','desc')
+            ->first();
         $penalty_amount = 0;
         $delay_days = 0;
         if ($first_unpayed_payment) {
             $payment_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
+
+            $isLastPenaltyCompeted = false;
+
+            if ($lasy_payed_penalty) {
+                $isLastPenaltyCompeted = $lasy_payed_penalty->is_completed;
+                $lastPayedPenaltyDate = $lasy_payed_penalty->date;
+                if ($lastPayedPenaltyDate->gt($payment_date)) {
+                    $payment_date = $lastPayedPenaltyDate;
+                }
+            }
             if ($now->gt($payment_date)) {
                 $delay_days = $now->diffInDays($payment_date);
                 $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
