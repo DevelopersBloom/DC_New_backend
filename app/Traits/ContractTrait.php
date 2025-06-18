@@ -406,13 +406,6 @@ trait ContractTrait
             ->orderBy('id','desc')
             ->first();
 
-        $lastCompletedPayment =  Payment::where('contract_id',$contract->id)
-            ->where('is_completed',true)
-            ->where('type','penalty')
-            ->orderBy('date','desc')
-            ->orderBy('id','desc')
-            ->first();
-
         $penalty_amount = 0;
         $delay_days = 0;
 
