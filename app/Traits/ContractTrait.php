@@ -433,6 +433,13 @@ trait ContractTrait
                 } else {
                     $penalty_paid = 0;
                 }
+                return [
+                    'date' => $penalty_start_date,
+                    'paid' => $penalty_paid,
+                    'penalty_amount' => $penalty_amount,
+                    'delay_days' => $delay_days,
+                    'parent_id' => $parent_id
+                ];
                 $penalty_amount -= $penalty_paid;
             }
         }
