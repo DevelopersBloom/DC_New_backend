@@ -399,7 +399,7 @@ trait ContractTrait
             ->orderBy('date','asc')
             ->first();
         $lasPayedPenalty = Payment::where('contract_id',$contract->id)
-            ->where('status','penalty')
+            ->where('type','penalty')
             ->orderBy('date','desc')
             ->first();
         $penalty_amount = 0;
