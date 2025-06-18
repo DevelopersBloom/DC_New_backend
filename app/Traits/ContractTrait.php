@@ -408,7 +408,13 @@ trait ContractTrait
             $payment_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
 
             $isLastPenaltyCompeted = false;
-
+            return [
+                'l' => $lasPayedPenalty,
+                'payment_date' => $payment_date,
+                'penalty_amount' => $penalty_amount,
+                'delay_days' => $delay_days,
+                'parent_id' => $parent_id
+            ];
             if ($lasPayedPenalty) {
                 $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
                 $lastPayedPenaltyDate = $lasPayedPenalty->date;
