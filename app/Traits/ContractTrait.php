@@ -398,7 +398,7 @@ trait ContractTrait
             ->where('amount','>','0')
             ->orderBy('date','asc')
             ->first();
-        $lasy_payed_penalty = Payment::where('contract_id',$contract->id)
+        $lasPayedPenalty = Payment::where('contract_id',$contract->id)
             ->where('status','penalty')
             ->orderBy('date','desc')
             ->first();
@@ -409,10 +409,10 @@ trait ContractTrait
 
             $isLastPenaltyCompeted = false;
 
-            if ($lasy_payed_penalty) {
-                $isLastPenaltyCompeted = $lasy_payed_penalty->is_completed;
-                $lastPayedPenaltyDate = $lasy_payed_penalty->date;
-                if ($lastPayedPenaltyDate->gt($payment_date)) {
+            if ($lasPayedPenalty) {
+                $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
+                $lastPayedPenaltyDate = $lasPayedPenalty->date;
+                if ($isLastPenaltyCompeted && $lastPayedPenaltyDate->gt($payment_date)) {
                     $payment_date = $lastPayedPenaltyDate;
                 }
             }
@@ -433,6 +433,7 @@ trait ContractTrait
         $contract->save();
 
         return [
+            'payment_date' => $payment_date,
             'penalty_amount' => $penalty_amount,
             'delay_days' => $delay_days,
             'parent_id' => $parent_id
