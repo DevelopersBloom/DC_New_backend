@@ -393,6 +393,7 @@ trait ContractTrait
 
         $now = $import_date ? \Carbon\Carbon::parse($import_date) : now();
         $parent_id = null;
+
         $first_unpayed_payment = Payment::where('contract_id',$contract->id)
             ->where('status','initial')
             ->where('amount','>','0')
@@ -402,20 +403,27 @@ trait ContractTrait
             ->where('type','penalty')
             ->orderBy('date','desc')
             ->first();
+
         $penalty_amount = 0;
         $delay_days = 0;
+
         if ($first_unpayed_payment) {
-            $payment_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
+            $penalty_start_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
 
             if ($lasPayedPenalty) {
                 $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
                 $lastPayedPenaltyDate = \Carbon\Carbon::parse($lasPayedPenalty->date);
-                if ($isLastPenaltyCompeted && $lastPayedPenaltyDate->gt($payment_date)) {
-                    $payment_date = $lastPayedPenaltyDate;
+                if ($lastPayedPenaltyDate->gt($penalty_start_date)) {
+                    $penalty_start_date = $isLastPenaltyCompeted
+                        ? $lastPayedPenaltyDate
+                        : \Carbon\Carbon::parse(
+                            Payment::where('id', $lasPayedPenalty->parent_id)->value('date')
+                        );
                 }
+
             }
-            if ($now->gt($payment_date)) {
-                $delay_days = $now->diffInDays($payment_date);
+            if ($now->gt($penalty_start_date)) {
+                $delay_days = $now->diffInDays($penalty_start_date);
                 $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
                 $parent_id = $first_unpayed_payment->id;
                 $penalty_paid = Payment::where('contract_id', $contract->id)
