@@ -436,10 +436,10 @@ trait ContractTrait
                 $delay_days = $now->diffInDays($penalty_start_date);
                 $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
                 if ($parent_id) {
-                    $penalty_paid = $lasPayedPenalty->is_completed ? Payment::where('contract_id', $contract->id)
+                    $penalty_paid = $lasPayedPenalty->is_completed ?  0 : Payment::where('contract_id', $contract->id)
                         ->where('type', 'penalty')
                         ->where('parent_id', $parent_id)
-                        ->sum('paid') ?? 0 : 0;
+                        ->sum('paid') ?? 0 ;
                 } else {
                     $penalty_paid = 0;
                 }
