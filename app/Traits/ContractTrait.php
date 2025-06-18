@@ -424,7 +424,7 @@ trait ContractTrait
 ////                        : \Carbon\Carbon::parse(
 ////                            Payment::where('id', $lasPayedPenalty->parent_id)->value('date')
 ////                        );
-                    $parent_id = $lasPayedPenalty->parent_id;
+                    $parent_id = $lasPayedPenalty->id;
                 }
             }
             if ($now->gt($penalty_start_date)) {
