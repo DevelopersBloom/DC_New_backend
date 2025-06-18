@@ -426,20 +426,14 @@ trait ContractTrait
                 $delay_days = $now->diffInDays($penalty_start_date);
                 $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
                 if ($parent_id) {
-                    $penalty_paid = Payment::where('contract_id', $contract->id)
+                    $penalty_paid = $lasPayedPenalty->is_completed ? Payment::where('contract_id', $contract->id)
                         ->where('type', 'penalty')
                         ->where('parent_id', $parent_id)
-                        ->sum('paid') ?? 0;
+                        ->sum('paid') ?? 0 : 0;
                 } else {
                     $penalty_paid = 0;
                 }
-                return [
-                    'date' => $penalty_start_date,
-                    'paid' => $penalty_paid,
-                    'penalty_amount' => $penalty_amount,
-                    'delay_days' => $delay_days,
-                    'parent_id' => $parent_id
-                ];
+
                 $penalty_amount -= $penalty_paid;
             }
         }
@@ -448,7 +442,7 @@ trait ContractTrait
         $contract->save();
 
         return [
-            'penalty_amount' => $penalty_amount,
+            'penalty_amount' => max($penalty_amount, 0),
             'delay_days' => $delay_days,
             'parent_id' => $parent_id
         ];
