@@ -449,7 +449,7 @@ trait ContractTrait
 
         return [
             'payment_date' => $penalty_start_date,
-            'penalty_amount' => max($penalty_amount, 0),
+            'penalty_amount' =>$penalty_amount,
             'delay_days' => $delay_days,
             'parent_id' => $parent_id
         ];
