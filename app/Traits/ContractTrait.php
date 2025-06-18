@@ -402,6 +402,7 @@ trait ContractTrait
 
         $lasPayedPenalty = Payment::where('contract_id',$contract->id)
             ->where('type','penalty')
+            ->where('is_completed',true)
             ->orderBy('date','desc')
             ->orderBy('id','desc')
             ->first();
@@ -413,15 +414,16 @@ trait ContractTrait
             $penalty_start_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
             $parent_id = $first_unpayed_payment->id;
             if ($lasPayedPenalty) {
-                $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
                 $lastPayedPenaltyDate = \Carbon\Carbon::parse($lasPayedPenalty->date);
+//                $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
+//                $penalty_start_date = $lastPayedPenaltyDate->gt($penalty_start_date) ? $lastPayedPenaltyDate : $penalty_start_date;
                 if ($lastPayedPenaltyDate->gt($penalty_start_date)) {
-
-                    $penalty_start_date = $isLastPenaltyCompeted
-                        ? $lastPayedPenaltyDate
-                        : \Carbon\Carbon::parse(
-                            Payment::where('id', $lasPayedPenalty->parent_id)->value('date')
-                        );
+//
+                    $penalty_start_date = $lastPayedPenaltyDate;
+////                        ? $lastPayedPenaltyDate
+////                        : \Carbon\Carbon::parse(
+////                            Payment::where('id', $lasPayedPenalty->parent_id)->value('date')
+////                        );
                     $parent_id = $lasPayedPenalty->parent_id;
                 }
             }
@@ -429,9 +431,7 @@ trait ContractTrait
                 $delay_days = $now->diffInDays($penalty_start_date);
                 $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
                 if ($parent_id && $lasPayedPenalty) {
-                    $penalty_paid = $lasPayedPenalty->is_completed
-                        ? 0
-                        : Payment::where('contract_id', $contract->id)
+                    $penalty_paid =  Payment::where('contract_id', $contract->id)
                         ->where('type', 'penalty')
                         ->where('parent_id', $parent_id)
                         ->sum('paid') ?? 0;
