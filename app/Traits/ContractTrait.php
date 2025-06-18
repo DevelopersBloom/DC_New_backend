@@ -399,6 +399,7 @@ trait ContractTrait
             ->where('amount','>','0')
             ->orderBy('date','asc')
             ->first();
+
         $lasPayedPenalty = Payment::where('contract_id',$contract->id)
             ->where('type','penalty')
             ->orderBy('date','desc')
@@ -442,6 +443,7 @@ trait ContractTrait
         $contract->save();
 
         return [
+            'payment_date' => $penalty_start_date,
             'penalty_amount' => max($penalty_amount, 0),
             'delay_days' => $delay_days,
             'parent_id' => $parent_id
