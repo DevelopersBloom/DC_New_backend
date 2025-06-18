@@ -452,9 +452,6 @@ trait ContractTrait
         $contract->save();
 
         return [
-            'penalty' => $lasPayedPenalty->id,
-            'paid' => $penalty_paid,
-            'is_compleyed' => $isLastPenaltyCompeted,
             'payment_date' => $penalty_start_date,
             'penalty_amount' => max($penalty_amount, 0),
             'delay_days' => $delay_days,
