@@ -56,7 +56,8 @@ class ContractDetailResource extends JsonResource
                     'date'    => Carbon::parse($payment->date)->format('d-m-Y'),
                     'status'  => $payment->status,
                     'type'    => $payment->type,
-                    'mother'  => $payment->mother
+                    'mother'  => $payment->mother,
+                    'discount_amount' => $payment->discount_amount ?? 0
                 ];
             }),
             'history' => $this->history->map(function ($history) {

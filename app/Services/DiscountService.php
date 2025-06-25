@@ -79,7 +79,10 @@ class DiscountService
 
             if ($firstUnpayedPayment->amount <= 0 && $firstUnpayedPayment->mother > 0) {
                 $appliedAmount = min($discountAmount, $firstUnpayedPayment->mother);
-                $firstUnpayedPayment->decrement('mother', $appliedAmount);
+
+                $firstUnpayedPayment->mother -= $appliedAmount;
+                $firstUnpayedPayment->discount_amount = ($payment->discount_amount ?? 0) + $appliedAmount;
+                $firstUnpayedPayment->save();
                 $contract->increment('collected', $appliedAmount);
                 $contract->decrement('left', $appliedAmount);
                 $discountAmount -= $appliedAmount;
@@ -92,8 +95,13 @@ class DiscountService
                 ];
             } else {
                 $appliedAmount = min($discountAmount, $firstUnpayedPayment->amount);
-                $firstUnpayedPayment->increment('paid', $appliedAmount);
-                $firstUnpayedPayment->decrement('amount', $appliedAmount);
+                // Update the payment fields safely
+                $firstUnpayedPayment->paid += $appliedAmount;
+                $firstUnpayedPayment->amount -= $appliedAmount;
+                $firstUnpayedPayment->discount_amount = ($firstUnpayedPayment->discount_amount ?? 0) + $appliedAmount;
+
+                $firstUnpayedPayment->save();
+
                 $discountAmount -= $appliedAmount;
 
                 $history[] = [

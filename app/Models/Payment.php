@@ -31,7 +31,8 @@ class Payment extends Model
         'phone',
         'another_payer',
         'is_completed',
-        'parent_id'
+        'parent_id',
+        'discount_amount'
     ];
 
     public function contract(){
