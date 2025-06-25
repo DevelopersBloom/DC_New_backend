@@ -52,7 +52,6 @@ class ContractDetailResource extends JsonResource
                     'id'      => $payment->id,
                     'amount'  => $payment->amount,
                     'paid'    => $payment->paid,
-                    'penalty' => $payment->penalty,
                     'date'    => Carbon::parse($payment->date)->format('d-m-Y'),
                     'status'  => $payment->status,
                     'type'    => $payment->type,

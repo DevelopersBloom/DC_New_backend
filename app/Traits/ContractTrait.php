@@ -448,7 +448,7 @@ trait ContractTrait
         $contract->save();
 
         return [
-            'payment_date' => $penalty_start_date,
+            'payment_date' => $penalty_start_date ?? null,
             'penalty_amount' =>$penalty_amount,
             'delay_days' => $delay_days,
             'parent_id' => $parent_id
