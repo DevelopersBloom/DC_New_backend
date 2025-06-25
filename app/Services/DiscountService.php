@@ -81,7 +81,7 @@ class DiscountService
                 $appliedAmount = min($discountAmount, $firstUnpayedPayment->mother);
 
                 $firstUnpayedPayment->mother -= $appliedAmount;
-                $firstUnpayedPayment->discount_amount = ($payment->discount_amount ?? 0) + $appliedAmount;
+                $firstUnpayedPayment->discount_amount = ($firstUnpayedPayment->discount_amount ?? 0) + $appliedAmount;
                 $firstUnpayedPayment->save();
                 $contract->increment('collected', $appliedAmount);
                 $contract->decrement('left', $appliedAmount);

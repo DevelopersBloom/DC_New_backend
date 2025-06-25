@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->integer('discount_amount')->default(0);
+            $table->integer('discount_amount')->default(0)->after('paid');
         });
     }
 
