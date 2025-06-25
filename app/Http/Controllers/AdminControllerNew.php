@@ -857,6 +857,9 @@ class AdminControllerNew extends Controller
 
                         if ($payment && $contract) {
                             $payment->increment('mother', $item['amount']);
+                            $newDiscount = max(($payment->discount_amount ?? 0) - $item['amount'], 0);
+                            $payment->discount_amount = $newDiscount;
+                            $payment->save();
                             $contract->decrement('collected', $item['amount']);
                             $contract->increment('left', $item['amount']);
                         }
@@ -867,6 +870,9 @@ class AdminControllerNew extends Controller
                         if ($payment) {
                             $payment->decrement('paid', $item['amount']);
                             $payment->increment('amount', $item['amount']);
+                            $newDiscount = max(($payment->discount_amount ?? 0) - $item['amount'], 0);
+                            $payment->discount_amount = $newDiscount;
+                            $payment->save();
                         }
                         break;
 
