@@ -267,7 +267,8 @@ class FileController extends Controller
             'client_name' => $order->client_name,
             'contract_id' => $contract->num ?? null,
             'purpose' => $order->purpose,
-            'amount_text' => $this->numberToText($order->amount),
+            'amount1_text' => $this->numberToText($amount1),
+            'amount2_text' => $this->numberToText($order->amount),
         ]);
         $filename = time() . 'order_in.docx';
         $pathToSave = public_path('/files/download/' . $filename);
