@@ -140,17 +140,43 @@ class FileController extends Controller
         }
         //$templateProcessor->cloneRowAndSetValues('item_description', $table_values);
 
+//        $payment_values = [];
+//        $i = 1;
+//        foreach ($contract->payments as $payment) {
+//            $payment_values[] = [
+//                'p_n' => $i . '.',
+//                'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
+//                'p_m' => $payment->amount,
+//                'p_text' => $this->numberToText($payment->amount)
+//            ];
+//            $i++;
+//        }
+//        $templateProcessor->cloneRowAndSetValues('p_n', $payment_values);
         $payment_values = [];
         $i = 1;
-        foreach ($contract->payments as $payment) {
-            $payment_values[] = [
-                'p_n' => $i . '.',
-                'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
-                'p_m' => $payment->amount,
-                'p_text' => $this->numberToText($payment->amount)
-            ];
-            $i++;
+
+        if (!empty($contract->payment_schedule) && is_array($contract->payment_schedule)) {
+            foreach ($contract->payment_schedule as $payment) {
+                $payment_values[] = [
+                    'p_n' => $i . '.',
+                    'p_d' => Carbon::parse($payment['date'])->format('d.m.Y'),
+                    'p_m' => $payment['amount'],
+                    'p_text' => $this->numberToText($payment['amount'])
+                ];
+                $i++;
+            }
+        } else {
+            foreach ($contract->payments as $payment) {
+                $payment_values[] = [
+                    'p_n' => $i . '.',
+                    'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
+                    'p_m' => $payment->amount,
+                    'p_text' => $this->numberToText($payment->amount)
+                ];
+                $i++;
+            }
         }
+
         $templateProcessor->cloneRowAndSetValues('p_n', $payment_values);
 
         $filename = time() . 'contract_bond.docx';

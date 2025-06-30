@@ -380,6 +380,7 @@ class   ContractService
     }
     public function createPayment(Contract $contract,$import_date = null,$import_pawnshop_id = null)
     {
+        $schedule = [];
         $fromDate = $import_date ? Carbon::parse($import_date)->setTimezone('Asia/Yerevan') : Carbon::parse($contract->date)->setTimezone('Asia/Yerevan');
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
@@ -416,8 +417,14 @@ class   ContractService
             // Move to the next payment date
 //            $nextPaymentDate = (clone $currentDate)->addMonthNoOverflow();
 //
+            $schedule[] = [
+                'date' => $paymentDate->format('Y-m-d'),
+                'amount' => $amount
+            ];
             $currentDate = $nextPaymentDate;
         }
+        $contract->payment_schedule = $schedule;
+        $contract->save();
     }
 
     public function calcAmount($amount,$days,$rate): int

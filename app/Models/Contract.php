@@ -63,9 +63,12 @@ class Contract extends Model
         'closed_at',
         'mother',
         'left',
-        'description'
+        'description',
+        'payment_schedule',
     ];
-
+    protected $casts = [
+        'payment_schedule' => 'array',
+    ];
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'contract_id');
