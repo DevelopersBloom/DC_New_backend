@@ -136,8 +136,8 @@ class FileController extends Controller
                     'i_t' => $item->hallmark,
                     'i_w' => $item->weight,
                     'i_cw' => $item->clear_weight,
-                    'price' => $item->provided_amount ? $this->makeMoney((int) $item->provided_amount) :
-                        $this->makeMoney((int) $contract->provided_amount),
+                    'price' => $item->estimated_amount ? $this->makeMoney((int) $item->estimated_amount) :
+                        $this->makeMoney((int) $contract->estimated_amount),
                 ];
             }
         }
