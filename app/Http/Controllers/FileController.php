@@ -50,6 +50,13 @@ class FileController extends Controller
         $yearly_rate = $contract?->category?->name == 'electronics' ? 158.39 : $contract->interest_rate * 365;
         $cash = $contract->provided_amount > 20000 ? 'անկանխիկ' : 'կանխիկ';
         $o_t_p = $contract->provided_amount >= 400000 ? '2' : '2,5';
+        $rate_percentage = 0;
+
+        if ($contract->estimated_amount > 0) {
+            $rate_percentage = ($contract->provided_amount / $contract->estimated_amount) * 100;
+            $rate_percentage = round($rate_percentage, 2);
+        }
+
         $templateProcessor->setValues([
             'city' => $pawnshop->city,
             'date' => Carbon::parse($contract->date)->format('d.m.Y'),
@@ -63,7 +70,8 @@ class FileController extends Controller
             'client_address' => ($client->country === 'Armenia' ? 'Հայաստան' : $client->country)
                 . ', ' . $client->city . ', ' . $client->street,
             'client_numbers' => $client_numbers,
-            'given' => $this->makeMoney((int) $contract->estimated_amount),
+            'given' => $this->makeMoney((int) $contract->provided_amount),
+            'rate_percentage' => $rate_percentage,
             'given_text' => $this->numberToText($contract->mother),
             'contract_id' => $contract->num,
             'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
@@ -114,8 +122,8 @@ class FileController extends Controller
                     'i_o' => $item->ownership,
                     'i_iss' => $item->issued_by,
                     'i_d' => Carbon::parse($item->date_of_issuance)->format('d.m.Y'),
-                    'price' => $item->provided_amount ? $this->makeMoney((int) $item->provided_amount) :
-                        $this->makeMoney((int) $contract->provided_amount),
+                    'price' => $item->estimated_amount ? $this->makeMoney((int) $item->estimated_amount) :
+                        $this->makeMoney((int) $contract->estimated_amount),
 
                 ];
             } else {
