@@ -295,7 +295,7 @@ class FileController extends Controller
         $templateProcessor->setValues([
             'amount1' => $amount1,
             'amount2' => $this->makeMoney($order->amount),
-            'rep_id' => $order->rep_id,
+            'rep_id' => 2211,
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'client_name' => $order->client_name,

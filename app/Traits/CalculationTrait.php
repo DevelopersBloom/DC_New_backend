@@ -56,24 +56,59 @@ trait CalculationTrait
         }
         return $result;
     }
-    public function numberToText($number){
-        $number = $number % 1000000;
-        $thousands = intval($number / 1000);
-        $text = '';
-        if($thousands){
-            if($thousands === 1){
-                $text = 'հազար ';
-            }else{
-                $text = $this->digit3($thousands).'հազար ';
-            }
+    // public function numberToText($number){
+    //     $number = $number % 1000000;
+    //     $thousands = intval($number / 1000);
+    //     $text = '';
+    //     if($thousands){
+    //         if($thousands === 1){
+    //             $text = 'հազար ';
+    //         }else{
+    //             $text = $this->digit3($thousands).'հազար ';
+    //         }
+    //     }
+    //     $left = $number % 1000;
+    //     $text.= $this->digit3($left);
+    //     $arr = explode(' ',$text);
+    //     $arr[0] = mb_convert_case($arr[0], MB_CASE_TITLE, "UTF-8");
+    //     $text = implode(' ',$arr);
+    //     return $text;
+    // }
+    public function numberToText($number)
+{
+    $text = '';
+
+    $millions = intval($number / 1000000);
+    if ($millions) {
+        if ($millions === 1) {
+            $text .= 'մեկ միլիոն ';
+        } else {
+            $text .= $this->digit3($millions) . 'միլիոն ';
         }
-        $left = $number % 1000;
-        $text.= $this->digit3($left);
-        $arr = explode(' ',$text);
-        $arr[0] = mb_convert_case($arr[0], MB_CASE_TITLE, "UTF-8");
-        $text = implode(' ',$arr);
-        return $text;
     }
+
+    $number = $number % 1000000;
+    $thousands = intval($number / 1000);
+    if ($thousands) {
+        if ($thousands === 1) {
+            $text .= 'հազար ';
+        } else {
+            $text .= $this->digit3($thousands) . 'հազար ';
+        }
+    }
+
+    $left = $number % 1000;
+    $text .= $this->digit3($left);
+
+    $arr = explode(' ', trim($text));
+    if (isset($arr[0])) {
+        $arr[0] = mb_convert_case($arr[0], MB_CASE_TITLE, "UTF-8");
+    }
+    $text = implode(' ', $arr);
+
+    return $text;
+}
+
     public function digit3($number){
         if(array_key_exists($number,$this->textValues)){
             return $this->textValues[$number].' ';
