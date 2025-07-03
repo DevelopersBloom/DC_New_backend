@@ -44,9 +44,6 @@ trait FileTrait
                     }else{
                         $purpose = 'տուգանք, տոկոսագումար';
                     }
-                    if($amount && $amount >= 1000 && !$has_last_payment){
-                        $purpose.= ', մասնակի մարում';
-                    }
                 }
             }elseif($request->payments){
                 $payments_count = 0;
@@ -68,9 +65,6 @@ trait FileTrait
                     }else{
                         $purpose.= 'հերթական '.$this->textValues[$payments_count].' ամսվա տոկոսագումար';
                     }
-                }
-                if($amount && $amount >= 1000 && !$has_last_payment){
-                    $purpose.= ', մասնակի մարում';
                 }
             }
         }else{
@@ -125,9 +119,6 @@ trait FileTrait
                     }else{
                         $purpose = 'տուգանք, տոկոսագումար';
                     }
-                    if($amount && $amount >= 1000 && !$has_last_payment){
-                        $purpose.= ', մասնակի մարում';
-                    }
                 }
             }elseif($request->payments){
                 $payments_count = 0;
@@ -150,9 +141,9 @@ trait FileTrait
                         $purpose.= 'հերթական '.$this->textValues[$payments_count].' ամսվա տոկոսագումար';
                     }
                 }
-                if($amount && $amount >= 1000 && !$has_last_payment){
-                    $purpose.= ', մասնակի մարում';
-                }
+//                if($amount && $amount >= 1000 && !$has_last_payment){
+//                    $purpose.= ', մասնակի մարում';
+//                }
             }
         }else{
             $payments_count = 0;
