@@ -142,6 +142,7 @@ class AdminControllerNew extends Controller
     {
         $validated = $request->validated();
         $validated['password'] = bcrypt($validated['password']);
+        $validated['pawnshop_id'] = auth()->user()->pawnshop_id;
 
         User::create($validated);
 
