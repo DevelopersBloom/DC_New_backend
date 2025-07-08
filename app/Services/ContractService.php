@@ -395,9 +395,9 @@ class   ContractService
 
             // Determine the next payment date, or use the deadline if it's the last payment
             $nextPaymentDate = (clone $currentDate)->addMonths();
-            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+            $paymentDate  = $nextPaymentDate <=($toDate) ? $nextPaymentDate : $toDate;
 
-            $diffDays = $paymentDate->diffInDays($currentDate)+1;
+            $diffDays = $paymentDate->diffInDays($currentDate);
             $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
             $payment['date'] = $paymentDate->format('Y-m-d');
             $payment['days'] = $diffDays;
