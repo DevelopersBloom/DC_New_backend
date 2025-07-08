@@ -397,7 +397,7 @@ class   ContractService
             $nextPaymentDate = (clone $currentDate)->addMonths();
             $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
 
-            $diffDays = $paymentDate->diffInDays($currentDate);
+            $diffDays = $paymentDate->diffInDays($currentDate)+1;
             $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
             $payment['date'] = $paymentDate->format('Y-m-d');
             $payment['days'] = $diffDays;
