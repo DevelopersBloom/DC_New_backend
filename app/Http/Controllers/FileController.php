@@ -298,7 +298,7 @@ class FileController extends Controller
             'rep_id' => 2211,
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
-            'client_name' => $order->client_name,
+            'receiver' => $order->receiver,
             'contract_id' => $contract->num ?? null,
             'purpose' => $order->purpose,
             'amount1_text' => $this->numberToText((float) str_replace([' ', ',','.'], ['', '',''], $amount1)),
@@ -327,7 +327,7 @@ class FileController extends Controller
             'rep_id' => $order->rep_id,
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
-            'client_name' => $order->client_name,
+            'receiver' => $order->receiver,
             'contract_id' => $contract->ADB_ID,
             'cl_dob' => $contract->dob,
             'cl_pas' => $contract->passport,
@@ -356,7 +356,7 @@ class FileController extends Controller
             'rep_id' => $order->rep_id ?? null,
             'order' => $order->order ?? null,
             'date' => isset($order->date) ? Carbon::parse($order->date)->format('d.m.Y') : null,
-            'client_name' => $order->client_name ?? null,
+            'receiver' => $order->receiver ?? null,
             'contract_id' => $contract?->num,
             'cl_dob' => $contract?->client?->date_of_birth
                 ? Carbon::parse($contract->client->date_of_birth)->format('d.m.Y')
