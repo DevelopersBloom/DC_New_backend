@@ -342,7 +342,7 @@ DealController extends Controller
             $name,
             $amount,
             'out',
-            $bank,
+            $receiver,
             'Դրամարկղից փոխանցում',
             true
         );
