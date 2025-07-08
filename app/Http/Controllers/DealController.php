@@ -300,7 +300,7 @@ DealController extends Controller
                 $name,
                 $amount,
                 'in',
-                $bank,
+                $receiver,
                 'Անկանխիկ համալրում անհայտ անձից',
                 false
             );
@@ -317,7 +317,7 @@ DealController extends Controller
                 $name,
                 $amount,
                 'in',
-                $bank,
+                $receiver,
                 'Դրամարկղ համալրում',
                 true
             );
@@ -333,7 +333,7 @@ DealController extends Controller
             $name,
             $amount,
             'in',
-            $bank,
+            $receiver,
             'Անկանխիկ հաշվիվ համալրում',
             false
         );
@@ -342,7 +342,7 @@ DealController extends Controller
             $name,
             $amount,
             'out',
-            $receiver,
+            $bank,
             'Դրամարկղից փոխանցում',
             true
         );
