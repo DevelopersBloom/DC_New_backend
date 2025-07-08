@@ -386,8 +386,8 @@ class   ContractService
         $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
         $currentDate = $fromDate;
         $pgi_id = 1;
-        while ($currentDate <= $toDate)
-        {
+        while ($currentDate->lt($toDate))
+         {
             $payment = [
                 'contract_id' => $contract->id,
                 'from_date' => $currentDate->format('d.m.Y'),
@@ -395,7 +395,7 @@ class   ContractService
 
             // Determine the next payment date, or use the deadline if it's the last payment
             $nextPaymentDate = (clone $currentDate)->addMonths();
-            $paymentDate  = $nextPaymentDate <=($toDate) ? $nextPaymentDate : $toDate;
+            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
 
             $diffDays = $paymentDate->diffInDays($currentDate);
        
