@@ -386,7 +386,7 @@ class   ContractService
         $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
         $currentDate = $fromDate;
         $pgi_id = 1;
-        while ($currentDate->lt($toDate))
+        while ($currentDate <= $toDate)
         {
             $payment = [
                 'contract_id' => $contract->id,
