@@ -118,10 +118,10 @@ DealController extends Controller
                 END) AS provided,
 
                 SUM(CASE
-                    WHEN amount_type = 'estimated_amount' AND type = 'in' AND category_id = 1 THEN amount
-                    WHEN amount_type = 'estimated_amount' AND type = 'out' AND category_id = 1 THEN -amount
+                    WHEN amount_type = 'estimated_amount' AND type = 'in' AND category_id = 3 THEN amount
+                    WHEN amount_type = 'estimated_amount' AND type = 'out' AND category_id = 3 THEN -amount
                     ELSE 0
-                END) AS gold_estimated,
+                END) AS car_estimated,
                 SUM(CASE
                     WHEN amount_type = 'estimated_amount' AND type = 'in' AND category_id = 2 THEN amount
                     WHEN amount_type = 'estimated_amount' AND type = 'out' AND category_id = 2 THEN -amount
@@ -146,16 +146,29 @@ DealController extends Controller
                      SUM(amount) AS totalCashboxOut")
                 ->first();
 
+            $bankIn = Deal::whereDate('date', '<=', $date)
+                ->where('type', Deal::IN_DEAL)
+                ->where('pawnshop_id', $pawnshopId)
+                ->where('cash', false)
+                ->sum('amount');
+
+            $bankOut = Deal::whereIn('type', [Deal::OUT_DEAL, Deal::EXPENSE_DEAL, Deal::COST_OUT_DEAL])
+                ->whereDate('date', '<=', $date)
+                ->where('pawnshop_id', $pawnshopId)
+                ->where('cash', false)
+                ->sum('amount');
+
            $cashboxData[] = [
                 'date' => $date,
                 'estimated_amount' => $data->estimated ?? 0,
                 'provided_amount' => $data->provided ?? 0,
-                'gold_estimated' => $data->gold_estimated ?? 0,
+                'car_estimated' => $data->car_estimated ?? 0,
                 'electronics_estimated' => $data->electronics_estimated ?? 0,
 //
 //                'appa' => $totals->appa ?? 0,
 //                'ndm' => ($totals->ndmIn ?? 0) - ($totalOuts->ndmOut ?? 0),
                 'cashbox' => $totals->totalCashboxIn  - $totalOuts->totalCashboxOut,
+                'bank_cashbox' => $bankIn - $bankOut
             ];
         }
         return [
