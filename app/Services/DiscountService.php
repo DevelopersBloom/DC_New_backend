@@ -59,7 +59,7 @@ class DiscountService
         if ($penaltyAmount > 0 && $discountAmount > 0) {
             $cash = true;
             $payer = auth()->user() ?? null;
-            $discount = $this->paymentService->processPenalty($contract->id, $discountAmount, $penaltyAmount, $payer, $cash,null,$penalty['parent_id']);
+            $discount = $this->paymentService->processPenalty($contract->id, $discountAmount, $penaltyAmount, $payer, $cash,null,$penalty['parent_id'],true);
             $discountAmount = $discount['amount'];
 
             $history[] = [
