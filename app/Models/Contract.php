@@ -30,7 +30,7 @@ class Contract extends Model
     const STATUS_EXECUTED = 'executed';
     const STATUS_TAKEN  = 'taken';
 //    protected $appends = ['is_overdue','not_payed_amount'];
-//    protected $appends = ['is_overdue'];
+    protected $appends = ['is_overdue'];
 
     protected $fillable=[
         'collected',
