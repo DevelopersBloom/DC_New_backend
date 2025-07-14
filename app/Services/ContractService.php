@@ -398,19 +398,20 @@ class   ContractService
             $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
 
             $diffDays = $paymentDate->diffInDays($currentDate);
-       
+            $payment['mother'] = 0;
+
             // Check if it's the last payment
             if ($paymentDate->eq($toDate)) {
                 $diffDays++;
                 $payment['mother'] = $contract->provided_amount; // Add mother amount for the last payment
                 $payment['last_payment'] = true;
             }
-                 $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
+
+            $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
             $payment['date'] = $paymentDate->format('Y-m-d');
             $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
             $payment['pawnshop_id'] = $pawnshop_id;
-            $payment['mother'] = 0;
             $payment['PGI_ID'] = $pgi_id;
 
             Payment::create($payment);
