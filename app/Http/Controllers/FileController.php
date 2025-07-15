@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Contract;
 use App\Models\Order;
+use App\Traits\CalculationTrait;
 use App\Traits\FileTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ use ZipStream\File;
 
 class FileController extends Controller
 {
+    use CalculationTrait;
     public function downloadContract($id)
     {
         $contract = Contract::where('id', $id)
