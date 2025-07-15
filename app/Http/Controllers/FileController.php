@@ -19,7 +19,7 @@ use ZipStream\File;
 class FileController extends Controller
 {
     use CalculationTrait;
-    public function downloadContract($id)
+    public function downloadContractOld($id)
     {
         $contract = Contract::where('id', $id)
             ->with(['client', 'items.category', 'pawnshop', 'payments'])
@@ -205,7 +205,7 @@ class FileController extends Controller
         return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
-    public function downloadContractOld($id)
+    public function downloadContract($id)
     {
         $contract = Contract::where('id', $id)
             ->with(['client', 'items', 'pawnshop', 'payments'])
