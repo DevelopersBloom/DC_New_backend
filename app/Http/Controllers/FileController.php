@@ -160,6 +160,7 @@ class FileController extends Controller
 
         // 2️⃣ Generate Car Act if Car
         if ($hasCar) {
+            dd(1);
             $car = $contract->items->firstWhere(fn($item) => $item->category->name === 'car');
             $carActTemplate = new TemplateProcessor(public_path('/files/car_act.docx'));
 
