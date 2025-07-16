@@ -398,6 +398,8 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor(public_path('files/' . $templateFile));
 
         $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
+        $name_surname =  $client_name = $client->name . ' ' . $client->surname;
+
         $client_numbers = $client->phone;
         if ($client->additional_phone) {
             $client_numbers .= ', ' . $client->additional_phone;
@@ -521,17 +523,16 @@ class FileController extends Controller
             $actTemplate = new TemplateProcessor(public_path('files/car_act.docx'));
             $actTemplate->setValues([
                 'date' => Carbon::parse($contract->date)->format('d.m.Y'),
-                'name' => $client->name,
-                'surname' => $client->surname,
-                'middle_name' => $client->middle_name ?? '',
+                'full_name' => $client_name,
                 'passport' => $client->passport_series,
-                'validity' => $client->passport_validity,
-                'issued' => $client->passport_issued,
+                'validity' => $client->passport_validity->format('d.m.Y') . 'թ․',
+                'issued' => 'տրվ.' . $client->passport_issued,
                 'city' => $client->city,
                 'street' => $client->street,
                 'contract_num' => $contract->num,
                 'car_model' => $car->model,
                 'license_plate' => $car->license_plate,
+                'name_surname' => $name_surname
             ]);
 
             $actFilename = $contract->num . '_Ակտ.docx';
