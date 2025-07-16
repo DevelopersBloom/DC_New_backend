@@ -525,7 +525,7 @@ class FileController extends Controller
                 'date' => Carbon::parse($contract->date)->format('d.m.Y'),
                 'full_name' => $client_name,
                 'passport' => $client->passport_series,
-                'validity' => $client->passport_validity->format('d.m.Y') . 'թ․',
+                'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y') . 'թ․',
                 'issued' => 'տրվ.' . $client->passport_issued,
                 'city' => $client->city,
                 'street' => $client->street,
