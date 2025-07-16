@@ -516,7 +516,7 @@ class FileController extends Controller
         $filesToZip[] = $contractPath;
 
         // 2️⃣ Ակտի ֆայլ (եթե կա մեքենա)
-        if ($hasCar && $car) {
+//        if ($hasCar && $car) {
             $actTemplate = new TemplateProcessor(public_path('files/car_act.docx'));
             $actTemplate->setValues([
                 'date' => Carbon::parse($contract->date)->format('d.m.Y'),
@@ -537,7 +537,7 @@ class FileController extends Controller
             $actPath = storage_path('app/tmp/' . $actFilename);
             $actTemplate->saveAs($actPath);
             $filesToZip[] = $actPath;
-        }
+//        }
 
         // 3️⃣ ZIP ֆայլ ստեղծել
         $zipFileName = $contract->num . '_փաստաթղթեր.zip';
