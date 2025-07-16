@@ -182,6 +182,34 @@ class FileController extends Controller
             $carActPath = public_path('/files/download/' . $carActFileName);
             $carActTemplate->saveAs($carActPath);
             $filesToZip[] = $carActPath;
+            $applicationTemplate = new TemplateProcessor(public_path('files/car_application.docx'));
+
+            $applicationTemplate->setValues([
+                'passport' => $client->passport_series,
+                'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y') . 'թ․',
+                'issued' => $client->passport_issued,
+                'name' => $client->name,
+                'surname' => $client->surname,
+                'middle_name' => $client->middle_name ?? '',
+                'city' => $client->city,
+                'street' => $client->street,
+                'date' => Carbon::parse($contract->date)->format('d.m.Y'),
+                'car_model' => $car->model,
+                'identification' => $car->identification,
+                'license_plate' => $car->license_plate,
+                'manufacture' => $car->manufacture,
+                'color' => $car->color,
+                'power' => $car->power,
+                'sn' => $car->registration, // կամ SN դաշտի համար օգտագործիր անհրաժեշտ դաշտը
+                'imei' => $car->ownership, // կամ IMEI դաշտի համար օգտագործիր անհրաժեշտ դաշտը
+                'provided_amount' => $this->makeMoney((int) $contract->provided_amount),
+                'end_date' => Carbon::parse($contract->deadline)->format('d.m.Y'),
+            ]);
+
+            $applicationFilename = $contract->num . '_Դիմում.docx';
+            $applicationPath = storage_path('app/tmp/' . $applicationFilename);
+            $applicationTemplate->saveAs($applicationPath);
+            $filesToZip[] = $applicationPath;
         }
 
         // 3️⃣ Create Zip Archive
