@@ -568,14 +568,14 @@ class FileController extends Controller
             $actTemplate->saveAs($actPath);
             $filesToZip[] = $actPath;
             $applicationTemplate = new TemplateProcessor(public_path('files/car_application.docx'));
-
+            $registrationParts = explode(' ', $car->registration);
+            $registrationSeria = $registrationParts[0] ?? '';
+            $registrationNum = $registrationParts[1] ?? '';
             $applicationTemplate->setValues([
                 'passport' => $client->passport_series,
                 'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y') . 'թ․',
-                'issued' => $client->passport_issued,
-                'name' => $client->name,
-                'surname' => $client->surname,
-                'middle_name' => $client->middle_name ?? '',
+                'issued' => $client->passport_issued . '-ի կողմից',
+                'client' => $client_name,
                 'city' => $client->city,
                 'street' => $client->street,
                 'date' => Carbon::parse($contract->date)->format('d.m.Y') . 'թ․',
@@ -585,8 +585,8 @@ class FileController extends Controller
                 'manufacture' => $car->manufacture,
                 'color' => $car->color,
                 'power' => $car->power,
-                'sn' => $car->sn,
-                'imei' => $car->imei,
+                'registration_seria' => $registrationSeria,
+                'registration_num' => $registrationNum,
                 'provided_amount' => $this->makeMoney((int) $contract->provided_amount),
                 'end_date' => Carbon::parse($contract->deadline)->format('d.m.Y'),
             ]);
