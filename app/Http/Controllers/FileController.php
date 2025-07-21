@@ -358,7 +358,7 @@ class FileController extends Controller
             $registrationNum = $registrationParts[1] ?? '';
             $applicationTemplate->setValues([
                 'passport' => $client->passport_series,
-                'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y'),
+                'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y'). 'թ.',
                 'issued' => $client->passport_issued . '-ի կողմից',
                 'client' => $client_name,
                 'city' => $client->city,
@@ -373,7 +373,7 @@ class FileController extends Controller
                 'registration_seria' => $registrationSeria,
                 'registration_num' => $registrationNum,
                 'provided_amount' => $this->makeMoney((int) $contract->provided_amount),
-                'end_date' => Carbon::parse($contract->deadline)->format('d.m.Y'),
+                'end_date' => Carbon::parse($contract->deadline)->format('d.m.Y'). 'թ.',
             ]);
 
             $applicationFilename = $contract->num . '_Դիմում.docx';
