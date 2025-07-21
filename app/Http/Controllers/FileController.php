@@ -359,7 +359,7 @@ class FileController extends Controller
             $registrationNum = $registrationParts[1] ?? '';
             $applicationTemplate->setValues([
                 'passport' => $client->passport_series,
-                'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y') . 'թ.',
+                'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y'),
                 'issued' => $client->passport_issued . '-ի կողմից',
                 'client' => $client_name,
                 'city' => $client->city,
