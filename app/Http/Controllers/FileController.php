@@ -332,7 +332,6 @@ class FileController extends Controller
         $templateProcessor->saveAs($contractPath);
         $filesToZip[] = $contractPath;
 
-        // 2️⃣ Ակտի ֆայլ (եթե կա մեքենա)
         if ($hasCar && $car) {
             $actTemplate = new TemplateProcessor(public_path('files/car_act.docx'));
             $actTemplate->setValues([
