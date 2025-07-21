@@ -208,7 +208,6 @@ class FileController extends Controller
 
         $filesToZip = [];
 
-        // 1️⃣ Պայմանագրի ֆայլ
         $templateFile = $hasCar ? 'contract_bond_car_template.docx' : 'contract_bond_template.docx';
         $templateProcessor = new TemplateProcessor(public_path('files/' . $templateFile));
 
