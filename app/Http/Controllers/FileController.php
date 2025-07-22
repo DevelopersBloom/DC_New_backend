@@ -353,9 +353,14 @@ class FileController extends Controller
             $actTemplate->saveAs($actPath);
             $filesToZip[] = $actPath;
             $applicationTemplate = new TemplateProcessor(public_path('files/car_application.docx'));
-            $registrationParts = explode(' ', $car->registration);
-            $registrationSeria = $registrationParts[0] ?? '';
-            $registrationNum = $registrationParts[1] ?? '';
+//            $registrationParts = explode(' ', $car->registration);
+//            $registrationSeria = $registrationParts[0] ?? '';
+//            $registrationNum = $registrationParts[1] ?? '';
+            $registration = str_replace(' ', '', $car->registration);
+
+            $registrationSeria = mb_substr($registration, 0, 2);
+            $registrationNum = mb_substr($registration, 2);
+
             $applicationTemplate->setValues([
                 'passport' => $client->passport_series,
                 'validity' => Carbon::parse($client->passport_validity)->format('d.m.Y'). 'թ.',
