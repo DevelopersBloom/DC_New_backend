@@ -127,6 +127,7 @@ class ContractDetailResource extends JsonResource
                         'id' => $item->id,
                         'category' => $item->category->title,
                         'car_make' => $item->car_make,
+                        'model' => $item->model,
                         'manufacture' => $item->manufacture,
                         'power' => $item->power,
                         'license_plate' => $item->license_plate,
