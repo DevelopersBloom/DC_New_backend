@@ -273,8 +273,8 @@ class FileController extends Controller
                 $car_values = [
                     'item' => $itemName,
                     'desc' => $contract->description,
-                    'i_c' => $item->car_make,
-                    'i_m' => $item->model,
+                    'i_c' => $item->model,
+                    'i_m' => $item->car_make,
                     'i_man' => $item->manufacture,
                     'i_col' => $item->color,
                     'i_l' => $item->license_plate,
@@ -364,7 +364,7 @@ class FileController extends Controller
                 'city' => $client->city,
                 'street' => $client->street,
                 'date' => Carbon::parse($contract->date)->format('d.m.Y') . 'թ․',
-                'car_model' => $car->model,
+                'car_model' => $car->model . ' ' . $car->car_make,
                 'identification' => $car->identification,
                 'license_plate' => $car->license_plate,
                 'manufacture' => $car->manufacture,
@@ -382,7 +382,6 @@ class FileController extends Controller
             $filesToZip[] = $applicationPath;
         }
 
-        // 3️⃣ ZIP ֆայլ ստեղծել
         $zipFileName = $contract->num . '_փաստաթղթեր.zip';
         $zipFilePath = storage_path('app/tmp/' . $zipFileName);
 
@@ -396,14 +395,11 @@ class FileController extends Controller
             abort(500, 'Չհաջողվեց ստեղծել ZIP ֆայլ։');
         }
 
-        // Ջնջել .docx-երը
         foreach ($filesToZip as $file) {
             if (file_exists($file)) {
                 unlink($file);
             }
         }
-
-        // Վերբեռնում ենք ZIP ֆայլը
         return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
