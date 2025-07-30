@@ -162,7 +162,7 @@ DealController extends Controller
                 'date' => $date,
                 'estimated_amount' => $data->estimated ?? 0,
                 'provided_amount' => $data->provided ?? 0,
-                'car_estimated' => $data->car_estimated ? 21880000 + (int)$data->car_estimated: 0,
+                'car_estimated' => $data->car_estimated ?  (int)$data->car_estimated: 0,
                 'electronics_estimated' => $data->electronics_estimated ?? 0,
 //
 //                'appa' => $totals->appa ?? 0,
