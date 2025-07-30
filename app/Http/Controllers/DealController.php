@@ -158,7 +158,8 @@ DealController extends Controller
                 ->where('cash', false)
                 ->sum('amount');
 
-            if ($date >= "2025-07-25") $data->car_estimated += 21880000;
+            // Add the initial car estimated amount starting from July 30, 2025, since earlier data is unavailable
+            if ($date >= "2025-07-30") $data->car_estimated += 21880000;
            $cashboxData[] = [
                 'date' => $date,
                 'estimated_amount' => $data->estimated ?? 0,
