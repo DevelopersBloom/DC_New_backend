@@ -120,7 +120,6 @@ DealController extends Controller
                 SUM(CASE
                     WHEN amount_type = 'estimated_amount' AND type = 'in' AND category_id = 3 THEN amount
                     WHEN amount_type = 'estimated_amount' AND type = 'out' AND category_id = 3 THEN -amount
-                    ELSE 0
                 END) AS car_estimated,
                 SUM(CASE
                     WHEN amount_type = 'estimated_amount' AND type = 'in' AND category_id = 2 THEN amount
