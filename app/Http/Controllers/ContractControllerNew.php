@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ContractsExport;
 
 class ContractControllerNew extends Controller
 {
@@ -315,11 +316,14 @@ class ContractControllerNew extends Controller
 
         return $this->contractService->updateContractItems($validatedData['items']);
     }
-    public function exportContracts(Request $request)
+    public function exportContracts1(Request $request)
     {
         $date = $request->input('date') ?? now()->toDateString();
 
         return Excel::download(new DailyExport(), 'contracts_export_' . $date . '.xlsx');
     }
-
+    public function exportContracts()
+    {
+    return Excel::download(new ContractsExport, 'contracts_export.xlsx');
+    }
 }
