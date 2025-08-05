@@ -12,47 +12,56 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class PaymentsExport implements FromCollection, WithHeadings, WithStyles
 {
     /**
-    * @return Collection
-    */
-    public function collection()
+     * @return Collection
+     */
+    public function collection(): Collection
     {
-        return Payment::all()->map(function ($payment){
-            $status = $payment->status == 'completed' ? 'Վճարված' : 'Չվճարված' ;
-            $type = "";
-            $amount = '';
-            if ($type == 'penalty') {
-                $type = 'Տուգանք';
-            }elseif ($type == 'partial') {
-                $type = 'Մասնակի';
-            } elseif ($type == 'regular') {
-                $type = 'Հերթական';
-                $amount = $payment->amount;
+        return Payment::all()->map(function ($payment) {
+            $status = $payment->status === 'completed' ? 'Վճարված' : 'Չվճարված';
+
+            $type = $payment->type;
+            $typeText = '';
+            if ($type === 'penalty') {
+                $typeText = 'Տուգանք';
+            } elseif ($type === 'partial') {
+                $typeText = 'Մասնակի';
+            } elseif ($type === 'regular') {
+                $typeText = 'Հերթական';
             }
+
             return [
-                $type,
+                $typeText,
                 $payment->PGI_ID,
                 $payment->contract_id,
                 $payment->date,
-                $amount,
+                $payment->amount,
                 $payment->paid,
                 $payment->mother,
-                $status
+                $status,
             ];
         });
     }
+
     public function headings(): array
     {
         return [
-            'Տեսակ','N','Պայմանագրի համար','Վճարման ամսաթիվ',
-            'Վճարված գումար','Չվճարված գումար','Կարգավիճակը'
+            'Տեսակ',
+            'N',
+            'Պայմանագրի համար',
+            'Վճարման ամսաթիվ',
+            'Վճարված գումար',
+            'Չվճարված գումար',
+            'Մայր գումար',
+            'Կարգավիճակը',
         ];
     }
+
     public function styles(Worksheet $sheet): array
     {
         return [
             1 => ['font' => ['bold' => true], 'fill' => [
                 'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'e3e3e3']
+                'startColor' => ['rgb' => 'e3e3e3'],
             ]],
         ];
     }
