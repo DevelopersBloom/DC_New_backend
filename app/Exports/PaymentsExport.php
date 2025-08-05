@@ -20,11 +20,14 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
             $status = $payment->status === 'completed' ? 'Վճարված' : 'Չվճարված';
 
             $type = $payment->type;
+            $amount = $payment->amount;
             $typeText = '';
             if ($type === 'penalty') {
                 $typeText = 'Տուգանք';
+                $amount = 0;
             } elseif ($type === 'partial') {
                 $typeText = 'Մասնակի';
+                $amount = 0;
             } elseif ($type === 'regular') {
                 $typeText = 'Հերթական';
             }
@@ -34,7 +37,7 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
                 $payment->PGI_ID,
                 $payment->contract_id,
                 $payment->date,
-                $payment->amount,
+                $amount,
                 $payment->paid,
                 $payment->mother,
                 $status,
@@ -49,8 +52,8 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
             'N',
             'Պայմանագրի համար',
             'Վճարման ամսաթիվ',
-            'Վճարված գումար',
             'Չվճարված գումար',
+            'Վճարված գումար',
             'Մայր գումար',
             'Կարգավիճակը',
         ];
