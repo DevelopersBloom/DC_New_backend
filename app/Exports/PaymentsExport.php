@@ -31,6 +31,7 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
             } elseif ($type === 'regular') {
                 $typeText = 'Հերթական';
             }
+            dd($payment);
 
             return [
                 $typeText,
