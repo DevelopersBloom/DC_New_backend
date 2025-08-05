@@ -37,9 +37,9 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
                 $payment->PGI_ID,
                 $payment->contract_id,
                 $payment->date,
-                (float) $amount,
-                (float) $payment->paid,
-                $payment->mother,
+                $amount !== null ? number_format((float)$amount, 2, '.', '') : '0.00',
+                $payment->paid !== null ? number_format((float)$payment->paid, 2, '.', '') : '0.00',
+                $payment->mother !== null ? number_format((float)$payment->mother, 2, '.', '') : '0.00',
                 $status,
             ];
         });
