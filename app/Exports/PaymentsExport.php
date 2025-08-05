@@ -37,8 +37,8 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
                 $payment->PGI_ID,
                 $payment->contract_id,
                 $payment->date,
-                $amount ?? 0,
-                $payment->paid ?? 0,
+                (float) $amount ?? 0,
+                (float) $payment->paid ?? 0,
                 $payment->mother,
                 $status,
             ];
