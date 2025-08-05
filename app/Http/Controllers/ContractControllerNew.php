@@ -325,6 +325,6 @@ class ContractControllerNew extends Controller
     }
     public function exportContracts()
     {
-    return Excel::download(new PaymentsExport(), 'payments_export.xlsx');
+        return Excel::download(new ContractsExport(), 'contracts_export.xlsx');
     }
 }
