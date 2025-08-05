@@ -12,56 +12,55 @@ use Illuminate\Support\Collection;
 class ContractsExport implements FromCollection, WithHeadings, WithStyles
 {
     /**
-    * @return \Illuminate\Support\Collection
+    * @return Collection
     */
-    public function collection()
+    public function collection(): Collection
     {
          return Contract::with(['client', 'pawnshop', 'category'])
             ->get()
             ->map(function ($contract) {
                 return [
-                    $contract->date,                          // Պայմանագրի ամսաթիվ
-                    $contract->num,                           // Պայմ․ համար
-                    $contract->pawnshop_id ?? '',          // Գրավատան համար
-                    optional($contract->payments()->first())->id ?? '',  // Ելլքի օրդերի համար
+                    $contract->date,
+                    $contract->num,
+                    $contract->pawnshop_id ?? '',
+                    optional($contract->payments()->first())->id ?? '',
 
                     trim(
-   			 ($contract->client->name ?? '') . ' ' .
-    			 ($contract->client->surname ?? '') . ' ' .
-    			 ($contract->client->middle_name ?? '')
-		    ),
+                        ($contract->client->name ?? '') . ' ' .
+    			        ($contract->client->surname ?? '') . ' ' .
+    			        ($contract->client->middle_name ?? '')
+		            ),
 
-                    $contract->client->passport_series ?? '',     // Անձնագրի սերիա
-                    $contract->client->passport_validity ?? '',   // Անձնագրի վավերականություն
-                    $contract->client->passport_issued ?? '',     // Տրված
+                    $contract->client->passport_series ?? '',
+                    $contract->client->passport_validity ?? '',
+                    $contract->client->passport_issued ?? '',
 
-                    $contract->client->country ?? '',         // Երկիր
-                    $contract->client->city ?? '',            // Քաղաք
-                    $contract->client->street . ' / ' . $contract->client->building,  // Փողոց/շենք
+                    $contract->client->country ?? '',
+                    $contract->client->city ?? '',
+                    $contract->client->street . ' / ' . $contract->client->building,
 
-                    $contract->client->date_of_birth,         // Ծննդյան օր
-                    $contract->client->email,                 
-		    trim(
+                    $contract->client->date_of_birth,
+                    $contract->client->email,
+
+                    trim(
                          ($contract->client->phone ?? '') . ' ' .
                          ($contract->client->additional_phone ?? '')
                     ),
 
+                    $contract->client->bank_name,
+                    $contract->client->card_number,
+                    $contract->client->account_number,
 
+                    $contract->estimated_amount,
+                    $contract->provided_amount,
+                    $contract->interest_rate,
+                    $contract->penalty,
+                    $contract->one_time_payment,
+                    $contract->deadline_days,
 
-                    $contract->client->bank_name,             // Բանկ
-                    $contract->client->card_number,           // ՔԱրտի համար
-                    $contract->client->account_number,        // Հաշվ համար
-
-                    $contract->estimated_amount,              // Գնահատվաշ
-                    $contract->provided_amount,               // Տրամադրվաշ
-                    $contract->interest_rate,                 // Տոկոսադրույք
-                    $contract->penalty,                       // Տուգանք
-                    $contract->one_time_payment,              // Միանվագ
-                    $contract->deadline_days,                 // Օրեր
-
-                    $contract->closed_at,                     // Փակման Ամսաթիվ
-                    $contract->description,                   // Նկարագրություն
-                    $contract->category->title ?? '',         // Կատեգորիա
+                    $contract->closed_at,
+                    $contract->description,
+                    $contract->category->title ?? '',
                 ];
             });
     }
@@ -79,7 +78,7 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
             'Փակման Ամսաթիվ', 'Նկարագրություն', 'Կատեգորիա',
         ];
     }
-    
+
     public function styles(Worksheet $sheet)
     {
         return [

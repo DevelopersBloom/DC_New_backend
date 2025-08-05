@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\DailyExport;
 use App\Exports\DailyExportSheet1;
+use App\Exports\PaymentsExport;
 use App\Http\Requests\ClientRequest;
 use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
@@ -324,6 +325,6 @@ class ContractControllerNew extends Controller
     }
     public function exportContracts()
     {
-    return Excel::download(new ContractsExport, 'contracts_export.xlsx');
+    return Excel::download(new PaymentsExport(), 'payments_export.xlsx');
     }
 }
