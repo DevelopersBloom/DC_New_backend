@@ -31,18 +31,18 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
             } elseif ($type === 'regular') {
                 $typeText = 'Հերթական';
             }
-            dd($payment);
 
             return [
                 $typeText,
                 $payment->PGI_ID,
                 $payment->contract_id,
                 $payment->date,
-                $amount !== null ? number_format((float)$amount, 2, '.', '') : '0.00',
-                $payment->paid !== null ? number_format((float)$payment->paid, 2, '.', '') : '0.00',
-                $payment->mother !== null ? number_format((float)$payment->mother, 2, '.', '') : '0.00',
+                (float) $amount,
+                (float) $payment->paid,
+                (float) $payment->mother,
                 $status,
             ];
+
         });
     }
 
