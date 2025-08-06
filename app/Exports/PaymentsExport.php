@@ -30,6 +30,8 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
                 $amount = 0;
             } elseif ($type === 'regular') {
                 $typeText = 'Հերթական';
+            } elseif ($type === 'full') {
+                $typeText = 'Ամբողջական';
             }
 
             return [
