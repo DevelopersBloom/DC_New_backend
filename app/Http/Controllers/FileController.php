@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ContractsExport;
+use App\Exports\PaymentsExport;
 use App\Models\Contract;
 use App\Models\Order;
 use App\Traits\CalculationTrait;
 use App\Traits\FileTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpWord\Exception\CopyFileException;
 use PhpOffice\PhpWord\Exception\CreateTemporaryFileException;
 use PhpOffice\PhpWord\IOFactory;
@@ -703,4 +707,28 @@ class FileController extends Controller
 //        // Return the document as a response and delete the temporary file after sending
 //        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
 //    }
+    public function exportZip(Request $request)
+    {
+        $timestamp = now()->format('Y_m_d_H_i_s');
+        $paymentsFile = "exports/payments_{$timestamp}.xlsx";
+        $contractsFile = "exports/contracts_{$timestamp}.xlsx";
+        $zipFileName = "exports/exports_{$timestamp}.zip";
+
+        Excel::store(new PaymentsExport, $paymentsFile);
+        Excel::store(new ContractsExport, $contractsFile);
+
+        $zip = new \PhpOffice\PhpWord\Shared\ZipArchive();
+        $zipPath = storage_path("app/{$zipFileName}");
+
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            $zip->addFile(storage_path("app/{$paymentsFile}"), 'Payments.xlsx');
+            $zip->addFile(storage_path("app/{$contractsFile}"), 'Contracts.xlsx');
+            $zip->close();
+        }
+
+        Storage::delete([$paymentsFile, $contractsFile]);
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
 }

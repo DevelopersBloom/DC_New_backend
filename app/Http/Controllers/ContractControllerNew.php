@@ -26,8 +26,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ContractsExport;
+use PhpOffice\PhpWord\Shared\ZipArchive;
 
 class ContractControllerNew extends Controller
 {
@@ -323,8 +325,10 @@ class ContractControllerNew extends Controller
 
         return Excel::download(new DailyExport(), 'contracts_export_' . $date . '.xlsx');
     }
-    public function exportContracts()
-    {
-        return Excel::download(new PaymentsExport(), 'payments_export.xlsx');
-    }
+//    public function exportContracts()
+//    {
+//        return Excel::download(new PaymentsExport(), 'payments_export.xlsx');
+//    }
+
+
 }
