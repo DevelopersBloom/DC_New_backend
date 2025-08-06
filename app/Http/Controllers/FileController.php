@@ -707,7 +707,7 @@ class FileController extends Controller
 //        // Return the document as a response and delete the temporary file after sending
 //        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
 //    }
-    public function exportZip(Request $request)
+    public function exportZip()
     {
         $timestamp = now()->format('Y_m_d_H_i_s');
         $paymentsFile = "exports/payments_{$timestamp}.xlsx";
