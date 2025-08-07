@@ -19,6 +19,12 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
          return Contract::with(['client', 'pawnshop', 'category'])
             ->get()
             ->map(function ($contract) {
+                $status = 'Բաց';
+                if ($contract->status == 'completed') {
+                    $status = 'Փակված';
+                } elseif ($contract->status == 'executed') {
+                    $status = 'Իրացված';
+                }
                 return [
                     $contract->date,
                     $contract->num,
@@ -61,6 +67,7 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
                     $contract->closed_at,
                     $contract->description,
                     $contract->category->title ?? '',
+                    $status,
                 ];
             });
     }
@@ -75,7 +82,7 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
             'Ծննդյան օր', 'Մեյլ', 'Հեռ․ համար',
             'Բանկ', 'ՔԱրտի համար', 'Հաշվ համար',
             'Գնահատվաշ', 'Տրամադրվաշ', 'Տոկոսադրույք', 'Տուգանք', 'Միանվագ', 'Օրեր',
-            'Փակման Ամսաթիվ', 'Նկարագրություն', 'Կատեգորիա',
+            'Փակման Ամսաթիվ', 'Նկարագրություն', 'Կատեգորիա','Կարգավիճակ'
         ];
     }
 
