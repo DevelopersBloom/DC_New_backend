@@ -18,7 +18,7 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
     {
         return Payment::all()->map(function ($payment) {
             $status = $payment->status === 'completed' ? 'Վճարված' : 'Չվճարված';
-
+            $cash = $payment->cash ? 'Կանխիկ' : 'Անկանխիկ';
             $type = $payment->type;
             $amount = $payment->amount;
             $typeText = '';
@@ -43,6 +43,7 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
                 (float) $payment->paid,
                 (float) $payment->mother,
                 $status,
+                $cash,
                 $typeText,
             ];
 

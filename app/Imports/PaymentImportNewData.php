@@ -31,7 +31,7 @@ class PaymentImportNewData implements ToCollection
      */
     public function collection(Collection $collection)
     {
-        foreach ($collection->skip(2) as $row) {
+        foreach ($collection->skip(1) as $row) {
             $contract_num = $row[1];
             $contract = Contract::where('num', $contract_num)->first();
             if ($contract) {
