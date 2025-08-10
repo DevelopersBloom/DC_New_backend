@@ -106,19 +106,34 @@ class PaymentImportNewData implements ToCollection
                     if (substr($pgi_id, -1) === '.') {
                         $pgi_id = rtrim($pgi_id, '.');
                     }
-                    if ($mother == 0) {
+                    if ((int)$mother > 0) {
+                        $lastPayment = Payment::where('contract_id',$contract->id)->where('type','regular')->orderBy('id','DESC')->first();
+                        if ($lastPayment) {
+                            $lastPayment->update([
+                                'last_payment' => true,
+                                'mother' => $mother
+                            ]);
+                            if ($status === 'Վճարված') {
+                                $lastPayment->update([
+                                    'paid' => $lastPayment->paid + $amount
+                                ]);
+                                $contract->left = $contract->left - $amount;
+                                $contract->closed_at = $date->format('Y.m.d');
+                            }
+                        }
+                    } else {
                         if ( $status == 'Վճարված') {
                             $payment = $contract->payments()->create([
-                                'status' => 'completed',
-                                'amount' => 0,
-                                'paid' => $amount,
-                                'PGI_ID' => $pgi_id,
-                                'date' => $date->format('Y.m.d'),
-                                'pawnshop_id' => 1,
-                                'type' => 'regular'
-                            ]);
-                            $contract->collected += $amount;
-                            $purpose = Contract::REGULAR_PAYMENT;
+                            'status' => 'completed',
+                            'amount' => 0,
+                            'paid' => $amount,
+                            'PGI_ID' => $pgi_id,
+                            'date' => $date->format('Y.m.d'),
+                            'pawnshop_id' => 1,
+                            'type' => 'regular'
+                        ]);
+                        $contract->collected += $amount;
+                        $purpose = Contract::REGULAR_PAYMENT;
 
 //                            if ($penalty > 0) {
 //                                $payment = $contract->payments()->create([
@@ -133,62 +148,47 @@ class PaymentImportNewData implements ToCollection
 //                                $contract->collected += $penalty;
 //                                $purpose .= 'և' . Contract::PENALTY;
 //                            }
-                            $order_id = $this->getOrder($cash,'in',1);
+                        $order_id = $this->getOrder($cash,'in',1);
 
-                            $res = [
-                                'contract_id' => $contract->id,
-                                'num' => $contract->num,
-                                'type' => 'in',
-                                'title' => 'Օրդեր',
-                                'pawnshop_id' => 1,
-                                'order' => $order_id,
-                                'amount' => $amount,
-                                'rep_id' => '2211',
-                                'date' => $date->format('Y.m.d'),
-                                'client_name' => $contract->client['name'] . $contract->client['surname'],
-                                'purpose' => $purpose,
-                                'cash' => $cash,
-                                'filter' => Order::REGULAR_FILTER
-                            ];
-                            $new_order = Order::create($res);
-                            $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];
-                            $history = $this->createHistory($request,$new_order->id,$amount,null,null, null);
-                            $this->createDeal($amount,
-                                $amount,null,null,
-                                null, 'in', $contract->id,$contract->client->id,
-                                $new_order->id, $cash,null,$purpose,'payment',null,$payment->id,null,1,$date);
-                        } elseif($status == 'Չվճարված') {
-                            $from_date = clone $date;
-                            $from_date = $from_date->subMonth()->format('d.m.Y');
-                            $contract->payments()->create([
-                                'status' => 'initial',
-                                'amount' => $amount,
-                                'paid' => 0,
-                                'PGI_ID' => $pgi_id,
-                                'date' => $date->format('Y.m.d'),
-                                'pawnshop_id' => 1,
-                                'type' => 'regular',
-                                'from_date' => $from_date,
-                            ]);
+                        $res = [
+                            'contract_id' => $contract->id,
+                            'num' => $contract->num,
+                            'type' => 'in',
+                            'title' => 'Օրդեր',
+                            'pawnshop_id' => 1,
+                            'order' => $order_id,
+                            'amount' => $amount,
+                            'rep_id' => '2211',
+                            'date' => $date->format('Y.m.d'),
+                            'client_name' => $contract->client['name'] . $contract->client['surname'],
+                            'purpose' => $purpose,
+                            'cash' => $cash,
+                            'filter' => Order::REGULAR_FILTER
+                        ];
+                        $new_order = Order::create($res);
+                        $request = (object)['date'=>$date,'contract_id' => $contract->id, 'amount' => $amount,'payments' => $contract->payments];
+                        $history = $this->createHistory($request,$new_order->id,$amount,null,null, null);
+                        $this->createDeal($amount,
+                            $amount,null,null,
+                            null, 'in', $contract->id,$contract->client->id,
+                            $new_order->id, $cash,null,$purpose,'payment',null,$payment->id,null,1,$date);
+                    } elseif($status == 'Չվճարված') {
+                        $from_date = clone $date;
+                        $from_date = $from_date->subMonth()->format('d.m.Y');
+                        $contract->payments()->create([
+                            'status' => 'initial',
+                            'amount' => $amount,
+                            'paid' => 0,
+                            'PGI_ID' => $pgi_id,
+                            'date' => $date->format('Y.m.d'),
+                            'pawnshop_id' => 1,
+                            'type' => 'regular',
+                            'from_date' => $from_date,
+                        ]);
 
 //                            if ($penalty > 0) {
 //                                $contract->penalty_amount = $contract->penalty_amount + $penalty;
 //                            }
-                        }
-                    } else {
-                        $lastPayment = Payment::where('contract_id',$contract->id)->where('type','regular')->orderBy('id','DESC')->first();
-                        if ($lastPayment) {
-                            $lastPayment->update([
-                                'last_payment' => true,
-                                'mother' => $mother
-                            ]);
-                            if ($status === 'Վճարված') {
-                                $lastPayment->update([
-                                    'paid' => $lastPayment->paid + $amount
-                                ]);
-                                $contract->left = $contract->left - $amount;
-                                $contract->closed_at = $date->format('Y.m.d');
-                            }
                         }
                     }
                     $contract->save();
