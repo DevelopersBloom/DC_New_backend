@@ -45,7 +45,7 @@ class PaymentImportNewData implements ToCollection
                 $amount = $row[3] ?? 0;
                 $paid = $row[4] ?? 0;
                 $mother = $row[5] ?? 0;
-                $status = $row[6];
+                $status = $row[6] ?? null;
                 $cashMap = [
                     'Կանխիկ' => true,
                     'Անանխիկ' => false,
