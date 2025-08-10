@@ -60,6 +60,7 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
             'Վճարված գումար',
             'Մայր գումար',
             'Կարգավիճակը',
+            'Վճարման ձևը',
             'Տեսակ',
         ];
     }
