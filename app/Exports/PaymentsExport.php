@@ -36,7 +36,6 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
             }
 
             return [
-                $typeText,
                 $payment->PGI_ID,
                 $payment->contract_id,
                 $payment->date,
@@ -44,6 +43,7 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
                 (float) $payment->paid,
                 (float) $payment->mother,
                 $status,
+                $typeText,
             ];
 
         });
@@ -52,7 +52,6 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
     public function headings(): array
     {
         return [
-            'Տեսակ',
             'N',
             'Պայմանագրի համար',
             'Վճարման ամսաթիվ',
@@ -60,6 +59,7 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
             'Վճարված գումար',
             'Մայր գումար',
             'Կարգավիճակը',
+            'Տեսակ',
         ];
     }
 
