@@ -36,13 +36,10 @@ class PaymentImportNewData implements ToCollection
             $contract = Contract::where('num', $contract_num)->first();
             if ($contract) {
                 $pgi_id = $row[0];
-//                if (isset($row[2]) && is_numeric(trim($row[2]))) {
-                dd($row[2]);
-                $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[2]));
-//                } else {
-//                    dd("Invalid date value: ", $row[2]); // Debugging to check what value is causing the error
-//                }
-                // $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[2]));
+
+               // $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[2]));
+                $date = Carbon::parse($row[2]);
+
                 $amount = $row[3] ?? 0;
                 $paid = $row[4] ?? 0;
                 $mother = $row[5] ?? 0;
