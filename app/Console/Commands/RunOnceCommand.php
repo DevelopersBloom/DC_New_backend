@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Imports\ContractImportNew;
 use App\Imports\ItemImport;
 use App\Imports\PaymentImportNew;
+use App\Imports\PaymentImportNewData;
 use App\Services\ContractService;
 use App\Services\PaymentService;
 use Illuminate\Console\Command;
@@ -46,7 +47,7 @@ class RunOnceCommand extends Command
         $this->info('Payment Executing');
         $paymentFilePath = base_path('ImportPayment.xlsx');
         $paymentService = app(PaymentService::class);
-        Excel::import(new PaymentImportNew($paymentService), $paymentFilePath);
+        Excel::import(new PaymentImportNewData($paymentService), $paymentFilePath);
         $this->info('Payments Executed');
 
 //        $paymentFilePath1 = base_path('PaymentImport.xlsx');
