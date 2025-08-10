@@ -106,7 +106,7 @@ class PaymentImportNewData implements ToCollection
                     if (substr($pgi_id, -1) === '.') {
                         $pgi_id = rtrim($pgi_id, '.');
                     }
-                    if ($mother != 0) {
+                    if ($mother == 0) {
                         if ( $status == 'Վճարված') {
                             $payment = $contract->payments()->create([
                                 'status' => 'completed',
