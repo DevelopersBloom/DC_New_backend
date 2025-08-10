@@ -58,7 +58,6 @@ class PaymentImportNewData implements ToCollection
                 ];
 
                 $type = $typeMap[$row[8] ?? null] ?? null;
-dd($type,$row,(int)$mother,$status);
                 if ($type == 'partial') {
                     $user = User::where('id',1)->first();
                     $payment_id = $this->paymentService->payPartial($contract,$amount,$user,$cash,null,$date);
