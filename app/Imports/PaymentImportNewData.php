@@ -32,7 +32,7 @@ class PaymentImportNewData implements ToCollection
                 'amount'        => (float) $row[4],
                 'paid'          => (float) $row[5],
                 'mother'        => (float) $row[6],
-                'last_payment'  => $row[7],
+                'last_payment'  => $row[7] ?? 0,
                 'status'        => $row[8] === 'Վճարված' ? 'completed' : 'pending',
                 'cash'          => $row[9] === 'Կանխիկ',
                 'type'          => $this->mapType($row[10]),
