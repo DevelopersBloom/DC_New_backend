@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class PaymentImportNewData implements ToCollection, WithHeadingRow
+class PaymentImportNewData implements ToCollection
 {
     public function collection(Collection $rows)
     {
@@ -26,7 +26,7 @@ class PaymentImportNewData implements ToCollection, WithHeadingRow
             if ($index === 0) continue;
 dd($row);
             Payment::create([
-                'PGI_ID'        => $row[0],
+                'PGI_ID'        => $row['n'],
                 'pawnshop_id'   => $row[1],
                 'contract_id'   => $row[2],
                 'date'          => Carbon::parse($row[3])->format('Y-m-d'),
