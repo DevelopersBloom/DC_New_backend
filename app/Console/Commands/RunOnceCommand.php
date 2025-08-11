@@ -45,7 +45,7 @@ class RunOnceCommand extends Command
 //        $this->info('Items Executed');
 //
         $this->info('Payment Executing');
-        $paymentFilePath = base_path('ImportPaymentNew.xlsx');
+        $paymentFilePath = base_path('ImportPayment.xlsx');
         $paymentService = app(PaymentService::class);
         Excel::import(new PaymentImportNew($paymentService), $paymentFilePath);
         $this->info('Payments Executed');
