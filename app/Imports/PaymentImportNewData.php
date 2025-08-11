@@ -24,7 +24,6 @@ class PaymentImportNewData implements ToCollection
     {
         foreach ($rows as $index => $row) {
             if ($index === 0) continue;
-dd($row);
             Payment::create([
                 'PGI_ID'        => $row['n'],
                 'pawnshop_id'   => $row[1],
