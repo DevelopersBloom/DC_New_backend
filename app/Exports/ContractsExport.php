@@ -70,7 +70,8 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
                     $status,
                     $contract->mother,
                     $contract->left,
-                    $contract->collected_amount
+                    $contract->collected_amount,
+                    $contract->deadline
                 ];
             });
     }
@@ -86,7 +87,7 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
             'Բանկ', 'Քարտի համար', 'Հաշվ համար',
             'Գնահատված', 'Տրամադրված', 'Տոկոսադրույք', 'Տուգանք', 'Միանվագ', 'Օրեր',
             'Փակման Ամսաթիվ', 'Նկարագրություն', 'Կատեգորիա','Կարգավիճակ',
-            'Մայր գումար', 'Մնացել է ','Հավաքվել է'
+            'Մայր գումար', 'Մնացել է ','Հավաքվել է','Վերջնաժամկետ'
         ];
     }
 
