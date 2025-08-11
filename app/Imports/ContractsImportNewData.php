@@ -93,6 +93,7 @@ class ContractsImportNewData implements ToCollection, WithHeadingRow
                 'left'             => $row['mnacel_e'] ?? 0,
                 'collected_amount' => $row['havaqvel_e'] ?? 0,
                 'client_id'        => $client->id,
+                'deadline'         => $row['verjnajamket'],
             ]);
         }
     }
