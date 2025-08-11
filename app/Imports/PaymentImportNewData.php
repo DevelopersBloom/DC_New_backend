@@ -25,7 +25,7 @@ class PaymentImportNewData implements ToCollection
         foreach ($rows as $index => $row) {
             if ($index === 0) continue;
             Payment::create([
-                'PGI_ID'        => $row['n'],
+                'PGI_ID'        => $row[0],
                 'pawnshop_id'   => $row[1],
                 'contract_id'   => $row[2],
                 'date'          => Carbon::parse($row[3])->format('Y-m-d'),
