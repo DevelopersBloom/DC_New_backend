@@ -22,19 +22,21 @@ class PaymentImportNewData implements ToCollection, WithHeadingRow
 {
     public function collection(Collection $rows)
     {
-        foreach ($rows as $row) {
+        foreach ($rows as $index => $row) {
+            if ($index === 0) continue;
+
             Payment::create([
                 'PGI_ID'        => $row[0],
                 'pawnshop_id'   => $row[1],
-                'contract_id'   => $row['պայմանագրի_համար'],
-                'date'          => Carbon::parse($row['վճարման_ամսաթիվ'])->format('Y-m-d'),
-                'amount'        => (float) $row['չվճարված_գումար'],
-                'paid'          => (float) $row['վճարված_գումար'],
-                'mother'        => (float) $row['մայր_գումար'],
-                'last_payment'  => $row['վերջին_վճարում'],
-                'status'        => $row['կարգավիճակը'] === 'Վճարված' ? 'completed' : 'pending',
-                'cash'          => $row['վճարման_ձևը'] === 'Կանխիկ',
-                'type'          => $this->mapType($row['տեսակ']),
+                'contract_id'   => $row[2],
+                'date'          => Carbon::parse($row[3])->format('Y-m-d'),
+                'amount'        => (float) $row[4],
+                'paid'          => (float) $row[5],
+                'mother'        => (float) $row[6],
+                'last_payment'  => $row[7],
+                'status'        => $row[8] === 'Վճարված' ? 'completed' : 'pending',
+                'cash'          => $row[9] === 'Կանխիկ',
+                'type'          => $this->mapType($row[10]),
             ]);
         }
     }
