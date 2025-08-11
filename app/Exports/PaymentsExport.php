@@ -37,11 +37,13 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
 
             return [
                 $payment->PGI_ID,
+                $payment->pawnshop_id,
                 $payment->contract_id,
                 $payment->date,
                 (float) $amount,
                 (float) $payment->paid,
                 (float) $payment->mother,
+                $payment->last_payment,
                 $status,
                 $cash,
                 $typeText,
@@ -54,11 +56,13 @@ class PaymentsExport implements FromCollection, WithHeadings, WithStyles
     {
         return [
             'N',
+            'Գրավատան համարը',
             'Պայմանագրի համար',
             'Վճարման ամսաթիվ',
             'Չվճարված գումար',
             'Վճարված գումար',
             'Մայր գումար',
+            'Վերջին վճարում',
             'Կարգավիճակը',
             'Վճարման ձևը',
             'Տեսակ',

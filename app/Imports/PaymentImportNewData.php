@@ -35,10 +35,10 @@ class PaymentImportNewData implements ToCollection
             $contract_num = $row[1];
             $contract = Contract::where('num', $contract_num)->first();
             if ($contract) {
-                $pgi_id = $row[0];
+                $pgi_id = $row[0] ?? null;
 
                // $date = Carbon::parse(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row[2]));
-                $date = Carbon::parse($row[2]);
+                $date = Carbon::parse($row[2]) ?? null;
 
                 $amount = $row[3] ?? 0;
                 $paid = $row[4] ?? 0;
@@ -60,7 +60,16 @@ class PaymentImportNewData implements ToCollection
                 $type = $typeMap[$row[8] ?? null] ?? null;
                 if ($type == 'partial') {
                     $user = User::where('id',1)->first();
-                    $payment_id = $this->paymentService->payPartial($contract,$amount,$user,$cash,null,$date);
+                   // $payment_id = $this->paymentService->payPartial($contract,$amount,$user,$cash,null,$date);
+                    $payment = $contract->payments()->create([
+                        'status' => 'completed',
+                        'amount' => 0,
+                        'paid' => $paid,
+                        'PGI_ID' => $pgi_id,
+                        'date' => $date,
+                        'pawnshop_id' => 1,
+                        'type' => 'partial'
+                    ]);
                     $history_type = HistoryType::where('name','partial_payment')->first();
                     $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
                     $order_id = $this->getOrder($cash,'in');
@@ -103,48 +112,20 @@ class PaymentImportNewData implements ToCollection
                     if (substr($pgi_id, -1) === '.') {
                         $pgi_id = rtrim($pgi_id, '.');
                     }
-                    if ((int)$mother > 0) {
-                        $lastPayment = Payment::where('contract_id',$contract->id)->where('type','regular')->orderBy('id','DESC')->first();
-                        if ($lastPayment) {
-                            $lastPayment->update([
-                                'last_payment' => true,
-                                'mother' => $mother
-                            ]);
-                            if ($status === 'Վճարված') {
-                                $lastPayment->update([
-                                    'paid' => $lastPayment->paid + $amount
-                                ]);
-                                $contract->left = $contract->left - $amount;
-                                $contract->closed_at = $date->format('Y.m.d');
-                            }
-                        }
-                    } else {
+
                         if ( $status == 'Վճարված') {
                             $payment = $contract->payments()->create([
                             'status' => 'completed',
                             'amount' => 0,
-                            'paid' => $amount,
+                            'paid' => $paid,
+                            'mother' => $mother,
                             'PGI_ID' => $pgi_id,
-                            'date' => $date->format('Y.m.d'),
+                            'date' => $date,
                             'pawnshop_id' => 1,
                             'type' => 'regular'
                         ]);
-                        $contract->collected += $amount;
                         $purpose = Contract::REGULAR_PAYMENT;
 
-//                            if ($penalty > 0) {
-//                                $payment = $contract->payments()->create([
-//                                    'status' => 'completed',
-//                                    'amount' => 0,
-//                                    'paid' => $penalty,
-//                                    'PGI_ID' => $pgi_id,
-//                                    'date' => $date->format('Y.m.d'),
-//                                    'pawnshop_id' => 1,
-//                                    'type' => 'penalty'
-//                                ]);
-//                                $contract->collected += $penalty;
-//                                $purpose .= 'և' . Contract::PENALTY;
-//                            }
                         $order_id = $this->getOrder($cash,'in',1);
 
                         $res = [
@@ -175,21 +156,18 @@ class PaymentImportNewData implements ToCollection
                         $contract->payments()->create([
                             'status' => 'initial',
                             'amount' => $amount,
-                            'paid' => 0,
+                            'paid' => $paid,
+                            'mother' => $mother,
                             'PGI_ID' => $pgi_id,
                             'date' => $date->format('Y.m.d'),
                             'pawnshop_id' => 1,
                             'type' => 'regular',
                             'from_date' => $from_date,
                         ]);
-
-//                            if ($penalty > 0) {
-//                                $contract->penalty_amount = $contract->penalty_amount + $penalty;
-//                            }
                         }
                     }
                     $contract->save();
-                }
+
             }
         }
     }
