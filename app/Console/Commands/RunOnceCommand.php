@@ -36,8 +36,8 @@ class RunOnceCommand extends Command
     public function handle()
     {
         $this->info('Started Executing');
-        $contractFilePath = base_path('ImportContract.xlsx');
-        Excel::import(app(ContractImportNew::class), $contractFilePath);
+        $contractFilePath = base_path('ImportContractNewData.xlsx');
+        Excel::import(app(ContractsImportNewData::class), $contractFilePath);
         $this->info('Contracts Executed');
 
 //        $this->info('Started items import');
@@ -46,9 +46,9 @@ class RunOnceCommand extends Command
 //        $this->info('Items Executed');
 //
         $this->info('Payment Executing');
-        $paymentFilePath = base_path('ImportPayment.xlsx');
+        $paymentFilePath = base_path('ImportPaymentNewData.xlsx');
         $paymentService = app(PaymentService::class);
-        Excel::import(new PaymentImportNew($paymentService), $paymentFilePath);
+        Excel::import(new PaymentImportNewData($paymentService), $paymentFilePath);
         $this->info('Payments Executed');
 
 //        $paymentFilePath1 = base_path('PaymentImport.xlsx');
