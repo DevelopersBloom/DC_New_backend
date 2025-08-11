@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Imports\ContractImportNew;
+use App\Imports\ContractsImportNewData;
 use App\Imports\ItemImport;
 use App\Imports\PaymentImportNew;
 use App\Imports\PaymentImportNewData;
@@ -35,8 +36,8 @@ class RunOnceCommand extends Command
     public function handle()
     {
         $this->info('Started Executing');
-        $contractFilePath = base_path('ImportContract.xlsx');
-        Excel::import(app(ContractImportNew::class), $contractFilePath);
+        $contractFilePath = base_path('ImportContractData.xlsx');
+        Excel::import(app(ContractsImportNewData::class), $contractFilePath);
         $this->info('Contracts Executed');
 
 //        $this->info('Started items import');

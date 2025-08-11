@@ -61,13 +61,16 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
                     $contract->provided_amount,
                     $contract->interest_rate,
                     $contract->penalty,
-                    $contract->one_time_payment,
+                    $contract->lump_rate,
                     $contract->deadline_days,
 
                     $contract->closed_at,
                     $contract->description,
                     $contract->category->title ?? '',
                     $status,
+                    $contract->mother,
+                    $contract->left,
+                    $contract->collected_amount
                 ];
             });
     }
@@ -80,9 +83,10 @@ class ContractsExport implements FromCollection, WithHeadings, WithStyles
             'Անձնագրի սերիա', 'Անձնագրի վավերականություն', 'Տրված',
             'Երկիր', 'Քաղաք', 'Փողոց/շենք',
             'Ծննդյան օր', 'Մեյլ', 'Հեռ․ համար',
-            'Բանկ', 'ՔԱրտի համար', 'Հաշվ համար',
-            'Գնահատվաշ', 'Տրամադրվաշ', 'Տոկոսադրույք', 'Տուգանք', 'Միանվագ', 'Օրեր',
-            'Փակման Ամսաթիվ', 'Նկարագրություն', 'Կատեգորիա','Կարգավիճակ'
+            'Բանկ', 'Քարտի համար', 'Հաշվ համար',
+            'Գնահատված', 'Տրամադրված', 'Տոկոսադրույք', 'Տուգանք', 'Միանվագ', 'Օրեր',
+            'Փակման Ամսաթիվ', 'Նկարագրություն', 'Կատեգորիա','Կարգավիճակ',
+            'Մայր գումար', 'Մնացել է ','Հավաքվել է'
         ];
     }
 
