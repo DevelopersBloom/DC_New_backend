@@ -23,44 +23,51 @@ class ContractsImportNewData implements ToCollection, WithHeadingRow
     public function collection(Collection $rows)
     {
         foreach ($rows as $row) {
-dd($row);
-            $date = $this->parseDate($row['պայմանագրի_ամսաթիվ'] ?? null);
+
+            // Պայմանագրի ամսաթվի մշակում
+            $date = $this->parseDate($row['paymanagri_amsathiv'] ?? null);
 
             // Ծննդյան օրվա մշակում
-            $date_of_birth = $this->parseDate($row['ծննդյան_օր'] ?? null, true);
+            $date_of_birth = $this->parseDate($row['tsnndyan_or'] ?? null, true);
 
             // Փակման ամսաթվի մշակում
-            $closed_at = $this->parseDate($row['փակման_ամսաթիվ'] ?? null);
+            $closed_at = $this->parseDate($row['phakman_amsathiv'] ?? null);
 
             // Անուն Ազգանուն Հայրանուն բաժանում
-            $client_info = preg_split('/\s+/', trim($row['անուն_ազգանուն_հայրանուն'] ?? ''));
+            $client_info = preg_split('/\s+/', trim($row['anvoun_azganvoun_hayranvoun'] ?? ''));
             $client_name = $client_info[0] ?? null;
             $client_surname = $client_info[1] ?? null;
             $client_middle_name = $client_info[2] ?? null;
 
-            // Հեռախոսների մշակում
-            $phones = array_map('trim', explode(',', $row['հեռ․_համար'] ?? ''));
-            $phone = isset($phones[0]) ? "(+374) " . $phones[0] : null;
-            $additional_phone = isset($phones[1]) ? "(+374) " . $phones[1] : null;
+            // Հեռախոսների մշակում՝ փորձելով առաջին և երկրորդ հեռախոսները ստանալ
+            $phones = preg_split('/\s+/', trim($row['her_hamar'] ?? ''));
+            $phone = null;
+            $additional_phone = null;
+            if (count($phones) >= 4) {
+                $phone = "(+374) " . implode(' ', array_slice($phones, 1, 3));
+            }
+            if (count($phones) >= 8) {
+                $additional_phone = "(+374) " . implode(' ', array_slice($phones, 5, 3));
+            }
 
             // Կլիենտի տվյալների array
             $client_data = [
                 'name'             => $client_name,
                 'surname'          => $client_surname,
                 'middle_name'      => $client_middle_name,
-                'passport_series'  => $row['անձնագրի_սերիա'] ?? null,
-                'passport_validity'=> $row['անձնագրի_վավերականություն'] ?? null,
-                'passport_issued'  => preg_replace('/\D/', '', $row['տրված'] ?? null),
-                'country'          => $row['երկիր'] ?? null,
-                'city'             => $row['քաղաք'] ?? null,
-                'street'           => $row['փողոց/շենք'] ?? null,
+                'passport_series'  => $row['andznagri_seria'] ?? null,
+                'passport_validity'=> $row['andznagri_vaverakanvouthyvoun'] ?? null,
+                'passport_issued'  => preg_replace('/\D/', '', $row['trvats'] ?? null),
+                'country'          => $row['erkir'] ?? null,
+                'city'             => $row['qaghaq'] ?? null,
+                'street'           => $row['phvoghvocshenq'] ?? null,
                 'date_of_birth'    => $date_of_birth,
-                'email'            => $row['մեյլ'] ?? null,
+                'email'            => $row['meyl'] ?? null,
                 'phone'            => $phone,
                 'additional_phone' => $additional_phone,
-                'bank_name'        => $row['բանկ'] ?? null,
-                'card_number'      => $row['քարտի_համար'] ?? null,
-                'account_number'   => $row['հաշվ_համար'] ?? null,
+                'bank_name'        => $row['bank'] ?? null,
+                'card_number'      => $row['qarti_hamar'] ?? null,
+                'account_number'   => $row['hashv_hamar'] ?? null,
                 'date'             => $date
             ];
 
@@ -70,21 +77,21 @@ dd($row);
             // Պայմանագրի ստեղծում
             Contract::create([
                 'date'             => $date,
-                'num'              => $row['պայմ․_համար'] ?? null,
-                'pawnshop_id'      => $row['գրավատան_համար'] ?? null,
-                'estimated_amount' => $row['գնահատված'] ?? 0,
-                'provided_amount'  => $row['տրամադրված'] ?? 0,
-                'interest_rate'    => $row['տոկոսադրույք'] ?? 0,
-                'penalty'          => $row['տուգանք'] ?? 0,
-                'lump_rate'        => $row['միանվագ'] ?? 0,
-                'deadline_days'    => $row['օրեր'] ?? 0,
+                'num'              => $row['paym_hamar'] ?? null,
+                'pawnshop_id'      => $row['gravatan_hamar'] ?? null,
+                'estimated_amount' => $row['gnahatvats'] ?? 0,
+                'provided_amount'  => $row['tramadrvats'] ?? 0,
+                'interest_rate'    => $row['tvokvosadrvouyq'] ?? 0,
+                'penalty'          => $row['tvouganq'] ?? 0,
+                'lump_rate'        => $row['mianvag'] ?? 0,
+                'deadline_days'    => $row['orer'] ?? 0,
                 'closed_at'        => $closed_at,
-                'description'      => $row['նկարագրություն'] ?? null,
-                'category_id'      => null, // կարող ես category lookup անել
-                'status'           => $this->mapStatus($row['կարգավիճակ'] ?? ''),
-                'mother'           => $row['մայր_գումար'] ?? 0,
-                'left'             => $row['մնացել_է'] ?? 0,
-                'collected_amount' => $row['հավաքվել_է'] ?? 0,
+                'description'      => $row['nkaragrvouthyvoun'] ?? null,
+                'category_id'      => null, // այստեղ կարող ես ավելացնել category lookup
+                'status'           => $this->mapStatus($row['kargavitchak'] ?? ''),
+                'mother'           => $row['mayr_gvoumar'] ?? 0,
+                'left'             => $row['mnacel_e'] ?? 0,
+                'collected_amount' => $row['havaqvel_e'] ?? 0,
                 'client_id'        => $client->id,
             ]);
         }
