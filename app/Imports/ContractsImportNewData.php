@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Category;
 use App\Models\Contract;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -22,24 +23,20 @@ class ContractsImportNewData implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
+        $categories = Category::pluck('id', 'title')->toArray();
         foreach ($rows as $row) {
 
-            // Պայմանագրի ամսաթվի մշակում
             $date = $this->parseDate($row['paymanagri_amsathiv'] ?? null);
 
-            // Ծննդյան օրվա մշակում
             $date_of_birth = $this->parseDate($row['tsnndyan_or'] ?? null, true);
 
-            // Փակման ամսաթվի մշակում
             $closed_at = $this->parseDate($row['phakman_amsathiv'] ?? null);
 
-            // Անուն Ազգանուն Հայրանուն բաժանում
             $client_info = preg_split('/\s+/', trim($row['anvoun_azganvoun_hayranvoun'] ?? ''));
             $client_name = $client_info[0] ?? null;
             $client_surname = $client_info[1] ?? null;
             $client_middle_name = $client_info[2] ?? null;
 
-            // Հեռախոսների մշակում՝ փորձելով առաջին և երկրորդ հեռախոսները ստանալ
             $phones = preg_split('/\s+/', trim($row['her_hamar'] ?? ''));
             $phone = null;
             $additional_phone = null;
@@ -50,7 +47,6 @@ class ContractsImportNewData implements ToCollection, WithHeadingRow
                 $additional_phone = "(+374) " . implode(' ', array_slice($phones, 5, 3));
             }
 
-            // Կլիենտի տվյալների array
             $client_data = [
                 'name'             => $client_name,
                 'surname'          => $client_surname,
@@ -71,9 +67,10 @@ class ContractsImportNewData implements ToCollection, WithHeadingRow
                 'date'             => $date
             ];
 
-            // Ստեղծել կամ թարմացնել կլիենտին
             $client = $this->clientService->storeOrUpdate($client_data);
-            // Պայմանագրի ստեղծում
+            $categoryTitle = $row['kategvoria'] ?? null;
+            $category_id = $categoryTitle && isset($categories[$categoryTitle]) ? $categories[$categoryTitle] : null;
+
             Contract::create([
                 'date'             => $date,
                 'num'              => $row['paym_hamar'] ?? null,
@@ -86,7 +83,7 @@ class ContractsImportNewData implements ToCollection, WithHeadingRow
                 'deadline_days'    => $row['orer'] ?? 0,
                 'closed_at'        => $closed_at,
                 'description'      => $row['nkaragrvouthyvoun'] ?? null,
-                'category_id'      => null, // այստեղ կարող ես ավելացնել category lookup
+                'category_id' => $category_id,
                 'status'           => $this->mapStatus($row['kargavitchak'] ?? ''),
                 'mother'           => $row['mayr_gvoumar'] ?? 0,
                 'left'             => $row['mnacel_e'] ?? 0,
