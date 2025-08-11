@@ -73,7 +73,7 @@ class ContractsImportNewData implements ToCollection, WithHeadingRow
 
             // Ստեղծել կամ թարմացնել կլիենտին
             $client = $this->clientService->storeOrUpdate($client_data);
-
+dd($row);
             // Պայմանագրի ստեղծում
             Contract::create([
                 'date'             => $date,
