@@ -38,7 +38,7 @@ class RunOnceCommand extends Command
     {
         $this->info('Started Executing');
         $contractFilePath = base_path('ImportContract.xlsx');
-        Excel::import(app(ContractImport::class), $contractFilePath);
+        Excel::import(app(ContractImportNew::class), $contractFilePath);
         $this->info('Contracts Executed');
 
 //        $this->info('Started items import');
