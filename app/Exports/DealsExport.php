@@ -65,6 +65,7 @@ class DealsExport implements FromCollection, WithHeadings, WithMapping
 
     public function map($deal): array
     {
+        dd($deal);
         $dealData = [];
         foreach ($this->dealColumns as $col) {
             $dealData[] = $deal->{$col} ?? '';
