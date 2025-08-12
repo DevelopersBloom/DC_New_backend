@@ -15,9 +15,10 @@ class DealsExport implements FromCollection, WithHeadings, WithMapping
 
     public function __construct()
     {
-        $this->dealColumns = (new Deal())->getFillable();
-        $this->orderColumns = (new \App\Models\Order())->getFillable();
-        $this->historyColumns = (new \App\Models\History())->getFillable();
+        // Բոլոր սյունակները DB attributes-ից
+        $this->dealColumns = \Schema::getColumnListing((new Deal())->getTable());
+        $this->orderColumns = \Schema::getColumnListing((new \App\Models\Order())->getTable());
+        $this->historyColumns = \Schema::getColumnListing((new \App\Models\History())->getTable());
     }
 
     public function collection()
