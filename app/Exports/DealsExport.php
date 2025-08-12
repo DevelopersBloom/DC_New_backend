@@ -30,7 +30,7 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
                 $deal->created_by,
                 $deal->updated_by,
                 $deal->filter_type,
-                $deal->category->title,
+                $deal->category_id,
 
                 // Order fields
                 $deal->order->type ?? '',
