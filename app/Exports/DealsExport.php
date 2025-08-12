@@ -3,9 +3,12 @@
 namespace App\Exports;
 
 use App\Models\Deal;
+use App\Models\Order;
+use App\Models\History;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Illuminate\Support\Facades\Schema;
 
 class DealsExport implements FromCollection, WithHeadings, WithMapping
 {
@@ -15,10 +18,35 @@ class DealsExport implements FromCollection, WithHeadings, WithMapping
 
     public function __construct()
     {
-        // Բոլոր սյունակները DB attributes-ից
-        $this->dealColumns = \Schema::getColumnListing((new Deal())->getTable());
-        $this->orderColumns = \Schema::getColumnListing((new \App\Models\Order())->getTable());
-        $this->historyColumns = \Schema::getColumnListing((new \App\Models\History())->getTable());
+        // ✅ միայն այս դաշտերը Deal-ից
+        $this->dealColumns = [
+            'type',
+            'amount',
+            'penalty',
+            'discount',
+            'interest_amount',
+            'order_id',
+            'pawnshop_id',
+            'contract_num',
+            'cash',
+            'given',
+            'insurance',
+            'date',
+            'delay_days',
+            'purpose',
+            'receiver',
+            'source',
+            'created_by',
+            'updated_by',
+            'filter_type',
+            'payment_id',
+            'history_id',
+            'category_id'
+        ];
+
+        // ✅ Order և History բոլոր սյունակները
+        $this->orderColumns = Schema::getColumnListing((new Order())->getTable());
+        $this->historyColumns = Schema::getColumnListing((new History())->getTable());
     }
 
     public function collection()
