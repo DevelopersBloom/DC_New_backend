@@ -52,7 +52,7 @@ class DealsExport implements FromCollection, WithHeadings
             ->get()
             ->map(function ($deal) {
                 $row = [];
-
+dd($deal->toArray());
                 // Deal fields
                 foreach ($this->dealColumns as $col) {
                     $row["deal_$col"] = $deal->{$col} ?? '';
