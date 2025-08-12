@@ -3,81 +3,104 @@
 namespace App\Exports;
 
 use App\Models\Deal;
-use App\Models\Order;
-use App\Models\History;
-use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Illuminate\Support\Collection;
 
-class DealsExport implements FromCollection, WithHeadings
+class DealsExport implements FromCollection, WithHeadings, WithStyles
 {
-    protected $dealColumns;
-    protected $orderColumns;
-    protected $historyColumns;
-
-    public function __construct()
+    public function collection(): Collection
     {
-        $this->dealColumns = [
-            'type',
-            'amount',
-            'penalty',
-            'discount',
-            'interest_amount',
-            'order_id',
-            'pawnshop_id',
-            'contract_num',
-            'cash',
-            'given',
-            'insurance',
-            'date',
-            'delay_days',
-            'purpose',
-            'receiver',
-            'source',
-            'created_by',
-            'updated_by',
-            'filter_type',
-            'payment_id',
-            'history_id',
-            'category_id'
-        ];
-
-        $this->orderColumns = Schema::getColumnListing((new Order())->getTable());
-        $this->historyColumns = Schema::getColumnListing((new History())->getTable());
-    }
-
-    public function collection()
-    {
-        return Deal::with(['order', 'history'])
-            ->get()
-            ->map(function ($deal) {
-                $row = [];
-dd($deal->toArray());
+        return Deal::with(['order', 'history'])->get()->map(function ($deal) {
+            return [
                 // Deal fields
-                foreach ($this->dealColumns as $col) {
-                    $row["deal_$col"] = $deal->{$col} ?? '';
-                }
+                $deal->type,
+                $deal->amount,
+                $deal->penalty,
+                $deal->discount,
+                $deal->interest_amount,
+                $deal->order_id,
+                $deal->pawnshop_id,
+                $deal->contract->num ?? '', // եթե պետք է contract_num
+                $deal->cash ? 'Yes' : 'No',
+                $deal->given,
+                $deal->insurance,
+                $deal->date,
+                $deal->delay_days,
+                $deal->purpose,
+                $deal->receiver,
+                $deal->source,
+                $deal->created_by,
+                $deal->updated_by,
+                $deal->filter_type,
+                $deal->payment_id,
+                $deal->history_id,
+                $deal->category_id,
 
-                // Order fields
-                foreach ($this->orderColumns as $col) {
-                    $row["order_$col"] = $deal->order->{$col} ?? '';
-                }
+                // Order fields (օրինակ)
+                $deal->order->id ?? '',
+                $deal->order->date ?? '',
+                $deal->order->amount ?? '',
 
-                // History fields
-                foreach ($this->historyColumns as $col) {
-                    $row["history_$col"] = $deal->history->{$col} ?? '';
-                }
-
-                return collect($row);
-            });
+                // History fields (օրինակ)
+                $deal->history->id ?? '',
+                $deal->history->date ?? '',
+                $deal->history->amount ?? '',
+            ];
+        });
     }
 
     public function headings(): array
     {
-        $dealHeaders = array_map(fn($col) => "deal_$col", $this->dealColumns);
-        $orderHeaders = array_map(fn($col) => "order_$col", $this->orderColumns);
-        $historyHeaders = array_map(fn($col) => "history_$col", $this->historyColumns);
+        return [
+            // Deal headings
+            'Type',
+            'Amount',
+            'Penalty',
+            'Discount',
+            'Interest Amount',
+            'Order ID',
+            'Pawnshop ID',
+            'Contract Num',
+            'Cash',
+            'Given',
+            'Insurance',
+            'Date',
+            'Delay Days',
+            'Purpose',
+            'Receiver',
+            'Source',
+            'Created By',
+            'Updated By',
+            'Filter Type',
+            'Payment ID',
+            'History ID',
+            'Category ID',
 
-        return array_merge($dealHeaders, $orderHeaders, $historyHeaders);
+            // Order headings
+            'Order ID',
+            'Order Date',
+            'Order Amount',
+
+            // History headings
+            'History ID',
+            'History Date',
+            'History Amount',
+        ];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            1 => [
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'e3e3e3']
+                ]
+            ],
+        ];
     }
 }
