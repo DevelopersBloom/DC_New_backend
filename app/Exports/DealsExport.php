@@ -15,39 +15,36 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
     {
         return Deal::with(['order', 'history'])->get()->map(function ($deal) {
             return [
-                // Deal fields
                 $deal->type,
                 $deal->amount,
                 $deal->penalty,
                 $deal->discount,
                 $deal->interest_amount,
-                $deal->order_id,
                 $deal->pawnshop_id,
-                $deal->contract->num ?? '', // եթե պետք է contract_num
-                $deal->cash ? 'Yes' : 'No',
-                $deal->given,
-                $deal->insurance,
+                $deal->contract->num ?? '',
+                $deal->cash ? 'Կանխիկ' : 'Անկանխիկ',
                 $deal->date,
                 $deal->delay_days,
                 $deal->purpose,
                 $deal->receiver,
-                $deal->source,
                 $deal->created_by,
                 $deal->updated_by,
                 $deal->filter_type,
-                $deal->payment_id,
-                $deal->history_id,
-                $deal->category_id,
+                $deal->category->title,
 
-                // Order fields (օրինակ)
-                $deal->order->id ?? '',
-                $deal->order->date ?? '',
-                $deal->order->amount ?? '',
+                // Order fields
+                $deal->order->type ?? '',
+                $deal->order->title ?? '',
+                $deal->order->order ?? '',
+                $deal->order->amount,
+                $deal->order->date,
+                $deal->order->client_name,
+                $deal->order->purpose,
+                $deal->order->receiver,
 
                 // History fields (օրինակ)
-                $deal->history->id ?? '',
+                $deal->history->type->title ?? '',
                 $deal->history->date ?? '',
-                $deal->history->amount ?? '',
             ];
         });
     }
@@ -55,39 +52,36 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
     public function headings(): array
     {
         return [
-            // Deal headings
-            'Type',
-            'Amount',
-            'Penalty',
-            'Discount',
-            'Interest Amount',
-            'Order ID',
-            'Pawnshop ID',
-            'Contract Num',
-            'Cash',
-            'Given',
-            'Insurance',
-            'Date',
-            'Delay Days',
-            'Purpose',
-            'Receiver',
-            'Source',
-            'Created By',
-            'Updated By',
-            'Filter Type',
-            'Payment ID',
-            'History ID',
-            'Category ID',
+            'Գործարքի տեսակ',
+            'Գումար',
+            'Տուգանք',
+            'Զեղչ',
+            'Տոկոսագումար',
+            'Գրավատան ID',
+            'Պայմանագրի համար',
+            'Վճարման տեսակ',
+            'Գործարքի ամսաթիվ',
+            'Ուշացման օրեր',
+            'Նպատակ',
+            'Ստացող',
+            'Ստեղծել է',
+            'Թարմացրել է',
+            'Ֆիլտրի տեսակ',
+            'Կատեգորիա',
 
             // Order headings
-            'Order ID',
-            'Order Date',
-            'Order Amount',
+            'Օրդերի տեսակ',
+            'Օրդերի վերնագիր',
+            'Օրդերի համար',
+            'Օրդերի գումար',
+            'Օրդերի ամսաթիվ',
+            'Հաճախորդի անուն',
+            'Օրդերի նպատակ',
+            'Օրդերի ստացող',
 
             // History headings
-            'History ID',
-            'History Date',
-            'History Amount',
+            'Պատմության տիպ',
+            'Պատմության ամսաթիվ',
         ];
     }
 
