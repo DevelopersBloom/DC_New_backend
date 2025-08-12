@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ContractsExport;
+use App\Exports\DealsExport;
 use App\Exports\PaymentsExport;
 use App\Models\Contract;
 use App\Models\Order;
@@ -712,10 +713,12 @@ class FileController extends Controller
         $timestamp = now()->format('Y_m_d_H_i_s');
         $paymentsFile = "exports/payments_{$timestamp}.xlsx";
         $contractsFile = "exports/contracts_{$timestamp}.xlsx";
+        $dealsFile = "exports/deal_{$timestamp}.xlsx";
         $zipFileName = "exports/exports_{$timestamp}.zip";
 
         Excel::store(new PaymentsExport, $paymentsFile);
         Excel::store(new ContractsExport, $contractsFile);
+        Excel::store(new DealsExport, $dealsFile);
 
         $zip = new \PhpOffice\PhpWord\Shared\ZipArchive();
         $zipPath = storage_path("app/{$zipFileName}");
@@ -723,6 +726,7 @@ class FileController extends Controller
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
             $zip->addFile(storage_path("app/{$paymentsFile}"), 'Payments.xlsx');
             $zip->addFile(storage_path("app/{$contractsFile}"), 'Contracts.xlsx');
+            $zip->addFile(storage_path("app/{$dealsFile}"), 'Deals.xlsx');
             $zip->close();
         }
 
