@@ -81,21 +81,25 @@ class DealsImport implements ToCollection
                     $actionsArray = explode(';', $row[26]);
 
                     foreach ($actionsArray as $actionStr) {
+                        $actionStr = trim($actionStr);
+                        if (!$actionStr) continue; // դատարկել դատարկ action-ները
+
                         $parts = explode('|', $actionStr);
 
                         DealAction::create([
                             'deal_id' => $deal->id,
-                            'actionable_type' => trim($parts[0] ?? null),
-                            'amount' => trim($parts[1] ?? 0),
-                            'type' => trim($parts[2] ?? null),
-                            'description' => trim($parts[3] ?? null),
-                            'date' => isset($parts[4]) ? \Carbon\Carbon::parse(trim($parts[4])) : now(),
-                            'history' => isset($parts[5]) ? json_decode(trim($parts[5]), true) : null,
-                            'created_by' => 1,
-                            'updated_by' => 1,
+                            'actionable_type' => trim($parts[0] ?? 'App\Models\Order'),
+                            'amount' => floatval(trim($parts[1] ?? 0)),
+                            'type' => trim($parts[2] ?? 'unknown'),
+                            'description' => trim($parts[3] ?? ''),
+                            'date' => isset($parts[4]) && $parts[4] ? \Carbon\Carbon::parse(trim($parts[4])) : now(),
+                            'history' => isset($parts[5]) && $parts[5] ? json_decode(trim($parts[5]), true) : null,
+                            'created_by' => auth()->id() ?? 1,
+                            'updated_by' => auth()->id() ?? 1,
                         ]);
                     }
                 }
+
             }
         });
     }
