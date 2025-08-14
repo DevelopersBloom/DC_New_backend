@@ -86,7 +86,7 @@ class DealsImport implements ToCollection
 
                         $parts = explode('|', $actionStr);
 
-                        DealAction::create([
+                        $dealAction = DealAction::create([
                             'deal_id' => $deal->id,
                             'actionable_type' => trim($parts[0] ?? 'App\Models\Order'),
                             'amount' => floatval(trim($parts[1] ?? 0)),
@@ -94,9 +94,10 @@ class DealsImport implements ToCollection
                             'description' => trim($parts[3] ?? ''),
                             'date' => isset($parts[4]) && $parts[4] ? \Carbon\Carbon::parse(trim($parts[4])) : now(),
                             'history' => isset($parts[5]) && $parts[5] ? json_decode(trim($parts[5]), true) : null,
-                            'created_by' => auth()->id() ?? 1,
-                            'updated_by' => auth()->id() ?? 1,
+                            'created_by' => 1,
+                            'updated_by' => 1,
                         ]);
+
                     }
                 }
 
