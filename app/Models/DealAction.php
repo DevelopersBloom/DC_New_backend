@@ -52,5 +52,9 @@ class DealAction extends Model
     {
         return $this->belongsTo(User::class,'updated_by');
     }
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(Deal::class,'deal_id');
+    }
 
 }
