@@ -14,7 +14,6 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
     public function collection(): Collection
     {
         return Deal::with(['order', 'history','actions'])->get()->map(function ($deal) {
-          dd($deal->actions);
             return [
                 $deal->type,
                 $deal->amount,
@@ -47,6 +46,8 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
                 // History fields (օրինակ)
                 $deal->history->type->title ?? '',
                 $deal->history->date ?? '',
+
+                $deal->actions,
             ];
         });
     }
@@ -84,6 +85,9 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
             // History headings
             'Պատմության տիպ',
             'Պատմության ամսաթիվ',
+
+            'Գործողություններ',
+
         ];
     }
 
