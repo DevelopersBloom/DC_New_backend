@@ -21,7 +21,8 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
                     $action->type,
                     $action->description,
                     optional($action->date)->format('Y-m-d'),
-                    json_encode($action->history)                ]);
+                    json_encode($action->history)
+                ]);
             })->implode('; ');
             return [
                 $deal->type,

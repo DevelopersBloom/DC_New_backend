@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\DealAction;
 use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\History;
@@ -56,7 +57,7 @@ class DealsImport implements ToCollection
                     'user_id'        => $row[12] ?? 1
                 ]);
 
-                Deal::create([
+                $deal = Deal::create([
                     'type'           => $row[0] ?? null,
                     'amount'         => $row[1] ?? 0,
                     'penalty'        => $row[2] ?? null,
@@ -76,6 +77,22 @@ class DealsImport implements ToCollection
                     'order_id'       => $order->id,
                     'history_id'     => $history->id,
                 ]);
+                if (!empty($row[26])) {
+                    $actionsArray = explode(';', $row[26]);
+
+                    foreach ($actionsArray as $actionStr) {
+                        $parts = explode('|', $actionStr);
+                        DealAction::create([
+                            'deal_id' => $deal->id,
+                            'actionable_type' => trim($parts[0] ?? null),
+                            'amount' => trim($parts[1] ?? 0),
+                            'type' => trim($parts[2] ?? null),
+                            'description' => trim($parts[3] ?? null),
+                            'date' => isset($parts[4]) ? \Carbon\Carbon::parse(trim($parts[4])) : now(),
+                            'history' => isset($parts[5]) ? json_decode(trim($parts[5]), true) : null,
+                        ]);
+                    }
+                }
             }
         });
     }
