@@ -82,7 +82,7 @@ class DealsImport implements ToCollection
 
                     foreach ($actionsArray as $actionStr) {
                         $actionStr = trim($actionStr);
-                        if (!$actionStr) continue; // դատարկել դատարկ action-ները
+                        if (!$actionStr) continue;
 
                         $parts = explode('|', $actionStr);
 
@@ -97,6 +97,7 @@ class DealsImport implements ToCollection
                             'created_by' => 1,
                             'updated_by' => 1,
                         ]);
+                        $dealAction->created_by = 1;
 
                     }
                 }
