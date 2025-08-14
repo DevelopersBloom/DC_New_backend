@@ -2,84 +2,99 @@
 
 namespace App\Imports;
 
+use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\History;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Facades\DB;
 
 class DealsImport implements ToCollection
 {
-    public function collection(Collection $rows): void
+    public function collection(Collection $rows)
     {
         DB::transaction(function () use ($rows) {
-            foreach ($rows as $row) {
-dd($row);
-                // Step 1 - Create Order
+            foreach ($rows as $index => $row) {
+
+                // Skip header row
+                if ($index === 0) {
+                    continue;
+                }
+                $contractId = ($row[6]) ? $this->getContractIdByNumber($row[6]) : null;
+
                 $order = Order::create([
-                    'contract_id' => $row['contract_id'] ?? null,
-                    'type'        => $row['order_type'] ?? null,
-                    'title'       => $row['order_title'] ?? null,
-                    'pawnshop_id' => $row['pawnshop_id'] ?? null,
-                    'order'       => $row['order_number'] ?? null,
-                    'amount'      => $row['amount'] ?? 0,
-                    'rep_id'      => $row['rep_id'] ?? null,
-                    'date'        => $row['order_date'] ?? now(),
-                    'client_name' => $row['client_name'] ?? null,
-                    'purpose'     => $row['order_purpose'] ?? null,
-                    'receiver'    => $row['order_receiver'] ?? null,
-                    'cashbox'     => $row['cashbox'] ?? null,
-                    'num'         => $row['order_num'] ?? null,
-                    'cash'        => $row['cash'] === 'Կանխիկ',
-                    'filter'      => $row['order_filter'] ?? null,
+                    'num'         => $row[6]  ?? null,
+                    'contract_id' => $contractId,
+                    'type'        => $row[16] ?? null,
+                    'title'       => $row[17] ?? null,
+                    'pawnshop_id' => $row[5] ?? 1,
+                    'order'       => $row[18] ?? null,
+                    'rep_id'      => 2211,
+                    'amount'      => $row[19] ?? 0,
+                    'date'        => $row[20] ?? now(),
+                    'client_name' => $row[21] ?? null,
+                    'purpose'     => $row[22] ?? null,
+                    'receiver'    => $row[23] ?? null,
+                    'cash'        => ($row[7] ?? '') === 'Կանխիկ',
+                    'filter'      => $row[24] ?? null,
                 ]);
 
-                // Step 2 - Create History
+                // 2) Create History
                 $history = History::create([
-                    'amount'         => $row['amount'] ?? 0,
-                    'type_id'        => $row['history_type_id'] ?? null,
-                    'user_id'        => $row['user_id'] ?? null,
-                    'date'           => $row['history_date'] ?? now(),
-                    'contract_id'    => $row['contract_id'] ?? null,
+                    'contract_id'    => $contractId,
+                    'amount'         => $row[1] ?? 0,
+                    'type_id'        => $this->getHistoryTypeIdByName($row[24] ?? null),
+                    'date'           => $row[25] ?? now(),
+                    'discount'       => $row[3] ?? null,
+                    'penalty'        => $row[2] ?? null,
+                    'interest_amount'=> $row[4] ?? null,
+                    'delay_days'     => $row[9] ?? null,
                     'order_id'       => $order->id,
-                    'discount'       => $row['discount'] ?? null,
-                    'penalty'        => $row['penalty'] ?? null,
-                    'interest_amount'=> $row['interest_amount'] ?? null,
-                    'delay_days'     => $row['delay_days'] ?? null,
+                    'user_id'        => $row[12] ?? 1
                 ]);
 
-                // Step 3 - Create Deal
                 Deal::create([
-                    'type'           => $row['deal_type'] ?? null,
-                    'amount'         => $row['amount'] ?? 0,
-                    'penalty'        => $row['penalty'] ?? null,
-                    'discount'       => $row['discount'] ?? null,
-                    'interest_amount'=> $row['interest_amount'] ?? null,
+                    'type'           => $row[0] ?? null,
+                    'amount'         => $row[1] ?? 0,
+                    'penalty'        => $row[2] ?? null,
+                    'discount'       => $row[3] ?? null,
+                    'interest_amount'=> $row[4] ?? null,
+                    'pawnshop_id'    => $row[5] ?? null,
+                    'contract_id'    => $contractId,
+                    'cash'           => ($row[7] ?? '') === 'Կանխիկ',
+                    'date'           => $row[8] ?? now(),
+                    'delay_days'     => $row[9] ?? null,
+                    'purpose'        => $row[10] ?? null,
+                    'receiver'       => $row[11] ?? null,
+                    'created_by'     => $row[12] ?? null,
+                    'updated_by'     => $row[13] ?? null,
+                    'filter_type'    => $row[14] ?? null,
+                    'category_id'    => $row[15] ?? null,
                     'order_id'       => $order->id,
-                    'pawnshop_id'    => $row['pawnshop_id'] ?? null,
-                    'contract_id'    => $row['contract_id'] ?? null,
-                    'client_id'      => $row['client_id'] ?? null,
-                    'cashbox'        => $row['cashbox'] ?? null,
-                    'bank_cashbox'   => $row['bank_cashbox'] ?? null,
-                    'worth'          => $row['worth'] ?? null,
-                    'funds'          => $row['funds'] ?? null,
-                    'cash'           => $row['cash'] === 'Կանխիկ',
-                    'given'          => $row['given'] ?? null,
-                    'insurance'      => $row['insurance'] ?? null,
-                    'date'           => $row['deal_date'] ?? now(),
-                    'delay_days'     => $row['delay_days'] ?? null,
-                    'purpose'        => $row['deal_purpose'] ?? null,
-                    'receiver'       => $row['deal_receiver'] ?? null,
-                    'created_by'     => $row['created_by'] ?? null,
-                    'updated_by'     => $row['updated_by'] ?? null,
-                    'filter_type'    => $row['filter_type'] ?? null,
-                    'payment_id'     => $row['payment_id'] ?? null,
                     'history_id'     => $history->id,
-                    'category_id'    => $row['category_id'] ?? null,
                 ]);
             }
         });
     }
+
+    private function getHistoryTypeIdByName(?string $name)
+    {
+        if (!$name) {
+            return null;
+        }
+
+        return HistoryType::where('title',$name)->value('id');
+    }
+
+    private function getContractIdByNumber(?string $num)
+    {
+        if (!$num) {
+            return null;
+        }
+
+        return Contract::where('num', $num)->value('id');
+    }
+
 }

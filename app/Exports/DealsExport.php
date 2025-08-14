@@ -41,6 +41,7 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
                 $deal->order->client_name,
                 $deal->order->purpose,
                 $deal->order->receiver,
+                $deal->order->filter,
 
                 // History fields (օրինակ)
                 $deal->history->type->title ?? '',
@@ -78,7 +79,7 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
             'Հաճախորդի անուն',
             'Օրդերի նպատակ',
             'Օրդերի ստացող',
-
+            'Օրդերի ֆիլտր',
             // History headings
             'Պատմության տիպ',
             'Պատմության ամսաթիվ',
