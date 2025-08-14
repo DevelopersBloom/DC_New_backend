@@ -117,4 +117,9 @@ class Deal extends Model
     {
         return $this->belongsTo(Category::class);
     }
+    public function actions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DealAction::class, 'deal_id');
+    }
+
 }

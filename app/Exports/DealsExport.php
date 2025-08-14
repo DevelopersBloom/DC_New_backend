@@ -13,7 +13,8 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
 {
     public function collection(): Collection
     {
-        return Deal::with(['order', 'history'])->get()->map(function ($deal) {
+        return Deal::with(['order', 'history','actions'])->get()->map(function ($deal) {
+          dd($deal->actions);
             return [
                 $deal->type,
                 $deal->amount,
