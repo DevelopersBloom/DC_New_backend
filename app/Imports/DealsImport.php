@@ -24,9 +24,7 @@ class DealsImport implements ToCollection
                 }
                 $contractId = ($row[6]) ? $this->getContractIdByNumber($row[6]) : null;
                 $typeId = $this->getHistoryTypeIdByName($row[24]) ?? 8;
-                if (!$typeId) {
-                    return $row;
-                }
+
                 $order = Order::create([
                     'num'         => $row[6]  ?? null,
                     'contract_id' => $contractId,
@@ -49,7 +47,7 @@ class DealsImport implements ToCollection
                     'contract_id'    => $contractId,
                     'amount'         => $row[1] ?? 0,
                     'type_id'        => $typeId,
-                    'date'           => $row[25] ?? now(),
+                    'date'           => $row[8] ?? now(),
                     'discount'       => $row[3] ?? null,
                     'penalty'        => $row[2] ?? null,
                     'interest_amount'=> $row[4] ?? null,
