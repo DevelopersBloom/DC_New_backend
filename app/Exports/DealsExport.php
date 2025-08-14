@@ -55,7 +55,7 @@ class DealsExport implements FromCollection, WithHeadings, WithStyles
                 $deal->history->type->title ?? '',
                 $deal->history->date ?? '',
 
-                $actions['type'],
+                $actions->type,
             ];
         });
     }
