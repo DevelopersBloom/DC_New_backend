@@ -82,6 +82,7 @@ class DealsImport implements ToCollection
 
                     foreach ($actionsArray as $actionStr) {
                         $parts = explode('|', $actionStr);
+
                         DealAction::create([
                             'deal_id' => $deal->id,
                             'actionable_type' => trim($parts[0] ?? null),
