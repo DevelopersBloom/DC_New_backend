@@ -82,7 +82,7 @@ class DealsImport implements ToCollection
     private function getHistoryTypeIdByName(?string $name)
     {
         if (!$name) {
-            return null;
+            return 8;
         }
 
         return HistoryType::where('title',$name)->value('id');
