@@ -38,8 +38,8 @@ class RunOnceCommand extends Command
     public function handle()
     {
         $this->info('Started Executing');
-        $contractFilePath = base_path('ImportContractNewData.xlsx');
-        Excel::import(app(ContractsImportNewData::class), $contractFilePath);
+        $contractFilePath = base_path('ImportContract.xlsx');
+        Excel::import(app(ContractImportNew::class), $contractFilePath);
         $this->info('Contracts Executed');
 
 //        $this->info('Started items import');
@@ -48,15 +48,15 @@ class RunOnceCommand extends Command
 //        $this->info('Items Executed');
 //
         $this->info('Payment Executing');
-        $paymentFilePath = base_path('ImportPaymentNewData.xlsx');
+        $paymentFilePath = base_path('ImportPayment.xlsx');
         $paymentService = app(PaymentService::class);
-        Excel::import(new PaymentImportNewData($paymentService), $paymentFilePath);
+        Excel::import(new PaymentImportNew($paymentService), $paymentFilePath);
         $this->info('Payments Executed');
 
-        $this->info('Deals Executing');
-        $paymentFilePath = base_path('ImportDeals.xlsx');
-        Excel::import(new DealsImport(),$paymentFilePath);
-        $this->info('Deals Executed');
+//        $this->info('Deals Executing');
+//        $paymentFilePath = base_path('ImportDeals.xlsx');
+//        Excel::import(new DealsImport(),$paymentFilePath);
+//        $this->info('Deals Executed');
 //        $paymentFilePath1 = base_path('PaymentImport.xlsx');
 //        Excel::import(new PaymentImportNew(), $paymentFilePath1);
 //        $this->info('PaymentImport Executed');
