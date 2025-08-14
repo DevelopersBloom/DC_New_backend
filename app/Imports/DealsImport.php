@@ -23,7 +23,7 @@ class DealsImport implements ToCollection
                     continue;
                 }
                 $contractId = ($row[6]) ? $this->getContractIdByNumber($row[6]) : null;
-
+dd( $this->getHistoryTypeIdByName($row[24]),$row[24]);
                 $order = Order::create([
                     'num'         => $row[6]  ?? null,
                     'contract_id' => $contractId,
