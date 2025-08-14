@@ -45,7 +45,7 @@ class DealsImport implements ToCollection
                 $history = History::create([
                     'contract_id'    => $contractId,
                     'amount'         => $row[1] ?? 0,
-                    'type_id'        => $this->getHistoryTypeIdByName($row[24] ?? null),
+                    'type_id'        => $this->getHistoryTypeIdByName($row[24] ?? 8),
                     'date'           => $row[25] ?? now(),
                     'discount'       => $row[3] ?? null,
                     'penalty'        => $row[2] ?? null,
