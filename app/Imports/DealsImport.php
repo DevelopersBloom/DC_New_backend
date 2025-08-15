@@ -85,7 +85,6 @@ class DealsImport implements ToCollection
                         if (!$actionStr) continue;
 
                         $parts = explode('|', $actionStr);
-dd($parts,$actionsArray,$actionStr,$row[27]);
                         $dealAction = DealAction::create([
                             'deal_id' => $deal->id,
                             'actionable_type' => trim($parts[0] ?? 'App\Models\Order'),
