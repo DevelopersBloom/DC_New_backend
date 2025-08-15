@@ -94,10 +94,7 @@ class DealsImport implements ToCollection
                             'description' => trim($parts[3] ?? ''),
                             'date' => isset($parts[4]) && $parts[4] ? \Carbon\Carbon::parse(trim($parts[4])) : now(),
                             'history' => isset($parts[5]) && $parts[5] ? json_decode(trim($parts[5]), true) : null,
-                            'created_by' => 1,
-                            'updated_by' => 1,
                         ]);
-                        $dealAction->created_by = 1;
 
                     }
                 }
