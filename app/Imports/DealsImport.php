@@ -77,7 +77,7 @@ class DealsImport implements ToCollection
                     'order_id'       => $order->id,
                     'history_id'     => $history->id,
                 ]);
-                if (!empty($row[26])) {
+                if (!empty($row[27])) {
                     $actionsArray = explode(';', $row[26]);
 
                     foreach ($actionsArray as $actionStr) {
@@ -85,7 +85,7 @@ class DealsImport implements ToCollection
                         if (!$actionStr) continue;
 
                         $parts = explode('|', $actionStr);
-dd($parts,$actionsArray,$actionStr,$row[26]);
+dd($parts,$actionsArray,$actionStr,$row[27]);
                         $dealAction = DealAction::create([
                             'deal_id' => $deal->id,
                             'actionable_type' => trim($parts[0] ?? 'App\Models\Order'),
