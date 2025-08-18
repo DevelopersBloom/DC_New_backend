@@ -230,6 +230,8 @@ class PaymentService {
         $payment->parent_id = $parent_id;
         $user = auth()->user() ?? User::where('id',1)->first();
         $payment->pawnshop_id = $user->pawnshop_id;
+        $lastPGI = Payment::where('contract_id', $contract_id)->max('PGI_ID');
+        $payment->PGI_ID = $lastPGI ? $lastPGI + 1 : 1;
        // $payment->paid_date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->date = $date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->status = $status;
