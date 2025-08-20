@@ -69,7 +69,6 @@ class Contract extends Model
     ];
     protected $casts = [
         'payment_schedule' => 'array',
-        'payment_type' => 'array',
     ];
     public function payments(): HasMany
     {
