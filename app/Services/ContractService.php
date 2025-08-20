@@ -63,7 +63,6 @@ class   ContractService
     }
     public function storeContractItem(int $contract_id, array $data)
     {
-        // Check if an item with the given serial number or IMEI exists
         $query = Item::query();
         if (!empty($data['serialNumber'])) {
             $query->orWhere('sn', $data['serialNumber']);
@@ -148,7 +147,6 @@ class   ContractService
             $item->save();
         }
 
-        // Attach the item to the contract in the pivot table
         $contract = Contract::findOrFail($contract_id);
         $contract->items()->syncWithoutDetaching([$item->id]);
         return $item;
@@ -258,78 +256,8 @@ class   ContractService
             return response()->json(['message' => 'Error updating items', 'error' => $e->getMessage()], 500);
         }
     }
-
-//    public function storeContractItem(int $contract_id,array $data)
-//    {
-//
-//        $item = new Item();
-//        $item->category_id = $data['category_id'];
-//        $item->contract_id = $contract_id;
-//        $category = Category::findOrFail($data['category_id']);
-//        switch ($category->name)
-//        {
-//            case 'electronics':
-//                $subcategory = Subcategory::firstOrCreate(
-//                    [
-//                        'name'        => $data['subcategory'],
-//                        'category_id' => $data['category_id'],
-//                    ]
-//                );
-//
-//                if ($data['model']) {
-//                    $subcategoryItem = SubcategoryItem::firstOrCreate([
-//                        'subcategory_id' => $subcategory->id,
-//                        'model' => $data['model'],
-//                    ]);
-//                    $item->model = $subcategoryItem->model;
-//                }
-//                $item->subcategory =  $subcategory->name;
-//                $item->subcategory_item_id = $subcategoryItem->id;
-//                break;
-//            case 'gold':
-//                $subcategory = Subcategory::firstOrCreate(
-//                    [
-//                        'name' => $data['subcategory'],
-//                        'category_id' => $data['category_id']
-//                    ]
-//                );
-//                $item->subcategory =  $subcategory->name;
-//                $item->weight = $data['weight'] ?? null;
-//                $item->clear_weight = $data['clear_weight'] ?? null;
-//                $item->hallmark = $data['hallmark'] ?? null;
-//                break;
-//            case 'car':
-//                $subcategory = Subcategory::firstOrCreate(
-//                    [
-//                        'name'        => $data['model'],
-//                        'category_id' => $data['category_id'],
-//                    ]
-//                );
-//                if ($data['car_make']) {
-//                    $subcategoryItem = SubcategoryItem::firstOrCreate([
-//                        'subcategory_id' => $subcategory->id,
-//                        'model' => $data['car_make'],
-//                    ]);
-//                    $item->car_make = $subcategoryItem->model;
-//                }
-//                $item->model = $subcategory->name ?? null;
-//                $item->manufacture = $data['manufacture'] ?? null;
-//                $item->power = $data['power'] ?? null;
-//                $item->license_plate = $data['license_plate'] ?? null;
-//                $item->color = $data['color'] ?? null;
-//                $item->registration = $data['registration_certificate'] ?? null;
-//                $item->identification = $data['identification_number'] ?? null;
-//                $item->ownership = $data['ownership_certificate']?? null;
-//                $item->issued_by = $data['issued_by']?? null;
-//                $item->date_of_issuance = $data['date_of_issuance'] ?? null;
-//                break;
-//        }
-//        $item->save();
-//        return $item;
-//    }
     public function createContract(int $client_id, array $data, $deadline)
     {
-        // Calculate the next contract number
         $maxNum = Contract::max('num') ?? 0;
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
         $values = [
@@ -350,35 +278,26 @@ class   ContractService
             'closed_at' => $data['closed_at'] ?? null,
             'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
             'user_id' => auth()->user()->id ?? 1,
-            'category_id' => $data['category_id'] ?? null
+            'category_id' => $data['category_id'] ?? null,
+            'payment_type' => $data['payment_type'] ?? 'classic',
         ];
 
         // Create and return the contract
         return Contract::create($values);
     }
 
-    public function createContract1(int $client_id, array $data,$deadline)
+    public function createPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
     {
-        $maxNum = Contract::max('num') ?? 0;
-        $contract = new Contract();
-        $contract->client_id = $client_id;
-        $contract->estimated_amount = $data['estimated_amount'];
-        $contract->provided_amount = $data['provided_amount'];
-        $contract->left = $data['provided_amount'];
-        $contract->mother = $data['provided_amount'];
-        $contract->interest_rate = $data['interest_rate'];
-        $contract->penalty = $data['penalty'];
-        $contract->deadline = $deadline;
-        $contract->lump_rate = $data['lump_rate'];
-        $contract->description = $data['description'] ?? null;
-        $contract->status = 'initial';
-        $contract->pawnshop_id = auth()->user()->pawnshop_id ?? $data['pawnshop_id'];
-        $contract->num = $maxNum + 1;
-        $contract->save();
-        return $contract;
+        if ($contract->payment_type === 'classic') {
+             $this->createClassicPayment($contract, $import_date, $import_pawnshop_id);
+        }
 
+        if ($contract->payment_type === 'amortized') {
+            return $this->createAnnuityPayment($contract, $import_date, $import_pawnshop_id);
+        }
     }
-    public function createPayment(Contract $contract,$import_date = null,$import_pawnshop_id = null)
+
+    public function createClassicPayment(Contract $contract,$import_date = null,$import_pawnshop_id = null)
     {
         $schedule = [];
         $fromDate = $import_date ? Carbon::parse($import_date)->setTimezone('Asia/Yerevan') : Carbon::parse($contract->date)->setTimezone('Asia/Yerevan');
@@ -425,6 +344,54 @@ class   ContractService
             ];
             $currentDate = $nextPaymentDate;
         }
+        $contract->payment_schedule = $schedule;
+        $contract->save();
+    }
+    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
+    {
+        $principal = $contract->provided_amount;
+//        $months = $contract->deadline_days;
+        $months = 10;
+        $annualRate = $contract->interest_rate;
+        $monthlyRate = $annualRate / 100 / 12;
+
+        // Ամսական վճարում (annuity formula)
+        $annuityPayment = ($principal * $monthlyRate) / (1 - pow(1 + $monthlyRate, -$months));
+
+        $remaining = $principal;
+        $schedule = [];
+        $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
+        $pgi_id = 1;
+
+        $currentDate = $import_date ? \Carbon\Carbon::parse($import_date) : \Carbon\Carbon::parse($contract->date);
+
+        for ($i = 1; $i <= $months; $i++) {
+            $interest = $remaining * $monthlyRate;
+            $principalPayment = $annuityPayment - $interest;
+            $remaining -= $principalPayment;
+
+            $paymentDate = (clone $currentDate)->addMonths($i);
+
+            $payment = [
+                'contract_id' => $contract->id,
+                'date' => $paymentDate->format('Y-m-d'),
+                'amount' => round($annuityPayment, 2),
+                'principal_payment' => round($principalPayment, 2),
+                'interest_payment' => round($interest, 2),
+                'remaining' => round(max($remaining, 0), 2),
+                'pawnshop_id' => $pawnshop_id,
+                'PGI_ID' => $pgi_id,
+            ];
+
+            Payment::create($payment);
+            $pgi_id++;
+
+            $schedule[] = [
+                'date' => $paymentDate->format('Y-m-d'),
+                'amount' => round($annuityPayment, 2),
+            ];
+        }
+
         $contract->payment_schedule = $schedule;
         $contract->save();
     }

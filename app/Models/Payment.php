@@ -32,7 +32,10 @@ class Payment extends Model
         'another_payer',
         'is_completed',
         'parent_id',
-        'discount_amount'
+        'discount_amount',
+        'principal_payment',
+        'interest_payment',
+        'remaining',
     ];
 
     public function contract(){
