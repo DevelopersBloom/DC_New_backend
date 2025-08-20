@@ -279,7 +279,7 @@ class   ContractService
             'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
             'user_id' => auth()->user()->id ?? 1,
             'category_id' => $data['category_id'] ?? null,
-            'payment_type' => $data['payment_type'] ?? 'amortized',
+            'payment_type' => 'amortized',
         ];
 
         // Create and return the contract
