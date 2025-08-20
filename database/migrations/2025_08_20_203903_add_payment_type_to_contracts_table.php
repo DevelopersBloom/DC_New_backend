@@ -14,7 +14,7 @@ return new class extends Migration
     public function up()
     {
         Schema::table('contracts', function (Blueprint $table) {
-            $table->enum('payment_type', ['classic', 'amortized'])->default('classic')->after('amount');
+            $table->enum('payment_type', ['classic', 'amortized'])->default('classic')->after('client_id');
         });
         Schema::table('payments', function (Blueprint $table) {
             $table->decimal('principal_payment', 15, 2)->default(0)->after('amount');
