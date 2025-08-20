@@ -351,8 +351,9 @@ class   ContractService
     {
         $principal = $contract->provided_amount;
 //        $months = $contract->deadline_days;
-        $months = 10;
-        $annualRate = $contract->interest_rate;
+        $months = 12;
+        $annualRate = 17;
+//        $annualRate = $contract->interest_rate;
         $monthlyRate = $annualRate / 100 / 12;
 
         // Ամսական վճարում (annuity formula)
