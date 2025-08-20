@@ -279,7 +279,7 @@ class   ContractService
             'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
             'user_id' => auth()->user()->id ?? 1,
             'category_id' => $data['category_id'] ?? null,
-            'payment_type' => $data['payment_type'] ?? 'classic',
+            'payment_type' => $data['payment_type'] ?? 'amortized',
         ];
 
         // Create and return the contract
@@ -293,7 +293,7 @@ class   ContractService
         }
 
         if ($contract->payment_type === 'amortized') {
-            return $this->createAnnuityPayment($contract, $import_date, $import_pawnshop_id);
+             $this->createAnnuityPayment($contract, $import_date, $import_pawnshop_id);
         }
     }
 
