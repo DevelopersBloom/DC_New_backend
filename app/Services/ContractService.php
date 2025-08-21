@@ -356,7 +356,6 @@ class   ContractService
 //        $annualRate = $contract->interest_rate;
         $monthlyRate = $annualRate / 100 / 12;
 
-        // Ամսական վճարում (annuity formula)
         $annuityPayment = ($principal * $monthlyRate) / (1 - pow(1 + $monthlyRate, -$months));
 
         $remaining = $principal;
@@ -389,7 +388,7 @@ class   ContractService
 
             $schedule[] = [
                 'date' => $paymentDate->format('Y-m-d'),
-                'amount' => round($annuityPayment, 2),
+                'amount' => round($annuityPayment, 3),
             ];
         }
 
