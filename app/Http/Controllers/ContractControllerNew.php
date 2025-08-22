@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\ClientService;
 use App\Services\ContractService;
+use App\Services\EffectiveRateService;
 use App\Services\FileService;
 use App\Traits\ContractTrait;
 use App\Traits\OrderTrait;
@@ -35,13 +36,15 @@ class ContractControllerNew extends Controller
 {
     use ContractTrait, OrderTrait;
     protected ClientService $clientService;
+    protected EffectiveRateService $effectiveRateService;
     protected ContractService $contractService;
     protected FileService $fileService;
-    public function __construct(ClientService $clientService, ContractService $contractService,FileService $fileService)
+    public function __construct(ClientService $clientService, ContractService $contractService,FileService $fileService,EffectiveRateService $effectiveRateService)
     {
         $this->clientService = $clientService;
         $this->contractService = $contractService;
         $this->fileService = $fileService;
+        $this->effectiveRateService = $effectiveRateService;
     }
     public function get(Request $request): JsonResponse
     {
@@ -93,6 +96,10 @@ class ContractControllerNew extends Controller
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
         $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
+        $contract->effectiveRate = 0;
+        if ($contract->payment_type == 'amortized') {
+            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract,10000);
+        }
 //        return $currentPaymentAmount;
         return new ContractDetailResource($contract);
     }
