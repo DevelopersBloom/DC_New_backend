@@ -4,12 +4,18 @@
 namespace App\Services;
 
 use App\Models\Contract;
+use App\Models\Order;
 
 class EffectiveRateService
 {
 
-    public function calculateEffectiveRate(Contract $contract, $fees = 0): ?float
+    public function calculateEffectiveRate(Contract $contract): ?float
     {
+        $lumpAmount = Order::where('contract_id', $contract->id)
+            ->where('filter', Order::REFUND_LUMP_FILTER)
+            ->select('amount')
+            ->first();
+        $fees = $lumpAmount?->amount ?? $contract->provided_amount * ($contract->lump_rate / 100);
         $principal = $contract->mother;
 
         $netAmount = $principal - $fees;

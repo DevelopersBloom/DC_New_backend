@@ -98,7 +98,7 @@ class ContractControllerNew extends Controller
         $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
         $contract->effectiveRate = 0;
         if ($contract->payment_type == 'amortized') {
-            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract,40000);
+            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract);
         }
 //        return $currentPaymentAmount;
         return new ContractDetailResource($contract);
