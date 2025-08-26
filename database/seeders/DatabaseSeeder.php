@@ -32,8 +32,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PawnshopConfigSeeder::class
         ]);
-//        $this->call([
-//            ContractSeeder::class
-//        ]);
+        $this->call(CurrencySeeder::class);
+
     }
 }
