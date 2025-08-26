@@ -20,7 +20,6 @@ return new class extends Migration
             $table->enum('type', ['active', 'passive', 'active-passive', 'off-balance']);
             $table->boolean('is_accumulative')->default(false);
             $table->foreignId('currency_id')->nullable()->constrained('currencies');
-            $table->boolean('is_partner_accounting')->default(false);
             $table->foreignId('parent_id')->nullable()->constrained('chart_of_accounts');
             $table->timestamps();
         });

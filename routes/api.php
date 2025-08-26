@@ -18,6 +18,7 @@ use App\Http\Controllers\AdminControllerNew;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\ChartOfAccountController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -93,6 +94,13 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('answer-discount',[DiscountController::class,'answerDiscount']);
         Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount']);
 
+        Route::prefix('chart-of-accounts')->group(function () {
+            Route::get('/', [ChartOfAccountController::class, 'index']);
+            Route::post('/', [ChartOfAccountController::class, 'store']);
+            Route::get('/{id}', [ChartOfAccountController::class, 'show']);
+            Route::put('/{id}', [ChartOfAccountController::class, 'update']);
+            Route::delete('/{id}', [ChartOfAccountController::class, 'destroy']);
+        });
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
 //        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
