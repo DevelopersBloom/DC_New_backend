@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BusinessEventController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\PostingRuleController;
 use App\Http\Controllers\RateController;
 use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\FileController;
@@ -101,13 +103,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::put('/{id}', [ChartOfAccountController::class, 'update']);
             Route::delete('/{id}', [ChartOfAccountController::class, 'destroy']);
         });
-        Route::apiResource('posting-rules', \App\Http\Controllers\PostingRuleController::class);
-
-//        Route::get('/get-users', [AdminController::class, 'getUsers']);
-//        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
-//        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
-//        Route::get('/edit-user/{id}', [AdminController::class, 'editUser']);
-//        Route::get('/edit-evaluator/{id}', [AdminController::class, 'editEvaluator']);
+        Route::apiResource('posting-rules', PostingRuleController::class);
+        Route::apiResource('business-events', BusinessEventController::class);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
