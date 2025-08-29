@@ -27,8 +27,8 @@ class ChartOfAccountController
             'code'           => 'required|string|max:20|unique:chart_of_accounts,code',
             'name'           => 'required|string|max:255',
             'type'           => 'required|in:active,passive,active-passive,off-balance',
-            'is_accumulative'=> 'boolean',
-            'currency_id'    => 'nullable|exists:currencies,id',
+//            'is_accumulative'=> 'boolean',
+//            'currency_id'    => 'nullable|exists:currencies,id',
             'parent_id'      => 'nullable|exists:chart_of_accounts,id',
         ]);
 
@@ -47,8 +47,8 @@ class ChartOfAccountController
             'code'           => 'required|string|max:20|unique:chart_of_accounts,code,' . $id,
             'name'           => 'required|string|max:255',
             'type'           => 'required|in:active,passive,active-passive,off-balance',
-            'is_accumulative'=> 'boolean',
-            'currency_id'    => 'nullable|exists:currencies,id',
+//            'is_accumulative'=> 'boolean',
+//            'currency_id'    => 'nullable|exists:currencies,id',
             'parent_id'      => 'nullable|exists:chart_of_accounts,id',
         ]);
 
