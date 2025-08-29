@@ -13,11 +13,12 @@ class BusinessEventController extends Controller
      */
     public function index(): JsonResponse
     {
-        $events = BusinessEvent::orderBy('created_at', 'desc')->get();
-        return response()->json($events);
+        $events = BusinessEvent::select('id', 'name', 'filter')
+            ->orderBy('created_at', 'desc')
+            ->get();        return response()->json($events);
     }
 
-    /**
+    /**,
      * Store a newly created business event in storage.
      */
     public function store(Request $request): JsonResponse
