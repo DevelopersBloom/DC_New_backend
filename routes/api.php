@@ -101,6 +101,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::put('/{id}', [ChartOfAccountController::class, 'update']);
             Route::delete('/{id}', [ChartOfAccountController::class, 'destroy']);
         });
+        Route::apiResource('posting-rules', \App\Http\Controllers\PostingRuleController::class);
+
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
 //        Route::get('/get-evaluators', [AdminController::class, 'getEvaluators']);
