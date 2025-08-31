@@ -9,7 +9,8 @@ class BusinessEvent extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'code',
         'name',
-        'filter'
+        'description',
     ];
 }

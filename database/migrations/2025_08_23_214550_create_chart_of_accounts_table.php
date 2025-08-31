@@ -17,10 +17,11 @@ return new class extends Migration
             $table->id();
             $table->string('code', 20)->unique();
             $table->string('name');
-            $table->enum('type', ['active', 'passive', 'active-passive', 'off-balance']);
+            $table->enum('type', ['active', 'passive', 'active-passive', 'off-balance','income']);
             $table->boolean('is_accumulative')->default(false);
             $table->foreignId('currency_id')->nullable()->constrained('currencies');
             $table->foreignId('parent_id')->nullable()->constrained('chart_of_accounts');
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }
