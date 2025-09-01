@@ -38,6 +38,13 @@ class ChartOfAccount extends Model
     {
         return $this->children()
             ->select('id', 'parent_id', 'code', 'name','type')
-            ->with('childrenRecursive');    }
+            ->with('childrenRecursive');
+    }
+    public function scopeCodeContains($query, string $term)
+    {
+        $safe = str_replace(['%', '_'], ['\%','\_'], trim($term));
+
+        return $query->where('code', 'like', "{$safe}%");
+    }
 
 }

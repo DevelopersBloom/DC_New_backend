@@ -94,6 +94,22 @@ class ChartOfAccountController
             'message' => 'The account was successfully deleted.'
         ]);
     }
+    public function searchAccount(Request $request)
+    {
+        $data = $request->validate([
+            'search'  => ['nullable','string','max:100'],
+        ]);
 
+        $perPage = 15;
 
+        $query = ChartOfAccount::query()
+            ->select('id','parent_id','code','name','type')
+            ->orderBy('code');
+
+        if (!empty($data['search'])) {
+            $query->codeContains($data['search']);
+        }
+
+        return response()->json($query->paginate($perPage));
+    }
 }

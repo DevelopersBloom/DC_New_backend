@@ -97,6 +97,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount']);
 
         Route::prefix('chart-of-accounts')->group(function () {
+            Route::get('/search-account', [ChartOfAccountController::class, 'searchAccount']);
             Route::get('/', [ChartOfAccountController::class, 'index']);
             Route::post('/', [ChartOfAccountController::class, 'store']);
             Route::get('/{id}', [ChartOfAccountController::class, 'show']);
