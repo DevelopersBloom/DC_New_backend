@@ -22,7 +22,7 @@ class ChartOfAccountController
         $accounts = ChartOfAccount::query()
             ->whereNull('parent_id')
             ->with('childrenRecursive')
-            ->select(['id','parent_id','name','code']);
+            ->select('id','parent_id','name','code','type');
 
         return response()->json($accounts);
     }
