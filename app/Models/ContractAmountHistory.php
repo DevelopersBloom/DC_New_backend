@@ -11,9 +11,9 @@ class ContractAmountHistory extends Model
 
     protected $fillable = [
         'contract_id',
-        'amount_type',   // provided_amount, estimated_amount
+        'amount_type',
         'amount',
-        'type',          // 'in' or 'out'
+        'type',
         'category_id',
         'deal_id',
         'date',

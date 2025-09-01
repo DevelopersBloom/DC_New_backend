@@ -23,10 +23,15 @@ class ChartOfAccount extends Model
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(ChartOfAccount::class, 'parent_id');
+        return $this->belongsTo(self::class, 'parent_id');
     }
     public function children(): HasMany
     {
-        return $this->hasMany(ChartOfAccount::class, 'parent_id');
+        return $this->hasMany(self::class, 'parent_id');
     }
+    public function childrenRecursive()
+    {
+        return $this->children()->with('childrenRecursive');
+    }
+
 }

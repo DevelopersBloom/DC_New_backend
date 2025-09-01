@@ -3,16 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChartOfAccount;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ChartOfAccountController
 {
-    public function index()
+//    public function index()
+//    {
+//        $accounts = ChartOfAccount::whereNull('parent_id')
+//            ->where('is_accumulative', true)
+//            ->with('children')
+//            ->get();
+//
+//        return response()->json($accounts);
+//    }
+    public function index(): JsonResponse
     {
-        $accounts = ChartOfAccount::whereNull('parent_id')
-            ->where('is_accumulative', true)
-            ->with('children')
-            ->get();
+        $accounts = ChartOfAccount::query()
+            ->whereNull('parent_id')
+            ->with('childrenRecursive')
+            ->get(['id','parent_id','name','code']);
 
         return response()->json($accounts);
     }
