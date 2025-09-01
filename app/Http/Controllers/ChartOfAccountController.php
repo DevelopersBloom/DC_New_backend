@@ -20,9 +20,10 @@ class ChartOfAccountController
     public function index(): JsonResponse
     {
         $accounts = ChartOfAccount::query()
+            ->select('id','parent_id','name','code','type')
             ->whereNull('parent_id')
             ->with('childrenRecursive')
-            ->select('id','parent_id','name','code','type');
+            ->get();
 
         return response()->json($accounts);
     }
