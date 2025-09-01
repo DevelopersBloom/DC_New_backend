@@ -37,7 +37,7 @@ class ChartOfAccount extends Model
     public function childrenRecursive()
     {
         return $this->children()
-            ->select('id', 'parent_id', 'code', 'name')
+            ->select('id', 'parent_id', 'code', 'name','type')
             ->with('childrenRecursive');    }
 
 }
