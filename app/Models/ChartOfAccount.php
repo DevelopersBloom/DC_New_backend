@@ -11,8 +11,13 @@ class ChartOfAccount extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'code', 'name', 'type', 'is_accumulative',
-        'currency_id', 'is_partner_accounting', 'parent_id',
+        'code',
+        'name',
+        'type',
+//        'is_accumulative',
+//        'currency_id',
+//        'is_partner_accounting',
+        'parent_id',
         'description'
     ];
 
