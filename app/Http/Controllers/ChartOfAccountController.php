@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreChartOfAccountRequest;
 use App\Models\ChartOfAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,24 +33,29 @@ class ChartOfAccountController
     {
         return ChartOfAccount::with('children')->findOrFail($id);
     }
-    public function store(Request $request)
+//    public function store(Request $request)
+//    {
+//        $validated = $request->validate([
+//            'code'           => 'required|string|max:20|unique:chart_of_accounts,code',
+//            'name'           => 'required|string|max:255',
+//            'type'           => 'required|in:active,passive,active-passive,off-balance',
+//            'parent_id'      => 'nullable|exists:chart_of_accounts,id',
+//        ]);
+//
+//        ChartOfAccount::create($validated);
+//
+//        return response()->json([
+//            'message' => 'Chart of Accounts account created successfully'
+//        ], 201);
+//    }
+    public function store(StoreChartOfAccountRequest $request)
     {
-        $validated = $request->validate([
-            'code'           => 'required|string|max:20|unique:chart_of_accounts,code',
-            'name'           => 'required|string|max:255',
-            'type'           => 'required|in:active,passive,active-passive,off-balance',
-//            'is_accumulative'=> 'boolean',
-//            'currency_id'    => 'nullable|exists:currencies,id',
-            'parent_id'      => 'nullable|exists:chart_of_accounts,id',
-        ]);
-
-        ChartOfAccount::create($validated);
+        ChartOfAccount::create($request->validated());
 
         return response()->json([
             'message' => 'Chart of Accounts account created successfully'
         ], 201);
     }
-
     public function update(Request $request, $id)
     {
         $account = ChartOfAccount::findOrFail($id);
@@ -94,21 +100,14 @@ class ChartOfAccountController
             'message' => 'The account was successfully deleted.'
         ]);
     }
-    public function searchAccount(Request $request)
+    public function searchAccount(string $code)
     {
-        $data = $request->validate([
-            'search'  => ['nullable','string','max:100'],
-        ]);
-
         $perPage = 15;
 
         $query = ChartOfAccount::query()
             ->select('id','parent_id','code','name','type')
-            ->orderBy('code');
-
-        if (!empty($data['search'])) {
-            $query->codeContains($data['search']);
-        }
+            ->orderBy('code')
+            ->codeContains($code);
 
         return response()->json($query->paginate($perPage));
     }
