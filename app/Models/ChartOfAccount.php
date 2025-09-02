@@ -21,7 +21,7 @@ class ChartOfAccount extends Model
         'description'
     ];
     protected $appends = ['parent_code'];
-
+    protected $hidden = ['parent'];
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class);
