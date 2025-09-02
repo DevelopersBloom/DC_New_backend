@@ -20,6 +20,7 @@ class ChartOfAccount extends Model
         'parent_id',
         'description'
     ];
+    protected $appends = ['parent_code'];
 
     public function currency(): BelongsTo
     {
@@ -29,6 +30,10 @@ class ChartOfAccount extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+    public function getParentCodeAttribute()
+    {
+        return $this->parent?->code;
     }
     public function children(): HasMany
     {
