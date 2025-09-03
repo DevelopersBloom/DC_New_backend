@@ -10,6 +10,7 @@ use App\Http\Controllers\FileController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentControllerNew;
+use App\Http\Controllers\ReminderOrderController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -97,7 +98,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount']);
 
         Route::prefix('chart-of-accounts')->group(function () {
-            Route::get('/search-account/{code}', [ChartOfAccountController::class, 'searchAccount']);
+            Route::get('/search-account', [ChartOfAccountController::class, 'searchAccount']);
             Route::get('/', [ChartOfAccountController::class, 'index']);
             Route::post('/', [ChartOfAccountController::class, 'store']);
             Route::get('/{id}', [ChartOfAccountController::class, 'show']);
@@ -106,6 +107,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         });
         Route::apiResource('posting-rules', PostingRuleController::class);
         Route::apiResource('business-events', BusinessEventController::class);
+        Route::apiResource('reminder-orders', ReminderOrderController::class);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
