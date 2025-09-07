@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BusinessEventController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\LoanNdmController;
 use App\Http\Controllers\PostingRuleController;
 use App\Http\Controllers\RateController;
 use App\Http\Controllers\ClientControllerNew;
@@ -108,6 +109,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('posting-rules', PostingRuleController::class);
         Route::apiResource('business-events', BusinessEventController::class);
         Route::apiResource('reminder-orders', ReminderOrderController::class);
+        Route::apiResource('loan-ndms', LoanNdmController::class);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
