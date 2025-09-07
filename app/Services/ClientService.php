@@ -14,6 +14,37 @@ class ClientService
      */
     public function storeOrUpdate(array $data): Client
     {
+        $type = $data['type'] ?? 'individual';
+
+        if ($type === 'individual' && !empty($data['passport_series'])) {
+            $client = Client::firstOrNew([
+                'type' => 'individual',
+                'passport_series' => $data['passport_series'],
+            ]);
+        } elseif ($type === 'legal') {
+            if (!empty($data['tax_number'])) {
+                $client = Client::firstOrNew([
+                    'type' => 'legal',
+                    'tax_number' => $data['tax_number'],
+                ]);
+            } else {
+                $client = Client::firstOrNew([
+                    'type' => 'legal',
+                    'company_name' => $data['company_name'] ?? null,
+                ]);
+            }
+        } else {
+            $client = new Client();
+        }
+
+        $client->fill($data);
+        $client->save();
+
+        return $client;
+    }
+
+    public function storeOrUpdate1(array $data): Client
+    {
         // Format phone numbers
         $data['phone'] = $this->formatPhoneNumber($data['phone'] ?? '');
         $data['additional_phone'] = isset($data['additional_phone'])

@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Exports\ClientsExport;
 use App\Http\Requests\ClientRequest;
+use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Models\Client;
 use App\Models\ClientPawnshop;
 use App\Services\ClientService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Exception;
 use Maatwebsite\Excel\Facades\Excel;
@@ -32,8 +34,81 @@ class ClientControllerNew extends Controller
     {
         return $this->storeClientData($request->validated(), false);
     }
-
     private function storeClientData(array $data, bool $hasContract): JsonResponse
+    {
+        $pawnshopId = Auth::user()->pawnshop_id ?? 1;
+        $data['has_contract'] = $hasContract;
+
+        $type = $data['type'] ?? 'individual';
+
+        if ($type === 'individual' && !empty($data['passport_series'])) {
+            $existing = Client::where('type', 'individual')
+                ->where('passport_series', $data['passport_series'])
+                ->first();
+
+            if ($existing) {
+                $alreadyLinked = $existing->pawnshopClients()
+                    ->where('pawnshop_id', $pawnshopId)
+                    ->exists();
+
+                if ($alreadyLinked) {
+                    return response()->json([
+                        'message' => 'A client with this passport already exists in this pawnshop.'
+                    ], 422);
+                }
+            }
+        }
+
+        if ($type === 'legal') {
+            $existingQuery = Client::where('type', 'legal');
+
+            if (!empty($data['tax_number'])) {
+                $existingQuery->where('tax_number', $data['tax_number']);
+            } elseif (!empty($data['company_name'])) {
+                $existingQuery->where('company_name', $data['company_name']);
+            }
+
+            $existing = $existingQuery->first();
+
+            if ($existing) {
+                $alreadyLinked = $existing->pawnshopClients()
+                    ->where('pawnshop_id', $pawnshopId)
+                    ->exists();
+
+                if ($alreadyLinked) {
+                    return response()->json([
+                        'message' => 'A legal client with the same identifier already exists in this pawnshop.'
+                    ], 422);
+                }
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            /** @var ClientService $service */
+            $service = app(ClientService::class);
+            $client = $service->storeOrUpdate($data);
+
+            ClientPawnshop::firstOrCreate([
+                'client_id' => $client->id,
+                'pawnshop_id' => $pawnshopId,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => $hasContract ? 'Client added successfully' : 'Non-client added successfully',
+                'data' => $client->fresh(),
+            ], 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to create client',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    private function storeClientData1(array $data, bool $hasContract): JsonResponse
     {
         // Determine the current pawnshop id (assumes an authenticated user)
         $pawnshopId = auth()->user()->pawnshop_id ?? 1;
@@ -115,7 +190,7 @@ class ClientControllerNew extends Controller
 
         return ClientResource::collection($clients);
     }
-    public function updateClientData(Request $request, int $client_id)
+    public function updateClientData1(Request $request, int $client_id)
     {
         $validatedData = $request->validate([
             'name' => 'nullable|string|max:255',
@@ -140,10 +215,62 @@ class ClientControllerNew extends Controller
             return response()->json(['error' => 'Client not found or update failed'], 400);
         }
     }
+    public function updateClientData(UpdateClientRequest $request, int $client_id): JsonResponse
+    {
+        $data = $request->validated();
 
+        DB::beginTransaction();
+        try {
+            $client = Client::findOrFail($client_id);
+
+            $newType = $data['type'] ?? $client->type;
+
+            if ($newType === 'legal') {
+                $data = array_merge([
+                    'name' => null,
+                    'surname' => null,
+                    'middle_name' => null,
+                    'passport_series' => null,
+                    'passport_validity' => null,
+                    'passport_issued' => null,
+                    'date_of_birth' => null,
+                ], $data);
+            } else { // individual
+                $data = array_merge([
+                    'company_name' => null,
+                    'legal_form' => null,
+                    'tax_number' => null,
+                    'state_register_number' => null,
+                    'activity_field' => null,
+                    'director_name' => null,
+                    'accountant_info' => null,
+                    'internal_code' => null,
+                ], $data);
+            }
+
+            $client->fill($data)->save();
+
+            $pawnshopId = Auth::user()->pawnshop_id ?? 1;
+            ClientPawnshop::firstOrCreate([
+                'client_id'   => $client->id,
+                'pawnshop_id' => $pawnshopId,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Client data updated successfully',
+                'client'  => $client->fresh(),
+            ], 200);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Client not found or update failed',
+                'details' => $e->getMessage(),
+            ], 400);
+        }
+    }
     /**
-     * @throws Exception
-     * @throws \PhpOffice\PhpSpreadsheet\Writer\Exception
      */
     public function exportClients()
     {

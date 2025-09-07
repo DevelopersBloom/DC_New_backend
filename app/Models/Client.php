@@ -14,6 +14,8 @@ class Client extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'type', // individual | legal
+
         'name',
         'surname',
         'middle_name',
@@ -21,6 +23,16 @@ class Client extends Model
         'passport_validity',
         'passport_issued',
         'date_of_birth',
+
+        'company_name',
+        'legal_form',
+        'tax_number',
+        'state_register_number',
+        'activity_field',
+        'director_name',
+        'accountant_info',
+        'internal_code',
+
         'email',
         'phone',
         'additional_phone',
@@ -28,16 +40,23 @@ class Client extends Model
         'city',
         'street',
         'building',
+        'website',
+
         'bank_name',
         'account_number',
         'card_number',
         'iban',
+        'swift_code',
+
         'has_contract',
         'date',
-        'pawnshop_id',
     ];
+
     protected $casts = [
-        'date' => 'date',
+        'has_contract'      => 'boolean',
+        'date'              => 'date',
+        'passport_validity' => 'date',
+        'date_of_birth'     => 'date',
     ];
 
     protected static function boot()
