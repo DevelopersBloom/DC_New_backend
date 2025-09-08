@@ -66,7 +66,8 @@ class ChartOfAccountsHierarchyImport implements ToCollection
             if (!$account) {
                 $account = new ChartOfAccount();
                 $account->parent_id = $parentId;
-                $account->name      = $name;
+                $account->name = $name;
+                $account->currency_id = 1;
                 if ($code !== '') {
                     $account->code  = $code;
                 }
@@ -91,6 +92,7 @@ class ChartOfAccountsHierarchyImport implements ToCollection
                  if (empty($account->description) && $currentDescription) {
                      $account->description = $currentDescription; $dirty = true;
                  }
+                $account->currency_id = 1;
                 if ($dirty) $account->save();
             }
 
