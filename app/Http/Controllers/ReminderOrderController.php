@@ -40,7 +40,7 @@ class ReminderOrderController
         ReminderOrder::create([
             'order_date'       => $validated['order_date'] ?? null,
             'amount'           => $validated['amount'] ?? null,
-            'currency_id'      => $validated['currency_id'] ?? null,
+            'currency_id'      => $validated['currency_id'] ?? 1,
             'comment'          => $validated['comment'] ?? null,
             'debit_account_id' => $validated['debit_account_id'] ?? null,
             'credit_account_id'=> $validated['credit_account_id'] ?? null,
