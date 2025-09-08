@@ -111,18 +111,32 @@ class ChartOfAccountsHierarchyImport implements ToCollection
 
     protected function inferTypeFromHeader(?string $headerText, ?string $neighborName = null): ?string
     {
-        $text = $this->normalize($headerText . ' ' . (string)$neighborName);
+        $text = $this->normalize(($headerText ?? '') . ' ' . ($neighborName ?? ''));
 
-        // Քո կանոններով.
-        if (preg_match('/ԿԱՐԳ\s*1-2/u', $text) || mb_strpos($text, 'ԱԿՏԻՎՆԵՐ') !== false) {
+        if (preg_match('/ԿԱՐԳ\s*1\s*-\s*2/u', $text) || mb_strpos($text, 'ԱԿՏԻՎՆԵՐ') !== false) {
             return 'active';
         }
-        if (preg_match('/ԿԱՐԳ\s*3-4/u', $text) || mb_strpos($text, 'ՊԱՐՏԱՎՈՐՈՒԹՅՈՒՆՆԵՐ') !== false) {
+
+        if (preg_match('/ԿԱՐԳ\s*3\s*-\s*4/u', $text) || mb_strpos($text, 'ՊԱՐՏԱՎՈՐՈՒԹՅՈՒՆՆԵՐ') !== false) {
             return 'passive';
         }
-        if (preg_match('/ԿԱՐԳ\s*5/u', $text) || mb_strpos($text, 'ՍԵՓԱԿԱՆ ԿԱՊԻՏԱԼ') !== false) {
-            return 'income'; // ինչպես խնդրել ես
+
+        if (preg_match('/ԿԱՐԳ\s*5(?!\d)/u', $text) || mb_strpos($text, 'ՍԵՓԱԿԱՆ ԿԱՊԻՏԱԼ') !== false) {
+            return 'equity';
         }
+
+        if (preg_match('/ԿԱՐԳ\s*6(?!\d)/u', $text) || mb_strpos($text, 'ՀԱՄԱՊԱՐՓԱԿ ԵԿԱՄՈՒՏՆԵՐ') !== false || mb_strpos($text, 'ԵԿԱՄՈՒՏ') !== false) {
+            return 'income';
+        }
+
+        if (preg_match('/ԿԱՐԳ\s*7(?!\d)/u', $text) || mb_strpos($text, 'ՀԱՄԱՊԱՐՓԱԿ ԾԱԽՍԵՐ') !== false || mb_strpos($text, 'ԾԱԽՍ') !== false) {
+            return 'expense';
+        }
+
+        if (preg_match('/ԿԱՐԳ\s*8(?!\d)/u', $text) || mb_strpos($text, 'ՀԵՏՀԱՇՎԵԿՇՌԱՅԻՆ') !== false || mb_strpos($text, 'OFF') !== false) {
+            return 'off_balance';
+        }
+
         return null;
     }
 

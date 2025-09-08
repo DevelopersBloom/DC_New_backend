@@ -56,10 +56,6 @@ return new class extends Migration
             $table->decimal('effective_interest_amount', 18, 2)->nullable();
             $table->boolean('calculate_effective_amount')->default(false);
 
-
-
-
-
             $table->unsignedTinyInteger('interest_day_of_month')->nullable();
             $table->unsignedSmallInteger('interest_periodicity_months')->nullable();
             $table->date('interest_last_date')->nullable();

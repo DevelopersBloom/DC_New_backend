@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ChartOfAccount extends Model
 {
     use HasFactory;
+    private const TYPE_ACTIVE      = 'active';
+    private const TYPE_PASSIVE     = 'passive';
+    private const TYPE_EQUITY      = 'equity';
+    private const TYPE_INCOME      = 'income';
+    private const TYPE_EXPENSE     = 'expense';
+    private const TYPE_OFF_BALANCE = 'off_balance';
+
     protected $fillable = [
         'code',
         'name',
