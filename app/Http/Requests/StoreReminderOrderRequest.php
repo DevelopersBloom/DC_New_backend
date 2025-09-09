@@ -24,7 +24,7 @@ class StoreReminderOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'order_date'       => 'nullable|date',
+            'order_date'       => 'date',
             'amount'           => 'nullable|numeric|min:0',
             'currency_id'      => 'nullable|exists:currencies,id',
             'comment'          => 'nullable|string|max:1000',
