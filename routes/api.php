@@ -13,6 +13,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentControllerNew;
 use App\Http\Controllers\ReminderOrderController;
 use App\Http\Controllers\TestController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ContractControllerNew;
@@ -110,6 +111,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('business-events', BusinessEventController::class);
         Route::apiResource('reminder-orders', ReminderOrderController::class);
         Route::apiResource('loan-ndms', LoanNdmController::class);
+        Route::get('/transactions', [TransactionController::class, 'index']);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);

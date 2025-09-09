@@ -34,7 +34,7 @@ use PhpOffice\PhpWord\Shared\ZipArchive;
 
 class ContractControllerNew extends Controller
 {
-    use ContractTrait, OrderTrait;
+    use ContractTrait;
     protected ClientService $clientService;
     protected EffectiveRateService $effectiveRateService;
     protected ContractService $contractService;

@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreReminderOrderRequest;
 use App\Http\Requests\UpdateReminderOrderRequest;
 use App\Models\ReminderOrder;
+use App\Models\Transaction;
+use App\Traits\CalculationTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReminderOrderController
 {
+    use CalculationTrait;
     public function index(Request $request)
     {
         $query = ReminderOrder::with([
@@ -37,7 +40,7 @@ class ReminderOrderController
         $lastNum = ReminderOrder::max('num') ?? 0;
         $nextNum = $lastNum + 1;
 
-        ReminderOrder::create([
+        $reminderOrder  = ReminderOrder::create([
             'order_date'       => $validated['order_date'] ?? null,
             'amount'           => $validated['amount'] ?? null,
             'currency_id'      => $validated['currency_id'] ?? 1,
@@ -46,6 +49,30 @@ class ReminderOrderController
             'credit_account_id'=> $validated['credit_account_id'] ?? null,
             'is_draft'         => $validated['is_draft'] ?? false,
             'num'              => $nextNum,
+        ]);
+
+        Transaction::create([
+            'date'               => $reminderOrder->order_date,
+            'document_number'    => $reminderOrder->num,
+            'document_type'      => 'reminder_order',
+
+            'debit_account_id'   => $reminderOrder->debit_account_id,
+            'debit_partner_code' => null,
+            'debit_partner_name' => null,
+            'debit_currency_id'  => $reminderOrder->currency_id,
+
+            'credit_account_id'   => $reminderOrder->credit_account_id,
+            'credit_partner_code' => null,
+            'credit_partner_name' => null,
+            'credit_currency_id'  => $reminderOrder->currency_id,
+
+            'amount_amd'       => round($reminderOrder->amount),
+            'amount_currency'  => 0,
+            'amount_currency_id'=> null,
+
+            'comment'   => $reminderOrder->comment,
+            'user_id'   => auth()->id(),
+            'is_system' => false,
         ]);
 
         return response()->json([

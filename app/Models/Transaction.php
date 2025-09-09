@@ -36,7 +36,7 @@ class Transaction extends Model
     ];
 
     protected $casts = [
-        'date'       => 'date',
+        'date' => 'date:Y-m-d',
         'is_system'  => 'boolean',
         'amount_amd' => 'decimal:2',
         'amount_currency' => 'decimal:2',
@@ -63,7 +63,7 @@ class Transaction extends Model
         return $this->belongsTo(Currency::class, 'credit_currency_id');
     }
 
-    public function amountCurrency(): BelongsTo
+    public function amountCurrencyRelation(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'amount_currency_id');
     }
