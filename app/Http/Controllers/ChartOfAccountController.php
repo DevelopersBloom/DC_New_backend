@@ -104,12 +104,18 @@ class ChartOfAccountController
     public function searchAccount(Request $request)
     {
         $code = $request->query('code');
+        $name = $request->query('name');
         $perPage = 15;
 
         $query = ChartOfAccount::query()
             ->select('id','parent_id','code','name','type')
-            ->orderBy('code')
-            ->codeContains($code);
+            ->orderBy('code');
+
+        if ($code) $query->where('code', 'like', $code . '%');
+
+
+        if ($name) $query->where('name', 'like', $name . '%');
+
 
         return response()->json($query->paginate($perPage));
     }

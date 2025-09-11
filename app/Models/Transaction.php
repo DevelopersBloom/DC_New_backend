@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -89,5 +91,9 @@ class Transaction extends Model
         if ($from) return $query->where('date', '>=', $from);
         if ($to)   return $query->where('date', '<=', $to);
         return $query;
+    }
+    public function scopeUpToDate(Builder $q,$date): Builder
+    {
+        return $q->whereDate('date','<=',Carbon::parse($date)->toDateString());
     }
 }

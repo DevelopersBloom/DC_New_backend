@@ -59,5 +59,12 @@ class ChartOfAccount extends Model
 
         return $query->where('code', 'like', "{$safe}%");
     }
-
+    public function isDebitNature(): bool
+    {
+        return in_array($this->type,['active','expense','off_balance'],true);
+    }
+    public function isCreditNature(): bool
+    {
+        return in_array($this->type,['passive','equity','income'],true);
+    }
 }
