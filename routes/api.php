@@ -100,6 +100,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount']);
 
         Route::prefix('chart-of-accounts')->group(function () {
+
             Route::get('/search-account', [ChartOfAccountController::class, 'searchAccount']);
             Route::get('/', [ChartOfAccountController::class, 'index']);
             Route::post('/', [ChartOfAccountController::class, 'store']);
@@ -107,6 +108,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::put('/{id}', [ChartOfAccountController::class, 'update']);
             Route::delete('/{id}', [ChartOfAccountController::class, 'destroy']);
         });
+        Route::get('/accounts/balances', [ChartOfAccountController::class, 'accountBalances']);
+
         Route::apiResource('posting-rules', PostingRuleController::class);
         Route::apiResource('business-events', BusinessEventController::class);
         Route::apiResource('reminder-orders', ReminderOrderController::class);
