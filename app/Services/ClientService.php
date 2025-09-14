@@ -153,14 +153,16 @@ class ClientService
             if ($firstInput) {
                 $query->where(function ($subQuery) use ($firstInput) {
                     $subQuery->where('name', 'like', '%' . $firstInput . '%')
-                        ->orWhere('surname', 'like', '%' . $firstInput . '%');
+                        ->orWhere('surname', 'like', '%' . $firstInput . '%')
+                        ->orWhere('company_name','like','%'  . $firstInput . '%');
                 });
             }
 
             if ($secondInput) {
                 $query->orWhere(function ($subQuery) use ($secondInput) {
                     $subQuery->where('name', 'like', '%' . $secondInput . '%')
-                        ->orWhere('surname', 'like', '%' . $secondInput . '%');
+                        ->orWhere('surname', 'like', '%' . $secondInput . '%')
+                        ->orWhere('company_name','like', '%' . $secondInput . '%');
                 });
             }
         })->get();

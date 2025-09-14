@@ -6,11 +6,13 @@ use App\Exports\ClientsExport;
 use App\Http\Requests\ClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
+use App\Http\Resources\PartnerResource;
 use App\Models\Client;
 use App\Models\ClientPawnshop;
 use App\Services\ClientService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Exception;
@@ -277,5 +279,22 @@ class ClientControllerNew extends Controller
         $pawnshopId = auth()->user()->pawnshop_id;
 
         return Excel::download(new ClientsExport($pawnshopId), 'clients.xlsx');
+    }
+
+    public function searchPartner(Request $request): JsonResponse|AnonymousResourceCollection
+    {
+        $fullName = $request->query('fullName');
+
+        if (!$fullName) {
+            return response()->json(['message' => 'fullName parameter is required'], 400);
+        }
+
+        $fullName = str_replace(' ', ' ', $fullName);
+        $inputs = preg_split('/\s+/', trim($fullName));
+        $firstInput = $inputs[0] ?? null;
+        $secondInput = $inputs[1] ?? null;
+        $clients = $this->clientService->search($firstInput, $secondInput);
+
+        return PartnerResource::collection($clients);
     }
 }

@@ -30,6 +30,8 @@ class UpdateReminderOrderRequest extends FormRequest
             'comment'          => 'nullable|string|max:1000',
             'debit_account_id' => 'nullable|exists:chart_of_accounts,id',
             'credit_account_id'=> 'nullable|exists:chart_of_accounts,id',
+            'debit_partner_id' => 'nullable|exists:clients,id',
+            'credit_partner_id'=> 'nullable|exists:clients,id',
             'is_draft'         => 'nullable|boolean',
         ];
     }

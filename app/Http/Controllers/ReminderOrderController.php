@@ -46,34 +46,50 @@ class ReminderOrderController
             'currency_id'      => $validated['currency_id'] ?? 1,
             'comment'          => $validated['comment'] ?? null,
             'debit_account_id' => $validated['debit_account_id'] ?? null,
+            'debit_partner_id' => $validated['debit_partner_id'] ?? null,
             'credit_account_id'=> $validated['credit_account_id'] ?? null,
+            'credit_partner_id'=> $validated['credit_partner_id'] ?? null,
             'is_draft'         => $validated['is_draft'] ?? false,
             'num'              => $nextNum,
         ]);
 
+        $reminderOrder->load(['debitPartner','creditPartner']);
+
+        $displayName = function ($p) {
+            if (!$p) return null;
+            if (!empty($p->company_name)) return $p->company_name;
+            $name    = $p->name    ?? '';
+            $surname = $p->surname ?? '';
+            return trim($name.' '.$surname) ?: null;
+        };
+
+        $debitPartnerName  = $displayName($reminderOrder->debitPartner);
+        $creditPartnerName = $displayName($reminderOrder->creditPartner);
+
         Transaction::create([
-            'date'               => $reminderOrder->order_date,
-            'document_number'    => $reminderOrder->num,
-            'document_type'      => 'reminder_order',
+                'date'               => $reminderOrder->order_date,
+                'document_number'    => $reminderOrder->num,
+                'document_type'      => 'reminder_order',
 
-            'debit_account_id'   => $reminderOrder->debit_account_id,
-            'debit_partner_code' => null,
-            'debit_partner_name' => null,
-            'debit_currency_id'  => $reminderOrder->currency_id,
+                'debit_account_id'   => $reminderOrder->debit_account_id,
+                'debit_partner_code' => $reminderOrder->debitPartner->swift_code ?? null,
+                'debit_partner_name' => $debitPartnerName,
+                'debit_currency_id'  => $reminderOrder->currency_id,
 
-            'credit_account_id'   => $reminderOrder->credit_account_id,
-            'credit_partner_code' => null,
-            'credit_partner_name' => null,
-            'credit_currency_id'  => $reminderOrder->currency_id,
+                'credit_account_id'   => $reminderOrder->credit_account_id,
+                'credit_partner_code' => $reminderOrder->creditPartner->swift_code ?? null,
+                'credit_partner_name' => $creditPartnerName,
+                'credit_currency_id'  => $reminderOrder->currency_id,
 
-            'amount_amd'       => round($reminderOrder->amount),
-            'amount_currency'  => 0,
-            'amount_currency_id'=> null,
+                'amount_amd'       => round($reminderOrder->amount),
+                'amount_currency'  => 0,
+                'amount_currency_id'=> null,
 
-            'comment'   => $reminderOrder->comment,
-            'user_id'   => auth()->id(),
-            'is_system' => false,
-        ]);
+                'comment'   => $reminderOrder->comment,
+                'user_id'   => auth()->id(),
+                'is_system' => false,
+            ]);
+
 
         return response()->json([
             'message' => 'Հիշարար օրդերը հաջողությամբ ստեղծվեց։',

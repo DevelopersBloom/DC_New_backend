@@ -17,13 +17,10 @@ return new class extends Migration
             $table->id();
             $table->date('order_date')->nullable();
             $table->decimal('amount', 18, 2)->nullable();
-            $table->foreignId('currency_id')->nullable()
-                ->constrained('currencies')->nullOnDelete();
+            $table->foreignId('currency_id')->nullable()->constrained('currencies')->nullOnDelete();
             $table->text('comment')->nullable();
-            $table->foreignId('debit_account_id')->nullable()
-                ->constrained('chart_of_accounts')->nullOnDelete();
-            $table->foreignId('credit_account_id')->nullable()
-                ->constrained('chart_of_accounts')->nullOnDelete();
+            $table->foreignId('debit_account_id')->nullable()->constrained('chart_of_accounts')->nullOnDelete();
+            $table->foreignId('credit_account_id')->nullable()->constrained('chart_of_accounts')->nullOnDelete();
             $table->boolean('is_draft')->default(false);
             $table->unsignedInteger('num');
             $table->timestamps();

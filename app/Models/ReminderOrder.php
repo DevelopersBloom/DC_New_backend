@@ -16,7 +16,9 @@ class ReminderOrder extends Model
         'currency_id',
         'comment',
         'debit_account_id',
+        'debit_partner_id',
         'credit_account_id',
+        'credit_partner_id',
         'is_draft',
         'num',
     ];
@@ -39,5 +41,14 @@ class ReminderOrder extends Model
     public function creditAccount(): BelongsTo
     {
         return $this->belongsTo(ChartOfAccount::class, 'credit_account_id');
+    }
+    public function debitPartner(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'debit_partner_id');
+    }
+
+    public function creditPartner(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'credit_partner_id');
     }
 }
