@@ -44,6 +44,7 @@ class StoreLoanNdmRequest extends FormRequest
             'repayment_end_date' => ['nullable', 'date', 'after:repayment_start_date'],
 
             'day_count_convention' => ['required', Rule::in(['calendar_year', 'days_360', 'fixed_day'])],
+            'access_type' => ['nullable',Rule::in(['loan', 'exchange', 'overdraft'])],
             'interest_rate' => ['nullable', 'numeric', 'between:0,100'],
             'tax_rate' => ['nullable', 'numeric', 'between:0,100'],
             'effective_interest_rate' => ['nullable', 'numeric', 'between:0,100'],

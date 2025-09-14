@@ -42,7 +42,8 @@ class LoanNdm extends Model
         'interest_last_date',
         'classification_type',
         'notes',
-        'income'
+        'income',
+        'access_type'
     ];
 
     protected $casts = [
