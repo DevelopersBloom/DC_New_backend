@@ -48,6 +48,7 @@ class StoreLoanNdmRequest extends FormRequest
 
             'day_count_convention' => ['required', Rule::in(['calendar_year', 'days_360', 'fixed_day'])],
             'interest_rate' => ['nullable', 'numeric', 'between:0,100'],
+            'department' => ['nullable','string'],
 
             'tax_rate' => ['nullable', 'numeric', 'between:0,100'],
             'effective_interest_rate' => ['nullable', 'numeric', 'between:0,100'],

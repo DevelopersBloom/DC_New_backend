@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Client;
 use App\Models\ClientPawnshop;
+use Carbon\Carbon;
 
 class ClientService
 {
@@ -133,11 +134,13 @@ class ClientService
             'street',
             'phone',
             'additional_phone',
-            'date_of_birth'
+            'date_of_birth',
+            'social_card_number',
+            'bank_client_id'
         ]);
 
         // Format date_of_birth after retrieval
-        $client->date_of_birth = \Carbon\Carbon::parse($client->date_of_birth)->format('d-m-Y');
+        $client->date_of_birth = Carbon::parse($client->date_of_birth)->format('d-m-Y');
 
         return $client;
     }

@@ -23,6 +23,8 @@ class Client extends Model
         'passport_validity',
         'passport_issued',
         'date_of_birth',
+        'social_card_number',
+        'bank_client_id',
 
         'company_name',
         'legal_form',

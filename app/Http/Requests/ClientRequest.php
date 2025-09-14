@@ -43,6 +43,8 @@ class ClientRequest extends FormRequest
                 'name' => ['required','string','max:255'],
                 'surname' => ['required','string','max:255'],
                 'middle_name' => ['nullable','string','max:255'],
+                'social_card_number' => ['nullable','string','max:255'],
+                'bank_client_id' => ['nullable','string','max:255'],
 
                 'passport_series' => ['required','string','max:50'],
                 'passport_validity' => ['required','date'],

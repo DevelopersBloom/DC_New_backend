@@ -43,7 +43,8 @@ class LoanNdm extends Model
         'classification_type',
         'notes',
         'income',
-        'access_type'
+        'access_type',
+        'department'
     ];
 
     protected $casts = [
