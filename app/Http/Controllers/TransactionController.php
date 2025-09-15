@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TransactionsExport;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TransactionController
 {
@@ -48,5 +50,15 @@ class TransactionController
         $transactions = $query->orderBy('date','desc')->paginate(20);
 
         return response()->json($transactions);
+    }
+    public function export(Request $request)
+    {
+        $from = $request->query('from_date');
+        $to   = $request->query('to_date');
+
+        return Excel::download(
+            new TransactionsExport($from, $to),
+            'transactions.xlsx'
+        );
     }
 }

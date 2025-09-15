@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Transaction extends Model
 {
     use HasFactory,SoftDeletes;
+    const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
 
     protected $fillable = [
         'date',

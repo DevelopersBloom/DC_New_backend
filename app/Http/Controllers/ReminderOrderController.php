@@ -65,19 +65,23 @@ class ReminderOrderController
 
         $debitPartnerName  = $displayName($reminderOrder->debitPartner);
         $creditPartnerName = $displayName($reminderOrder->creditPartner);
+        $debitPartnerCode = $reminderOrder->debitPartner->type == 'individual' ? $reminderOrder->debitPartner->social_card_number :
+                            $reminderOrder->debitPartner->tax_number;
+        $creditPartnerCode = $reminderOrder->creditPartner->type == 'individual' ? $reminderOrder->creditPartner->social_card_number :
+            $reminderOrder->creditPartner->tax_number;
 
         Transaction::create([
                 'date'               => $reminderOrder->order_date,
                 'document_number'    => $reminderOrder->num,
-                'document_type'      => 'reminder_order',
+                'document_type'      => Transaction::REMINDER_ORDER_TYPE,
 
                 'debit_account_id'   => $reminderOrder->debit_account_id,
-                'debit_partner_code' => $reminderOrder->debitPartner->swift_code ?? null,
+                'debit_partner_code' => $debitPartnerCode,
                 'debit_partner_name' => $debitPartnerName,
                 'debit_currency_id'  => $reminderOrder->currency_id,
 
                 'credit_account_id'   => $reminderOrder->credit_account_id,
-                'credit_partner_code' => $reminderOrder->creditPartner->swift_code ?? null,
+                'credit_partner_code' => $creditPartnerCode,
                 'credit_partner_name' => $creditPartnerName,
                 'credit_currency_id'  => $reminderOrder->currency_id,
 

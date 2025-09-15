@@ -115,6 +115,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('reminder-orders', ReminderOrderController::class);
         Route::apiResource('loan-ndms', LoanNdmController::class);
         Route::get('/transactions', [TransactionController::class, 'index']);
+        Route::get('/transactions/export', [TransactionController::class, 'export']);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
