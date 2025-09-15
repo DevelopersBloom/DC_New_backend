@@ -95,7 +95,7 @@ class LoanNdmController extends Controller
                 'debit_partner_code' => $partnerCode,
                 'debit_partner_name' => $partnerName,
                 'debit_currency_id'  => $data['currency_id'],
-                'distribution_date'  => $data['distribution_date'],
+                'disbursement_date'  => $data['disbursement_date'],
 
 //                'credit_account_id'   => $reminderOrder->credit_account_id,
 //                'credit_partner_code' => $creditPartnerCode,
