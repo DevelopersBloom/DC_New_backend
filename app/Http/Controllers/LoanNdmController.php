@@ -91,7 +91,7 @@ class LoanNdmController extends Controller
                 'document_number'    => $data['contract_number'],
                 'document_type'      => Transaction::LOAN_NDM_TYPE,
 
-//                'debit_account_id'   => $reminderOrder->debit_account_id,
+                'debit_account_id'   => $data['account_id'],
                 'debit_partner_code' => $partnerCode,
                 'debit_partner_name' => $partnerName,
                 'debit_currency_id'  => $data['currency_id'],
