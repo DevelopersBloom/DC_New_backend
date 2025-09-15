@@ -13,7 +13,7 @@ class Transaction extends Model
 {
     use HasFactory,SoftDeletes;
     const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
-
+    const LOAN_NDM_TYPE = 'Ներգրավված Դրամական Միջոցներ';
     protected $fillable = [
         'date',
         'document_number',
