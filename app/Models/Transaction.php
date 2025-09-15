@@ -36,6 +36,7 @@ class Transaction extends Model
         'comment',
         'user_id',
         'is_system',
+        'disbursement_date',
     ];
 
     protected $casts = [
