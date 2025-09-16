@@ -57,6 +57,7 @@ class Transaction extends Model
         return $this->belongsTo(ChartOfAccount::class, 'credit_account_id');
     }
 
+
     public function debitCurrency(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'debit_currency_id');
