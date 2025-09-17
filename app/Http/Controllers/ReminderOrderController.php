@@ -36,7 +36,6 @@ class ReminderOrderController
     public function store(StoreReminderOrderRequest $request): JsonResponse
     {
         $validated = $request->validated();
-
         $lastNum = ReminderOrder::max('num') ?? 0;
         $nextNum = $lastNum + 1;
 
@@ -65,6 +64,7 @@ class ReminderOrderController
 
         $debitPartnerName  = $displayName($reminderOrder->debitPartner);
         $creditPartnerName = $displayName($reminderOrder->creditPartner);
+
         $debitPartnerCode = $reminderOrder->debitPartner->type == 'individual' ? $reminderOrder->debitPartner->social_card_number :
                             $reminderOrder->debitPartner->tax_number;
         $creditPartnerCode = $reminderOrder->creditPartner->type == 'individual' ? $reminderOrder->creditPartner->social_card_number :

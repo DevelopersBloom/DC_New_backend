@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreChartOfAccountRequest;
 use App\Models\ChartOfAccount;
+use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ChartOfAccountController
 {
+    use CalculatesAccountBalancesTrait;
 //    public function index()
 //    {
 //        $accounts = ChartOfAccount::whereNull('parent_id')
@@ -121,57 +123,71 @@ class ChartOfAccountController
         return response()->json($query->paginate($perPage));
     }
 
-    public function accountBalances(Request $request)
+//        public function accountBalances(Request $request)
+//        {
+//            $dateTo   = $request->query('to');
+//            $perPage  = (int) $request->query('per_page', 15);
+//            $page     = (int) $request->query('page', 1);
+//
+//            $dateFilter = function($q) use ($dateTo) {
+//                if ($dateTo) {
+//                    $q->whereDate('t.date', '<=', $dateTo);
+//                }
+//            };
+//
+//            $debit = DB::table('transactions as t')
+//                ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
+//                ->when($dateTo, $dateFilter)
+//                ->whereNotNull('t.debit_account_id')
+//                ->selectRaw("
+//                t.debit_account_id as account_id,
+//                SUM(CASE
+//                    WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
+//                    ELSE -t.amount_amd
+//                END) as delta
+//            ")
+//                ->groupBy('t.debit_account_id');
+//
+//            $credit = DB::table('transactions as t')
+//                ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
+//                ->when($dateTo, $dateFilter)
+//                ->whereNotNull('t.credit_account_id')
+//                ->selectRaw("
+//                t.credit_account_id as account_id,
+//                SUM(CASE
+//                    WHEN a.type IN ('active','expense','off_balance') THEN  -t.amount_amd
+//                    ELSE t.amount_amd
+//                END) as delta
+//            ")->groupBy('t.credit_account_id');
+//
+//            $union = $debit->unionAll($credit);
+//
+//            $balances = DB::query()
+//                ->fromSub($union, 'u')
+//                ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
+//                ->select([
+//                    'u.account_id',
+//                    'ca.code',
+//                    'ca.name',
+//                    'ca.type',
+//                    DB::raw('SUM(u.delta) as balance'),
+//                ])
+//                ->groupBy('u.account_id', 'ca.code', 'ca.name', 'ca.type')
+//                ->orderBy('ca.code')
+//                ->paginate($perPage, ['*'], 'page', $page)
+//                ->appends(['to' => $dateTo, 'per_page' => $perPage]);
+//
+//            return response()->json($balances);
+//        }
+
+    public function accountBalances(Request $request): JsonResponse
     {
         $dateTo   = $request->query('to');
         $perPage  = (int) $request->query('per_page', 15);
         $page     = (int) $request->query('page', 1);
 
-        $dateFilter = function($q) use ($dateTo) {
-            if ($dateTo) {
-                $q->whereDate('t.date', '<=', $dateTo);
-            }
-        };
-
-        $debit = DB::table('transactions as t')
-            ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
-            ->when($dateTo, $dateFilter)
-            ->whereNotNull('t.debit_account_id')
-            ->selectRaw("
-            t.debit_account_id as account_id,
-            SUM(CASE
-                WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
-                ELSE -t.amount_amd
-            END) as delta
-        ")
-            ->groupBy('t.debit_account_id');
-
-        $credit = DB::table('transactions as t')
-            ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
-            ->when($dateTo, $dateFilter)
-            ->whereNotNull('t.credit_account_id')
-            ->selectRaw("
-            t.credit_account_id as account_id,
-            SUM(CASE
-                WHEN a.type IN ('active','expense','off_balance') THEN  -t.amount_amd
-                ELSE t.amount_amd
-            END) as delta
-        ")->groupBy('t.credit_account_id');
-
-        $union = $debit->unionAll($credit);
-
-        $balances = DB::query()
-            ->fromSub($union, 'u')
-            ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
-            ->select([
-                'u.account_id',
-                'ca.code',
-                'ca.name',
-                'ca.type',
-                DB::raw('SUM(u.delta) as balance'),
-            ])
-            ->groupBy('u.account_id', 'ca.code', 'ca.name', 'ca.type')
-            ->orderBy('ca.code')
+        $balances = $this->balancesSubquery($dateTo)
+            ->orderBy('code')
             ->paginate($perPage, ['*'], 'page', $page)
             ->appends(['to' => $dateTo, 'per_page' => $perPage]);
 

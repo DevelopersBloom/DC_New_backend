@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Exports\LoanNdmJournalExport;
+use App\Exports\ReportsJournalExport;
 use App\Exports\TransactionsExport;
 use App\Models\Transaction;
+use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
 class TransactionController
 {
+    use CalculatesAccountBalancesTrait;
     public function index(Request $request)
     {
         $from = $request->query('from_date');
@@ -112,4 +115,29 @@ class TransactionController
             'ՓաստաթղթերիՄատյան.xlsx'
         );
     }
+    public function reportsJournal(Request $request): JsonResponse
+    {
+        $dateTo   = $request->query('to');
+        $perPage  = (int) $request->query('per_page', 15);
+        $page     = (int) $request->query('page', 1);
+
+        $rows = $this->balancesRowsQuery($dateTo)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $summary = $this->balancesSummary($dateTo);
+
+        return response()->json([
+            'data'    => $rows->items(),
+            'summary' => $summary,
+        ]);
+    }
+    public function exportReportsJournal(Request $request)
+    {
+        $to = $request->query('to');
+
+        $filename = 'ՓաստաթղթերիՄատյան' . ($to ? "_to_{$to}" : '') . '.xlsx';
+
+        return Excel::download(new ReportsJournalExport($to), $filename);
+    }
 }
+

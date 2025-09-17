@@ -118,6 +118,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/transactions/export', [TransactionController::class, 'export']);
         Route::get('/transactions/loan-ndms', [TransactionController::class, 'loanNdmJournal']);
         Route::get('/transactions/loan-ndms/export', [TransactionController::class, 'exportLoanNdmJournal']);
+        Route::get('/transactions/reports', [TransactionController::class, 'reportsJournal']);
+        Route::get('/transactions/reports/export', [TransactionController::class, 'exportReportsJournal']);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
