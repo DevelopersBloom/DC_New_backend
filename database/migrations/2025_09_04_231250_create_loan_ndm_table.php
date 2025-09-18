@@ -17,9 +17,9 @@ return new class extends Migration
             $table->id();
 
             $table->string('contract_number');
-            $table->foreignId('client_id')->constrained('clients');
+            $table->foreignId('client_id')->nullable()->constrained('clients');
             $table->string('name');
-            $table->foreignId('currency_id')->constrained('currencies');
+            $table->foreignId('currency_id')->nullable()->constrained('currencies');
 
             $table->foreignId('account_id')->nullable()->constrained('chart_of_accounts');
             $table->foreignId('interest_account_id')->nullable()->constrained('chart_of_accounts');
@@ -47,6 +47,11 @@ return new class extends Migration
                 'days_360',
                 'fixed_day'
             ])->default('calendar_year');
+            $table->enum('access_type', [
+                'loan',
+                'exchange',
+                'overdraft'
+            ])->nullable();
             $table->decimal('interest_rate', 9, 4);
             $table->decimal('interest_amount', 18, 2);
 
@@ -61,6 +66,7 @@ return new class extends Migration
             $table->date('interest_last_date')->nullable();
 
             $table->string('classification_type')->nullable();
+            $table->string('department')->nullable()->after('access_type');
 
             $table->text('notes')->nullable();
 
