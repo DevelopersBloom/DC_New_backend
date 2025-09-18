@@ -135,7 +135,7 @@ class TransactionController
     {
         $to = $request->query('to');
 
-        $filename = 'ՓաստաթղթերիՄատյան' . ($to ? "_to_{$to}" : '') . '.xlsx';
+        $filename = 'Հաշվետվություն' . ($to ? "_to_{$to}" : '') . '.xlsx';
 
         return Excel::download(new ReportsJournalExport($to), $filename);
     }
