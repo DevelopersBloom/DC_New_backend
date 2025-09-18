@@ -25,8 +25,8 @@ return new class extends Migration
             $table->date('passport_validity')->nullable();
             $table->string('passport_issued')->nullable();
             $table->string('date_of_birth')->nullable();
-            $table->string('social_card_number')->nullable()->after('middle_name'); //հծհ
-            $table->string('bank_client_id')->nullable()->after('social_card_number');
+            $table->string('social_card_number')->nullable(); //հծհ
+            $table->string('bank_client_id')->nullable();
 
 
             $table->string('company_name')->nullable();      // Անվանում
