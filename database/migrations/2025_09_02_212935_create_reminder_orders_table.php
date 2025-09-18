@@ -23,13 +23,11 @@ return new class extends Migration
             $table->foreignId('credit_account_id')->nullable()->constrained('chart_of_accounts')->nullOnDelete();
             $table->foreignId('debit_partner_id')
                 ->nullable()
-                ->after('debit_account_id')
                 ->constrained('clients')
                 ->nullOnDelete();
 
             $table->foreignId('credit_partner_id')
                 ->nullable()
-                ->after('credit_account_id')
                 ->constrained('clients')
                 ->nullOnDelete();
             $table->boolean('is_draft')->default(false);

@@ -34,7 +34,7 @@ return new class extends Migration
             $table->foreignId('amount_currency_id')->nullable()->constrained('currencies');
 
             $table->text('comment')->nullable();
-            $table->date('disbursement_date')->nullable()->after('date');
+            $table->date('disbursement_date')->nullable();
 
             $table->foreignId('user_id')->nullable()->constrained('users');
             $table->boolean('is_system')->default(false);

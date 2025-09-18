@@ -66,7 +66,7 @@ return new class extends Migration
             $table->date('interest_last_date')->nullable();
 
             $table->string('classification_type')->nullable();
-            $table->string('department')->nullable()->after('access_type');
+            $table->string('department')->nullable();
 
             $table->text('notes')->nullable();
 
