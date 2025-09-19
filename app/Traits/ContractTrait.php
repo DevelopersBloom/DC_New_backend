@@ -19,6 +19,7 @@ use Carbon\Carbon;
 
 trait ContractTrait
 {
+    use OrderTrait;
     /**
      * Helper method to create order and history entries
      */

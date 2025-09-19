@@ -191,6 +191,7 @@ class ContractControllerNew extends Controller
             if ($filesData) {
                 $this->fileService->uploadContractFiles($contract->id, $filesData);
             }
+
             // Create contract payments
             $this->contractService->createPayment($contract);
 
@@ -200,6 +201,7 @@ class ContractControllerNew extends Controller
 //            $this->createOrderAndHistory($contract,$client->id, $client_name, $cash,$category_id);
 
             $this->createOrderHistoryEntry($contract,$client->id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$contract->num,$pawnshop_id,$date);
+
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
                 'amount' => $contract->estimated_amount,
