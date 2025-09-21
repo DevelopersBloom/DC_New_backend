@@ -231,6 +231,7 @@ use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Events\AfterSheet;
 
+use PhpOffice\PhpSpreadsheet\Shared\Font;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -242,7 +243,6 @@ class LoanNdmJournalExport implements
     WithMapping,
     WithEvents,
     WithStyles,
-    WithColumnWidths,
     WithColumnFormatting,
     ShouldAutoSize
 {
@@ -335,21 +335,21 @@ class LoanNdmJournalExport implements
         ];
     }
 
-    public function columnWidths(): array
-    {
-        return [
-            'A' => 12,
-            'B' => 16,
-            'C' => 18,
-            'D' => 10,
-            'E' => 18,
-            'F' => 20,
-            'G' => 28,
-            'H' => 30,
-            'I' => 20,
-            'J' => 20,
-        ];
-    }
+//    public function columnWidths(): array
+//    {
+//        return [
+//            'A' => 12,
+//            'B' => 16,
+//            'C' => 18,
+//            'D' => 10,
+//            'E' => 18,
+//            'F' => 20,
+//            'G' => 28,
+//            'H' => 30,
+//            'I' => 20,
+//            'J' => 20,
+//        ];
+//    }
 
     public function styles(Worksheet $sheet)
     {
@@ -369,34 +369,42 @@ class LoanNdmJournalExport implements
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                $sheet = $event->sheet->getDelegate();
+                $sheet      = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
                 $highestCol = $sheet->getHighestColumn();
-                $dataRange = "A1:{$highestCol}{$highestRow}";
-
+                $dataRange  = "A1:{$highestCol}{$highestRow}";
                 $headerRange = "A1:{$highestCol}1";
+
+                // Header styling (քո կոդը)
                 $sheet->getStyle($headerRange)->applyFromArray([
-                    'font' => ['bold' => true, 'size' => 11],
+                    'font'      => ['bold' => true, 'size' => 11],
                     'alignment' => [
                         'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical' => Alignment::VERTICAL_CENTER,
-                        'wrapText' => true,
+                        'vertical'   => Alignment::VERTICAL_CENTER,
+                        'wrapText'   => true,
                     ],
-                    'fill' => [
-                        'fillType' => Fill::FILL_SOLID,
+                    'fill'      => [
+                        'fillType'   => Fill::FILL_SOLID,
                         'startColor' => ['rgb' => 'E6F0FF'],
                     ],
                 ]);
 
-                $sheet->getStyle($dataRange)->getAlignment()
+                // Data range – եթե ուզում ես, որ սյունակները լայնանան, անջատիր wrap-ը
+                $sheet->getStyle("A2:{$highestCol}{$highestRow}")
+                    ->getAlignment()
                     ->setVertical(Alignment::VERTICAL_CENTER)
-                    ->setWrapText(true);
+                    ->setWrapText(false);
 
                 $sheet->freezePane('A2');
                 $sheet->setAutoFilter("A1:{$highestCol}1");
                 $sheet->setTitle('ՆԴՄ Export');
+
+                // ✅ Column autosize (ճշգրիտ մեթոդ)
+                Font::setAutoSizeMethod(Font::AUTOSIZE_METHOD_EXACT);
+                foreach (range('A', $highestCol) as $col) {
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                }
             },
         ];
-    }
-}
+    }}
 
