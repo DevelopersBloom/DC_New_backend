@@ -68,46 +68,46 @@ class TransactionController
         );
     }
 
-//    public function loanNdmJournal(Request $request): JsonResponse
-//    {
-//        $from = $request->query('from_date');
-//        $to   = $request->query('to_date');
-//
-//        $query = Transaction::with([
-//            'amountCurrencyRelation:id,code',
-//            'user:id,name,surname',
-//        ])
-//            ->where('document_type', Transaction::LOAN_NDM_TYPE)
-//            ->select([
-//                'id',
-//                'date',
-//                'document_number',
-//                'document_type',
-//                'amount_amd',
-//                'amount_currency_id',
-//                'debit_partner_code',
-//                'debit_partner_name',
-//                'comment',
-//                'user_id',
-//                'disbursement_date',
-//            ]) ->with([
-//                'user:id,name,surname'
-//            ]);;
-//
-//        if ($from && $to) {
-//            $query->whereBetween('date', [$from, $to]);
-//        } elseif ($from) {
-//            $query->where('date', '>=', $from);
-//        } elseif ($to) {
-//            $query->where('date', '<=', $to);
-//        }
-//
-//        $transactions = $query->orderBy('date', 'desc')->paginate(20);
-//
-//        return response()->json($transactions);
-//    }
-
     public function loanNdmJournal(Request $request): JsonResponse
+    {
+        $from = $request->query('from_date');
+        $to   = $request->query('to_date');
+
+        $query = Transaction::with([
+            'amountCurrencyRelation:id,code',
+            'user:id,name,surname',
+        ])
+            ->where('document_type', Transaction::LOAN_NDM_TYPE)
+            ->select([
+                'id',
+                'date',
+                'document_number',
+                'document_type',
+                'amount_amd',
+                'amount_currency_id',
+                'debit_partner_code',
+                'debit_partner_name',
+                'comment',
+                'user_id',
+                'disbursement_date',
+            ]) ->with([
+                'user:id,name,surname'
+            ]);;
+
+        if ($from && $to) {
+            $query->whereBetween('date', [$from, $to]);
+        } elseif ($from) {
+            $query->where('date', '>=', $from);
+        } elseif ($to) {
+            $query->where('date', '<=', $to);
+        }
+
+        $transactions = $query->orderBy('date', 'desc')->paginate(20);
+
+        return response()->json($transactions);
+    }
+
+    public function loanNdmJournal1(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
