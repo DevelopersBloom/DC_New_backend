@@ -120,7 +120,7 @@ class TransactionController
             ->when($from && $to, fn($q) => $q->whereBetween('contract_date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('contract_date', '>=', $from))
             ->when(!$from && $to, fn($q) => $q->where('contract_date', '<=', $to))
-            ->orderBy('contract_date', 'desc');
+            ->orderBy('id', 'desc');
 
         $page = $query->paginate(20);
 
