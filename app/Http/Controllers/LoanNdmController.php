@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\LoanNdmJournalExport;
 use App\Http\Requests\StoreLoanNdmRequest;
 use App\Models\Client;
 use App\Models\LoanNdm;
@@ -12,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class LoanNdmController extends Controller
 {
@@ -137,5 +139,69 @@ class LoanNdmController extends Controller
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+    public function loanNdmJournal(Request $request): JsonResponse
+    {
+        $from = $request->query('from_date');
+        $to   = $request->query('to_date');
+
+        $query = LoanNdm::with([
+            'client:id,type,name,surname,company_name,social_card_number,tax_number',
+            'currency:id,code',
+            'user:id,name,surname',
+        ])
+            ->when($from && $to, fn($q) => $q->whereBetween('contract_date', [$from, $to]))
+            ->when($from && !$to, fn($q) => $q->where('contract_date', '>=', $from))
+            ->when(!$from && $to, fn($q) => $q->where('contract_date', '<=', $to))
+            ->orderBy('id', 'desc');
+
+        $page = $query->paginate(20);
+
+        $page->getCollection()->transform(function (LoanNdm $ndm) {
+            $client = $ndm->client;
+            $partnerName = $client
+                ? ($client->type === 'legal'
+                    ? ($client->company_name ?? '')
+                    : trim(($client->name ?? '').' '.($client->surname ?? '')))
+                : null;
+
+            $partnerCode = $client
+                ? ($client->type === 'individual'
+                    ? ($client->social_card_number ?? null)
+                    : ($client->tax_number ?? null))
+                : null;
+
+            return [
+                'id'                  => $ndm->id,
+                'date'                => optional($ndm->contract_date)->format('Y-m-d'),
+                'document_number'     => $ndm->contract_number,
+                'document_type'       => Transaction::LOAN_NDM_TYPE,
+                'amount_amd'          => $ndm->amount,
+                'amount_currency_id'  => $ndm->currency_id,
+                'debit_partner_code'  => $partnerCode,
+                'debit_partner_name'  => $partnerName,
+                'comment'             => $ndm->comment ?? null,
+                'user_id'             => auth()->user()->id ?? null,
+                'disbursement_date'   => optional($ndm->disbursement_date)->format('Y-m-d'),
+
+                'amount_currency_relation'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
+//                'user'                => auth()->user() ? ['id' => auth()->user()->id, 'name' => auth()->user()->name, 'surname' => auth()->user()->surname] : null,
+                'user' => $ndm->user,
+
+            ];
+        });
+
+        return response()->json($page);
+    }
+
+    public function exportLoanNdmJournal(Request $request)
+    {
+        $from = $request->query('from_date');
+        $to   = $request->query('to_date');
+
+        return Excel::download(
+            new LoanNdmJournalExport($from, $to),
+            'ՓաստաթղթերիՄատյան.xlsx'
+        );
     }
 }

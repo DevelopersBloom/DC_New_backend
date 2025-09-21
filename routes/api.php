@@ -116,8 +116,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('loan-ndms', LoanNdmController::class);
         Route::get('/transactions', [TransactionController::class, 'index']);
         Route::get('/transactions/export', [TransactionController::class, 'export']);
-        Route::get('/transactions/loan-ndms', [TransactionController::class, 'loanNdmJournal']);
-        Route::get('/transactions/loan-ndms/export', [TransactionController::class, 'exportLoanNdmJournal']);
+        Route::get('/transactions/loan-ndms', [LoanNdmController::class, 'loanNdmJournal']);
+        Route::get('/transactions/loan-ndms/export', [LoanNdmController::class, 'exportLoanNdmJournal']);
         Route::get('/transactions/reports', [TransactionController::class, 'reportsJournal']);
         Route::get('/transactions/reports/export', [TransactionController::class, 'exportReportsJournal']);
 
