@@ -50,7 +50,6 @@ class LoanNdmController extends Controller
                     break;
 
                 case 'fixed_day':
-                    // Օրինակ՝ 30 օր մեկ ամիս * 12 = 360
                 $baseDays = 360;
                     break;
 
@@ -76,39 +75,39 @@ class LoanNdmController extends Controller
 //            $filter_type = Order::NDM_FILTER;
 //            $type = 'cost_out';
 //            $cash = true;
-            $clientId = $data['client_id'];
+//            $clientId = $data['client_id'];
 
-            $client = Client::findOrFail($clientId);
+//            $client = Client::findOrFail($clientId);
 
-            $partnerName = $client->type == 'legal' ? $client->company_name : $client->name . ' ' . $client->surname;
+//            $partnerName = $client->type == 'legal' ? $client->company_name : $client->name . ' ' . $client->surname;
+//
+//            $partnerCode = $client->type == 'individual' ? $client->social_card_number :
+//                $client->tax_number;
 
-            $partnerCode = $client->type == 'individual' ? $client->social_card_number :
-                $client->tax_number;
-
-            Transaction::create([
-                'date'               => $data['contract_date'],
-                'document_number'    => $data['contract_number'],
-                'document_type'      => Transaction::LOAN_NDM_TYPE,
-
-//                'debit_account_id'   => 0,
-                'debit_partner_code' => $partnerCode,
-                'debit_partner_name' => $partnerName,
-                'debit_currency_id'  => $data['currency_id'],
-                'disbursement_date'  => $data['disbursement_date'],
-
-//                'credit_account_id'   => 0,
-//                'credit_partner_code' => $creditPartnerCode,
-//                'credit_partner_name' => $creditPartnerName,
-//                'credit_currency_id'  => $reminderOrder->currency_id,
-
-                'amount_amd'       => $data['amount'],
-                'amount_currency'  => 0,
-                'amount_currency_id'=> null,
-
-                'comment'   => $data['comment'],
-                'user_id'   => auth()->id(),
-                'is_system' => false,
-            ]);
+//            Transaction::create([
+//                'date'               => $data['contract_date'],
+//                'document_number'    => $data['contract_number'],
+//                'document_type'      => Transaction::LOAN_NDM_TYPE,
+//
+////                'debit_account_id'   => 0,
+//                'debit_partner_code' => $partnerCode,
+//                'debit_partner_name' => $partnerName,
+//                'debit_currency_id'  => $data['currency_id'],
+//                'disbursement_date'  => $data['disbursement_date'],
+//
+////                'credit_account_id'   => 0,
+////                'credit_partner_code' => $creditPartnerCode,
+////                'credit_partner_name' => $creditPartnerName,
+////                'credit_currency_id'  => $reminderOrder->currency_id,
+//
+//                'amount_amd'       => $data['amount'],
+//                'amount_currency'  => 0,
+//                'amount_currency_id'=> null,
+//
+//                'comment'   => $data['comment'],
+//                'user_id'   => auth()->id(),
+//                'is_system' => false,
+//            ]);
 
 
 //            $order_id = $this->getOrder($cash, $type);
