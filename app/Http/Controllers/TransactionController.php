@@ -153,7 +153,7 @@ class TransactionController
 
                 'amount_currency_relation'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
 //                'user'                => auth()->user() ? ['id' => auth()->user()->id, 'name' => auth()->user()->name, 'surname' => auth()->user()->surname] : null,
-                trim(($ndm->user->name ?? '') . ' ' . ($ndm->user->surname ?? '')),
+                'user' => trim(($ndm->user->name ?? '') . ' ' . ($ndm->user->surname ?? '')),
 
             ];
         });
