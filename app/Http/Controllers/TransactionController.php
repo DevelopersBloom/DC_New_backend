@@ -148,7 +148,7 @@ class TransactionController
                 'debit_partner_code'  => $partnerCode,
                 'debit_partner_name'  => $partnerName,
                 'comment'             => $ndm->comment ?? null,
-                'user_id'             => $ndm->user_id ?? null,
+               // 'user_id'             => $ndm->user_id ?? null,
                 'disbursement_date'   => optional($ndm->disbursement_date)->format('Y-m-d'),
 
                 'currency'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
