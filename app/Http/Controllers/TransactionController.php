@@ -114,8 +114,8 @@ class TransactionController
 
         $query = LoanNdm::with([
             'client:id,type,name,surname,company_name,social_card_number,tax_number',
-//            'currency:id,code',
-//            'user:id,name,surname',
+            'currency:id,code',
+            'user:id,name,surname',
         ])
             ->when($from && $to, fn($q) => $q->whereBetween('contract_date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('contract_date', '>=', $from))
@@ -152,7 +152,9 @@ class TransactionController
                 'disbursement_date'   => optional($ndm->disbursement_date)->format('Y-m-d'),
 
                 'amount_currency_relation'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
-                'user'                => auth()->user() ? ['id' => auth()->user()->id, 'name' => auth()->user()->name, 'surname' => auth()->user()->surname] : null,
+//                'user'                => auth()->user() ? ['id' => auth()->user()->id, 'name' => auth()->user()->name, 'surname' => auth()->user()->surname] : null,
+                trim(($ndm->user->name ?? '') . ' ' . ($ndm->user->surname ?? '')),
+
             ];
         });
 

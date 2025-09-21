@@ -69,6 +69,8 @@ class LoanNdmController extends Controller
                 ? $interestAmount - round($interestAmount * ($data['tax_rate'] / 100), 2)
                 : $interestAmount;
 
+            $data['user_id'] = auth()->id();
+
             $loanNdm = LoanNdm::create($data);
 
 //            $purpose = Order::NDM_PURPOSE;

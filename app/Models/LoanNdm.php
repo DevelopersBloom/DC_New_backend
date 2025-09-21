@@ -44,7 +44,8 @@ class LoanNdm extends Model
         'notes',
         'income',
         'access_type',
-        'department'
+        'department',
+        'user_id',
     ];
 
     protected $casts = [
@@ -89,5 +90,9 @@ class LoanNdm extends Model
     public function pawnshop(): BelongsTo
     {
         return $this->belongsTo(Pawnshop::class);
+    }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }
