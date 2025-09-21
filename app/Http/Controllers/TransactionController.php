@@ -152,7 +152,7 @@ class TransactionController
                 'disbursement_date'   => optional($ndm->disbursement_date)->format('Y-m-d'),
 
                 'currency'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
-                'user'                => $ndm->user ? ['id' => $ndm->user->id, 'name' => $ndm->user->name, 'surname' => $ndm->user->surname] : null,
+//                'user'                => $ndm->user ? ['id' => $ndm->user->id, 'name' => $ndm->user->name, 'surname' => $ndm->user->surname] : null,
             ];
         });
 
