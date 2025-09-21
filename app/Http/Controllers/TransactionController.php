@@ -68,7 +68,7 @@ class TransactionController
         );
     }
 
-    public function loanNdmJournal(Request $request): JsonResponse
+    public function loanNdmJournal1(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
@@ -107,7 +107,7 @@ class TransactionController
         return response()->json($transactions);
     }
 
-    public function loanNdmJournal1(Request $request): JsonResponse
+    public function loanNdmJournal(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
@@ -142,7 +142,7 @@ class TransactionController
                 'id'                  => $ndm->id,
                 'date'                => optional($ndm->contract_date)->format('Y-m-d'),
                 'document_number'     => $ndm->contract_number,
-                'document_type'       => Transaction::LOAN_NDM_TYPE, // կամ 'loan_nd
+                'document_type'       => Transaction::LOAN_NDM_TYPE,
                 'amount_amd'          => $ndm->amount,
                 'amount_currency_id'  => $ndm->currency_id,
                 'debit_partner_code'  => $partnerCode,
@@ -151,7 +151,7 @@ class TransactionController
                // 'user_id'             => $ndm->user_id ?? null,
                 'disbursement_date'   => optional($ndm->disbursement_date)->format('Y-m-d'),
 
-                'ammount_currency'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
+                'amount_currency_relation'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
 //                'user'                => $ndm->user ? ['id' => $ndm->user->id, 'name' => $ndm->user->name, 'surname' => $ndm->user->surname] : null,
             ];
         });
