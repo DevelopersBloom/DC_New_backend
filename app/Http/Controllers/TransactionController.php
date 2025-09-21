@@ -148,11 +148,11 @@ class TransactionController
                 'debit_partner_code'  => $partnerCode,
                 'debit_partner_name'  => $partnerName,
                 'comment'             => $ndm->comment ?? null,
-               // 'user_id'             => $ndm->user_id ?? null,
+                'user_id'             => auth()->user()->id ?? null,
                 'disbursement_date'   => optional($ndm->disbursement_date)->format('Y-m-d'),
 
                 'amount_currency_relation'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
-//                'user'                => $ndm->user ? ['id' => $ndm->user->id, 'name' => $ndm->user->name, 'surname' => $ndm->user->surname] : null,
+                'user'                => auth()->user() ? ['id' => auth()->user()->id, 'name' => auth()->user()->name, 'surname' => auth()->user()->surname] : null,
             ];
         });
 
