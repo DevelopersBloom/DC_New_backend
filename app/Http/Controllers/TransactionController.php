@@ -115,7 +115,7 @@ class TransactionController
         $query = LoanNdm::with([
             'client:id,type,name,surname,company_name,social_card_number,tax_number',
             'currency:id,code',
-            'user:id,name,surname',
+//            'user:id,name,surname',
         ])
             ->when($from && $to, fn($q) => $q->whereBetween('contract_date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('contract_date', '>=', $from))
