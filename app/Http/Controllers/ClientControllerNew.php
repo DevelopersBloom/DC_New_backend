@@ -110,36 +110,14 @@ class ClientControllerNew extends Controller
             ], 500);
         }
     }
-    private function storeClientData1(array $data, bool $hasContract): JsonResponse
-    {
-        // Determine the current pawnshop id (assumes an authenticated user)
-        $pawnshopId = auth()->user()->pawnshop_id ?? 1;
-
-        // Check if a client with the given passport_series exists
-        $existingClient = Client::where('passport_series', $data['passport_series'])->first();
-
-        if ($existingClient) {
-            // Check if the client already belongs to the current pawnshop
-            if ($existingClient->pawnshopClients()->where('pawnshop_id', $pawnshopId)->exists()) {
-                return response()->json([
-                    'message' => 'A client with this passport already exists in this pawnshop.'
-                ], 422);
-            }
-        }
-        $data['has_contract'] = $hasContract;
-        $this->clientService->storeOrUpdate($data);
-
-        return response()->json([
-            'message' => $hasContract ? 'Client added successfully' : 'Non-client added successfully'
-        ], 201);
-    }
     public function show(Request $request, int $clientId)
     {
+
         $contractStatus = $request->query('status', 'initial');
 
         $clientInfo = $this->clientService->getClientInfo($clientId, $contractStatus);
-
         return response()->json($clientInfo);
+
     }
     public function index(Request $request): JsonResponse
     {

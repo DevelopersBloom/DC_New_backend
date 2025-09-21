@@ -27,6 +27,8 @@ class ClientRequest extends FormRequest
             'street' => ['nullable','string','max:255'],
             'building' => ['nullable','string','max:50'],
             'website' => ['nullable','string','max:255'],
+            'residency_status'  => ['required','in:resident,non_resident'],
+            'residency_country' => ['nullable','string','max:255'],
 
             'bank_name' => ['nullable','string','max:255'],
             'account_number' => ['nullable','string','max:50'],
@@ -87,7 +89,8 @@ class ClientRequest extends FormRequest
             'passport_validity.required' => 'Անձնագրի վավերականության վերջնաժամկետը պարտադիր է (ֆիզիկական անձի դեպքում)։',
             'passport_issued.required' => 'Տրված է դաշտը պարտադիր է (ֆիզիկական անձի դեպքում)։',
             'date_of_birth.required' => 'Ծննդյան օրը պարտադիր է (ֆիզիկական անձի դեպքում)։',
-
+            'residency_status' => 'Ռեզիդենտության տեսակը պարտադիր է',
+            'residency_status.in' => 'Տեսակը պետք է լինի resident,non_resident',
             'company_name.required' => 'Ընկերության անվանումը պարտադիր է (իրավաբանական անձի դեպքում)։',
             'legal_form.required' => 'Իրավական ձևը պարտադիր է (իրավաբանական անձի դեպքում)։',
             'tax_number.required' => 'ՀՎՀՀ/ՀՎՔ-ը պարտադիր է (իրավաբանական անձի դեպքում)։',

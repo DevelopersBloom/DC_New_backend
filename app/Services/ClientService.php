@@ -94,55 +94,74 @@ class ClientService
         return $phone; // fallback if it doesn't match
     }
 
+//    public function getClientInfo(int $clientId, string $contractStatus = 'initial')
+//    {
+//        $validStatuses = ['initial', 'executed', 'completed'];
+//
+//        $client = Client::with([
+//            'contracts' => function ($query) use ($contractStatus, $validStatuses) {
+//                if (in_array($contractStatus, $validStatuses)) {
+//                    $query->where('status', $contractStatus);
+//                } else {
+//                    $query->where('status', 'initial');
+//                }
+//
+//                $query->select(
+//                    'id',
+//                    'num',
+//                    'client_id',
+//                    'estimated_amount',
+//                    'provided_amount',
+//                    'interest_rate',
+//                    'penalty',
+//                    'category_id',
+//                    'deadline',
+//                    'status'
+//                )->with('category:id,name');
+//            }
+//        ])->findOrFail($clientId, [
+//            'id',
+//            'name',
+//            'surname',
+//            'middle_name',
+//            'passport_series',
+//            'passport_validity',
+//            'passport_issued',
+//            'email',
+//            'phone',
+//            'country',
+//            'city',
+//            'street',
+//            'phone',
+//            'additional_phone',
+//            'date_of_birth',
+//            'social_card_number',
+//            'bank_client_id',
+//            'residency_status',
+//            'residency_country',
+//        ]);
+//
+//        // Format date_of_birth after retrieval
+//        $client->date_of_birth = Carbon::parse($client->date_of_birth)->format('d-m-Y');
+//        return $client;
+//    }
     public function getClientInfo(int $clientId, string $contractStatus = 'initial')
     {
         $validStatuses = ['initial', 'executed', 'completed'];
 
         $client = Client::with([
             'contracts' => function ($query) use ($contractStatus, $validStatuses) {
-                if (in_array($contractStatus, $validStatuses)) {
-                    $query->where('status', $contractStatus);
-                } else {
-                    $query->where('status', 'initial');
-                }
-
-                $query->select(
-                    'id',
-                    'num',
-                    'client_id',
-                    'estimated_amount',
-                    'provided_amount',
-                    'interest_rate',
-                    'penalty',
-                    'category_id',
-                    'deadline',
-                    'status'
-                )->with('category:id,name');
+                $query->when(in_array($contractStatus, $validStatuses),
+                    fn($q) => $q->where('status', $contractStatus),
+                    fn($q) => $q->where('status', 'initial')
+                )
+                    ->select('id','num','client_id','estimated_amount','provided_amount','interest_rate',
+                        'penalty','category_id','deadline','status')
+                    ->with('category:id,name');
             }
-        ])->findOrFail($clientId, [
-            'id',
-            'name',
-            'surname',
-            'middle_name',
-            'passport_series',
-            'passport_validity',
-            'passport_issued',
-            'email',
-            'phone',
-            'country',
-            'city',
-            'street',
-            'phone',
-            'additional_phone',
-            'date_of_birth',
-            'social_card_number',
-            'bank_client_id'
-        ]);
+        ])->findOrFail($clientId);
 
-        // Format date_of_birth after retrieval
-        $client->date_of_birth = Carbon::parse($client->date_of_birth)->format('d-m-Y');
-
-        return $client;
+        return new \App\Http\Resources\ClientResource($client);
     }
 
     /**

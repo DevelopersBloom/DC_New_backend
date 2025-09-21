@@ -25,6 +25,8 @@ class Client extends Model
         'date_of_birth',
         'social_card_number',
         'bank_client_id',
+        'residency_status',
+        'residency_country',
 
         'company_name',
         'legal_form',
