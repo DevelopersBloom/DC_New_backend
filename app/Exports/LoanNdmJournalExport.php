@@ -261,7 +261,7 @@ class LoanNdmJournalExport implements
             'client:id,type,name,surname,company_name,social_card_number,tax_number',
             'currency:id,code',
             // եթե loan_ndm-ում user_id ունես
-            'user:id,name,surname',
+//            'user:id,name,surname',
         ]);
 
         if ($this->from && $this->to) {
@@ -320,7 +320,8 @@ class LoanNdmJournalExport implements
             $partnerCode,
             $partnerName,
             $ndm->comment,
-            trim(($ndm->user->name ?? '') . ' ' . ($ndm->user->surname ?? '')),
+            'Գրիգոր Սահակյան',
+//            trim(($ndm->user->name ?? '') . ' ' . ($ndm->user->surname ?? '')),
             optional($ndm->created_at)->format('Y-m-d H:i'),
         ];
     }
