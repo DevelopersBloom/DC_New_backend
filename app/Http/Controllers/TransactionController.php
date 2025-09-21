@@ -106,10 +106,6 @@ class TransactionController
 //
 //        return response()->json($transactions);
 //    }
-    use App\Models\LoanNdm;
-    use App\Models\Transaction; // միայն type constant-ի համար, եթե պահում ես այստեղ
-    use Illuminate\Http\JsonResponse;
-    use Illuminate\Http\Request;
 
     public function loanNdmJournal(Request $request): JsonResponse
     {
