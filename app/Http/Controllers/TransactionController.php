@@ -68,7 +68,7 @@ class TransactionController
         );
     }
 
-    public function loanNdmJournal(Request $request): JsonResponse
+    public function loanNdmJournal1(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
@@ -107,14 +107,14 @@ class TransactionController
         return response()->json($transactions);
     }
 
-    public function loanNdmJournal1(Request $request): JsonResponse
+    public function loanNdmJournal(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
 
         $query = LoanNdm::with([
             'client:id,type,name,surname,company_name,social_card_number,tax_number',
-            'currency:id,code',
+//            'currency:id,code',
 //            'user:id,name,surname',
         ])
             ->when($from && $to, fn($q) => $q->whereBetween('contract_date', [$from, $to]))
@@ -151,7 +151,7 @@ class TransactionController
                // 'user_id'             => $ndm->user_id ?? null,
                 'disbursement_date'   => optional($ndm->disbursement_date)->format('Y-m-d'),
 
-                'currency'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
+//                'currency'            => $ndm->currency ? ['id' => $ndm->currency->id, 'code' => $ndm->currency->code] : null,
 //                'user'                => $ndm->user ? ['id' => $ndm->user->id, 'name' => $ndm->user->name, 'surname' => $ndm->user->surname] : null,
             ];
         });
