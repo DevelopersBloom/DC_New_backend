@@ -220,8 +220,6 @@ namespace App\Exports;
 
 use App\Models\LoanNdm;
 use App\Models\Transaction;
-
-// միայն constant-ի համար, եթե կա
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -234,8 +232,8 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Events\AfterSheet;
 
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class LoanNdmJournalExport implements
@@ -262,16 +260,8 @@ class LoanNdmJournalExport implements
         $q = LoanNdm::with([
             'client:id,type,name,surname,company_name,social_card_number,tax_number',
             'currency:id,code',
-            // ⚠️ user relation չունեք՝ մի լցրեք այստեղ, եթե չեք ավելացրել user_id + relation
-        ])->select([
-            'id',
-            'contract_date',
-            'contract_number',
-            'client_id',
-            'currency_id',
-            'amount',
-            'comment',
-            'disbursement_date',
+            // եթե loan_ndm-ում user_id ունես
+            'user:id,name,surname',
         ]);
 
         if ($this->from && $this->to) {
@@ -287,28 +277,24 @@ class LoanNdmJournalExport implements
 
     public function headings(): array
     {
-        // պահում ենք նույն կառուցվածքը, ինչ TransactionsExport-ում, որ front/UI չկոտրվի
         return [
             'Ամսաթիվ',
             'Փաստաթղթի N',
             'Փաստաթղթի Տեսակ',
-            'Դեբետ հաշիվ',
-            'Դեբետ գործ․ կոդ',
-            'Դեբետ գործընկեր անվանում',
-            'Դեբետ արժ․',
-            'Կրեդիտ հաշիվ',
-            'Կրեդիտ գործ․ կոդ',
-            'Կրեդիտ գործընկեր անվանում',
-            'Կրեդիտ արժ․',
+            'Արժույթ',
             'Գումար (դրամով)',
+            'Գործընկեր կոդ',
+            'Գործընկեր անվանում',
+            'Մեկնաբանություն',
             'Օգտագործող',
+            'Գրանցման ամսաթիվ',
         ];
     }
 
     public function map($ndm): array
     {
-        // partner-ը client-ից
         $client = $ndm->client;
+
         $partnerName = $client
             ? ($client->type === 'legal'
                 ? ($client->company_name ?? '')
@@ -321,33 +307,21 @@ class LoanNdmJournalExport implements
                 : ($client->tax_number ?? ''))
             : '';
 
-        // փաստաթղթի տեսակ — Transaction::LOAN_NDM_TYPE եթե ունես, այլապես տեքստ
         $documentType = defined(Transaction::class . '::LOAN_NDM_TYPE')
             ? Transaction::LOAN_NDM_TYPE
             : 'loan_ndm';
 
-        // Քո համակարգում amount-ը AMD է, թե արժույթով — եթե արժույթով է, այստեղ ճիշտ կլինի AMD փոխարկում ավելացնել
-        $amountAmd = $ndm->amount; // TODO: եթե պետք է՝ փոխարկիր AMD-ի
-
-        $currencyCode = optional($ndm->currency)->code;
-
         return [
-            optional($ndm->contract_date)->format('Y-m-d'), // Ամսաթիվ
-            $ndm->contract_number,                           // Փաստաթղթի N
-            $documentType,                                   // Փաստաթղթի Տեսակ
-
-            '-',                                             // Դեբետ հաշիվ (չունենք՝ թողնում ենք դատարկ/«-»)
-            $partnerCode,                                    // Դեբետ գործ. կոդ (կլիենտի նույնականացուցիչ)
-            $partnerName,                                    // Դեբետ գործընկեր անվանում
-            $currencyCode,                                   // Դեբետ արժ.
-
-            '-',                                             // Կրեդիտ հաշիվ
-            '',                                              // Կրեդիտ գործ. կոդ (չենք օգտագործում)
-            '',                                              // Կրեդիտ գործընկեր անվանում
-            $currencyCode,                                   // Կրեդիտ արժ. (պահպանում ենք սյունակի consistency)
-
-            $amountAmd,                                      // Գումար (դրամով) — անհրաժեշտության դեպքում փոխարկիր AMD
-            '',                                              // Օգտագործող (եթե user չունես loan_ndm-ում)
+            optional($ndm->contract_date)->format('Y-m-d'),
+            $ndm->contract_number,
+            $documentType,
+            optional($ndm->currency)->code,
+            $ndm->amount,
+            $partnerCode,
+            $partnerName,
+            $ndm->comment,
+            trim(($ndm->user->name ?? '') . ' ' . ($ndm->user->surname ?? '')),
+            optional($ndm->created_at)->format('Y-m-d H:i'),
         ];
     }
 
@@ -355,7 +329,8 @@ class LoanNdmJournalExport implements
     {
         return [
             'A' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'L' => '#,##0',
+            'E' => '#,##0',
+            'J' => NumberFormat::FORMAT_DATE_DATETIME,
         ];
     }
 
@@ -365,16 +340,13 @@ class LoanNdmJournalExport implements
             'A' => 12,
             'B' => 16,
             'C' => 18,
-            'D' => 38,
-            'E' => 16,
-            'F' => 28,
-            'G' => 10,
-            'H' => 38,
-            'I' => 16,
-            'J' => 28,
-            'K' => 10,
-            'L' => 18,
-            'M' => 20,
+            'D' => 10,
+            'E' => 18,
+            'F' => 20,
+            'G' => 28,
+            'H' => 30,
+            'I' => 20,
+            'J' => 20,
         ];
     }
 
@@ -395,13 +367,13 @@ class LoanNdmJournalExport implements
     public function registerEvents(): array
     {
         return [
-            \Maatwebsite\Excel\Events\AfterSheet::class => function (AfterSheet $event) {
+            AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
                 $highestCol = $sheet->getHighestColumn();
                 $dataRange = "A1:{$highestCol}{$highestRow}";
-                $headerRange = "A1:{$highestCol}1";
 
+                $headerRange = "A1:{$highestCol}1";
                 $sheet->getStyle($headerRange)->applyFromArray([
                     'font' => ['bold' => true, 'size' => 11],
                     'alignment' => [
@@ -419,35 +391,11 @@ class LoanNdmJournalExport implements
                     ->setVertical(Alignment::VERTICAL_CENTER)
                     ->setWrapText(true);
 
-                $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
-                    ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
-                    ->getColor()->setRGB('B7B7B7');
-
-                for ($r = 2; $r <= $highestRow; $r++) {
-                    if ($r % 2 === 0) {
-                        $sheet->getStyle("A{$r}:{$highestCol}{$r}")
-                            ->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                            ->getStartColor()->setRGB('FAFAFA');
-                    }
-                    $sheet->getRowDimension($r)->setRowHeight(20);
-                }
-
-                // alignments by column (նույնն, ինչ քո TransactionsExport-ում)
-                $sheet->getStyle("A2:A{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("B2:B{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("C2:C{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("G2:G{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("K2:K{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("L2:L{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                $sheet->getStyle("M2:M{$highestRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-
                 $sheet->freezePane('A2');
                 $sheet->setAutoFilter("A1:{$highestCol}1");
-                $sheet->setTitle('ՆԴՄ Ժուռնալ');
-
-                $sheet->getStyle("L2:L{$highestRow}")
-                    ->getNumberFormat()->setFormatCode('#,##0');
+                $sheet->setTitle('ՆԴՄ Export');
             },
         ];
     }
 }
+
