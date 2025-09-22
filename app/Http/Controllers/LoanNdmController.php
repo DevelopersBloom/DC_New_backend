@@ -17,7 +17,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class LoanNdmController extends Controller
 {
-    use OrderTrait;
+//    use OrderTrait;
     public function index(): JsonResponse
     {
             $loans = LoanNdm::with([
@@ -35,7 +35,6 @@ class LoanNdmController extends Controller
 
     public function store(StoreLoanNdmRequest $request): JsonResponse
     {
-        dd(22);
         $data = $request->validated();
         try {
             DB::beginTransaction();

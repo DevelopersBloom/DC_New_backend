@@ -125,7 +125,7 @@ class LoanNdm extends Model
             'partner_id'      => $this->client_id,
 
             'comment'          => $this->comment,
-            'user_id'          => auth()->id,
+            'user_id'          => auth()->user()->id,
         ];
     }
 }

@@ -8,7 +8,6 @@ trait Journalable
 {
     public static function bootJournalable(): void
     {
-        dd(2);
         static::created(function ($model) {
             if (method_exists($model, 'toJournalRow')) {
                 $data = $model->toJournalRow();
