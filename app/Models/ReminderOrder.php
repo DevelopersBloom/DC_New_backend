@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\Journalable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReminderOrder extends Model
 {
-    use HasFactory;
+    use HasFactory,Journalable;
 
     protected $fillable = [
         'order_date',
@@ -50,5 +51,38 @@ class ReminderOrder extends Model
     public function creditPartner(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'credit_partner_id');
+    }
+    public function toJournalRow(): array
+    {
+        return [
+            'date'             => optional($this->order_date)->format('Y-m-d'),
+            'document_number'  => (string) $this->num,
+            'document_type'    => 'reminder_order',
+
+            'currency_id'      => $this->currency_id,
+            'amount_amd'       => $this->amount ?? 0,
+
+            'partner_id'       => $this->debit_partner_id,
+
+            'comment'          => $this->comment,
+            'user_id'          => $this->user_id ?? auth()->id(),
+        ];
+    }
+    public function applyJournalUpdate(\App\Models\DocumentJournal $journal, array $data): void
+    {
+        $map = [
+            'date'            => 'order_date',
+            'document_number' => 'num',
+            'currency_id'     => 'currency_id',
+            'amount_amd'      => 'amount',
+            'partner_id'      => 'debit_partner_id', // եթե journal-ում partner-ը դեբետն է
+            'comment'         => 'comment',
+        ];
+        foreach ($map as $jKey => $mKey) {
+            if (array_key_exists($jKey, $data)) {
+                $this->{$mKey} = $data[$jKey];
+            }
+        }
+        $this->save();
     }
 }
