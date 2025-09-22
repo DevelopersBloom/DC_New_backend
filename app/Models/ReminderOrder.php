@@ -57,7 +57,7 @@ class ReminderOrder extends Model
         return [
             'date'             => optional($this->order_date)->format('Y-m-d'),
             'document_number'  => (string) $this->num,
-            'document_type'    => 'reminder_order',
+            'document_type'    => 'Հիշարար Օրդեր',
 
             'currency_id'      => $this->currency_id,
             'amount_amd'       => $this->amount ?? 0,
@@ -75,7 +75,7 @@ class ReminderOrder extends Model
             'document_number' => 'num',
             'currency_id'     => 'currency_id',
             'amount_amd'      => 'amount',
-            'partner_id'      => 'debit_partner_id', // եթե journal-ում partner-ը դեբետն է
+            'partner_id'      => 'debit_partner_id',
             'comment'         => 'comment',
         ];
         foreach ($map as $jKey => $mKey) {
