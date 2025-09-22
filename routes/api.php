@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BusinessEventController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DocumentJournalController;
 use App\Http\Controllers\LoanNdmController;
 use App\Http\Controllers\PostingRuleController;
 use App\Http\Controllers\RateController;
@@ -116,8 +117,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('loan-ndms', LoanNdmController::class);
         Route::get('/transactions', [TransactionController::class, 'index']);
         Route::get('/transactions/export', [TransactionController::class, 'export']);
-        Route::get('/transactions/loan-ndms', [LoanNdmController::class, 'loanNdmJournal']);
-        Route::get('/transactions/loan-ndms/export', [LoanNdmController::class, 'exportLoanNdmJournal']);
+        Route::get('/transactions/loan-ndms', [DocumentJournalController::class, 'index']);
+        Route::get('/transactions/loan-ndms/export', [DocumentJournalController::class, 'export']);
         Route::get('/transactions/reports', [TransactionController::class, 'reportsJournal']);
         Route::get('/transactions/reports/export', [TransactionController::class, 'exportReportsJournal']);
 
