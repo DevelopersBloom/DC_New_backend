@@ -35,6 +35,7 @@ class LoanNdmController extends Controller
 
     public function store(StoreLoanNdmRequest $request): JsonResponse
     {
+        dd(22);
         $data = $request->validated();
         try {
             DB::beginTransaction();
