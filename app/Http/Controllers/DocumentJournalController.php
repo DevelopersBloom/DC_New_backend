@@ -53,8 +53,8 @@ class DocumentJournalController
                 'debit_partner_name'  => $partnerName,
                 'comment'             => $j->comment,
                 'user_id'             => $j->user_id,
-                'user'                => $j->user ? trim(($j->user->name ?? '') . ' ' . ($j->user->surname ?? '')) : null,
-                'created_at'          => optional($j->created_at)->format('Y-m-d H:i:s'),
+                'user'                => $j->user,
+                'disbursement_date'   => optional($j->created_at)->format('Y-m-d H:i:s'),
             ];
         });
 
