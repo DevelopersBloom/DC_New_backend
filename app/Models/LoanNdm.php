@@ -113,7 +113,6 @@ class LoanNdm extends Model
                 ? ($client->social_card_number ?? null)
                 : ($client->tax_number ?? null))
             : null;
-dd($this);
         return [
             'date'             => optional($this->contract_date)->format('Y-m-d'),
             'document_number'  => $this->contract_number,
