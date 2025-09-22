@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\Journalable;
 
 class LoanNdm extends Model
 {
     use HasFactory;
+
+    use Journalable;
 
     protected $table = 'loan_ndm';
 
@@ -94,5 +97,36 @@ class LoanNdm extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+    public function toJournalRow(): array
+    {
+        $client = $this->client;
+
+        $partnerName = $client
+            ? ($client->type === 'legal'
+                ? ($client->company_name ?? '')
+                : trim(($client->name ?? '').' '.($client->surname ?? '')))
+            : null;
+
+        $partnerCode = $client
+            ? ($client->type === 'individual'
+                ? ($client->social_card_number ?? null)
+                : ($client->tax_number ?? null))
+            : null;
+
+        return [
+            'date'             => optional($this->contract_date)->format('Y-m-d'),
+            'document_number'  => $this->contract_number,
+            'document_type'    => 'Ներգրավված Դրամական Միջոցներ',
+
+            'currency_id'      => $this->currency_id,
+            'amount_amd'       => $this->amount ?? 0,
+            'amount_currency'  => $this->amount_currency,
+
+            'partner_id'      => $this->client_id,
+
+            'comment'          => $this->comment,
+            'user_id'          => auth()->id,
+        ];
     }
 }
