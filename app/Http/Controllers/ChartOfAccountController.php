@@ -115,8 +115,8 @@ class ChartOfAccountController
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('code', 'like', $search . '%')
-                    ->orWhere('name', 'like', $search . '%');
+                $q->where('code', 'like', '%' . $search . '%')
+                    ->orWhere('name', 'like', '%' . $search . '%');
             });
         }
 
