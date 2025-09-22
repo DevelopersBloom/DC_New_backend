@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Exports\DocumentsJournalExport;
 use App\Models\DocumentJournal;
+use App\Models\LoanNdm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Excel;
 
 class DocumentJournalController
@@ -70,6 +72,107 @@ class DocumentJournalController
             new DocumentsJournalExport($from, $to, $type),
             'ՓաստաթղթերիՄատյան.xlsx'
         );
+    }
+
+    public function update(Request $request, DocumentJournal $journal): JsonResponse
+    {
+        $data = $request->validate([
+            'date'             => ['sometimes','date'],
+            'document_number'  => ['sometimes','string','nullable','max:255'],
+            'document_type'    => ['sometimes','string','max:255'],
+            'currency_id'      => ['sometimes','nullable','integer','exists:currencies,id'],
+            'amount_amd'       => ['sometimes','numeric'],
+            'amount_currency'  => ['sometimes','nullable','numeric'],
+            'partner_id'       => ['sometimes','nullable','integer','exists:clients,id'],
+            'comment'          => ['sometimes','nullable','string'],
+             'user_id'         => ['sometimes','nullable','integer','exists:users,id'],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $journal->fill($data);
+            $journal->save();
+
+            if ($journal->relationLoaded('journalable') === false) {
+                $journal->load('journalable');
+            }
+            $source = $journal->journalable;
+
+            if ($source) {
+                switch (true) {
+                    case $source instanceof LoanNdm:
+                        $map = [
+                                'date'            => 'contract_date',
+                                'document_number' => 'contract_number',
+                                'currency_id'     => 'currency_id',
+                                'amount_amd'      => 'amount',
+                                'partner_id'      => 'client_id',
+                                'comment'         => 'comment',
+                        ];
+                        foreach ($map as $jKey => $mKey) {
+                            if (array_key_exists($jKey, $data)) {
+                                $source->{$mKey} = $data[$jKey];
+                            }
+                        }
+                        if (array_key_exists('amount_currency', $data) && $source->isFillable('amount_currency')) {
+                            $source->amount_currency = $data['amount_currency'];
+                        }
+                        break;
+                        default:
+                            foreach ($data as $key => $val) {
+                                if ($source->isFillable($key)) {
+                                    $source->{$key} = $val;
+                                }
+                            }
+                            break;
+                    }
+
+                    $source->save();
+
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Document journal updated successfully',
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Update failed',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function destroy(DocumentJournal $journal): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $journal->load('journalable');
+
+            $source = $journal->journalable;
+
+            if ($source) {
+                $source->delete();
+            }
+
+            $journal->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Document journal deleted successfully'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Delete failed',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
 }
