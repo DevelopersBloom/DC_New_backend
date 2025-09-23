@@ -101,4 +101,17 @@ class Transaction extends Model
     {
         return $q->whereDate('date','<=',Carbon::parse($date)->toDateString());
     }
+    public function getPartnerCodeAttribute()
+    {
+        return $this->partner
+            ? $this->partner->code
+            : null;
+    }
+
+    public function getPartnerNameAttribute()
+    {
+        return $this->partner
+            ? $this->partner->display_name
+            : null;
+    }
 }

@@ -156,6 +156,19 @@ class Client extends Model
         }
         return $query;
     }
+    public function getCodeAttribute()
+    {
+        return $this->type === 'individual'
+            ? ($this->social_card_number ?? null)
+            : ($this->tax_number ?? null);
+    }
+
+    public function getDisplayNameAttribute()
+    {
+        return $this->type === 'legal'
+            ? ($this->company_name ?? '')
+            : trim(($this->name ?? '') . ' ' . ($this->surname ?? ''));
+    }
 
 
 }

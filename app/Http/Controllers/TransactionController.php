@@ -33,7 +33,8 @@ class TransactionController
             'user_id',
             'debit_currency_id',
             'credit_currency_id',
-            'is_system'
+            'is_system',
+            'partner_id'
         ])
             ->with([
                 'debitAccount:id,code,name',
@@ -41,8 +42,10 @@ class TransactionController
                 'creditAccount:id,code,name',
                 'creditCurrency:id,code',
                 'amountCurrencyRelation:id,code',
-                'user:id,name,surname'
+                'user:id,name,surname',
+                'partner:id,type,name,surname,company_name,tax_number,social_card_number'
             ]);
+
 
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);
