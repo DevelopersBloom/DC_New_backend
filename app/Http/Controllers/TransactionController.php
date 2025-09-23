@@ -34,7 +34,8 @@ class TransactionController
             'debit_currency_id',
             'credit_currency_id',
             'is_system',
-            'partner_id'
+            'debit_partner_id',
+            'credit_partner_id',
         ])
             ->with([
                 'debitAccount:id,code,name',
@@ -43,9 +44,10 @@ class TransactionController
                 'creditCurrency:id,code',
                 'amountCurrencyRelation:id,code',
                 'user:id,name,surname',
-                'partner:id,type,name,surname,company_name,tax_number,social_card_number'
+                // partner-ները եկեն միայն անհրաժեշտ դաշտերով
+                'debitPartner:id,type,name,surname,company_name,tax_number,social_card_number',
+                'creditPartner:id,type,name,surname,company_name,tax_number,social_card_number',
             ]);
-
 
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);
@@ -55,7 +57,7 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
 
-        $transactions = $query->orderBy('date','desc')->paginate(20);
+        $transactions = $query->orderBy('date', 'desc')->paginate(20);
 
         return response()->json($transactions);
     }

@@ -101,17 +101,52 @@ class Transaction extends Model
     {
         return $q->whereDate('date','<=',Carbon::parse($date)->toDateString());
     }
-    public function getPartnerCodeAttribute()
+    public function debitPartner()
     {
-        return $this->partner
-            ? $this->partner->code
-            : null;
+        return $this->belongsTo(Client::class, 'debit_partner_id');
     }
 
-    public function getPartnerNameAttribute()
+    public function creditPartner()
     {
-        return $this->partner
-            ? $this->partner->display_name
-            : null;
+        return $this->belongsTo(Client::class, 'credit_partner_id');
+    }
+    public function getDebitPartnerCodeAttribute()
+    {
+        $p = $this->debitPartner;
+        if (!$p) return null;
+
+        return $p->type === 'individual'
+            ? ($p->social_card_number ?? null)
+            : ($p->tax_number ?? null);
+    }
+
+    public function getDebitPartnerNameAttribute()
+    {
+        $p = $this->debitPartner;
+        if (!$p) return null;
+
+        return $p->type === 'legal'
+            ? ($p->company_name ?? '')
+            : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
+    }
+
+    public function getCreditPartnerCodeAttribute()
+    {
+        $p = $this->creditPartner;
+        if (!$p) return null;
+
+        return $p->type === 'individual'
+            ? ($p->social_card_number ?? null)
+            : ($p->tax_number ?? null);
+    }
+
+    public function getCreditPartnerNameAttribute()
+    {
+        $p = $this->creditPartner;
+        if (!$p) return null;
+
+        return $p->type === 'legal'
+            ? ($p->company_name ?? '')
+            : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
     }
 }
