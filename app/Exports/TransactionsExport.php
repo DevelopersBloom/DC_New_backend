@@ -103,61 +103,61 @@ class TransactionsExport implements
     /**
      * Տողերի քարտեզավորում
      */
-    public function map($tx): array
-    {
-        // helper-ներ՝ քո տրամաբանությամբ
-        $debitPartnerCode = null;
-        $debitPartnerName = null;
-        if ($tx->debitPartner) {
-            $p = $tx->debitPartner;
-            $debitPartnerCode = $p->type === 'individual'
-                ? ($p->social_card_number ?? null)
-                : ($p->tax_number ?? null);
 
-            $debitPartnerName = $p->type === 'legal'
-                ? ($p->company_name ?? '')
-                : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
-        }
 
-        $creditPartnerCode = null;
-        $creditPartnerName = null;
-        if ($tx->creditPartner) {
-            $p = $tx->creditPartner;
-            $creditPartnerCode = $p->type === 'individual'
-                ? ($p->social_card_number ?? null)
-                : ($p->tax_number ?? null);
-
-            $creditPartnerName = $p->type === 'legal'
-                ? ($p->company_name ?? '')
-                : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
-        }
-
-        // Ամսաթիվը Excel-ի սերիական թվով, որպեսզի աշխատի date format-ը
-        $excelDate = null;
-        if (!empty($tx->date)) {
-            $excelDate = ExcelDate::dateTimeToExcel(Carbon::parse($tx->date));
-        }
-
-        return [
-            $excelDate, // A — date serial
-            $tx->document_number,
-            $tx->document_type,
-
-            trim((optional($tx->debitAccount)->code ?? '') . ' ' . (optional($tx->debitAccount)->name ?? '')),
-            $debitPartnerCode,
-            $debitPartnerName,
-            optional($tx->debitCurrency)->code,
-
-            trim((optional($tx->creditAccount)->code ?? '') . ' ' . (optional($tx->creditAccount)->name ?? '')),
-            $creditPartnerCode,
-            $creditPartnerName,
-            optional($tx->creditCurrency)->code,
-
-            $tx->amount_amd,
-
-            trim((optional($tx->user)->name ?? '') . ' ' . (optional($tx->user)->surname ?? '')),
-        ];
+public function map($tx): array
+{
+    $excelDate = null;
+    if (!empty($tx->date)) {
+        $excelDate = ExcelDate::dateTimeToExcel(Carbon::parse($tx->date));
     }
+
+    $debitPartnerCode = null;
+    $debitPartnerName = null;
+    if ($tx->debitPartner) {
+        $p = $tx->debitPartner;
+        $debitPartnerCode = $p->type === 'individual'
+            ? ($p->social_card_number ?? null)
+            : ($p->tax_number ?? null);
+
+        $debitPartnerName = $p->type === 'legal'
+            ? ($p->company_name ?? '')
+            : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
+    }
+
+    $creditPartnerCode = null;
+    $creditPartnerName = null;
+    if ($tx->creditPartner) {
+        $p = $tx->creditPartner;
+        $creditPartnerCode = $p->type === 'individual'
+            ? ($p->social_card_number ?? null)
+            : ($p->tax_number ?? null);
+
+        $creditPartnerName = $p->type === 'legal'
+            ? ($p->company_name ?? '')
+            : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
+    }
+
+    return [
+        $excelDate,
+        $tx->document_number,
+        $tx->document_type,
+
+        trim((optional($tx->debitAccount)->code ?? '') . ' ' . (optional($tx->debitAccount)->name ?? '')),
+        $debitPartnerCode,
+        $debitPartnerName,
+        optional($tx->debitCurrency)->code,
+
+        trim((optional($tx->creditAccount)->code ?? '') . ' ' . (optional($tx->creditAccount)->name ?? '')),
+        $creditPartnerCode,
+        $creditPartnerName,
+        optional($tx->creditCurrency)->code,
+
+        $tx->amount_amd,
+
+        trim((optional($tx->user)->name ?? '') . ' ' . (optional($tx->user)->surname ?? '')),
+    ];
+}
 
     public function columnFormats(): array
     {
