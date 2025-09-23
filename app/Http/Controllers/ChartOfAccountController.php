@@ -24,7 +24,7 @@ class ChartOfAccountController
     public function index(): JsonResponse
     {
         $accounts = ChartOfAccount::query()
-            ->select('id','parent_id','name','code','type')
+            ->select('id','parent_id','name','code','type','income_expense')
             ->whereNull('parent_id')
             ->with('childrenRecursive')
             ->get();
@@ -36,21 +36,7 @@ class ChartOfAccountController
     {
         return ChartOfAccount::with('children')->findOrFail($id);
     }
-//    public function store(Request $request)
-//    {
-//        $validated = $request->validate([
-//            'code'           => 'required|string|max:20|unique:chart_of_accounts,code',
-//            'name'           => 'required|string|max:255',
-//            'type'           => 'required|in:active,passive,active-passive,off-balance',
-//            'parent_id'      => 'nullable|exists:chart_of_accounts,id',
-//        ]);
-//
-//        ChartOfAccount::create($validated);
-//
-//        return response()->json([
-//            'message' => 'Chart of Accounts account created successfully'
-//        ], 201);
-//    }
+
     public function store(StoreChartOfAccountRequest $request)
     {
         ChartOfAccount::create($request->validated());
@@ -70,6 +56,7 @@ class ChartOfAccountController
 //            'is_accumulative'=> 'boolean',
 //            'currency_id'    => 'nullable|exists:currencies,id',
             'parent_id'      => 'nullable|exists:chart_of_accounts,id',
+            'income_expense' => 'nullable|integer',
         ]);
 
         if (isset($validated['parent_id']) && $validated['parent_id'] == $id) {
@@ -122,63 +109,6 @@ class ChartOfAccountController
 
         return response()->json($query->paginate($perPage));
     }
-
-//        public function accountBalances(Request $request)
-//        {
-//            $dateTo   = $request->query('to');
-//            $perPage  = (int) $request->query('per_page', 15);
-//            $page     = (int) $request->query('page', 1);
-//
-//            $dateFilter = function($q) use ($dateTo) {
-//                if ($dateTo) {
-//                    $q->whereDate('t.date', '<=', $dateTo);
-//                }
-//            };
-//
-//            $debit = DB::table('transactions as t')
-//                ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
-//                ->when($dateTo, $dateFilter)
-//                ->whereNotNull('t.debit_account_id')
-//                ->selectRaw("
-//                t.debit_account_id as account_id,
-//                SUM(CASE
-//                    WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
-//                    ELSE -t.amount_amd
-//                END) as delta
-//            ")
-//                ->groupBy('t.debit_account_id');
-//
-//            $credit = DB::table('transactions as t')
-//                ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
-//                ->when($dateTo, $dateFilter)
-//                ->whereNotNull('t.credit_account_id')
-//                ->selectRaw("
-//                t.credit_account_id as account_id,
-//                SUM(CASE
-//                    WHEN a.type IN ('active','expense','off_balance') THEN  -t.amount_amd
-//                    ELSE t.amount_amd
-//                END) as delta
-//            ")->groupBy('t.credit_account_id');
-//
-//            $union = $debit->unionAll($credit);
-//
-//            $balances = DB::query()
-//                ->fromSub($union, 'u')
-//                ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
-//                ->select([
-//                    'u.account_id',
-//                    'ca.code',
-//                    'ca.name',
-//                    'ca.type',
-//                    DB::raw('SUM(u.delta) as balance'),
-//                ])
-//                ->groupBy('u.account_id', 'ca.code', 'ca.name', 'ca.type')
-//                ->orderBy('ca.code')
-//                ->paginate($perPage, ['*'], 'page', $page)
-//                ->appends(['to' => $dateTo, 'per_page' => $perPage]);
-//
-//            return response()->json($balances);
-//        }
 
     public function accountBalances(Request $request): JsonResponse
     {

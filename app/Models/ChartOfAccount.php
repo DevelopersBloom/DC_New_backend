@@ -25,7 +25,8 @@ class ChartOfAccount extends Model
 //        'currency_id',
 //        'is_partner_accounting',
         'parent_id',
-        'description'
+        'description',
+        'income_expense',
     ];
     protected $appends = ['parent_code'];
     protected $hidden = ['parent'];
