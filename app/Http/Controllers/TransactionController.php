@@ -44,7 +44,6 @@ class TransactionController
                 'creditCurrency:id,code',
                 'amountCurrencyRelation:id,code',
                 'user:id,name,surname',
-                // partner-ները եկեն միայն անհրաժեշտ դաշտերով
                 'debitPartner:id,type,name,surname,company_name,tax_number,social_card_number',
                 'creditPartner:id,type,name,surname,company_name,tax_number,social_card_number',
             ]);
