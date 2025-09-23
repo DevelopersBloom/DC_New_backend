@@ -23,11 +23,13 @@ class Transaction extends Model
         'debit_partner_code',
         'debit_partner_name',
         'debit_currency_id',
+        'debit_partner_id',
 
         'credit_account_id',
         'credit_partner_code',
         'credit_partner_name',
         'credit_currency_id',
+        'credit_partner_id',
 
         'amount_amd',
         'amount_currency',

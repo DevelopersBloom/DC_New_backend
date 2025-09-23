@@ -79,7 +79,8 @@ class ReminderOrderController
                 'debit_partner_code' => $debitPartnerCode,
                 'debit_partner_name' => $debitPartnerName,
                 'debit_currency_id'  => $reminderOrder->currency_id,
-
+                'debit_partner_id'   => $validated['debit_partner_id'],
+                'credit_partner_id'  => $validated['credit_partner_id'],
                 'credit_account_id'   => $reminderOrder->credit_account_id,
                 'credit_partner_code' => $creditPartnerCode,
                 'credit_partner_name' => $creditPartnerName,

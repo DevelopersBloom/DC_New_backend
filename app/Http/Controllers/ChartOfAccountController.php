@@ -194,5 +194,36 @@ class ChartOfAccountController
         return response()->json($balances);
     }
 
+    public function partnerAccountBalances(Request $request): JsonResponse
+    {
+        $dateTo   = $request->query('to');
+        $perPage  = (int) $request->query('per_page', 15);
+        $page     = (int) $request->query('page', 1);
+        $partnerId = $request->query('partner_id');
+        $accountId = $request->query('account_id');
+        $search    = $request->query('search');
 
+        $q = $this->partnerAccountBalancesRowsQuery($dateTo)
+            ->when($partnerId, fn($qq) => $qq->where('b.partner_id', $partnerId))
+            ->when($accountId, fn($qq) => $qq->where('b.account_id', $accountId))
+            ->when($search, function ($qq) use ($search) {
+                $qq->where(function($q2) use ($search) {
+                    $q2->where('b.partner_name', 'like', "%{$search}%")
+                        ->orWhere('b.partner_code', 'like', "%{$search}%")
+                        ->orWhere('b.account_code', 'like', "%{$search}%")
+                        ->orWhere('b.account_name', 'like', "%{$search}%");
+                });
+            });
+
+        $pageData = $q->paginate($perPage, ['*'], 'page', $page)
+            ->appends([
+                'to' => $dateTo,
+                'per_page' => $perPage,
+                'partner_id' => $partnerId,
+                'account_id' => $accountId,
+                'search' => $search,
+            ]);
+
+        return response()->json($pageData);
+    }
 }

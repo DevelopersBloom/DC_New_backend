@@ -111,4 +111,98 @@ trait CalculatesAccountBalancesTrait
             'Հաշվեշիռ'        => $actives - $liabilities - $capital,
         ];
     }
+
+    protected function partnerAccountDebitMovements(?string $dateTo)
+    {
+        $q = DB::table('transactions as t')
+            ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
+            ->whereNotNull('t.debit_account_id')
+            ->whereNotNull('t.debit_partner_id');
+
+        if ($dateTo) {
+            $q->whereDate('t.date','<=',$dateTo);
+        }
+
+        return $q->selectRaw("
+                t.debit_partner_id as partner_id,
+                t.debit_account_id as account_id,
+                SUM(
+                    CASE WHEN a.type IN ('active','expense','off_balance')
+                         THEN t.amount_amd
+                         ELSE -t.amount_amd
+                    END
+                ) as delta
+            ")
+            ->groupBy('t.debit_partner_id','t.debit_account_id');
+    }
+
+    protected function partnerAccountCreditMovements(?string $dateTo)
+    {
+        $q = DB::table('transactions as t')
+            ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
+            ->whereNotNull('t.credit_account_id')
+            ->whereNotNull('t.credit_partner_id');
+
+        if ($dateTo) {
+            $q->whereDate('t.date','<=',$dateTo);
+        }
+
+        return $q->selectRaw("
+                t.credit_partner_id as partner_id,
+                t.credit_account_id as account_id,
+                SUM(
+                    CASE WHEN a.type IN ('active','expense','off_balance')
+                         THEN -t.amount_amd
+                         ELSE  t.amount_amd
+                    END
+                ) as delta
+            ")
+            ->groupBy('t.credit_partner_id','t.credit_account_id');
+    }
+
+    protected function partnerAccountBalancesSubquery(?string $dateTo)
+    {
+        $union = $this->partnerAccountDebitMovements($dateTo)->unionAll(
+            $this->partnerAccountCreditMovements($dateTo)
+        );
+
+        return DB::query()
+            ->fromSub($union, 'u')
+            ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
+            ->leftJoin('clients as c', 'c.id', '=', 'u.partner_id')
+            ->select([
+                'u.partner_id',
+                'u.account_id',
+                'ca.code as account_code',
+                'ca.name as account_name',
+                'ca.type as account_type',
+
+                DB::raw("MAX(CASE WHEN c.type = 'individual' THEN c.social_card_number ELSE c.tax_number END) as partner_code"),
+                DB::raw("MAX(CASE WHEN c.type = 'legal' THEN COALESCE(c.company_name,'')
+                                  ELSE TRIM(CONCAT(COALESCE(c.name,''),' ',COALESCE(c.surname,''))) END) as partner_name"),
+
+                DB::raw('SUM(u.delta) as balance'),
+            ])
+            ->groupBy('u.partner_id','u.account_id','ca.code','ca.name','ca.type');
+    }
+
+
+    protected function partnerAccountBalancesRowsQuery(?string $dateTo)
+    {
+        return DB::query()
+            ->fromSub($this->partnerAccountBalancesSubquery($dateTo), 'b')
+            ->select([
+                'b.partner_id',
+                'b.partner_code',
+                'b.partner_name',
+                'b.partner_type',
+                'b.account_id',
+                'b.account_code',
+                'b.account_name',
+                'b.account_type',
+                'b.balance',
+            ])
+            ->orderBy('b.partner_name')
+            ->orderBy('b.account_code');
+    }
 }

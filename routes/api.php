@@ -110,6 +110,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::delete('/{id}', [ChartOfAccountController::class, 'destroy']);
         });
         Route::get('/accounts/balances', [ChartOfAccountController::class, 'accountBalances']);
+        Route::get('/accounts/partner-balances',[ChartOfAccountController::class,'partnerAccountBalances']);
 
         Route::apiResource('posting-rules', PostingRuleController::class);
         Route::apiResource('business-events', BusinessEventController::class);
