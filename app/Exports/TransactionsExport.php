@@ -20,6 +20,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use Carbon\Carbon;
 
 class TransactionsExport implements
     FromCollection,
@@ -51,15 +53,18 @@ class TransactionsExport implements
             'creditAccount:id,code,name',
             'debitCurrency:id,code',
             'creditCurrency:id,code',
-
             'amountCurrencyRelation:id,code',
             'user:id,name,surname',
+            // NEW: partner-ների հարաբերությունները
+            'debitPartner:id,type,name,surname,company_name,tax_number,social_card_number',
+            'creditPartner:id,type,name,surname,company_name,tax_number,social_card_number',
         ])->select([
             'id','date','document_number','document_type',
             'amount_amd','amount_currency','amount_currency_id',
             'debit_account_id','credit_account_id','user_id',
-            'debit_partner_code','debit_partner_name','credit_partner_code',
-            'credit_partner_name'
+            // NEW: վերցնենք ID-ները, ոչ թե չկան սյունակներ
+            'debit_partner_id','credit_partner_id',
+            'debit_currency_id','credit_currency_id',
         ]);
 
         if ($this->from && $this->to) {
@@ -100,19 +105,52 @@ class TransactionsExport implements
      */
     public function map($tx): array
     {
+        // helper-ներ՝ քո տրամաբանությամբ
+        $debitPartnerCode = null;
+        $debitPartnerName = null;
+        if ($tx->debitPartner) {
+            $p = $tx->debitPartner;
+            $debitPartnerCode = $p->type === 'individual'
+                ? ($p->social_card_number ?? null)
+                : ($p->tax_number ?? null);
+
+            $debitPartnerName = $p->type === 'legal'
+                ? ($p->company_name ?? '')
+                : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
+        }
+
+        $creditPartnerCode = null;
+        $creditPartnerName = null;
+        if ($tx->creditPartner) {
+            $p = $tx->creditPartner;
+            $creditPartnerCode = $p->type === 'individual'
+                ? ($p->social_card_number ?? null)
+                : ($p->tax_number ?? null);
+
+            $creditPartnerName = $p->type === 'legal'
+                ? ($p->company_name ?? '')
+                : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
+        }
+
+        // Ամսաթիվը Excel-ի սերիական թվով, որպեսզի աշխատի date format-ը
+        $excelDate = null;
+        if (!empty($tx->date)) {
+            $excelDate = ExcelDate::dateTimeToExcel(Carbon::parse($tx->date));
+        }
+
         return [
-            $tx->date,
+            $excelDate, // A — date serial
             $tx->document_number,
             $tx->document_type,
 
-            optional($tx->debitAccount)->code . ' ' . optional($tx->debitAccount)->name,
-            $tx->debit_partner_code,
-            $tx->debit_partner_name,
+            trim((optional($tx->debitAccount)->code ?? '') . ' ' . (optional($tx->debitAccount)->name ?? '')),
+            $debitPartnerCode,
+            $debitPartnerName,
             optional($tx->debitCurrency)->code,
 
-            optional($tx->creditAccount)->code . ' ' . optional($tx->creditAccount)->name,
-            $tx->credit_partner_code,
-            $tx->credit_partner_name,
+            trim((optional($tx->creditAccount)->code ?? '') . ' ' . (optional($tx->creditAccount)->name ?? '')),
+            $creditPartnerCode,
+            $creditPartnerName,
             optional($tx->creditCurrency)->code,
 
             $tx->amount_amd,
@@ -124,8 +162,8 @@ class TransactionsExport implements
     public function columnFormats(): array
     {
         return [
-            'A' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'L' => '#,##0',
+            'A' => NumberFormat::FORMAT_DATE_YYYYMMDD2, // Date serial ցուցադրում
+            'L' => '#,##0',                             // Amount AMD
         ];
     }
 
@@ -205,6 +243,7 @@ class TransactionsExport implements
                     $sheet->getRowDimension($r)->setRowHeight(20);
                 }
 
+                // column alignments
                 $sheet->getStyle("A2:A{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER); // Ամսաթիվ
                 $sheet->getStyle("B2:B{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER); // Փաստաթղթի N
                 $sheet->getStyle("C2:C{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER); // Տեսակ
@@ -213,21 +252,25 @@ class TransactionsExport implements
                 $sheet->getStyle("L2:L{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);  // Գումար
                 $sheet->getStyle("M2:M{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);   // Օգտագործող
 
+                // Freeze header
                 $sheet->freezePane('A2');
 
+                // Enable autofilter
                 $sheet->setAutoFilter("A1:{$highestCol}1");
 
+                // Sheet title
                 $sheet->setTitle('Գործարքներ');
 
+                // Page setup
                 $pageSetup = $sheet->getPageSetup();
                 $pageSetup->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
                 $pageSetup->setFitToWidth(1);
                 $pageSetup->setFitToHeight(0);
 
+                // Amount number format
                 $sheet->getStyle("L2:L{$highestRow}")
                     ->getNumberFormat()->setFormatCode('#,##0');
             },
         ];
     }
-
 }
