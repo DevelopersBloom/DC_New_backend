@@ -29,9 +29,9 @@ class TransactionsExport implements
     WithMapping,
     WithEvents,
     WithStyles,
-    WithColumnWidths,
     WithColumnFormatting,
     ShouldAutoSize
+
 {
     protected $from;
     protected $to;
@@ -167,24 +167,24 @@ public function map($tx): array
         ];
     }
 
-    public function columnWidths(): array
-    {
-        return [
-            'A' => 12,  // Ամսաթիվ
-            'B' => 16,  // Փաստաթղթի N
-            'C' => 18,  // Փաստաթղթի Տեսակ
-            'D' => 38,  // Դեբետ հաշիվ (կոդ + անվանում)
-            'E' => 16,  // Դեբետ գործ․ կոդ
-            'F' => 28,  // Դեբետ գործընկեր անվանում
-            'G' => 10,  // Դեբետ արժ․
-            'H' => 38,  // Կրեդիտ հաշիվ
-            'I' => 16,  // Կրեդիտ գործ․ կոդ
-            'J' => 28,  // Կրեդիտ գործընկեր անվանում
-            'K' => 10,  // Կրեդիտ արժ․
-            'L' => 18,  // Գումար (դրամով)
-            'M' => 20,  // Օգտագործող
-        ];
-    }
+//    public function columnWidths(): array
+//    {
+//        return [
+//            'A' => 12,  // Ամսաթիվ
+//            'B' => 16,  // Փաստաթղթի N
+//            'C' => 18,  // Փաստաթղթի Տեսակ
+//            'D' => 38,  // Դեբետ հաշիվ (կոդ + անվանում)
+//            'E' => 16,  // Դեբետ գործ․ կոդ
+//            'F' => 28,  // Դեբետ գործընկեր անվանում
+//            'G' => 10,  // Դեբետ արժ․
+//            'H' => 38,  // Կրեդիտ հաշիվ
+//            'I' => 16,  // Կրեդիտ գործ․ կոդ
+//            'J' => 28,  // Կրեդիտ գործընկեր անվանում
+//            'K' => 10,  // Կրեդիտ արժ․
+//            'L' => 18,  // Գումար (դրամով)
+//            'M' => 20,  // Օգտագործող
+//        ];
+//    }
 
     /**
      * Ընդհանուր ոճավորում (լռելյայն տառատեսակներ և այլն)
@@ -209,10 +209,11 @@ public function map($tx): array
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet      = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
-                $highestCol = $sheet->getHighestColumn();
+                $highestCol = $sheet->getHighestColumn(); // e.g. 'M'
                 $dataRange  = "A1:{$highestCol}{$highestRow}";
-
                 $headerRange = "A1:{$highestCol}1";
+
+                // Header style
                 $sheet->getStyle($headerRange)->applyFromArray([
                     'font'      => ['bold' => true, 'size' => 11],
                     'alignment' => [
@@ -226,14 +227,17 @@ public function map($tx): array
                     ],
                 ]);
 
+                // Body: vertical center + wrap
                 $sheet->getStyle($dataRange)->getAlignment()
                     ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER)
                     ->setWrapText(true);
 
+                // Borders
                 $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
                     ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
                     ->getColor()->setRGB('B7B7B7');
 
+                // Zebra rows + row height
                 for ($r = 2; $r <= $highestRow; $r++) {
                     if ($r % 2 === 0) {
                         $sheet->getStyle("A{$r}:{$highestCol}{$r}")
@@ -243,7 +247,7 @@ public function map($tx): array
                     $sheet->getRowDimension($r)->setRowHeight(20);
                 }
 
-                // column alignments
+                // Column alignments
                 $sheet->getStyle("A2:A{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER); // Ամսաթիվ
                 $sheet->getStyle("B2:B{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER); // Փաստաթղթի N
                 $sheet->getStyle("C2:C{$highestRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER); // Տեսակ
@@ -255,7 +259,7 @@ public function map($tx): array
                 // Freeze header
                 $sheet->freezePane('A2');
 
-                // Enable autofilter
+                // Autofilter
                 $sheet->setAutoFilter("A1:{$highestCol}1");
 
                 // Sheet title
@@ -270,6 +274,11 @@ public function map($tx): array
                 // Amount number format
                 $sheet->getStyle("L2:L{$highestRow}")
                     ->getNumberFormat()->setFormatCode('#,##0');
+
+                // --- AutoSize columns by content (keep only if you DON'T set fixed widths) ---
+                foreach (range('A', $highestCol) as $col) {
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                }
             },
         ];
     }
