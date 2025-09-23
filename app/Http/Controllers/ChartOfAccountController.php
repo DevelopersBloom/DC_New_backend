@@ -52,7 +52,7 @@ class ChartOfAccountController
         $validated = $request->validate([
             'code'           => 'required|string|max:20|unique:chart_of_accounts,code,' . $id,
             'name'           => 'required|string|max:255',
-            'type'           => 'required|in:active,passive,active-passive,off-balance',
+            'type'           => 'required|in:active, passive,equity,income,expense,off_balance',
 //            'is_accumulative'=> 'boolean',
 //            'currency_id'    => 'nullable|exists:currencies,id',
             'parent_id'      => 'nullable|exists:chart_of_accounts,id',
