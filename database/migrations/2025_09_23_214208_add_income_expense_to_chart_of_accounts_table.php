@@ -14,7 +14,7 @@ return new class extends Migration
     public function up()
     {
         Schema::table('chart_of_accounts', function (Blueprint $table) {
-            $table->integer('income_expense')->nullable()->after('description');
+            $table->string('income_expense')->nullable()->after('description');
 
         });
     }
