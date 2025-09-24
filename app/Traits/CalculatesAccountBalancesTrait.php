@@ -160,6 +160,8 @@ trait CalculatesAccountBalancesTrait
             ->groupBy('t.credit_partner_id','t.credit_account_id');
     }
 
+
+
     protected function partnerAccountBalancesSubquery(?string $dateTo)
     {
         $union = $this->partnerAccountDebitMovements($dateTo)->unionAll(
@@ -177,15 +179,15 @@ trait CalculatesAccountBalancesTrait
                 'ca.name as account_name',
                 'ca.type as account_type',
 
+                DB::raw("MAX(c.type) as partner_type"),
                 DB::raw("MAX(CASE WHEN c.type = 'individual' THEN c.social_card_number ELSE c.tax_number END) as partner_code"),
                 DB::raw("MAX(CASE WHEN c.type = 'legal' THEN COALESCE(c.company_name,'')
-                                  ELSE TRIM(CONCAT(COALESCE(c.name,''),' ',COALESCE(c.surname,''))) END) as partner_name"),
+                              ELSE TRIM(CONCAT(COALESCE(c.name,''),' ',COALESCE(c.surname,''))) END) as partner_name"),
 
                 DB::raw('SUM(u.delta) as balance'),
             ])
             ->groupBy('u.partner_id','u.account_id','ca.code','ca.name','ca.type');
     }
-
 
     protected function partnerAccountBalancesRowsQuery(?string $dateTo)
     {
