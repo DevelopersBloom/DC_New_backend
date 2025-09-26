@@ -36,65 +36,78 @@ class ReminderOrderController
     public function store(StoreReminderOrderRequest $request): JsonResponse
     {
         $validated = $request->validated();
+
+        // հաջորդական համար (պարզ տարբերակ)
         $lastNum = ReminderOrder::max('num') ?? 0;
         $nextNum = $lastNum + 1;
 
-        $reminderOrder  = ReminderOrder::create([
-            'order_date'       => $validated['order_date'] ?? null,
-            'amount'           => $validated['amount'] ?? null,
-            'currency_id'      => $validated['currency_id'] ?? 1,
-            'comment'          => $validated['comment'] ?? null,
-            'debit_account_id' => $validated['debit_account_id'] ?? null,
-            'debit_partner_id' => $validated['debit_partner_id'] ?? null,
-            'credit_account_id'=> $validated['credit_account_id'] ?? null,
-            'credit_partner_id'=> $validated['credit_partner_id'] ?? null,
-            'is_draft'         => $validated['is_draft'] ?? false,
-            'num'              => $nextNum,
+        $reminderOrder = ReminderOrder::create([
+            'order_date'        => $validated['order_date'] ?? null,
+            'amount'            => $validated['amount'] ?? null,
+            'currency_id'       => $validated['currency_id'] ?? 1,
+            'comment'           => $validated['comment'] ?? null,
+            'debit_account_id'  => $validated['debit_account_id'] ?? null,
+            'debit_partner_id'  => $validated['debit_partner_id'] ?? null,
+            'credit_account_id' => $validated['credit_account_id'] ?? null,
+            'credit_partner_id' => $validated['credit_partner_id'] ?? null,
+            'is_draft'          => $validated['is_draft'] ?? false,
+            'num'               => $nextNum,
         ]);
 
+        // Լցնենք հարաբերությունները (կարող են լինել null)
         $reminderOrder->load(['debitPartner','creditPartner']);
 
         $displayName = function ($p) {
             if (!$p) return null;
-            if (!empty($p->company_name)) return $p->company_name;
+            if (!empty($p->company_name)) {
+                return $p->company_name;
+            }
             $name    = $p->name    ?? '';
             $surname = $p->surname ?? '';
-            return trim($name.' '.$surname) ?: null;
+            $full    = trim($name.' '.$surname);
+            return $full !== '' ? $full : null;
         };
 
-        $debitPartnerName  = $displayName($reminderOrder->debitPartner);
-        $creditPartnerName = $displayName($reminderOrder->creditPartner);
+        $debit   = $reminderOrder->debitPartner;   // կարող է լինել null
+        $credit  = $reminderOrder->creditPartner;  // կարող է լինել null
 
-        $debitPartnerCode = $reminderOrder->debitPartner->type == 'individual' ? $reminderOrder->debitPartner->social_card_number :
-                            $reminderOrder->debitPartner->tax_number;
-        $creditPartnerCode = $reminderOrder->creditPartner->type == 'individual' ? $reminderOrder->creditPartner->social_card_number :
-            $reminderOrder->creditPartner->tax_number;
+        $debitPartnerName   = $displayName($debit);
+        $creditPartnerName  = $displayName($credit);
 
+        $debitPartnerCode  = $debit
+            ? ($debit->type === 'individual' ? ($debit->social_card_number ?? null) : ($debit->tax_number ?? null))
+            : null;
+
+        $creditPartnerCode = $credit
+            ? ($credit->type === 'individual' ? ($credit->social_card_number ?? null) : ($credit->tax_number ?? null))
+            : null;
+
+        // Ստեղծում ենք Transaction՝ ապահով null-երով
         Transaction::create([
-                'date'               => $reminderOrder->order_date,
-                'document_number'    => $reminderOrder->num,
-                'document_type'      => Transaction::REMINDER_ORDER_TYPE,
+            'date'                => $reminderOrder->order_date,
+            'document_number'     => $reminderOrder->num,
+            'document_type'       => Transaction::REMINDER_ORDER_TYPE,
 
-                'debit_account_id'   => $reminderOrder->debit_account_id,
-                'debit_partner_code' => $debitPartnerCode,
-                'debit_partner_name' => $debitPartnerName,
-                'debit_currency_id'  => $reminderOrder->currency_id,
-                'debit_partner_id'   => $validated['debit_partner_id'],
-                'credit_partner_id'  => $validated['credit_partner_id'],
-                'credit_account_id'   => $reminderOrder->credit_account_id,
-                'credit_partner_code' => $creditPartnerCode,
-                'credit_partner_name' => $creditPartnerName,
-                'credit_currency_id'  => $reminderOrder->currency_id,
+            'debit_account_id'    => $reminderOrder->debit_account_id,
+            'debit_partner_id'    => $reminderOrder->debit_partner_id,   // կարող է լինել null
+            'debit_partner_code'  => $debitPartnerCode,                  // կարող է լինել null
+            'debit_partner_name'  => $debitPartnerName,                  // կարող է լինել null
+            'debit_currency_id'   => $reminderOrder->currency_id,
 
-                'amount_amd'       => round($reminderOrder->amount),
-                'amount_currency'  => 0,
-                'amount_currency_id'=> null,
+            'credit_account_id'   => $reminderOrder->credit_account_id,
+            'credit_partner_id'   => $reminderOrder->credit_partner_id,  // կարող է լինել null
+            'credit_partner_code' => $creditPartnerCode,                 // կարող է լինել null
+            'credit_partner_name' => $creditPartnerName,                 // կարող է լինել null
+            'credit_currency_id'  => $reminderOrder->currency_id,
 
-                'comment'   => $reminderOrder->comment,
-                'user_id'   => auth()->id(),
-                'is_system' => false,
-            ]);
+            'amount_amd'          => round((float)$reminderOrder->amount),
+            'amount_currency'     => 0,
+            'amount_currency_id'  => null,
 
+            'comment'             => $reminderOrder->comment,
+            'user_id'             => auth()->id(),
+            'is_system'           => false,
+        ]);
 
         return response()->json([
             'message' => 'Հիշարար օրդերը հաջողությամբ ստեղծվեց։',
