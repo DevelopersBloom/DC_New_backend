@@ -56,7 +56,7 @@ class ChartOfAccountController
 //            'is_accumulative'=> 'boolean',
 //            'currency_id'    => 'nullable|exists:currencies,id',
             'parent_id'      => 'nullable|exists:chart_of_accounts,id',
-            'income_expense' => 'nullable|integer',
+            'income_expense' => 'nullable|string',
         ]);
 
         if (isset($validated['parent_id']) && $validated['parent_id'] == $id) {
