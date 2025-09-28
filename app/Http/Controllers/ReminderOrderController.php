@@ -37,7 +37,6 @@ class ReminderOrderController
     {
         $validated = $request->validated();
 
-        // հաջորդական համար (պարզ տարբերակ)
         $lastNum = ReminderOrder::max('num') ?? 0;
         $nextNum = $lastNum + 1;
 
@@ -54,7 +53,6 @@ class ReminderOrderController
             'num'               => $nextNum,
         ]);
 
-        // Լցնենք հարաբերությունները (կարող են լինել null)
         $reminderOrder->load(['debitPartner','creditPartner']);
 
         $displayName = function ($p) {
@@ -68,8 +66,8 @@ class ReminderOrderController
             return $full !== '' ? $full : null;
         };
 
-        $debit   = $reminderOrder->debitPartner;   // կարող է լինել null
-        $credit  = $reminderOrder->creditPartner;  // կարող է լինել null
+        $debit   = $reminderOrder->debitPartner;
+        $credit  = $reminderOrder->creditPartner;
 
         $debitPartnerName   = $displayName($debit);
         $creditPartnerName  = $displayName($credit);
@@ -82,22 +80,21 @@ class ReminderOrderController
             ? ($credit->type === 'individual' ? ($credit->social_card_number ?? null) : ($credit->tax_number ?? null))
             : null;
 
-        // Ստեղծում ենք Transaction՝ ապահով null-երով
         Transaction::create([
             'date'                => $reminderOrder->order_date,
             'document_number'     => $reminderOrder->num,
             'document_type'       => Transaction::REMINDER_ORDER_TYPE,
 
             'debit_account_id'    => $reminderOrder->debit_account_id,
-            'debit_partner_id'    => $reminderOrder->debit_partner_id,   // կարող է լինել null
-            'debit_partner_code'  => $debitPartnerCode,                  // կարող է լինել null
-            'debit_partner_name'  => $debitPartnerName,                  // կարող է լինել null
+            'debit_partner_id'    => $reminderOrder->debit_partner_id,
+            'debit_partner_code'  => $debitPartnerCode,
+            'debit_partner_name'  => $debitPartnerName,
             'debit_currency_id'   => $reminderOrder->currency_id,
 
             'credit_account_id'   => $reminderOrder->credit_account_id,
-            'credit_partner_id'   => $reminderOrder->credit_partner_id,  // կարող է լինել null
-            'credit_partner_code' => $creditPartnerCode,                 // կարող է լինել null
-            'credit_partner_name' => $creditPartnerName,                 // կարող է լինել null
+            'credit_partner_id'   => $reminderOrder->credit_partner_id,
+            'credit_partner_code' => $creditPartnerCode,
+            'credit_partner_name' => $creditPartnerName,
             'credit_currency_id'  => $reminderOrder->currency_id,
 
             'amount_amd'          => round((float)$reminderOrder->amount),
