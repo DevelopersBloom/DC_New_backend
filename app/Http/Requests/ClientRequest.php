@@ -27,8 +27,8 @@ class ClientRequest extends FormRequest
             'street' => ['nullable','string','max:255'],
             'building' => ['nullable','string','max:50'],
             'website' => ['nullable','string','max:255'],
-            'residency_status'  => ['required','in:resident,non_resident'],
-            'residency_country' => ['nullable','string','max:255'],
+//            'residency_status'  => ['required','in:resident,non_resident'],
+//            'residency_country' => ['nullable','string','max:255'],
 
             'bank_name' => ['nullable','string','max:255'],
             'account_number' => ['nullable','string','max:50'],
@@ -52,6 +52,8 @@ class ClientRequest extends FormRequest
                 'passport_validity' => ['required','date'],
                 'passport_issued' => ['required','string','max:255'],
                 'date_of_birth' => ['required','date'],
+                'residency_status'  => ['required','in:resident,non_resident'],
+                'residency_country' => ['nullable','string','max:255'],
             ]);
         } else {
             $rules = array_merge($rules, [

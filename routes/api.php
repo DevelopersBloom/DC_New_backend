@@ -5,6 +5,7 @@ use App\Http\Controllers\BusinessEventController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DocumentJournalController;
 use App\Http\Controllers\LoanNdmController;
+use App\Http\Controllers\MonthlyIncomeExpenseController;
 use App\Http\Controllers\TransactionsExport;
 use App\Http\Controllers\PostingRuleController;
 use App\Http\Controllers\RateController;
@@ -95,7 +96,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('get-deals',[AdminControllerNew::class,'getDeals']);
         Route::put('update-deals',[AdminControllerNew::class,'updateDeals']);
         Route::delete('delete-deal/{id}',[AdminControllerNew::class,'deleteDeal']);
-        Route::get('/reports/monthly-income-expense', \App\Http\Controllers\MonthlyIncomeExpenseController::class);
+        Route::get('/reports/monthly-income-expense', MonthlyIncomeExpenseController::class);
 
         //Discount
         Route::get('/get-discounts', [AdminControllerNew::class, 'getDiscounts']);

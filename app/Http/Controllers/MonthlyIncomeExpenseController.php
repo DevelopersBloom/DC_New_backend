@@ -17,22 +17,46 @@ class MonthlyIncomeExpenseController extends Controller
     }
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
-        $month = $request->query('month');
-        if (!$month) {
-            return response()->json(['message' => 'Provide ?month=YYYY-MM'], 422);
+//        $month = $request->query('month');
+//        if (!$month) {
+//            return response()->json(['message' => 'Provide ?month=YYYY-MM'], 422);
+//        }
+//
+//        try {
+//            [$from, $to] = $this->monthRange($month);
+//        } catch (\Throwable $e) {
+//            return response()->json(['message' => 'Invalid month format. Use YYYY-MM'], 422);
+//        }
+//
+//        [$prevFrom, $prevTo] = $this->previousMonthRangeFrom($from);
+//
+//        $current = $this->svc->build($from, $to);
+//        $previous = $this->svc->build($prevFrom, $prevTo);
+        $fromStr = $request->query('from');
+        $toStr   = $request->query('to');
+
+        if (!$fromStr || !$toStr) {
+            return response()->json(['message' => 'Provide ?from=YYYY-MM-DD&to=YYYY-MM-DD'], 422);
         }
 
         try {
-            [$from, $to] = $this->monthRange($month);
+            $from = Carbon::createFromFormat('Y-m-d', $fromStr)->startOfDay();
+            $to   = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Invalid month format. Use YYYY-MM'], 422);
+            return response()->json(['message' => 'Invalid date format. Use YYYY-MM-DD'], 422);
         }
 
-        [$prevFrom, $prevTo] = $this->previousMonthRangeFrom($from);
+        if ($from->gt($to)) {
+            return response()->json(['message' => '`from` must be <= `to`'], 422);
+        }
+
+        $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
+
+        $prevTo = $from->copy()->subDay()->endOfDay();
+        $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
         $current = $this->svc->build($from, $to);
         $previous = $this->svc->build($prevFrom, $prevTo);
-
         $currBy = [];
         foreach ($current as $r) {
             $currBy[(string)$r['code']] = $r;
@@ -77,7 +101,7 @@ class MonthlyIncomeExpenseController extends Controller
         }
 
         $writer = new XlsWriter($spreadsheet);
-        $filename = "monthly_income_expense_{$month}.xls";
+        $filename = "monthly_income_expense.xls";
 
         $dir = storage_path('app/reports');
         if (!is_dir($dir)) {

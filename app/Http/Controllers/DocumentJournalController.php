@@ -45,6 +45,7 @@ class DocumentJournalController
                 : null;
 
             return [
+                'id' => $j->id,
                 'date'                => optional($j->date)->format('Y-m-d'),
                 'document_number'     => $j->document_number,
                 'document_type'       => $j->document_type,

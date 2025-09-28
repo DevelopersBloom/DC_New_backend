@@ -10,7 +10,6 @@ class IncomeExpenseMonthlyReport
 
     public function build(string $from, string $to): array
     {
-        // Debit կողմ
         $debit = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
             ->whereNotNull('t.debit_account_id')
@@ -23,7 +22,6 @@ class IncomeExpenseMonthlyReport
         ")
             ->groupBy('a.income_expense');   // <<=== ԱՆՊԱՅՄԱՆ
 
-        // Credit կողմ
         $credit = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
             ->whereNotNull('t.credit_account_id')
