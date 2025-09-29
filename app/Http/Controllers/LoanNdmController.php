@@ -9,6 +9,7 @@ use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Services\LoanNdmInterestService;
 use App\Traits\Journalable;
 use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
@@ -151,7 +152,7 @@ class LoanNdmController extends Controller
     public function attachLoanNdm(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'loan_ndm_id'  => 'required|integer|exists:loan_ndm,id',
+            'document_journal_id' => 'required|integer|exists:document_journals,id',
             'date'         => 'required|date',
             'amount'       => 'required|numeric|min:0.01',
             'cash'         => 'required|boolean',
@@ -162,7 +163,15 @@ class LoanNdmController extends Controller
 
         try {
             return DB::transaction(function () use ($data) {
-                $loan    = LoanNdm::with(['client','currency','account'])->findOrFail($data['loan_ndm_id']);
+                $journal = DocumentJournal::with('journalable')
+                    ->findOrFail($data['document_journal_id']);
+
+                $loan = $journal->journalable;
+                if (!$loan instanceof \App\Models\LoanNdm) {
+                    throw new \RuntimeException('Journal is not attached to a LoanNdm');
+                }
+
+                //   $loan    = LoanNdm::with(['client','currency','account'])->findOrFail($data['loan_ndm_id']);
                 $date    = \Carbon\Carbon::parse($data['date'])->toDateString();
                 $amount  = round((float)$data['amount'], 2);
                 $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
@@ -212,8 +221,21 @@ class LoanNdmController extends Controller
         }
     }
 
+    public function calculateInterest(Request $request, LoanNdm $loan, LoanNdmInterestService $svc)
+    {
+        $data = $request->validate([
+            'from' => 'required|date',
+            'to'   => 'required|date',
+        ]);
 
-public function loanNdmJournal(Request $request): JsonResponse
+        $result = $svc->calculate($loan, $data['from'], $data['to']);
+
+        return response()->json($result);
+    }
+
+
+
+    public function loanNdmJournal(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');

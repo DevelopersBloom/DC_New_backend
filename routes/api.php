@@ -120,6 +120,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('reminder-orders', ReminderOrderController::class);
         Route::apiResource('loan-ndms', LoanNdmController::class);
         Route::post('/loan-ndm/attach', [LoanNdmController::class, 'attachLoanNdm']);
+        Route::get('loan-ndm/{loan}/interest', [LoanNdmController::class, 'calculateInterest']);
         Route::get('/transactions', [TransactionController::class, 'index']);
         Route::get('/transactions/export', [TransactionController::class, 'export']);
         Route::get('/transactions/loan-ndms', [DocumentJournalController::class, 'index']);
