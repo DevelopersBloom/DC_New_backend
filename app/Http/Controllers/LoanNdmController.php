@@ -152,7 +152,7 @@ class LoanNdmController extends Controller
     public function attachLoanNdm(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'document_journal_id' => 'required|integer|exists:document_journal,id',
+            'document_journal_id' => 'required|integer|exists:documents_journal,id',
             'date'         => 'required|date',
             'amount'       => 'required|numeric|min:0.01',
             'cash'         => 'required|boolean',
@@ -167,7 +167,7 @@ class LoanNdmController extends Controller
                     ->findOrFail($data['document_journal_id']);
 
                 $loan = $journal->journalable;
-                if (!$loan instanceof \App\Models\LoanNdm) {
+                if (!$loan instanceof LoanNdm) {
                     throw new \RuntimeException('Journal is not attached to a LoanNdm');
                 }
 
