@@ -14,6 +14,8 @@ class Transaction extends Model
     use HasFactory,SoftDeletes;
     const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
     const LOAN_NDM_TYPE = 'Ներգրավված Դրամական Միջոցներ';
+    const LOAN_ATTRACTION = 'Վարկի ներգրավում';
+
     protected $fillable = [
         'date',
         'document_number',
@@ -39,6 +41,9 @@ class Transaction extends Model
         'user_id',
         'is_system',
         'disbursement_date',
+
+        'transactionable_type',
+        'transactionable_id',
     ];
 
     protected $casts = [
@@ -84,6 +89,10 @@ class Transaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+    public function transactionable()
+    {
+        return $this->morphTo();
     }
 
 

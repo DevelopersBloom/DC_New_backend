@@ -119,8 +119,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('business-events', BusinessEventController::class);
         Route::apiResource('reminder-orders', ReminderOrderController::class);
         Route::apiResource('loan-ndms', LoanNdmController::class);
+        Route::post('/loan-ndm/attach', [LoanNdmController::class, 'attachLoanNdm']);
         Route::get('/transactions', [TransactionController::class, 'index']);
-        Route::get('/transactions/export', [TransactionController::class, 'exp ort']);
+        Route::get('/transactions/export', [TransactionController::class, 'export']);
         Route::get('/transactions/loan-ndms', [DocumentJournalController::class, 'index']);
         Route::get('/transactions/loan-ndms/export', [DocumentJournalController::class, 'export']);
         Route::delete('/journal/{journal}', [DocumentJournalController::class, 'destroy']);

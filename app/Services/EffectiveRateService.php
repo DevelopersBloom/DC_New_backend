@@ -38,9 +38,7 @@ class EffectiveRateService
         return round($effectiveAnnualRate, 2);
     }
 
-    /**
-     * Ներքին եկամտաբերության հաշվարկ (Newton-Raphson մեթոդ)
-     */
+
     private function irr(array $cashflows, $guess = 0.1): ?float
     {
         $maxIterations = 100;

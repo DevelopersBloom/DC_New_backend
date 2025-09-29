@@ -80,7 +80,7 @@ class ReminderOrderController
             ? ($credit->type === 'individual' ? ($credit->social_card_number ?? null) : ($credit->tax_number ?? null))
             : null;
 
-        Transaction::create([
+        $reminderOrder->transactions()->create([
             'date'                => $reminderOrder->order_date,
             'document_number'     => $reminderOrder->num,
             'document_type'       => Transaction::REMINDER_ORDER_TYPE,

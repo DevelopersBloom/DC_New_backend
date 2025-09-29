@@ -52,6 +52,10 @@ class ReminderOrder extends Model
     {
         return $this->belongsTo(Client::class, 'credit_partner_id');
     }
+    public function transactions()
+    {
+        return $this->morphMany(Transaction::class, 'transactionable');
+    }
     public function toJournalRow(): array
     {
         return [

@@ -98,6 +98,11 @@ class LoanNdm extends Model
     {
         return $this->belongsTo(User::class);
     }
+    public function journals()
+    {
+        return $this->morphMany(DocumentJournal::class, 'journalable');
+    }
+
     public function toJournalRow(): array
     {
         $client = $this->client;

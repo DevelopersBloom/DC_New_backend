@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Exports\LoanNdmJournalExport;
 use App\Http\Requests\StoreLoanNdmRequest;
 use App\Models\Client;
+use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Traits\Journalable;
 use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -140,7 +142,78 @@ class LoanNdmController extends Controller
             ], 500);
         }
     }
-    public function loanNdmJournal(Request $request): JsonResponse
+
+    /**
+     * Վարկի ներգրավում
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function attachLoanNdm(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'loan_ndm_id'  => 'required|integer|exists:loan_ndm,id',
+            'date'         => 'required|date',
+            'amount'       => 'required|numeric|min:0.01',
+            'cash'         => 'required|boolean',
+            'account_id'   => 'required|integer|exists:chart_of_accounts,id',
+            'comment'      => 'nullable|string|max:500',
+            'document_number' => 'nullable|string|max:64',
+        ]);
+
+        try {
+            return DB::transaction(function () use ($data) {
+                $loan    = LoanNdm::with(['client','currency','account'])->findOrFail($data['loan_ndm_id']);
+                $date    = \Carbon\Carbon::parse($data['date'])->toDateString();
+                $amount  = round((float)$data['amount'], 2);
+                $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
+
+
+                $journal = $loan->journals()->create([
+                    'date'            => $date,
+                    'document_number' => $docNum,
+                    'document_type'   => DocumentJournal::LOAN_ATTRACTION,
+                    'currency_id'     => $loan->currency_id,
+                    'amount_amd'      => $amount,
+                    'partner_id'      => $loan->client_id,
+                    'comment'         => $data['comment'] ?? null,
+                    'user_id'         => auth()->id(),
+                ]);
+
+                $journal->transactions()->create([
+                    'date'               => $date,
+                    'document_number'    => $docNum,
+                    'document_type'      => Transaction::LOAN_ATTRACTION,
+
+                    'debit_account_id'   => $data['account_id'],
+                    'debit_currency_id'  => $loan->currency_id,
+
+                    'credit_account_id'  => $loan->account_id,
+                    'credit_currency_id' => $loan->currency_id,
+                    'credit_partner_id'  => $loan->client_id,
+
+                    'amount_amd'         => $amount,
+
+                    'comment'            => $data['comment'] ?? null,
+                    'user_id'            => auth()->id(),
+                    'is_system'          => false,
+
+                    'disbursement_date'  => $date,
+                ]);
+
+                return response()->json([
+                    'message'     => 'Վարկի ներգրավումը հաջողությամբ ստեղծվեց',
+                ], 201);
+            });
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Տեղի ունեցավ սխալ',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+public function loanNdmJournal(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');

@@ -13,6 +13,8 @@ class DocumentJournal extends Model
     protected $table = 'documents_journal';
     const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
     const LOAN_NDM_TYPE = 'Ներգրավված Դրամական Միջոցներ';
+    const LOAN_ATTRACTION = 'Վարկի ներգրավում';
+
 
     protected $fillable = [
         'date',
@@ -35,6 +37,10 @@ class DocumentJournal extends Model
     public function journalable(): MorphTo
     {
         return $this->morphTo();
+    }
+    public function transactions()
+    {
+        return $this->morphMany(Transaction::class, 'transactionable');
     }
 
     public function currency(): BelongsTo
