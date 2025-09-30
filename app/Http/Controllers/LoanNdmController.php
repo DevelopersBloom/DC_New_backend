@@ -21,6 +21,12 @@ use Maatwebsite\Excel\Facades\Excel;
 class LoanNdmController extends Controller
 {
 //    use OrderTrait;
+    protected $loanNdmInterestService;
+    public function __construct(LoanNdmInterestService $loanNdmInterestService)
+    {
+        $this->loanNdmInterestService = $loanNdmInterestService;
+    }
+
     public function index(): JsonResponse
     {
             $loans = LoanNdm::with([
@@ -221,16 +227,24 @@ class LoanNdmController extends Controller
         }
     }
 
-    public function calculateInterest(Request $request, LoanNdm $loan, LoanNdmInterestService $svc)
+    public function calculateInterest(Request $request)
     {
         $data = $request->validate([
+            'document_journal_id' => 'required|integer|exists:documents_journal,id',
             'from' => 'required|date',
             'to'   => 'required|date',
         ]);
+        $journal = DocumentJournal::with('journalable')
+            ->findOrFail($data['document_journal_id']);
 
-        $result = $svc->calculate($loan, $data['from'], $data['to']);
+        $loan = $journal->journalable;
+        if ($journal->document_type == DocumentJournal::LOAN_ATTRACTION) {
+            $result = $this->loanNdmInterestService->calculate($loan, $data['from'], $data['to']);
 
-        return response()->json($result);
+            return response()->json($result);
+        } else {
+            return "Something went wrong";
+        }
     }
 
 
