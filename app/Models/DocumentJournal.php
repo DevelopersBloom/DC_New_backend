@@ -14,6 +14,8 @@ class DocumentJournal extends Model
     const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
     const LOAN_NDM_TYPE = 'Ներգրավված Դրամական Միջոցներ';
     const LOAN_ATTRACTION = 'Վարկի ներգրավում';
+    CONST EFFECTIVE_RATE = 'Արդյունավետ տոկոսի հաշվարկում';
+    CONST INTEREST_RATE = 'Տոկոսի հաշվարկում';
 
 
     protected $fillable = [
@@ -24,6 +26,9 @@ class DocumentJournal extends Model
         'amount_amd',
         'amount_currency',
         'partner_id',
+        'credit_partner_id',
+        'debit_account_id',
+        'credit_account_id',
         'comment',
         'user_id',
         'journalable_type',
@@ -55,6 +60,20 @@ class DocumentJournal extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'partner_id');
+    }
+    public function creditPartner(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'credit_partner_id');
+    }
+
+    public function debitAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'debit_account_id');
+    }
+
+    public function creditAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'credit_account_id');
     }
 
 }

@@ -120,9 +120,8 @@ class LoanNdmInterestService
     {
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->startOfDay();
-        if ($to->lt($from)) {
-            throw new \InvalidArgumentException('toDate must be >= fromDate');
-        }
+
+
 
         // day-count resolver
         [$baseDaysFunc, $fixedBaseDays] = $this->resolveDayCount($loan->day_count_convention ?? 'calendar_year');

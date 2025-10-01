@@ -68,4 +68,9 @@ class ChartOfAccount extends Model
     {
         return in_array($this->type,['passive','equity','income'],true);
     }
+    public static function idByCode(string $code): ?int
+    {
+        return static::where('code', $code)->value('id');
+    }
+
 }

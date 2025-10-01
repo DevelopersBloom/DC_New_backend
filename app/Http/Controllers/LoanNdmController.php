@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\LoanNdmJournalExport;
 use App\Http\Requests\StoreLoanNdmRequest;
+use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
@@ -15,6 +16,7 @@ use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -81,7 +83,7 @@ class LoanNdmController extends Controller
                 : $interestAmount;
 
             $data['user_id'] = auth()->id();
-
+            $data['calc_date'] = $data['contract_date'];
             $loanNdm = LoanNdm::create($data);
 
 //            $purpose = Order::NDM_PURPOSE;
@@ -182,6 +184,8 @@ class LoanNdmController extends Controller
                 $amount  = round((float)$data['amount'], 2);
                 $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
 
+                $acc102101 = ChartOfAccount::idByCode('102101') ?? 1;
+                $acc33512NV = ChartOfAccount::idByCode('33512NV') ?? 1;
 
                 $journal = $loan->journals()->create([
                     'date'            => $date,
@@ -189,8 +193,10 @@ class LoanNdmController extends Controller
                     'document_type'   => DocumentJournal::LOAN_ATTRACTION,
                     'currency_id'     => $loan->currency_id,
                     'amount_amd'      => $amount,
-                    'partner_id'      => $loan->client_id,
+                    'partner_id'      => null,
                     'comment'         => $data['comment'] ?? null,
+                    'debit_account_id' => $acc102101,
+                    'credit_account_id' => $acc33512NV,
                     'user_id'         => auth()->id(),
                 ]);
 
@@ -199,12 +205,12 @@ class LoanNdmController extends Controller
                     'document_number'    => $docNum,
                     'document_type'      => Transaction::LOAN_ATTRACTION,
 
-                    'debit_account_id'   => $data['account_id'],
+                    'debit_account_id'   => $acc102101,
                     'debit_currency_id'  => $loan->currency_id,
 
-                    'credit_account_id'  => $loan->account_id,
+                    'credit_account_id'  => $acc33512NV,
                     'credit_currency_id' => $loan->currency_id,
-                    'credit_partner_id'  => $loan->client_id,
+                    'credit_partner_id'  => null,
 
                     'amount_amd'         => $amount,
 
@@ -227,29 +233,249 @@ class LoanNdmController extends Controller
         }
     }
 
+
     public function calculateInterest(Request $request)
     {
         $data = $request->validate([
             'document_journal_id' => 'required|integer|exists:documents_journal,id',
-            'from' => 'required|date',
-            'to'   => 'required|date',
+            'calculation_date' => 'required|date',
+            'operation_date'   => 'required|date',
         ]);
         $journal = DocumentJournal::with('journalable')
             ->findOrFail($data['document_journal_id']);
 
-        $loan = $journal->journalable;
-        if ($journal->document_type == DocumentJournal::LOAN_ATTRACTION) {
-            $result = $this->loanNdmInterestService->calculate($loan, $data['from'], $data['to']);
+        $loan = LoanNdm::find($journal->journalable_id);
 
+        $from = $loan->calc_date;
+        if ($loan) {
+            $result = $this->loanNdmInterestService->calculate($loan, $from, $data['calculation_date']);
             return response()->json($result);
-        } else {
-            return "Something went wrong";
+
+        }
+        return "Something went wrong";
+    }
+
+    public function postInterest(Request $request)
+    {
+        $data = $request->validate([
+            'document_journal_id'       => 'required|integer|exists:documents_journal,id',
+            'operation_date'            => 'required|date',
+            'calculation_date'          => 'required|date',
+            'interest_amount'           => 'required|numeric|min:0',
+            'effective_interest_amount' => 'required|numeric|min:0',
+            'comment'                   => 'nullable|string',
+        ]);
+
+        $baseJournal = DocumentJournal::with('journalable')->findOrFail($data['document_journal_id']);
+
+        /** @var LoanNdm|null $loan */
+        $loan = $baseJournal->journalable instanceof LoanNdm
+            ? $baseJournal->journalable
+            : LoanNdm::find($baseJournal->journalable_id);
+
+        if (!$loan) {
+            return response()->json(['message' => 'Related LoanNdm not found for this journal.'], 404);
+        }
+
+        if ($data['interest_amount'] == 0 && $data['effective_interest_amount'] == 0) {
+            return response()->json(['message' => 'Both interest amounts are zero; nothing to journal.'], 422);
+        }
+        $acc70315   = ChartOfAccount::idByCode('70315') ?? 1;
+        $acc33512   = ChartOfAccount::idByCode('33512') ?? 1;
+        $acc33513NI = ChartOfAccount::idByCode('33513NI') ?? 1;
+
+        DB::beginTransaction();
+        try {
+            $loan->calc_date = $data['calculation_date'];
+            $loan->save();
+
+            $common = [
+                'date'             => $data['operation_date'],
+                'currency_id'      => $baseJournal->currency_id ?? null,
+                'user_id'          => Auth::id() ?? $baseJournal->user_id,
+                'journalable_type' => $baseJournal->journalable_type,
+                'journalable_id'   => $baseJournal->journalable_id,
+                'comment'          => $data['comment'] ?? null,
+            ];
+
+            $created = [];
+
+            // Journal #1 — Արդյունավետ տոկոսի հաշվարկում, Տոկ
+            // Դեբետ 70315 (ծախս), Կրեդիտ 33512 (վարկատու)
+            if ($data['effective_interest_amount'] > 0) {
+                $created['effective'] = DocumentJournal::create(array_merge($common, [
+                    'amount_amd'       => $data['effective_interest_amount'],
+                    'debit_account_id' => $acc70315,
+                    'credit_account_id'=> $acc33512,
+                    'credit_partner_id'=> null,
+                    'debit_partner_id'=> null,
+                    'document_type'    => DocumentJournal::EFFECTIVE_RATE,
+
+                ]));
+            }
+
+            if ($data['interest_amount'] > 0) {
+                $created['interest'] = DocumentJournal::create(array_merge($common, [
+                    'amount_amd'       => $data['interest_amount'],
+                    'debit_account_id' => $acc33512,
+                    'credit_account_id'=> $acc33513NI,
+                    'credit_partner_id'=> null,
+                    'debit_partner_id'=> null,
+                    'document_type'    => DocumentJournal::INTEREST_RATE,
+                ]));
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'          => 'ok',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to add journals',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function repay(Request $request)
+    {
+        $data = $request->validate([
+            'document_journal_id' => 'required|integer|exists:documents_journal,id',
+            'operation_date' => 'required|date',
+
+            'principal_amount' => 'nullable|numeric|min:0',
+            'interest_amount' => 'nullable|numeric|min:0',
+            'tax_from_interest' => 'nullable|numeric|min:0',
+
+            'comment' => 'nullable|string',
+        ]);
+
+        $baseJournal = DocumentJournal::with('journalable')->findOrFail($data['document_journal_id']);
+
+        /** @var LoanNdm|null $loan */
+        $loan = $baseJournal->journalable instanceof LoanNdm
+            ? $baseJournal->journalable
+            : LoanNdm::find($baseJournal->journalable_id);
+
+        if (!$loan) {
+            return response()->json(['message' => 'Related LoanNdm not found.'], 404);
+        }
+
+        // account ids
+        $acc33513NI = ChartOfAccount::idByCode('33513NI') ?? 1;
+        $acc33512NV = ChartOfAccount::idByCode('33512NV') ?? 1;
+
+        $principal = (float)($data['principal_amount'] ?? 0);
+        $interest = (float)($data['interest_amount'] ?? 0);
+        $taxInt = (float)($data['tax_from_interest'] ?? 0);
+
+        if ($principal <= 0 && $interest <= 0 && $taxInt <= 0) {
+            return response()->json(['message' => 'All repayment amounts are zero; nothing to post.'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // optionally update calc_date
+            $loan->calc_date = $data['operation_date'];
+            $loan->save();
+
+            $commonJ = [
+                'date' => $data['operation_date'],
+                'currency_id' => $data['currency_id'] ?? $baseJournal->currency_id,
+                'user_id' => Auth::id() ?? $baseJournal->user_id,
+                'journalable_type' => $baseJournal->journalable_type,
+                'journalable_id' => $baseJournal->journalable_id,
+                'comment' => $data['comment'] ?? null,
+            ];
+
+            $created = [
+                'interest' => null,
+                'principal' => null,
+                'tax' => null,
+            ];
+
+            // ===== Տոկոսի մարում =====
+            if ($interest > 0) {
+                $j = DocumentJournal::create(array_merge($commonJ, [
+                    'document_type' => 'Տոկոսի մարում',
+                    'amount_amd' => $interest,
+                    'debit_account_id' => $acc33513NI,
+                    'credit_account_id' => $acc33512NV,
+                ]));
+                $created['interest'] = $j;
+
+                // Transaction
+                $j->transactions()->create([
+                    'date' => $data['operation_date'],
+                    'debit_account_id' => $acc33513NI,
+                    'credit_account_id' => $acc33512NV,
+                    'currency_id' => $commonJ['currency_id'],
+                    'amount_amd' => $interest,
+                    'amount_currency' => $interest,
+                    'comment' => 'Տոկոսի մարում',
+                ]);
+            }
+
+            // ===== Հիմնականի մարում =====
+            if ($principal > 0) {
+                $j = DocumentJournal::create(array_merge($commonJ, [
+                    'document_type' => 'Վարկի մարում',
+                    'amount_amd' => $principal,
+                    'debit_account_id' => $acc33512NV,
+                    'credit_account_id' => $acc33512NV,
+                ]));
+                $created['principal'] = $j;
+
+                $j->transactions()->create([
+                    'date' => $data['operation_date'],
+                    'debit_account_id' => $acc33512NV,
+                    'credit_account_id' => $acc33512NV,
+                    'currency_id' => $commonJ['currency_id'],
+                    'amount_amd' => $principal,
+                    'amount_currency' => $principal,
+                    'comment' => 'Վարկի մարում',
+                ]);
+            }
+
+            // ===== Հարկի գանձում տոկոսի մարումից =====
+            if ($taxInt > 0) {
+                $j = DocumentJournal::create(array_merge($commonJ, [
+                    'document_type' => 'Հարկի գանձում տոկոսի մարումից',
+                    'amount_amd' => $taxInt,
+                    'debit_account_id' => $acc33513NI,
+                    'credit_account_id' => $acc33512NV,
+                ]));
+                $created['tax'] = $j;
+
+                $j->transactions()->create([
+                    'date' => $data['operation_date'],
+                    'debit_account_id' => $acc33513NI,
+                    'credit_account_id' => $acc33512NV,
+                    'currency_id' => $commonJ['currency_id'],
+                    'amount_amd' => $taxInt,
+                    'amount_currency' => $taxInt,
+                    'comment' => 'Հարկի գանձում տոկոսի մարումից',
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'ok',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Repayment posting failed',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
 
 
-    public function loanNdmJournal(Request $request): JsonResponse
+public function loanNdmJournal(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
