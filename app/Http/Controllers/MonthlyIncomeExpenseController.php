@@ -80,8 +80,18 @@ class MonthlyIncomeExpenseController extends Controller
 //            $sheet->unmergeCells(str_replace('$', '', $range));
 //        }
         foreach ($sheet->getMergeCells() as $range) {
-            $sheet->unmergeCells($range); // առանց str_replace
+            // 1) հանում ենք $ նշանները
+            $normalized = str_replace('$', '', $range);
+
+            // 2) skip, եթե colon չկա (պետք է լինի օրինակ A1:B2)
+            if (strpos($normalized, ':') === false) {
+                continue;
+            }
+
+            // 3) այժմ unmerge
+            $sheet->unmergeCells($normalized);
         }
+
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
@@ -108,15 +118,12 @@ class MonthlyIncomeExpenseController extends Controller
 //        }
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
-            if (!isset($rowCodeMap[$row])) {
-                continue;
-            }
+            if (!isset($rowCodeMap[$row])) continue;
 
-            $code = (string)$rowCodeMap[$row];
+            $code    = (string)$rowCodeMap[$row];
             $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
             $currNet = (float)($currBy[$code]['net'] ?? 0.0);
 
-            // Ստուգում ենք՝ արդյո՞ք բջիջը բանաձև ունի
             $cCell = $sheet->getCellByColumnAndRow(3, $row); // C
             $dCell = $sheet->getCellByColumnAndRow(4, $row); // D
 
@@ -127,6 +134,7 @@ class MonthlyIncomeExpenseController extends Controller
                 $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
             }
         }
+
 
         $writer = new XlsWriter($spreadsheet);
         $filename = "monthly_income_expense.xls";
