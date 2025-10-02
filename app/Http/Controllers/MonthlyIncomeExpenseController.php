@@ -86,10 +86,10 @@ class MonthlyIncomeExpenseController extends Controller
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 
-        $sheet->setCellValue('C9', $from);
+        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
         $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yy');
 
-        $sheet->setCellValue('C10', $to);
+        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yy');
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
