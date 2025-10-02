@@ -85,20 +85,47 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
-
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
             if (!isset($rowCodeMap[$row])) {
+                // map-ում չլինելու դեպքում ընդհանրապես չգրենք՝
+                // թողնենք բջիջները ինչպես կային (բանաձևերը, ձևաչափերը կմնան)
                 continue;
             }
 
-            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
-            $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
-            $currNet = (float)($currBy[$code]['net'] ?? 0.0);
+            $code = (string)$rowCodeMap[$row];
 
-            $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
-            $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
+            // Արժեքներ՝ միայն եթե կան տվյալներ
+            $valPrev = isset($prevBy[$code]) ? (float)$prevBy[$code]['net'] : null;
+            $valCurr = isset($currBy[$code]) ? (float)$currBy[$code]['net'] : null;
+
+            // Թիրախ բջիջներ
+            $cellC = $sheet->getCellByColumnAndRow(3, $row); // C$row
+            $cellD = $sheet->getCellByColumnAndRow(4, $row); // D$row
+
+            // 1) Եթե բջիջը բանաձև ունի՝ մի վերագրիր
+            if (!$cellC->isFormula() && $valPrev !== null) {
+                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $valPrev, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
+            }
+            if (!$cellD->isFormula() && $valCurr !== null) {
+                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $valCurr, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
+            }
         }
+
+//        $maxRow = $sheet->getHighestRow();
+//        for ($row = 1; $row <= $maxRow; $row++) {
+//            if (!isset($rowCodeMap[$row])) {
+//                continue;
+//            }
+//
+//            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
+//            $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
+//            $currNet = (float)($currBy[$code]['net'] ?? 0.0);
+//
+//
+//            $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
+//            $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
+//        }
 
         $writer = new XlsWriter($spreadsheet);
         $filename = "monthly_income_expense.xls";
