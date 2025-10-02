@@ -27,6 +27,9 @@ return new class extends Migration
 
             $table->decimal('total_amount', 20, 2)->default(0);                // ընդհանուր գումար (այս դետալ գրառման)
 
+            $table->foreignId('account_id')
+                ->nullable()->constrained('chart_of_accounts')->nullOnDelete();
+
             $table->timestamps();
         });
     }

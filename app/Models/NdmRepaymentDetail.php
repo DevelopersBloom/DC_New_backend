@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class NdmRepaymentDetail extends Model
@@ -21,6 +22,7 @@ class NdmRepaymentDetail extends Model
         'tax_from_penalty_pr',
         'tax_from_penalty_int',
         'total_amount',
+        'account_id',
     ];
 
     protected $casts = [
@@ -38,4 +40,9 @@ class NdmRepaymentDetail extends Model
     {
         return $this->hasOne(DocumentJournal::class, 'ndm_repayment_id');
     }
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'account_id');
+    }
+
 }

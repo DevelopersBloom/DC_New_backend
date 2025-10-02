@@ -360,6 +360,7 @@ class LoanNdmController extends Controller
             'tax_from_penalty_pr'       => 'nullable|numeric|min:0',
             'tax_from_penalty_int'      => 'nullable|numeric|min:0',
             'total_amount'              => 'nullable|numeric|min:0',
+            'account_id'                =>  'nullable|integer|exists:chart_of_accounts,id',
         ]);
 
         $baseJournal = DocumentJournal::with('journalable')->findOrFail($data['document_journal_id']);
@@ -406,6 +407,7 @@ class LoanNdmController extends Controller
                 'tax_from_penalty_pr'       => (float)($data['tax_from_penalty_pr']       ?? 0),
                 'tax_from_penalty_int'      => (float)($data['tax_from_penalty_int']      ?? 0),
                 'total_amount'              => (float)($data['total_amount']              ?? 0),
+                'account_id' => $data['account_id']
             ];
 
             /** @var \App\Models\NdmRepaymentDetail $detail */
