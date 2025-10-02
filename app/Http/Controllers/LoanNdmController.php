@@ -416,7 +416,6 @@ class LoanNdmController extends Controller
             // foreign key-ը կփակցնենք բոլոր ստեղծվող journal-ներին
             $commonJWithFK = $commonJ + ['ndm_repayment_id' => $detail->id];
 
-            // ===== Տոկոսի մարում =====
             if ($interest > 0) {
                 $j = DocumentJournal::create($commonJWithFK + [
                         'document_type'     => 'Տոկոսի մարում',
