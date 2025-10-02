@@ -76,19 +76,9 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-//        foreach ($sheet->getMergeCells() as $range) {
-//            $sheet->unmergeCells(str_replace('$', '', $range));
-//        }
         foreach ($sheet->getMergeCells() as $range) {
-            // Օրինակ range-ը կարող է լինել 'Sheet1!$C$9:$D$9' կամ '$A$1:$A$3'
-            // Վերցնում ենք միայն ամենավերջի A1:B2 հատվածը առանց $ նշանների
-            if (preg_match('/([A-Z]+[0-9]+:[A-Z]+[0-9]+)$/i', str_replace('$', '', $range), $m)) {
-                $clean = $m[1]; // օրինակ 'C9:D9'
-                $sheet->unmergeCells($clean);
-            }
-            // հակառակ դեպքում skip
+            $sheet->unmergeCells(str_replace('$', '', $range));
         }
-
 
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
@@ -96,43 +86,19 @@ class MonthlyIncomeExpenseController extends Controller
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 
-        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
-        $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
-
-        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
-        $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
-//        $maxRow = $sheet->getHighestRow();
-//        for ($row = 1; $row <= $maxRow; $row++) {
-//            if (!isset($rowCodeMap[$row])) {
-//                continue;
-//            }
-//
-//            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
-//            $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
-//            $currNet = (float)($currBy[$code]['net'] ?? 0.0);
-//
-//            $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
-//            $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
-//        }
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
-            if (!isset($rowCodeMap[$row])) continue;
+            if (!isset($rowCodeMap[$row])) {
+                continue;
+            }
 
-            $code    = (string)$rowCodeMap[$row];
+            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
             $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
             $currNet = (float)($currBy[$code]['net'] ?? 0.0);
 
-            $cCell = $sheet->getCellByColumnAndRow(3, $row); // C
-            $dCell = $sheet->getCellByColumnAndRow(4, $row); // D
-
-            if (!$cCell->isFormula()) {
-                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
-            }
-            if (!$dCell->isFormula()) {
-                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
-            }
+            $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
+            $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
         }
-
 
         $writer = new XlsWriter($spreadsheet);
         $filename = "monthly_income_expense.xls";
