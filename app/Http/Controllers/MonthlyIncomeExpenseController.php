@@ -91,18 +91,39 @@ class MonthlyIncomeExpenseController extends Controller
 
         $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
+//        $maxRow = $sheet->getHighestRow();
+//        for ($row = 1; $row <= $maxRow; $row++) {
+//            if (!isset($rowCodeMap[$row])) {
+//                continue;
+//            }
+//
+//            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
+//            $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
+//            $currNet = (float)($currBy[$code]['net'] ?? 0.0);
+//
+//            $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
+//            $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
+//        }
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
             if (!isset($rowCodeMap[$row])) {
                 continue;
             }
 
-            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
+            $code = (string)$rowCodeMap[$row];
             $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
             $currNet = (float)($currBy[$code]['net'] ?? 0.0);
 
-            $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
-            $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
+            // Ստուգում ենք՝ արդյո՞ք բջիջը բանաձև ունի
+            $cCell = $sheet->getCellByColumnAndRow(3, $row); // C
+            $dCell = $sheet->getCellByColumnAndRow(4, $row); // D
+
+            if (!$cCell->isFormula()) {
+                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
+            }
+            if (!$dCell->isFormula()) {
+                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
+            }
         }
 
         $writer = new XlsWriter($spreadsheet);
