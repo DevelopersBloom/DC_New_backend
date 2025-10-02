@@ -10,39 +10,55 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class DocumentJournal extends Model
 {
     use HasFactory;
-    protected $table = 'documents_journal';
-    const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
-    const LOAN_NDM_TYPE = 'Ներգրավված Դրամական Միջոցներ';
-    const LOAN_ATTRACTION = 'Վարկի ներգրավում';
-    CONST EFFECTIVE_RATE = 'Արդյունավետ տոկոսի հաշվարկում';
-    CONST INTEREST_RATE = 'Տոկոսի հաշվարկում';
 
+    protected $table = 'documents_journal';
+
+    const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
+    const LOAN_NDM_TYPE      = 'Ներգրավված Դրամական Միջոցներ';
+    const LOAN_ATTRACTION    = 'Վարկի ներգրավում';
+    const EFFECTIVE_RATE     = 'Արդյունավետ տոկոսի հաշվարկում';
+    const INTEREST_RATE      = 'Տոկոսի հաշվարկում';
 
     protected $fillable = [
         'date',
+        'operation_number',
+        'operation_name',
+
         'document_number',
         'document_type',
-        'currency_id',
+
         'amount_amd',
+        'currency_id',
         'amount_currency',
+
         'partner_id',
         'credit_partner_id',
         'debit_account_id',
         'credit_account_id',
+        'ndm_repayment_id',
+
+        'cash',
+        'pawnshop_id',
+
         'comment',
         'user_id',
+
         'journalable_type',
         'journalable_id',
     ];
 
     protected $casts = [
-        'date' => 'date:Y-m-d',
+        'date'                       => 'date:Y-m-d',
+        'cash'                       => 'boolean',
+        'amount_amd'                 => 'decimal:2',
+        'amount_currency'            => 'decimal:2',
     ];
 
     public function journalable(): MorphTo
     {
         return $this->morphTo();
     }
+
     public function transactions()
     {
         return $this->morphMany(Transaction::class, 'transactionable');
@@ -57,10 +73,12 @@ class DocumentJournal extends Model
     {
         return $this->belongsTo(User::class);
     }
+
     public function partner(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'partner_id');
     }
+
     public function creditPartner(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'credit_partner_id');
@@ -74,6 +92,15 @@ class DocumentJournal extends Model
     public function creditAccount(): BelongsTo
     {
         return $this->belongsTo(ChartOfAccount::class, 'credit_account_id');
+    }
+
+    public function pawnshop(): BelongsTo
+    {
+        return $this->belongsTo(Pawnshop::class, 'pawnshop_id');
+    }
+    public function ndmRepayment(): BelongsTo
+    {
+        return $this->belongsTo(NdmRepaymentDetail::class, 'ndm_repayment_id');
     }
 
 }
