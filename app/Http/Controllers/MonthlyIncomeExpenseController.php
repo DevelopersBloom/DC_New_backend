@@ -76,10 +76,12 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
+//        foreach ($sheet->getMergeCells() as $range) {
+//            $sheet->unmergeCells(str_replace('$', '', $range));
+//        }
         foreach ($sheet->getMergeCells() as $range) {
-            $sheet->unmergeCells(str_replace('$', '', $range));
+            $sheet->unmergeCells($range); // առանց str_replace
         }
-
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
