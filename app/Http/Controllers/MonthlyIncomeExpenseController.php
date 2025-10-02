@@ -86,6 +86,8 @@ class MonthlyIncomeExpenseController extends Controller
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 
+        $sheet->setCellValue('C9', $from->toDateString());
+        $sheet->setCellValue('C10', $to->toDateString());
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
             if (!isset($rowCodeMap[$row])) {
