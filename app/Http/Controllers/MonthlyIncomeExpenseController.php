@@ -76,9 +76,9 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-        foreach ($sheet->getMergeCells() as $range) {
-            $sheet->unmergeCells(str_replace('$', '', $range));
-        }
+//        foreach ($sheet->getMergeCells() as $range) {
+//            $sheet->unmergeCells(str_replace('$', '', $range));
+//        }
 
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
