@@ -79,6 +79,25 @@ class MonthlyIncomeExpenseController extends Controller
 //        foreach ($sheet->getMergeCells() as $range) {
 //            $sheet->unmergeCells(str_replace('$', '', $range));
 //        }
+        foreach ($sheet->getMergeCells() as $range) {
+            // Հեռացնենք թերթի անունը, եթե կա (Sheet1!A1:B2 -> A1:B2)
+            $range = preg_replace('/^[^!]+!/', '', $range);
+            // Հեռացնենք $ նշանները ($A$1:$B$2 -> A1:B2)
+            $range = str_replace('$', '', $range);
+
+            // Մի փորձիր unmerge անել, եթե range-ը սինգլ բջիջ է
+            if (strpos($range, ':') === false) {
+                continue;
+            }
+
+            // Վավերացնենք, որ երկու կողմերն էլ ճիշտ են
+            [$start, $end] = explode(':', $range, 2);
+            // Coordinate::coordinateFromString կստուգի ֆորմատը, կ.throw անի սխալի դեպքում
+            Coordinate::coordinateFromString($start);
+            Coordinate::coordinateFromString($end);
+
+            $sheet->unmergeCells($range);
+        }
 
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
