@@ -80,17 +80,15 @@ class MonthlyIncomeExpenseController extends Controller
 //            $sheet->unmergeCells(str_replace('$', '', $range));
 //        }
         foreach ($sheet->getMergeCells() as $range) {
-            // 1) հանում ենք $ նշանները
-            $normalized = str_replace('$', '', $range);
-
-            // 2) skip, եթե colon չկա (պետք է լինի օրինակ A1:B2)
-            if (strpos($normalized, ':') === false) {
-                continue;
+            // Օրինակ range-ը կարող է լինել 'Sheet1!$C$9:$D$9' կամ '$A$1:$A$3'
+            // Վերցնում ենք միայն ամենավերջի A1:B2 հատվածը առանց $ նշանների
+            if (preg_match('/([A-Z]+[0-9]+:[A-Z]+[0-9]+)$/i', str_replace('$', '', $range), $m)) {
+                $clean = $m[1]; // օրինակ 'C9:D9'
+                $sheet->unmergeCells($clean);
             }
-
-            // 3) այժմ unmerge
-            $sheet->unmergeCells($normalized);
+            // հակառակ դեպքում skip
         }
+
 
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
