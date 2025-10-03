@@ -185,8 +185,12 @@ class LoanNdmController extends Controller
                 $amount  = round((float)$data['amount'], 2);
                 $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
 
-                $acc102101 = ChartOfAccount::idByCode('102101') ?? 1;
-                $acc33512NV = ChartOfAccount::idByCode('33512NV') ?? 1;
+                $acc102101 = ChartOfAccount::idByCode('102101');
+                $acc33512NV = ChartOfAccount::idByCode('33512NV');
+
+                $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
+                $creditPartnerId = $loan->account_id;
+                if (!$acc102101 || $acc33512NV) return 'One of 102101, 33512NV not wxist';
 
                 $journal = $loan->journals()->create([
                     'date'            => $date,
@@ -194,7 +198,8 @@ class LoanNdmController extends Controller
                     'document_type'   => DocumentJournal::LOAN_ATTRACTION,
                     'currency_id'     => $loan->currency_id,
                     'amount_amd'      => $amount,
-                    'partner_id'      => null,
+                    'partner_id'      => $partnerId,
+                    'credit_partner_id' => $creditPartnerId,
                     'comment'         => $data['comment'] ?? null,
                     'debit_account_id' => $acc102101,
                     'credit_account_id' => $acc33512NV,
@@ -207,11 +212,12 @@ class LoanNdmController extends Controller
                     'document_type'      => Transaction::LOAN_ATTRACTION,
 
                     'debit_account_id'   => $acc102101,
+                    'debit_partner_id' => $partnerId,
                     'debit_currency_id'  => $loan->currency_id,
 
                     'credit_account_id'  => $acc33512NV,
                     'credit_currency_id' => $loan->currency_id,
-                    'credit_partner_id'  => null,
+                    'credit_partner_id'  => $creditPartnerId,
 
                     'amount_amd'         => $amount,
 
