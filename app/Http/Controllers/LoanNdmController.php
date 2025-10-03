@@ -450,6 +450,7 @@ class LoanNdmController extends Controller
 
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
+                    'document_type'     => 'Տոկոսի մարում',
                     'debit_account_id'  => $acc33513NI,
                     'credit_account_id' => $acc102101,
                     'currency_id'       => $commonJ['currency_id'],
@@ -476,6 +477,7 @@ class LoanNdmController extends Controller
 
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
+                    'document_type'     => 'Վարկի մարում',
                     'debit_account_id'  => $loanAccountId,
                     'credit_account_id' => $acc102101,
                     'currency_id'       => $commonJ['currency_id'],
@@ -502,6 +504,7 @@ class LoanNdmController extends Controller
 
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
+                    'document_type'     => 'Հարկի գանձում տոկոսի մարումից',
                     'debit_account_id'  => $acc33513NI,
                     'credit_account_id' => $acc391021,
                     'currency_id'       => $commonJ['currency_id'],
