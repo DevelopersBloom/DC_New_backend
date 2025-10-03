@@ -186,11 +186,12 @@ class LoanNdmController extends Controller
                 $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
 
                 $acc102101 = ChartOfAccount::idByCode('102101');
-                $acc33512NV = ChartOfAccount::idByCode('33512NV');
-
+              //  $acc33512NV = ChartOfAccount::idByCode('33512NV');
+                $loanAccountId = $loan->account_id;
                 $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
-                $creditPartnerId = $loan->account_id;
-                if (!$acc102101 || $acc33512NV) return 'One of 102101, 33512NV not wxist';
+                $creditPartnerId = $loan->client_id;
+
+                if (!$acc102101 || $loanAccountId) return 'One of 102101, 33512NV not wxist';
 
                 $journal = $loan->journals()->create([
                     'date'            => $date,
@@ -202,7 +203,7 @@ class LoanNdmController extends Controller
                     'credit_partner_id' => $creditPartnerId,
                     'comment'         => $data['comment'] ?? null,
                     'debit_account_id' => $acc102101,
-                    'credit_account_id' => $acc33512NV,
+                    'credit_account_id' => $loanAccountId,
                     'user_id'         => auth()->id(),
                 ]);
 
@@ -215,7 +216,7 @@ class LoanNdmController extends Controller
                     'debit_partner_id' => $partnerId,
                     'debit_currency_id'  => $loan->currency_id,
 
-                    'credit_account_id'  => $acc33512NV,
+                    'credit_account_id'  => $loanAccountId,
                     'credit_currency_id' => $loan->currency_id,
                     'credit_partner_id'  => $creditPartnerId,
 
@@ -290,10 +291,13 @@ class LoanNdmController extends Controller
         $acc70315   = ChartOfAccount::idByCode('70315') ?? 1;
         $acc33512   = ChartOfAccount::idByCode('33512') ?? 1;
         $acc33513NI = ChartOfAccount::idByCode('33513NI') ?? 1;
+        if(!$acc70315 || !$acc33512 || !$acc33513NI ) return "One of the 70315,acc33512,33513NI accounts not exist";
 
         DB::beginTransaction();
         try {
             $loan->calc_date = $data['calculation_date'];
+            $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
+            $creditPartnerId = $loan->client_id;
             $loan->save();
 
             $common = [
@@ -314,8 +318,8 @@ class LoanNdmController extends Controller
                     'amount_amd'       => $data['effective_interest_amount'],
                     'debit_account_id' => $acc70315,
                     'credit_account_id'=> $acc33512,
-                    'credit_partner_id'=> null,
-                    'debit_partner_id'=> null,
+                    'credit_partner_id'=> $partnerId,
+                    'debit_partner_id'=> $creditPartnerId,
                     'document_type'    => DocumentJournal::EFFECTIVE_RATE,
 
                 ]));
@@ -326,8 +330,8 @@ class LoanNdmController extends Controller
                     'amount_amd'       => $data['interest_amount'],
                     'debit_account_id' => $acc33512,
                     'credit_account_id'=> $acc33513NI,
-                    'credit_partner_id'=> null,
-                    'debit_partner_id'=> null,
+                    'credit_partner_id'=> $partnerId,
+                    'debit_partner_id'=> $creditPartnerId,
                     'document_type'    => DocumentJournal::INTEREST_RATE,
                 ]));
             }
@@ -380,18 +384,28 @@ class LoanNdmController extends Controller
             return response()->json(['message' => 'Related LoanNdm not found.'], 404);
         }
 
-        $acc33513NI = ChartOfAccount::idByCode('33513NI') ?? 1;
-        $acc33512NV = ChartOfAccount::idByCode('33512NV') ?? 1;
+        $acc33513NI = ChartOfAccount::idByCode('33513NI');
+        $acc33512NV = ChartOfAccount::idByCode('33512NV');
+        $acc102101 = ChartOfAccount::idByCode('102101');
+        $acc391021 = ChartOfAccount::idByCode('391021');
+
+        if (!$acc33513NI || !$acc102101 || !$acc391021) return "One of the 391021,33513NI,102101 not exist";
 
         $principal = (float)($data['principal_amount'] ?? 0);
         $interest  = (float)($data['interest_amount'] ?? 0);
         $taxInt    = (float)($data['tax_from_interest'] ?? 0);
 
 
-        return DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt, $acc33513NI, $acc33512NV) {
+        return DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt, $acc33513NI, $acc33512NV, $acc102101,$acc391021) {
             $loan->calc_date = $data['operation_date'];
             $loan->save();
+
+            $lombardId = Client::where('company_name','Diamond Credit')->first()->id;
+            $clientId = $loan->client_id;
+            $loanAccountId = $loan->account_id;
+
             $documentNumber = (DocumentJournal::max('document_number') ?? 0) + 1;
+            $creditAccountId= $loan->account_id;
             $commonJ = [
                 'date'             => $data['operation_date'],
                 'operation_number' => (DocumentJournal::max('operation_number') ?? 0) + 1,
@@ -422,23 +436,28 @@ class LoanNdmController extends Controller
             // foreign key-ը կփակցնենք բոլոր ստեղծվող journal-ներին
             $commonJWithFK = $commonJ + ['ndm_repayment_id' => $detail->id];
 
+
             if ($interest > 0) {
                 $j = DocumentJournal::create($commonJWithFK + [
                         'document_type'     => 'Տոկոսի մարում',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $interest,
                         'debit_account_id'  => $acc33513NI,
-                        'credit_account_id' => $acc33512NV,
+                        'credit_account_id' => $acc102101,
+                        'partner_id' => $clientId,
+                        'credit_partner_id' => $lombardId,
                     ]);
 
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
                     'debit_account_id'  => $acc33513NI,
-                    'credit_account_id' => $acc33512NV,
+                    'credit_account_id' => $acc102101,
                     'currency_id'       => $commonJ['currency_id'],
                     'amount_amd'        => $interest,
                     'amount_currency'   => $interest,
                     'comment'           => 'Տոկոսի մարում',
+                    'debit_partner_id' => $clientId,
+                    'credit_partner_id' => $lombardId,
                 ]);
                 $documentNumber++;
             }
@@ -449,18 +468,22 @@ class LoanNdmController extends Controller
                         'document_type'     => 'Վարկի մարում',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $principal,
-                        'debit_account_id'  => $acc33512NV,
-                        'credit_account_id' => $acc33512NV,
+                        'debit_account_id'  => $loanAccountId,
+                        'credit_account_id' => $acc102101,
+                        'partner_id' => $clientId,
+                        'credit_partner_id' => $lombardId,
                     ]);
 
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
-                    'debit_account_id'  => $acc33512NV,
-                    'credit_account_id' => $acc33512NV,
+                    'debit_account_id'  => $loanAccountId,
+                    'credit_account_id' => $acc102101,
                     'currency_id'       => $commonJ['currency_id'],
                     'amount_amd'        => $principal,
                     'amount_currency'   => $principal,
                     'comment'           => 'Վարկի մարում',
+                    'debit_partner_id' => $clientId,
+                    'credit_partner_id' => $lombardId,
                 ]);
                 $documentNumber++;
             }
@@ -472,17 +495,21 @@ class LoanNdmController extends Controller
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $taxInt,
                         'debit_account_id'  => $acc33513NI,
-                        'credit_account_id' => $acc33512NV,
+                        'credit_account_id' => $acc391021,
+                        'partner_id' => $clientId,
+                        'credit_partner_id' => $lombardId,
                     ]);
 
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
                     'debit_account_id'  => $acc33513NI,
-                    'credit_account_id' => $acc33512NV,
+                    'credit_account_id' => $acc391021,
                     'currency_id'       => $commonJ['currency_id'],
                     'amount_amd'        => $taxInt,
                     'amount_currency'   => $taxInt,
                     'comment'           => 'Հարկի գանձում տոկոսի մարումից',
+                    'debit_partner_id' => $clientId,
+                    'credit_partner_id' => $lombardId,
                 ]);
                 $documentNumber++;
             }
