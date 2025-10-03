@@ -11,6 +11,7 @@ class LoanNdmInterestService
     {
         $from = Carbon::parse($fromDate)->startOfDay();
         $to   = Carbon::parse($toDate)->startOfDay();
+        dd($from,$to);
         if ($to->lt($from)) {
             throw new \InvalidArgumentException('toDate must be >= fromDate');
         }
