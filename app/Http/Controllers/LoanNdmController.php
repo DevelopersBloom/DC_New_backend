@@ -405,6 +405,8 @@ class LoanNdmController extends Controller
             $loanAccountId = $loan->account_id;
 
             $documentNumber = (DocumentJournal::max('document_number') ?? 0) + 1;
+            $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
+
             $creditAccountId= $loan->account_id;
             $commonJ = [
                 'date'             => $data['operation_date'],
@@ -451,6 +453,7 @@ class LoanNdmController extends Controller
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
                     'document_type'     => 'Տոկոսի մարում',
+                    'document_number' => $transactionDocumentNumber,
                     'debit_account_id'  => $acc33513NI,
                     'credit_account_id' => $acc102101,
                     'currency_id'       => $commonJ['currency_id'],
@@ -461,6 +464,7 @@ class LoanNdmController extends Controller
                     'credit_partner_id' => $lombardId,
                 ]);
                 $documentNumber++;
+                $transactionDocumentNumber++;
             }
 
             // ===== Հիմնականի մարում =====
@@ -478,6 +482,7 @@ class LoanNdmController extends Controller
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
                     'document_type'     => 'Վարկի մարում',
+                    'document_number' => $transactionDocumentNumber,
                     'debit_account_id'  => $loanAccountId,
                     'credit_account_id' => $acc102101,
                     'currency_id'       => $commonJ['currency_id'],
@@ -488,6 +493,7 @@ class LoanNdmController extends Controller
                     'credit_partner_id' => $lombardId,
                 ]);
                 $documentNumber++;
+                $transactionDocumentNumber++;
             }
 
             // ===== Հարկի գանձում տոկոսի մարումից =====
@@ -505,6 +511,7 @@ class LoanNdmController extends Controller
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
                     'document_type'     => 'Հարկի գանձում տոկոսի մարումից',
+                    'document_number' => $transactionDocumentNumber,
                     'debit_account_id'  => $acc33513NI,
                     'credit_account_id' => $acc391021,
                     'currency_id'       => $commonJ['currency_id'],
@@ -515,6 +522,7 @@ class LoanNdmController extends Controller
                     'credit_partner_id' => $lombardId,
                 ]);
                 $documentNumber++;
+                $transactionDocumentNumber++;
             }
 
             return response()->json(['status' => 'ok']);
