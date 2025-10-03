@@ -529,7 +529,17 @@ class LoanNdmController extends Controller
         });
     }
 
+    public function remainingAmount(int $loanId)
+    {
+        /** @var \App\Models\LoanNdm $loan */
+        $loan = \App\Models\LoanNdm::with('journals')->findOrFail($loanId);
 
+        $remaining = $loan->remainingCapacity();
+
+        return response()->json([
+            'amount' => $remaining,
+        ]);
+    }
 
 public function loanNdmJournal(Request $request): JsonResponse
     {

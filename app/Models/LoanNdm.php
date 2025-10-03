@@ -135,4 +135,26 @@ class LoanNdm extends Model
             'user_id'          => auth()->user()->id,
         ];
     }
+    public function remainingCapacity(?string $toDate = null): float
+    {
+        $journalIds = $this->journals()->pluck('id');
+
+        $tx = \App\Models\Transaction::query()
+            ->whereIn('document_journal_id', $journalIds)
+            ->when($toDate, fn($q) => $q->whereDate('date', '<=', $toDate));
+
+        $utilized = (float) (clone $tx)
+            ->where('credit_account_id', $this->account_id)
+            ->sum('amount_amd');
+
+        $repaidPrincipal = (float) (clone $tx)
+            ->where('debit_account_id', $this->account_id)
+            ->sum('amount_amd');
+
+        $drawnPrincipal = max(0.0, $utilized - $repaidPrincipal);
+
+        $remaining = (float) $this->amount - $drawnPrincipal;
+
+        return max(0.0, round($remaining, 2));
+    }
 }
