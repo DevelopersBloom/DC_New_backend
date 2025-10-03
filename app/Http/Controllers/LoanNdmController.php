@@ -158,7 +158,7 @@ class LoanNdmController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function attachLoanNdm(Request $request): JsonResponse
+    public function attachLoanNdm(Request $request)
     {
         $data = $request->validate([
             'document_journal_id' => 'required|integer|exists:documents_journal,id',
