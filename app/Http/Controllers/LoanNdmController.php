@@ -529,17 +529,28 @@ class LoanNdmController extends Controller
         });
     }
 
-    public function remainingAmount(int $loanId)
+    public function remainingAmount(int $journalId)
     {
-        /** @var \App\Models\LoanNdm $loan */
-        $loan = \App\Models\LoanNdm::with('journals')->findOrFail($loanId);
+        $journal = \App\Models\DocumentJournal::with('journalable')->findOrFail($journalId);
+
+        /** @var \App\Models\LoanNdm|null $loan */
+        $loan = $journal->journalable instanceof \App\Models\LoanNdm
+            ? $journal->journalable
+            : \App\Models\LoanNdm::find($journal->journalable_id);
+
+        if (!$loan) {
+            return response()->json(['message' => 'Related LoanNdm not found'], 404);
+        }
 
         $remaining = $loan->remainingCapacity();
 
         return response()->json([
-            'amount' => $remaining,
+            'loan_id'   => $loan->id,
+            'journal_id'=> $journal->id,
+            'amount'    => $remaining,
         ]);
     }
+
 
 public function loanNdmJournal(Request $request): JsonResponse
     {
