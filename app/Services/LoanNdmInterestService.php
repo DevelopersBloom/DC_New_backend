@@ -162,7 +162,6 @@ class LoanNdmInterestService
             ->get()
             ->pluck('transactions')
             ->flatten();
-dd($to,$txs);
         // Կառուցում ենք իրադարձություններ {date, delta}
         $events = collect();
         foreach ($txs as $trx) {
