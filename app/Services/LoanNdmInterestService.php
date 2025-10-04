@@ -146,9 +146,7 @@ class LoanNdmInterestService
         ];
     }
 
-    protected function weightedYearFractions(
-        LoanNdm  $loan,
-        Carbon   $from,
+    protected function weightedYearFractions(LoanNdm  $loan, Carbon $from,
         Carbon   $to,
         callable $baseDaysFunc,
         ?int     $fixedBaseDays
@@ -166,9 +164,9 @@ class LoanNdmInterestService
         $events = collect();
         foreach ($txs as $trx) {
             $d = Carbon::parse($trx->date)->startOfDay();
-            if ((int)$trx->credit_account_id === (int)$loan->account_id) {
+            if ((int)$trx->debit_account_id === (int)$loan->account_id) {
                 $events->push(['date' => $d, 'delta' => (float)$trx->amount_amd]);   // utilization ↑
-            } elseif ((int)$trx->debit_account_id === (int)$loan->account_id) {
+            } elseif (((int)$trx->credit_account_id === (int)$loan->account_id)) {
                 $events->push(['date' => $d, 'delta' => -(float)$trx->amount_amd]);  // repayment ↓
             }
         }

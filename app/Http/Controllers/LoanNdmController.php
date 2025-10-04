@@ -185,8 +185,8 @@ class LoanNdmController extends Controller
                 $amount  = round((float)$data['amount'], 2);
                 $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
 
-                $acc102101 = ChartOfAccount::idByCode('102101');
-              //  $acc33512NV = ChartOfAccount::idByCode('33512NV');
+//                $acc102101 = ChartOfAccount::idByCode('102101');
+                $acc33512NV = ChartOfAccount::idByCode('33512NV');
                 $loanAccountId = $loan->account_id;
                 $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
                 $creditPartnerId = $loan->client_id;
@@ -202,8 +202,8 @@ class LoanNdmController extends Controller
                     'partner_id'      => $partnerId,
                     'credit_partner_id' => $creditPartnerId,
                     'comment'         => $data['comment'] ?? null,
-                    'debit_account_id' => $acc102101,
-                    'credit_account_id' => $loanAccountId,
+                    'debit_account_id' => $loanAccountId,
+                    'credit_account_id' => $acc33512NV,
                     'user_id'         => auth()->id(),
                 ]);
 
@@ -212,11 +212,11 @@ class LoanNdmController extends Controller
                     'document_number'    => $docNum,
                     'document_type'      => Transaction::LOAN_ATTRACTION,
 
-                    'debit_account_id'   => $acc102101,
+                    'debit_account_id'   => $loanAccountId,
                     'debit_partner_id' => $partnerId,
                     'debit_currency_id'  => $loan->currency_id,
 
-                    'credit_account_id'  => $loanAccountId,
+                    'credit_account_id'  => $acc33512NV,
                     'credit_currency_id' => $loan->currency_id,
                     'credit_partner_id'  => $creditPartnerId,
 
@@ -299,13 +299,22 @@ class LoanNdmController extends Controller
             $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
             $creditPartnerId = $loan->client_id;
             $loan->save();
+            $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
 
-            $common = [
+//            $common = [
+//                'date'             => $data['operation_date'],
+//                'currency_id'      => $baseJournal->currency_id ?? null,
+//                'user_id'          => Auth::id() ?? $baseJournal->user_id,
+//                'journalable_type' => $baseJournal->journalable_type,
+//                'journalable_id'   => $baseJournal->journalable_id,
+//                'comment'          => $data['comment'] ?? null,
+//            ];
+            $commonTransaction = [
                 'date'             => $data['operation_date'],
                 'currency_id'      => $baseJournal->currency_id ?? null,
                 'user_id'          => Auth::id() ?? $baseJournal->user_id,
-                'journalable_type' => $baseJournal->journalable_type,
-                'journalable_id'   => $baseJournal->journalable_id,
+                'journalable_type' => LoanNdm::class,
+                'journalable_id'   => $loan->id,
                 'comment'          => $data['comment'] ?? null,
             ];
 
@@ -314,32 +323,51 @@ class LoanNdmController extends Controller
             // Journal #1 — Արդյունավետ տոկոսի հաշվարկում, Տոկ
             // Դեբետ 70315 (ծախս), Կրեդիտ 33512 (վարկատու)
             if ($data['effective_interest_amount'] > 0) {
-                $created['effective'] = DocumentJournal::create(array_merge($common, [
+                $created['effective'] = Transaction::create([array_merge($commonTransaction),[
                     'amount_amd'       => $data['effective_interest_amount'],
                     'debit_account_id' => $acc70315,
                     'credit_account_id'=> $acc33512,
                     'credit_partner_id'=> $partnerId,
                     'debit_partner_id'=> $creditPartnerId,
                     'document_type'    => DocumentJournal::EFFECTIVE_RATE,
-
-                ]));
+                    'documentNumber' => $transactionDocumentNumber,
+                ]]);
+                $transactionDocumentNumber++;
+//                $created['effective'] = DocumentJournal::create(array_merge($common, [
+//                    'amount_amd'       => $data['effective_interest_amount'],
+//                    'debit_account_id' => $acc70315,
+//                    'credit_account_id'=> $acc33512,
+//                    'credit_partner_id'=> $partnerId,
+//                    'debit_partner_id'=> $creditPartnerId,
+//                    'document_type'    => DocumentJournal::EFFECTIVE_RATE,
+//
+//                ]));
             }
 
             if ($data['interest_amount'] > 0) {
-                $created['interest'] = DocumentJournal::create(array_merge($common, [
+                $created['interest'] = Transaction::create([array_merge($commonTransaction),[
                     'amount_amd'       => $data['interest_amount'],
                     'debit_account_id' => $acc33512,
                     'credit_account_id'=> $acc33513NI,
                     'credit_partner_id'=> $partnerId,
                     'debit_partner_id'=> $creditPartnerId,
                     'document_type'    => DocumentJournal::INTEREST_RATE,
-                ]));
+                    'documentNumber' => $transactionDocumentNumber,
+                ]]);
+                $transactionDocumentNumber++;
+//                $created['interest'] = DocumentJournal::create(array_merge($common, [
+//                    'amount_amd'       => $data['interest_amount'],
+//                    'debit_account_id' => $acc33512,
+//                    'credit_account_id'=> $acc33513NI,
+//                    'credit_partner_id'=> $partnerId,
+//                    'debit_partner_id'=> $creditPartnerId,
+//                    'document_type'    => DocumentJournal::INTEREST_RATE,
+//                ]));
             }
-
             DB::commit();
 
             return response()->json([
-                'status'          => 'ok',
+                'status' => 'ok',
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -397,8 +425,8 @@ class LoanNdmController extends Controller
 
 
         return DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt, $acc33513NI, $acc33512NV, $acc102101,$acc391021) {
-            $loan->calc_date = $data['operation_date'];
-            $loan->save();
+            //$loan->calc_date = $data['operation_date'];
+            //$loan->save();
 
             $lombardId = Client::where('company_name','Diamond Credit')->first()->id;
             $clientId = $loan->client_id;
