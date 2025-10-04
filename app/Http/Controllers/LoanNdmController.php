@@ -263,6 +263,120 @@ class LoanNdmController extends Controller
         return "Something went wrong";
     }
 
+//    public function postInterest(Request $request)
+//    {
+//        $data = $request->validate([
+//            'document_journal_id'       => 'required|integer|exists:documents_journal,id',
+//            'operation_date'            => 'required|date',
+//            'calculation_date'          => 'required|date',
+//            'interest_amount'           => 'required|numeric|min:0',
+//            'effective_interest_amount' => 'required|numeric|min:0',
+//            'comment'                   => 'nullable|string',
+//        ]);
+//
+//        $baseJournal = DocumentJournal::with('journalable')->findOrFail($data['document_journal_id']);
+//
+//        /** @var LoanNdm|null $loan */
+//        $loan = $baseJournal->journalable instanceof LoanNdm
+//            ? $baseJournal->journalable
+//            : LoanNdm::find($baseJournal->journalable_id);
+//
+//        if (!$loan) {
+//            return response()->json(['message' => 'Related LoanNdm not found for this journal.'], 404);
+//        }
+//
+//        if ($data['interest_amount'] == 0 && $data['effective_interest_amount'] == 0) {
+//            return response()->json(['message' => 'Both interest amounts are zero; nothing to journal.'], 422);
+//        }
+//        $acc70315   = ChartOfAccount::idByCode('70315') ?? 1;
+//        $acc33512   = ChartOfAccount::idByCode('33512') ?? 1;
+//        $acc33513NI = ChartOfAccount::idByCode('33513NI') ?? 1;
+//        if(!$acc70315 || !$acc33512 || !$acc33513NI ) return "One of the 70315,acc33512,33513NI accounts not exist";
+//
+//        DB::beginTransaction();
+//        try {
+//            $loan->calc_date = $data['calculation_date'];
+//            $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
+//            $creditPartnerId = $loan->client_id;
+//            $loan->save();
+//            $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
+//
+////            $common = [
+////                'date'             => $data['operation_date'],
+////                'currency_id'      => $baseJournal->currency_id ?? null,
+////                'user_id'          => Auth::id() ?? $baseJournal->user_id,
+////                'journalable_type' => $baseJournal->journalable_type,
+////                'journalable_id'   => $baseJournal->journalable_id,
+////                'comment'          => $data['comment'] ?? null,
+////            ];
+//            $commonTransaction = [
+//                'date'             => $data['operation_date'],
+//                'currency_id'      => $baseJournal->currency_id ?? null,
+//                'user_id'          => Auth::id() ?? $baseJournal->user_id,
+//                'journalable_type' => LoanNdm::class,
+//                'journalable_id'   => $loan->id,
+//                'comment'          => $data['comment'] ?? null,
+//            ];
+//
+//            $created = [];
+//
+//            // Journal #1 — Արդյունավետ տոկոսի հաշվարկում, Տոկ
+//            // Դեբետ 70315 (ծախս), Կրեդիտ 33512 (վարկատու)
+//            if ($data['effective_interest_amount'] > 0) {
+//                $created['effective'] = Transaction::create([array_merge($commonTransaction),[
+//                    'amount_amd'       => $data['effective_interest_amount'],
+//                    'debit_account_id' => $acc70315,
+//                    'credit_account_id'=> $acc33512,
+//                    'credit_partner_id'=> $partnerId,
+//                    'debit_partner_id'=> $creditPartnerId,
+//                    'document_type'    => DocumentJournal::EFFECTIVE_RATE,
+//                    'documentNumber' => $transactionDocumentNumber,
+//                ]]);
+//                $transactionDocumentNumber++;
+////                $created['effective'] = DocumentJournal::create(array_merge($common, [
+////                    'amount_amd'       => $data['effective_interest_amount'],
+////                    'debit_account_id' => $acc70315,
+////                    'credit_account_id'=> $acc33512,
+////                    'credit_partner_id'=> $partnerId,
+////                    'debit_partner_id'=> $creditPartnerId,
+////                    'document_type'    => DocumentJournal::EFFECTIVE_RATE,
+////
+////                ]));
+//            }
+//
+//            if ($data['interest_amount'] > 0) {
+//                $created['interest'] = Transaction::create([array_merge($commonTransaction),[
+//                    'amount_amd'       => $data['interest_amount'],
+//                    'debit_account_id' => $acc33512,
+//                    'credit_account_id'=> $acc33513NI,
+//                    'credit_partner_id'=> $partnerId,
+//                    'debit_partner_id'=> $creditPartnerId,
+//                    'document_type'    => DocumentJournal::INTEREST_RATE,
+//                    'documentNumber' => $transactionDocumentNumber,
+//                ]]);
+//                $transactionDocumentNumber++;
+////                $created['interest'] = DocumentJournal::create(array_merge($common, [
+////                    'amount_amd'       => $data['interest_amount'],
+////                    'debit_account_id' => $acc33512,
+////                    'credit_account_id'=> $acc33513NI,
+////                    'credit_partner_id'=> $partnerId,
+////                    'debit_partner_id'=> $creditPartnerId,
+////                    'document_type'    => DocumentJournal::INTEREST_RATE,
+////                ]));
+//            }
+//            DB::commit();
+//
+//            return response()->json([
+//                'status' => 'ok',
+//            ]);
+//        } catch (\Throwable $e) {
+//            DB::rollBack();
+//            return response()->json([
+//                'message' => 'Failed to add journals',
+//                'error'   => $e->getMessage(),
+//            ], 500);
+//        }
+//    }
     public function postInterest(Request $request)
     {
         $data = $request->validate([
@@ -285,98 +399,91 @@ class LoanNdmController extends Controller
             return response()->json(['message' => 'Related LoanNdm not found for this journal.'], 404);
         }
 
-        if ($data['interest_amount'] == 0 && $data['effective_interest_amount'] == 0) {
-            return response()->json(['message' => 'Both interest amounts are zero; nothing to journal.'], 422);
+        if ((float)$data['interest_amount'] == 0 && (float)$data['effective_interest_amount'] == 0) {
+            return response()->json(['message' => 'Both interest amounts are zero; nothing to post.'], 422);
         }
-        $acc70315   = ChartOfAccount::idByCode('70315') ?? 1;
-        $acc33512   = ChartOfAccount::idByCode('33512') ?? 1;
-        $acc33513NI = ChartOfAccount::idByCode('33513NI') ?? 1;
-        if(!$acc70315 || !$acc33512 || !$acc33513NI ) return "One of the 70315,acc33512,33513NI accounts not exist";
+
+        $acc70315   = ChartOfAccount::idByCode('70315');    // ծախս
+        $acc33512   = ChartOfAccount::idByCode('33512');    // պարտք վարկատուին
+        $acc33513NI = ChartOfAccount::idByCode('33513NI');  // հաշվարկված տոկոսներ
+        if (!$acc70315 || !$acc33512 || !$acc33513NI) {
+            return response()->json(['message' => 'One of the accounts 70315, 33512, 33513NI does not exist'], 422);
+        }
 
         DB::beginTransaction();
         try {
+            // update calc date
             $loan->calc_date = $data['calculation_date'];
-            $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
-            $creditPartnerId = $loan->client_id;
             $loan->save();
-            $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
 
-//            $common = [
-//                'date'             => $data['operation_date'],
-//                'currency_id'      => $baseJournal->currency_id ?? null,
-//                'user_id'          => Auth::id() ?? $baseJournal->user_id,
-//                'journalable_type' => $baseJournal->journalable_type,
-//                'journalable_id'   => $baseJournal->journalable_id,
-//                'comment'          => $data['comment'] ?? null,
-//            ];
-            $commonTransaction = [
-                'date'             => $data['operation_date'],
-                'currency_id'      => $baseJournal->currency_id ?? null,
-                'user_id'          => Auth::id() ?? $baseJournal->user_id,
-                'journalable_type' => LoanNdm::class,
-                'journalable_id'   => $loan->id,
-                'comment'          => $data['comment'] ?? null,
-            ];
+            $lombardId  = Client::where('company_name', 'Diamond Credit')->value('id');
+            $clientId   = $loan->client_id;
+            $currencyId = $baseJournal->currency_id ?? $loan->currency_id;
+
+            $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+
+            // helper for creating a tx
+            $mkTx = function (array $attrs) use (&$nextDocNum, $data, $currencyId, $baseJournal) {
+                return Transaction::create($attrs + [
+                        'date'                 => $data['operation_date'],
+                        'document_number'      => $nextDocNum++,
+                        'debit_currency_id'    => $currencyId,
+                        'credit_currency_id'   => $currencyId,
+                        'amount_currency'      => $attrs['amount_amd'] ?? 0,
+                        'amount_currency_id'   => $currencyId,
+                        'comment'              => $data['comment'] ?? null,
+                        'user_id'              => Auth::id() ?? $baseJournal->user_id,
+                        'is_system'            => false,
+                        // morph link → same base journal
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id'   => $baseJournal->id,
+                    ]);
+            };
 
             $created = [];
 
-            // Journal #1 — Արդյունավետ տոկոսի հաշվարկում, Տոկ
-            // Դեբետ 70315 (ծախս), Կրեդիտ 33512 (վարկատու)
-            if ($data['effective_interest_amount'] > 0) {
-                $created['effective'] = Transaction::create([array_merge($commonTransaction),[
-                    'amount_amd'       => $data['effective_interest_amount'],
-                    'debit_account_id' => $acc70315,
-                    'credit_account_id'=> $acc33512,
-                    'credit_partner_id'=> $partnerId,
-                    'debit_partner_id'=> $creditPartnerId,
-                    'document_type'    => DocumentJournal::EFFECTIVE_RATE,
-                    'documentNumber' => $transactionDocumentNumber,
-                ]]);
-                $transactionDocumentNumber++;
-//                $created['effective'] = DocumentJournal::create(array_merge($common, [
-//                    'amount_amd'       => $data['effective_interest_amount'],
-//                    'debit_account_id' => $acc70315,
-//                    'credit_account_id'=> $acc33512,
-//                    'credit_partner_id'=> $partnerId,
-//                    'debit_partner_id'=> $creditPartnerId,
-//                    'document_type'    => DocumentJournal::EFFECTIVE_RATE,
-//
-//                ]));
+            // 1) Արդյունավետ տոկոսի հաշվարկում: 70315 D / 33512 C
+            if ((float)$data['effective_interest_amount'] > 0) {
+                $created['effective'] = $mkTx([
+                    'document_type'     => DocumentJournal::EFFECTIVE_RATE, // կամ 'Արդյունավետ տոկոսի հաշվարկում'
+                    'debit_account_id'  => $acc70315,
+                    'credit_account_id' => $acc33512,
+                    'amount_amd'        => (float) $data['effective_interest_amount'],
+                    'debit_partner_id'  => $clientId,
+                    'credit_partner_id' => $lombardId,
+                ]);
             }
 
-            if ($data['interest_amount'] > 0) {
-                $created['interest'] = Transaction::create([array_merge($commonTransaction),[
-                    'amount_amd'       => $data['interest_amount'],
-                    'debit_account_id' => $acc33512,
-                    'credit_account_id'=> $acc33513NI,
-                    'credit_partner_id'=> $partnerId,
-                    'debit_partner_id'=> $creditPartnerId,
-                    'document_type'    => DocumentJournal::INTEREST_RATE,
-                    'documentNumber' => $transactionDocumentNumber,
-                ]]);
-                $transactionDocumentNumber++;
-//                $created['interest'] = DocumentJournal::create(array_merge($common, [
-//                    'amount_amd'       => $data['interest_amount'],
-//                    'debit_account_id' => $acc33512,
-//                    'credit_account_id'=> $acc33513NI,
-//                    'credit_partner_id'=> $partnerId,
-//                    'debit_partner_id'=> $creditPartnerId,
-//                    'document_type'    => DocumentJournal::INTEREST_RATE,
-//                ]));
+            // 2) Տոկոսի հաշվարկում (nominal): 33512 D / 33513NI C
+            if ((float)$data['interest_amount'] > 0) {
+                $created['interest'] = $mkTx([
+                    'document_type'     => DocumentJournal::INTEREST_RATE, // կամ 'Տոկոսի հաշվարկում'
+                    'debit_account_id'  => $acc33512,
+                    'credit_account_id' => $acc33513NI,
+                    'amount_amd'        => (float) $data['interest_amount'],
+                    'debit_partner_id'  => $clientId,
+                    'credit_partner_id' => $lombardId,
+                ]);
             }
+
             DB::commit();
 
             return response()->json([
-                'status' => 'ok',
+                'status'   => 'ok',
+                'created'  => [
+                    'effective_tx_id' => $created['effective']->id ?? null,
+                    'interest_tx_id'  => $created['interest']->id ?? null,
+                ],
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
-                'message' => 'Failed to add journals',
+                'message' => 'Failed to post interest transactions',
                 'error'   => $e->getMessage(),
             ], 500);
         }
     }
+
     public function repay(Request $request)
     {
         $data = $request->validate([
