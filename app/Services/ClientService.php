@@ -176,7 +176,9 @@ class ClientService
                 $query->where(function ($subQuery) use ($firstInput) {
                     $subQuery->where('name', 'like', '%' . $firstInput . '%')
                         ->orWhere('surname', 'like', '%' . $firstInput . '%')
-                        ->orWhere('company_name','like','%'  . $firstInput . '%');
+                        ->orWhere('company_name','like','%'  . $firstInput . '%')
+                        ->orWhere('social_card_number','like','%' . $firstInput . '%')
+                        ->orWhere('tax_number','like','%' . $firstInput . '%');
                 });
             }
 
@@ -184,7 +186,9 @@ class ClientService
                 $query->orWhere(function ($subQuery) use ($secondInput) {
                     $subQuery->where('name', 'like', '%' . $secondInput . '%')
                         ->orWhere('surname', 'like', '%' . $secondInput . '%')
-                        ->orWhere('company_name','like', '%' . $secondInput . '%');
+                        ->orWhere('company_name','like', '%' . $secondInput . '%')
+                        ->orWhere('social_card_number','like','%' . $secondInput . '%')
+                        ->orWhere('tax_number','like','%' . $secondInput . '%');;
                 });
             }
         })->get();
