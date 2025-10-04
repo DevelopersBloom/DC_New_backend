@@ -191,7 +191,7 @@ class LoanNdmController extends Controller
                 $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
                 $creditPartnerId = $loan->client_id;
 
-                if (!$acc102101 || !$loanAccountId) return 'One of 102101, 33512NV not wxist';
+                if (!$acc33512NV || !$loanAccountId) return 'One of 102101, 33512NV not wxist';
 
                 $journal = $loan->journals()->create([
                     'date'            => $date,
