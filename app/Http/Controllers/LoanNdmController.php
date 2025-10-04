@@ -152,6 +152,69 @@ class LoanNdmController extends Controller
             ], 500);
         }
     }
+    public function get(int $id): JsonResponse
+    {
+        $journal = DocumentJournal::with('journalable')->findOrFail($id);
+
+        $loan = $journal->journalable instanceof \App\Models\LoanNdm
+            ? $journal->journalable
+            : \App\Models\LoanNdm::find($journal->journalable_id);
+
+        if (!$loan) {
+            return response()->json(['message' => 'Loan not found for this journal'], 404);
+        }
+
+        $loan->load([
+            'client:id,name,surname,company_name,type',
+            'currency:id,code,name',
+            'account:id,code,name',
+            'interestAccount:id,code,name',
+            'pawnshop:id,city,name',
+            'user:id,name,surname',
+        ]);
+
+        $response = [
+            'id' => $loan->id,
+            'contract_number' => $loan->contract_number,
+            'client_id' => $loan->client_id,
+            'name' => $loan->name,
+            'currency_id' => $loan->currency_id,
+            'account_id' => $loan->account_id,
+            'interest_account_id' => $loan->interest_account_id,
+            'amount' => $loan->amount,
+            'contract_date' => optional($loan->contract_date)->format('Y-m-d'),
+            'disbursement_date' => optional($loan->disbursement_date)->format('Y-m-d'),
+            'maturity_date' => optional($loan->maturity_date)->format('Y-m-d'),
+            'comment' => $loan->comment,
+            'pawnshop_id' => $loan->pawnshop_id,
+            'access_type' => $loan->access_type,
+            'interest_schedule_mode' => $loan->interest_schedule_mode,
+            'repayment_start_date' => optional($loan->repayment_start_date)->format('Y-m-d'),
+            'repayment_end_date' => optional($loan->repayment_end_date)->format('Y-m-d'),
+            'day_count_convention' => $loan->day_count_convention,
+            'interest_rate' => $loan->interest_rate,
+            'department' => $loan->department,
+            'tax_rate' => $loan->tax_rate,
+            'effective_interest_rate' => $loan->effective_interest_rate,
+            'actual_interest_rate' => $loan->actual_interest_rate,
+            'effective_interest_amount' => $loan->effective_interest_amount,
+            'calculate_effective_amount' => (bool)$loan->calculate_effective_amount,
+            'user_id' => $loan->user_id,
+            'user' => $loan->user ? [
+                'id' => $loan->user->id,
+                'name' => $loan->user->name,
+                'surname' => $loan->user->surname,
+            ] : null,
+            'client' => $loan->client,
+            'currency' => $loan->currency,
+            'account' => $loan->account,
+            'interestAccount' => $loan->interestAccount,
+            'pawnshop' => $loan->pawnshop,
+        ];
+
+        return response()->json(['data' => $response]);
+    }
+
 
     /**
      * Վարկի ներգրավում
@@ -666,7 +729,7 @@ class LoanNdmController extends Controller
 
     public function remainingAmount(int $journalId)
     {
-        $journal = \App\Models\DocumentJournal::with('journalable')->findOrFail($journalId);
+        $journal = DocumentJournal::with('journalable')->findOrFail($journalId);
 
         /** @var \App\Models\LoanNdm|null $loan */
         $loan = $journal->journalable instanceof \App\Models\LoanNdm
