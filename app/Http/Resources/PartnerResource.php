@@ -20,6 +20,7 @@ class PartnerResource extends JsonResource
             'id'           => $this->id,
             'name' => $this->company_name
                 ?: trim(($this->name ?? '') . ' ' . ($this->surname ?? '')),
+            'tax_number/social_card_number' => $this->tax_number ?: $this->social_card_number,
         ];
     }
 }
