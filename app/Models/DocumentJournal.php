@@ -59,7 +59,7 @@ class DocumentJournal extends Model
 
         static::deleting(function (DocumentJournal $journal) {
             $journal->transactions()->each(function ($trx) {
-                $trx->delete();
+                $trx->forceDelete();
             });
         });
     }
