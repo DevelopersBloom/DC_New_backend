@@ -55,10 +55,9 @@ class DocumentJournal extends Model
     ];
     protected static function boot()
     {
-        parent::boot(); // ԱՆՊԱՅՄԱՆ պետք է լինի
+        parent::boot();
 
         static::deleting(function (DocumentJournal $journal) {
-            // related transactions soft-delete
             $journal->transactions()->each(function ($trx) {
                 $trx->delete();
             });
