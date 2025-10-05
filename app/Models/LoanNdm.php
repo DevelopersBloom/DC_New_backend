@@ -70,12 +70,12 @@ class LoanNdm extends Model
         'actual_interest_rate' => 'decimal:6',
         'effective_interest_amount' => 'decimal:2',
     ];
-    protected static function boot()
-    {
-        static::deleting(function (LoanNdm $loanNdm) {
-            $loanNdm->journals()->get()->each->delete();
-        });
-    }
+//    protected static function boot()
+//    {
+//        static::deleting(function (LoanNdm $loanNdm) {
+//            $loanNdm->journals()->get()->each->delete();
+//        });
+//    }
 
 
     public function client(): BelongsTo

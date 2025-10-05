@@ -9,8 +9,11 @@ use App\Models\Client;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use App\Models\NdmRepaymentDetail;
+use App\Models\Order;
 use App\Models\Transaction;
 use App\Services\LoanNdmInterestService;
+use App\Traits\Journalable;
+use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -149,7 +152,7 @@ class LoanNdmController extends Controller
             ], 500);
         }
     }
-    public function update(StoreLoanNdmRequest $request, int $id): JsonResponse
+    public function update(StoreLoanNdmRequest $request, int $id): \Illuminate\Http\JsonResponse
     {
         $loan = LoanNdm::findOrFail($id);
 
@@ -274,6 +277,12 @@ class LoanNdmController extends Controller
         return response()->json(['data' => $response]);
     }
 
+
+    /**
+     * Վարկի ներգրավում
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function attachLoanNdm(Request $request)
     {
         $data = $request->validate([
@@ -356,6 +365,7 @@ class LoanNdmController extends Controller
             ], 500);
         }
     }
+
 
     public function calculateInterest(Request $request)
     {
@@ -802,7 +812,7 @@ class LoanNdmController extends Controller
     }
 
 
-    public function loanNdmJournal(Request $request): JsonResponse
+public function loanNdmJournal(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
