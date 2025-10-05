@@ -153,11 +153,11 @@ class DocumentJournalController
 
             $journal->load('journalable');
 
-            $source = $journal->journalable;
-
-            if ($source) {
-                $source->delete();
-            }
+//            $source = $journal->journalable;
+//
+//            if ($source) {
+//                $source->delete();
+//            }
 
             $journal->delete();
 
