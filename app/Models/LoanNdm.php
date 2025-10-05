@@ -77,7 +77,7 @@ class LoanNdm extends Model
 
         static::deleting(function (LoanNdm $loanNdm) {
             $loanNdm->journals()->each(function ($journal) {
-                $journal->delete(); // կամ ->forceDelete() եթե պետք է ամբողջությամբ ջնջվի
+                $journal->delete();
             });
         });
     }
