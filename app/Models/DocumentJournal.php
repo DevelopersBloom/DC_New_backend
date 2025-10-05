@@ -92,14 +92,12 @@ class DocumentJournal extends Model
                             ->max('date');
                     }
 
-                    $loan->calc_date = $latestOpDate ? Carbon::parse($latestOpDate)->toDateString() : null;
+                    $loan->calc_date = $latestOpDate ? Carbon::parse($latestOpDate)->toDateString() : $loan->disbursement_date;
                     $loan->saveQuietly();
                 }
             }
+            $journal->transactions()->each->forceDeleteQuietly();
 
-            $journal->transactions()->each(function ($trx) {
-                $trx->forceDelete();
-            });
         });
     }
 
