@@ -53,6 +53,12 @@ class DocumentJournal extends Model
         'amount_amd'                 => 'decimal:2',
         'amount_currency'            => 'decimal:2',
     ];
+    protected static function boot()
+    {
+        static::deleting(function (DocumentJournal $journal) {
+            $journal->transactions()->get()->each->delete();
+        });
+    }
 
     public function journalable(): MorphTo
     {

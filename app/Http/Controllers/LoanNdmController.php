@@ -9,11 +9,8 @@ use App\Models\Client;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use App\Models\NdmRepaymentDetail;
-use App\Models\Order;
 use App\Models\Transaction;
 use App\Services\LoanNdmInterestService;
-use App\Traits\Journalable;
-use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -152,6 +149,68 @@ class LoanNdmController extends Controller
             ], 500);
         }
     }
+    public function update(StoreLoanNdmRequest $request, int $id): JsonResponse
+    {
+        $loan = LoanNdm::findOrFail($id);
+
+        $data = $request->validated();
+
+        try {
+            DB::beginTransaction();
+
+            $loan->fill($data);
+
+            $amount        = (float)($data['amount'] ?? $loan->amount);
+            $interestRate  = (float)($data['interest_rate'] ?? $loan->interest_rate ?? 0);
+            $disbursement  = \Carbon\Carbon::parse($data['disbursement_date'] ?? $loan->disbursement_date);
+            $maturity      = \Carbon\Carbon::parse($data['maturity_date'] ?? $loan->maturity_date);
+            $days          = $disbursement->diffInDays($maturity);
+
+            switch ($data['day_count_convention'] ?? $loan->day_count_convention ?? 'calendar_year') {
+                case 'days_360':
+                case 'fixed_day':
+                    $baseDays = 360;
+                    break;
+                case 'calendar_year':
+                default:
+                    $baseDays = $disbursement->isLeapYear() ? 366 : 365;
+                    break;
+            }
+
+            $interestAmount = round($amount * ($interestRate / 100) * ($days / $baseDays), 2);
+            $loan->interest_amount = $interestAmount;
+
+            $isPhysical = true;
+            $loan->income = $isPhysical
+                ? $interestAmount - round($interestAmount * (($data['tax_rate'] ?? $loan->tax_rate ?? 0) / 100), 2)
+                : $interestAmount;
+
+            if (isset($data['effective_interest_rate'])) {
+                $loan->effective_interest_amount = round(
+                    $amount * (($data['effective_interest_rate'] ?? 0) / 100) * ($days / $baseDays),
+                    2
+                );
+            }
+
+            $loan->user_id = auth()->id();
+
+            $loan->save();
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Loan NDM updated successfully',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Failed to update loan NDM',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function get(int $id): JsonResponse
     {
         $journal = DocumentJournal::with('journalable')->findOrFail($id);
@@ -215,12 +274,6 @@ class LoanNdmController extends Controller
         return response()->json(['data' => $response]);
     }
 
-
-    /**
-     * Վարկի ներգրավում
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function attachLoanNdm(Request $request)
     {
         $data = $request->validate([
@@ -303,7 +356,6 @@ class LoanNdmController extends Controller
             ], 500);
         }
     }
-
 
     public function calculateInterest(Request $request)
     {
@@ -750,7 +802,7 @@ class LoanNdmController extends Controller
     }
 
 
-public function loanNdmJournal(Request $request): JsonResponse
+    public function loanNdmJournal(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
