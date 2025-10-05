@@ -55,7 +55,7 @@ class DocumentJournal extends Model
     ];
     protected static function boot()
     {
-        static::deleting(function (DocumentJournal $journal) {
+        static::deleting(function ($journal) {
             $journal->transactions()->get()->each->delete();
         });
     }
