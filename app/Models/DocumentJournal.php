@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 
 class DocumentJournal extends Model
 {
@@ -53,11 +54,49 @@ class DocumentJournal extends Model
         'amount_amd'                 => 'decimal:2',
         'amount_currency'            => 'decimal:2',
     ];
+//    protected static function boot()
+//    {
+//        parent::boot();
+//
+//        static::deleting(function (DocumentJournal $journal) {
+//            $journal->transactions()->each(function ($trx) {
+//                $trx->forceDelete();
+//            });
+//        });
+//    }
     protected static function boot()
     {
         parent::boot();
 
         static::deleting(function (DocumentJournal $journal) {
+            if ($journal->journalable_type === \App\Models\LoanNdm::class) {
+                /** @var \App\Models\LoanNdm|null $loan */
+                $loan = $journal->journalable;
+                if (!$loan) {
+                    $loan = \App\Models\LoanNdm::find($journal->journalable_id);
+                }
+
+                if ($loan) {
+                    $otherJournalIds = self::query()
+                        ->where('journalable_type', \App\Models\LoanNdm::class)
+                        ->where('journalable_id', $loan->id)
+                        ->where('id', '!=', $journal->id)
+                        ->pluck('id');
+
+                    $latestOpDate = null;
+                    if ($otherJournalIds->isNotEmpty()) {
+                        $latestOpDate = \App\Models\Transaction::query()
+                            ->where('transactionable_type', self::class)
+                            ->whereIn('transactionable_id', $otherJournalIds)
+                            ->whereIn('document_type', [self::EFFECTIVE_RATE, self::INTEREST_RATE])
+                            ->max('date');
+                    }
+
+                    $loan->calc_date = $latestOpDate ? Carbon::parse($latestOpDate)->toDateString() : null;
+                    $loan->saveQuietly();
+                }
+            }
+
             $journal->transactions()->each(function ($trx) {
                 $trx->forceDelete();
             });
