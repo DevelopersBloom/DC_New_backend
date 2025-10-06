@@ -318,7 +318,7 @@ class LoanNdmController extends Controller
 
                 if (!$acc33512NV || !$loanAccountId) return 'One of 102101, 33512NV not wxist';
 
-                $journal = $loan->journals()->create([
+                $journal = DocumentJournal::create([
                     'date'            => $date,
                     'document_number' => $docNum,
                     'document_type'   => DocumentJournal::LOAN_ATTRACTION,
@@ -330,6 +330,8 @@ class LoanNdmController extends Controller
                     'debit_account_id' => $loanAccountId,
                     'credit_account_id' => $acc33512NV,
                     'user_id'         => auth()->id(),
+                    'journalable_type'   => DocumentJournal::class,
+                    'journalable_id'     => $journal->id,
                 ]);
 
 //                $journal->transactions()->create([
