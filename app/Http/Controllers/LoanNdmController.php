@@ -332,7 +332,28 @@ class LoanNdmController extends Controller
                     'user_id'         => auth()->id(),
                 ]);
 
-                $journal->transactions()->create([
+//                $journal->transactions()->create([
+//                    'date'               => $date,
+//                    'document_number'    => $docNum,
+//                    'document_type'      => Transaction::LOAN_ATTRACTION,
+//
+//                    'debit_account_id'   => $loanAccountId,
+//                    'debit_partner_id' => $partnerId,
+//                    'debit_currency_id'  => $loan->currency_id,
+//
+//                    'credit_account_id'  => $acc33512NV,
+//                    'credit_currency_id' => $loan->currency_id,
+//                    'credit_partner_id'  => $creditPartnerId,
+//
+//                    'amount_amd'         => $amount,
+//
+//                    'comment'            => $data['comment'] ?? null,
+//                    'user_id'            => auth()->id(),
+//                    'is_system'          => false,
+//
+//                    'disbursement_date'  => $date,
+//                ]);
+                Transaction::create([
                     'date'               => $date,
                     'document_number'    => $docNum,
                     'document_type'      => Transaction::LOAN_ATTRACTION,
@@ -352,6 +373,8 @@ class LoanNdmController extends Controller
                     'is_system'          => false,
 
                     'disbursement_date'  => $date,
+                    'transactionable_type'=> DocumentJournal::class,
+                    'transactionable_id'  => $journal->id,
                 ]);
 
                 return response()->json([
@@ -416,7 +439,7 @@ class LoanNdmController extends Controller
 
                 $acc33512NV     = ChartOfAccount::idByCode('33512NV');
                 $loanAccountId  = (int)$data['account_id'];
-                $partnerId      = Client::where('company_name', 'Diamond Credit')->value('id');
+                $partnerId      = 1;//Client::where('company_name', 'Diamond Credit')->value('id');
                 $creditPartnerId= $loan->client_id;
 
                 if (!$acc33512NV || !$loanAccountId || !$partnerId || !$creditPartnerId) {
