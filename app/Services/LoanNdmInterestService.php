@@ -132,7 +132,7 @@ class LoanNdmInterestService
         // ---- 2) Քաշենք տոկոսադրույքները loan table-ից (annual %) ----
         $nominalRate = (float)($loan->interest_rate ?? 0);            // % / year
         $effectiveRate = (float)($loan->effective_interest_rate ?? 0);  // % / year
-
+dd($W);
         // ---- 3) Հաշվենք գումարները ----
         $interestAmount = $W * ($nominalRate / 100.0);
         $effectiveInterestAmount = $W * ($effectiveRate / 100.0);
