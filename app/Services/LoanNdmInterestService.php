@@ -132,13 +132,13 @@ class LoanNdmInterestService
         // ---- 2) Քաշենք տոկոսադրույքները loan table-ից (annual %) ----
         $nominalRate = (float)($loan->interest_rate ?? 0);            // % / year
         $effectiveRate = (float)($loan->effective_interest_rate ?? 0);  // % / year
-dd($W);
         // ---- 3) Հաշվենք գումարները ----
         $interestAmount = $W * ($nominalRate / 100.0);
         $effectiveInterestAmount = $W * ($effectiveRate / 100.0);
 
         return [
-            'interest_amount' => round($interestAmount, 2),          // ըստ interest_rate
+            'interest_amount' => $W,
+                //round($interestAmount, 2),          // ըստ interest_rate
             'effective_interest_amount' => round($effectiveInterestAmount, 2), // ըստ effective_interest_rate
             // ցանկության դեպքում կարող ես նաև վերադառնալ՝
             // 'interest_rate'            => round($nominalRate, 4),
