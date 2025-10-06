@@ -82,9 +82,6 @@ class DocumentJournal extends Model
                     ->where('transactionable_id',  $ndmId)
                     ->where('transactionable_type', $ndmType)
                     ->where('date', '>=', $journal->date)
-                    ->when($nextAttraction, fn ($q) =>
-                    $q->where('date', '<', $nextAttraction->date)
-                    )
                     ->forceDelete();
 
                 // deleting event-ի մեջ ՉԵՆՔ կանչում $journal->delete()
