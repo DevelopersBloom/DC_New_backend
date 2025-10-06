@@ -376,7 +376,7 @@ class LoanNdmController extends Controller
 
                     'disbursement_date'  => $date,
                     'transactionable_type'=> DocumentJournal::class,
-                    'transactionable_id'  => $journal->journable_id,
+                    'transactionable_id'  => $data['document_journal_id'],
                 ]);
 
                 return response()->json([
