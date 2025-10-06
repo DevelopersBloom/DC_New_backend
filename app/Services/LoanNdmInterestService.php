@@ -137,8 +137,7 @@ class LoanNdmInterestService
         $effectiveInterestAmount = $W * ($effectiveRate / 100.0);
 
         return [
-            'interest_amount' => $W,
-                //round($interestAmount, 2),          // ըստ interest_rate
+            'interest_amount' => round($interestAmount, 2),          // ըստ interest_rate
             'effective_interest_amount' => round($effectiveInterestAmount, 2), // ըստ effective_interest_rate
             // ցանկության դեպքում կարող ես նաև վերադառնալ՝
             // 'interest_rate'            => round($nominalRate, 4),
