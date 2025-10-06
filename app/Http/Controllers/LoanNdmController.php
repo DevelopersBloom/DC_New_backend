@@ -231,7 +231,7 @@ class LoanNdmController extends Controller
             'currency:id,code,name',
             'account:id,code,name',
             'interestAccount:id,code,name',
-            'pawnshop:id,city,name',
+            'pawnshop:id,city',
             'user:id,name,surname',
         ]);
 
