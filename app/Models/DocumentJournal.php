@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DocumentJournal extends Model
 {
@@ -54,24 +55,52 @@ class DocumentJournal extends Model
         'amount_amd'                 => 'decimal:2',
         'amount_currency'            => 'decimal:2',
     ];
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::deleting(function (DocumentJournal $journal) {
-            $journal->transactions()->each(function ($trx) {
-                $trx->forceDelete();
-            });
-            if ($journal->journalable_type === \App\Models\LoanNdm::class) {
-                /** @var \App\Models\LoanNdm|null $loan */
-                $loan = $journal->journalable;
-                if ($loan) {
-                    $loan->calc_date = $loan->disbursement_date;
-                    $loan->save();
-                }
+            if ($journal->document_type !== DocumentJournal::LOAN_ATTRACTION) {
+                return ;
             }
+
+            DB::transaction(function () use ($journal) {
+                $ndmId   = $journal->journalable_id;
+                $ndmType = $journal->journalable_type;
+
+                $nextAttraction = self::query()
+                    ->where('journalable_id',  $ndmId)
+                    ->where('journalable_type', $ndmType)
+                    ->where('document_type', self::LOAN_ATTRACTION)
+                    ->where('date', '>', $journal->date)
+                    ->orderBy('date')
+                    ->orderBy('id')
+                    ->first();
+
+                Transaction::query()
+                    ->where('journalable_id',  $ndmId)
+                    ->where('journalable_type', $ndmType)
+                    ->where('date', '<', $nextAttraction->date)
+                    ->delete();
+            });
         });
     }
+//    protected static function boot()
+//    {
+//        parent::boot();
+//
+//        static::deleting(function (DocumentJournal $journal) {
+//            $journal->transactions()->each(function ($trx) {
+//                $trx->forceDelete();
+//            });
+//            if ($journal->journalable_type === \App\Models\LoanNdm::class) {
+//                /** @var \App\Models\LoanNdm|null $loan */
+//                $loan = $journal->journalable;
+//                if ($loan) {
+//                    $loan->calc_date = $loan->disbursement_date;
+//                    $loan->save();
+//                }
+//            }
+//        });
+//    }
 
     public function journalable(): MorphTo
     {
