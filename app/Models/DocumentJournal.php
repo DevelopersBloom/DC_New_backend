@@ -55,31 +55,39 @@ class DocumentJournal extends Model
         'amount_amd'                 => 'decimal:2',
         'amount_currency'            => 'decimal:2',
     ];
+
     protected static function booted(): void
     {
         static::deleting(function (DocumentJournal $journal) {
-            if ($journal->document_type !== DocumentJournal::LOAN_ATTRACTION) {
-                return ;
+            if ($journal->document_type !== self::LOAN_ATTRACTION) {
+                return;
             }
 
             DB::transaction(function () use ($journal) {
                 $ndmId   = $journal->journalable_id;
                 $ndmType = $journal->journalable_type;
 
+                // գտնել հաջորդ ներգրավումը (կարող է չլինել)
                 $nextAttraction = self::query()
                     ->where('journalable_id',  $ndmId)
                     ->where('journalable_type', $ndmType)
                     ->where('document_type', self::LOAN_ATTRACTION)
                     ->where('date', '>', $journal->date)
-                    ->orderBy('date')
-                    ->orderBy('id')
+                    ->orderBy('date')->orderBy('id')
                     ->first();
 
+                // ջնջել ՄԻԱՅՆ այս ներգրավումից սկսվող տրանզակցիաները,
+                // իսկ վերին սահմանը կիրառել միայն եթե կա հաջորդ ներգրավում
                 Transaction::query()
                     ->where('journalable_id',  $ndmId)
                     ->where('journalable_type', $ndmType)
-                    ->where('date', '<', $nextAttraction->date)
+                    ->where('date', '>=', $journal->date)
+                    ->when($nextAttraction, fn ($q) =>
+                    $q->where('date', '<', $nextAttraction->date)
+                    )
                     ->delete();
+
+                // deleting event-ի մեջ ՉԵՆՔ կանչում $journal->delete()
             });
         });
     }
