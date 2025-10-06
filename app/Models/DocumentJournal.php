@@ -85,7 +85,7 @@ class DocumentJournal extends Model
                     ->when($nextAttraction, fn ($q) =>
                     $q->where('date', '<', $nextAttraction->date)
                     )
-                    ->delete();
+                    ->forceDelete();
 
                 // deleting event-ի մեջ ՉԵՆՔ կանչում $journal->delete()
             });
