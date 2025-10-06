@@ -79,8 +79,8 @@ class DocumentJournal extends Model
                 // ջնջել ՄԻԱՅՆ այս ներգրավումից սկսվող տրանզակցիաները,
                 // իսկ վերին սահմանը կիրառել միայն եթե կա հաջորդ ներգրավում
                 Transaction::query()
-                    ->where('journalable_id',  $ndmId)
-                    ->where('journalable_type', $ndmType)
+                    ->where('transactionable_id',  $ndmId)
+                    ->where('transactionable_type', $ndmType)
                     ->where('date', '>=', $journal->date)
                     ->when($nextAttraction, fn ($q) =>
                     $q->where('date', '<', $nextAttraction->date)
