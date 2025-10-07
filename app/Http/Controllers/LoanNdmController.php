@@ -154,7 +154,8 @@ class LoanNdmController extends Controller
     }
     public function update(StoreLoanNdmRequest $request, int $id): \Illuminate\Http\JsonResponse
     {
-        $loan = LoanNdm::findOrFail($id);
+        $journal = DocumentJournal::findOrFail($id);
+        $loan    = LoanNdm::findOrFail($journal->journalable_id);
 
         $data = $request->validated();
 
