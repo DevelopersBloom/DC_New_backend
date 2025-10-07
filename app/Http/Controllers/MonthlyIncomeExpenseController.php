@@ -102,24 +102,19 @@ class MonthlyIncomeExpenseController extends Controller
 
             $code = (string) $rowCodeMap[$row];
 
-            // Նախնականացնել՝ որ չօգտագործվեն, եթե չկան
-            $prevNet = null;
-            $currNet = null;
-
-            // Գրել միայն եթե կա համապատասխան արժեք
+            // prev (C սյուն)
             if (isset($prevBy[$code]['net'])) {
                 $prevNet = (float) $prevBy[$code]['net'];
-                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
+                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
             }
 
+// curr (D սյուն)
             if (isset($currBy[$code]['net'])) {
                 $currNet = (float) $currBy[$code]['net'];
-                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
+                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
             }
-
-            $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
-            $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
         }
+
 
         $writer = new XlsWriter($spreadsheet);
         $filename = "monthly_income_expense.xls";
