@@ -93,11 +93,18 @@ class DocumentJournal extends Model
 
                 $ndmId = DocumentJournal::where('id',$journal->journalable_id)->value('journalable_id');                                                                                       e('journalable_id');
 
-                if (!is_null($lastCalcDate)) {
-                    LoanNdm::query()
-                        ->where('id', $ndmId)
-                        ->update(['calc_date' => $lastCalcDate]);
+//                if (!is_null($lastCalcDate)) {
+//                    LoanNdm::query()
+//                        ->where('id', $ndmId)
+//                        ->update(['calc_date' => $lastCalcDate]);
+//                }
+                $contractDate = LoanNdm::query()->whereKey($ndmId)->pluck('contract_date')->first();
+                $calcDate = $lastCalcDate ?? $contractDate;
+
+                if ($calcDate) {
+                    LoanNdm::query()->whereKey($ndmId)->update(['calc_date' => $calcDate]);
                 }
+
             });
         });
     }
