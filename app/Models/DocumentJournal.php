@@ -115,8 +115,8 @@ class DocumentJournal extends Model
                     self::LOAN_REPAYMENT,
                     self::TAX_REPAYMENT,
                 ], true)) {
-                    $journal->transactions()->delete();
-                    $journal->journals()->delete();
+                    $journal->transactions()->forceDelete();
+                    $journal->journals()->forceDelete();
                 }
 
 
