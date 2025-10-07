@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 trait CalculatesAccountBalancesTrait
 {
@@ -15,10 +16,14 @@ trait CalculatesAccountBalancesTrait
 
     protected function debitMovements(?string $dateTo)
     {
-        $q = DB::table('transactions as t')
+//        $q = DB::table('transactions as t')
+//            ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
+//            ->whereNotNull('t.debit_account_id');
+
+        $q = Transaction::query()
+        ->from('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
             ->whereNotNull('t.debit_account_id');
-
         $this->applyDateFilter($q, $dateTo);
 
         return $q->selectRaw("
@@ -33,7 +38,11 @@ trait CalculatesAccountBalancesTrait
 
     protected function creditMovements(?string $dateTo)
     {
-        $q = DB::table('transactions as t')
+//        $q = DB::table('transactions as t')
+//            ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
+//            ->whereNotNull('t.credit_account_id');
+        $q = Transaction::query()
+        ->from('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
             ->whereNotNull('t.credit_account_id');
 
