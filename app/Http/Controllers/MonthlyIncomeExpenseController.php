@@ -157,6 +157,8 @@
 //    }
 //}
 
+<?php
+
 namespace App\Http\Controllers;
 
 use App\Services\IncomeExpenseMonthlyReport;
@@ -166,6 +168,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
 use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use Carbon\Carbon;
 
 class MonthlyIncomeExpenseController extends Controller
@@ -178,7 +181,7 @@ class MonthlyIncomeExpenseController extends Controller
     {
         // ---- 1) Parse dates ----
         $fromStr = $request->query('from');
-        $toStr = $request->query('to');
+        $toStr   = $request->query('to');
 
         if (!$fromStr || !$toStr) {
             return response()->json(['message' => 'Provide ?from=YYYY-MM-DD&to=YYYY-MM-DD'], 422);
@@ -186,7 +189,7 @@ class MonthlyIncomeExpenseController extends Controller
 
         try {
             $from = Carbon::createFromFormat('Y-m-d', $fromStr)->startOfDay();
-            $to = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
+            $to   = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Invalid date format. Use YYYY-MM-DD'], 422);
         }
@@ -197,11 +200,11 @@ class MonthlyIncomeExpenseController extends Controller
 
         // Prev period: same length, ending day before $from
         $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
-        $prevTo = $from->copy()->subDay()->endOfDay();
+        $prevTo   = $from->copy()->subDay()->endOfDay();
         $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
         // ---- 2) Build data ----
-        $current = $this->svc->build($from->toDateTimeString(), $to->toDateTimeString());
+        $current  = $this->svc->build($from->toDateTimeString(), $to->toDateTimeString());
         $previous = $this->svc->build($prevFrom->toDateTimeString(), $prevTo->toDateTimeString());
 
         $currBy = [];
@@ -220,12 +223,9 @@ class MonthlyIncomeExpenseController extends Controller
         }
 
         $reader = new XlsReader();
-        $reader->setReadDataOnly(false);
+        $reader->setReadDataOnly(false); // keep formulas/styles
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
-
-        // Չանենք global unmerge, որ բանաձևերը չկոտրվեն
-        // Եթե անհրաժեշտ է՝ UNMERGE արա միայն կոնկրետ այն տիրույթները, որտեղ թվեր ես գրելու:
 
         // ---- 4) Load row→code map ----
         $mapPath = storage_path('app/templates/v05_map.json');
@@ -233,7 +233,7 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
-        // ապահովենք, որ բանալիները integer լինեն
+        // turn keys to int for reliable lookup
         $rowCodeMap = array_combine(
             array_map('intval', array_keys($rowCodeMap)),
             array_values($rowCodeMap)
@@ -245,42 +245,64 @@ class MonthlyIncomeExpenseController extends Controller
 
         $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
-        foreach ($sheet->getMergeCells() as $range) {
-            // Հանել absolute նշանները
-            $normalized = preg_replace('/\$/', '', $range);
 
-            // Skip անենք, եթե սա range չէ (պետք է ունենա :)
-            if (strpos($normalized, ':') === false) {
-                // single cell absolute merged? safe-skip
-                continue;
-            }
+        // ---- 6) (Optional) Safe unmerge only inside a target range ----
+        // If you don't need unmerge at all, set $targetRange to null (recommended).
+        $targetRange = null; // e.g. 'C12:D300' if you truly must unmerge there
 
-            // Որոշ template-ներում merge range-ը գալիս է ձախից աջ/վերևից ներքև կապակցված
-            // PhpSpreadsheet-ը կընդունի նաև շրջվածները, բայց թող նորմալացնենք
-            try {
-                $sheet->unmergeCells($normalized);
-            } catch (\Throwable $e) {
-                // Debug-help՝ որ range-ն է խափանում
-                \Log::warning('Unmerge failed for range: ' . $normalized . ' msg=' . $e->getMessage());
+        if ($targetRange) {
+            // normalize target range to boundaries
+            [$tStart, $tEnd] = Coordinate::rangeBoundaries($targetRange);
+            [$tStartCol, $tStartRow] = $tStart;
+            [$tEndCol,   $tEndRow]   = $tEnd;
+
+            foreach (array_keys($sheet->getMergeCells()) as $rawRange) {
+                // Remove sheet name if present and all $ signs
+                $normalized = $rawRange;
+                $bangPos = strpos($normalized, '!');
+                if ($bangPos !== false) {
+                    $normalized = substr($normalized, $bangPos + 1);
+                }
+                $normalized = str_replace('$', '', $normalized);
+
+                if (strpos($normalized, ':') === false) {
+                    continue; // not a proper range
+                }
+
+                try {
+                    [$start, $end] = Coordinate::rangeBoundaries($normalized);
+                    [$sCol, $sRow] = $start;
+                    [$eCol, $eRow] = $end;
+
+                    $overlaps =
+                        !($eCol < $tStartCol || $sCol > $tEndCol || $eRow < $tStartRow || $sRow > $tEndRow);
+
+                    if (!$overlaps) {
+                        continue;
+                    }
+
+                    $sheet->unmergeCells($normalized);
+                } catch (\Throwable $e) {
+                    \Log::warning('Unmerge skip: ' . $normalized . ' — ' . $e->getMessage());
+                }
             }
         }
-        // ---- 6) Fill rows C/D only when we have values & don't overwrite formulas ----
+
+        // ---- 7) Fill rows C/D only when we have values & don't overwrite formulas ----
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
-            if (!isset($rowCodeMap[$row])) {
-                continue;
-            }
+            if (!isset($rowCodeMap[$row])) continue;
 
             $code = (string)$rowCodeMap[$row];
 
-            // Եթե C կամ D բջիջներում բանաձև կա՝ չգրենք, որ բանաձևը չկորչի
+            // skip if C or D has formula (preserve formulas like at C16)
             $cCell = $sheet->getCellByColumnAndRow(3, $row); // C
             $dCell = $sheet->getCellByColumnAndRow(4, $row); // D
             if ($cCell->isFormula() || $dCell->isFormula()) {
                 continue;
             }
 
-            // Գրել միայն եթե տվյալ code-ի համար կա net
+            // write only if data exists; don't write nulls (which become 0)
             if (isset($prevBy[$code]['net'])) {
                 $prevNet = (float)$prevBy[$code]['net'];
                 $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
@@ -291,9 +313,9 @@ class MonthlyIncomeExpenseController extends Controller
             }
         }
 
-        // ---- 7) Save & force formula recalculation ----
+        // ---- 8) Save & force formula recalculation ----
         $writer = new XlsWriter($spreadsheet);
-        $writer->setPreCalculateFormulas(true); // կարևոր է .xls-ում
+        $writer->setPreCalculateFormulas(true); // important for .xls
 
         $filename = "monthly_income_expense.xls";
         $dir = storage_path('app/reports');
@@ -308,9 +330,9 @@ class MonthlyIncomeExpenseController extends Controller
         $writer->save($path);
 
         return response()->download($path, $filename, [
-            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Type'  => 'application/vnd.ms-excel',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'public',
+            'Pragma'        => 'public',
         ])->deleteFileAfterSend(true);
     }
 
@@ -318,7 +340,7 @@ class MonthlyIncomeExpenseController extends Controller
     protected function monthRange(string $yyyyMm): array
     {
         $start = Carbon::createFromFormat('Y-m', $yyyyMm)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
+        $end   = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
         return [$start, $end];
     }
 
@@ -328,3 +350,4 @@ class MonthlyIncomeExpenseController extends Controller
         return [$c->startOfMonth()->toDateString(), $c->endOfMonth()->toDateString()];
     }
 }
+
