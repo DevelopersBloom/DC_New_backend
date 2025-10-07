@@ -21,6 +21,11 @@ class DocumentJournal extends Model
     const EFFECTIVE_RATE     = 'Արդյունավետ տոկոսի հաշվարկում';
     const INTEREST_RATE      = 'Տոկոսի հաշվարկում';
 
+    const INTEREST_REPAYMENT = 'Տոկոսի մարում';
+    const LOAN_REPAYMENT = 'Վարկի մարում';
+    const TAX_REPAYMENT = 'Հարկի գանձում տոկոսի մարումից';
+
+
     protected $fillable = [
         'date',
         'operation_number',
@@ -58,52 +63,62 @@ class DocumentJournal extends Model
     protected static function booted(): void
     {
         static::deleting(function (DocumentJournal $journal) {
-            if ($journal->document_type !== self::LOAN_ATTRACTION) {
-                return;
-            }
+//            if ($journal->document_type !== self::LOAN_ATTRACTION) {
+//                return;
+//            }
 
             DB::transaction(function () use ($journal) {
-                $ndmId   = $journal->journalable_id;
-                $ndmType = $journal->journalable_type;
+                if ($journal->document_type == self::LOAN_ATTRACTION) {
+                    $ndmId   = $journal->journalable_id;
+                    $ndmType = $journal->journalable_type;
 
-                $nextAttraction = self::query()
-                    ->where('journalable_id',  $ndmId)
-                    ->where('journalable_type', $ndmType)
-                    ->where('document_type', self::LOAN_ATTRACTION)
-                    ->where('date', '>', $journal->date)
-                    ->orderBy('date')->orderBy('id')
-                    ->first();
+                    $nextAttraction = self::query()
+                        ->where('journalable_id',  $ndmId)
+                        ->where('journalable_type', $ndmType)
+                        ->where('document_type', self::LOAN_ATTRACTION)
+                        ->where('date', '>', $journal->date)
+                        ->orderBy('date')->orderBy('id')
+                        ->first();
 
-                Transaction::query()
-                    ->where('transactionable_id',  $ndmId)
-                    ->where('transactionable_type', $ndmType)
-                    ->where('date', '>=', $journal->date)
-                    ->forceDelete();
+                    Transaction::query()
+                        ->where('transactionable_id',  $ndmId)
+                        ->where('transactionable_type', $ndmType)
+                        ->where('date', '>=', $journal->date)
+                        ->forceDelete();
 
-                $calcTypes = [
-                    'Արդյունավետ տոկոսի հաշվարկում',
-                    'Տոկոսի հաշվարկում',
-                ];
+                    $calcTypes = [
+                        'Արդյունավետ տոկոսի հաշվարկում',
+                        'Տոկոսի հաշվարկում',
+                    ];
 
-                $lastCalcDate =Transaction::query()
-                    ->where('transactionable_id', $journal->journalable_id )
-                    ->where('transactionable_type', $ndmType) // օրինակ՝ 'App\Models                                                                                        \LoanNdm'
-                    ->whereIn('document_type',  $calcTypes)
-                    ->max('date'); // վերադարձնում է string/Carbon՝ ըստ քո cast-երի
+                    $lastCalcDate =Transaction::query()
+                        ->where('transactionable_id', $journal->journalable_id )
+                        ->where('transactionable_type', $ndmType) // օրինակ՝ 'App\Models                                                                                        \LoanNdm'
+                        ->whereIn('document_type',  $calcTypes)
+                        ->max('date'); // վերադարձնում է string/Carbon՝ ըստ քո cast-երի
 
-                $ndmId = DocumentJournal::where('id',$journal->journalable_id)->value('journalable_id');                                                                                       e('journalable_id');
+                    $ndmId = DocumentJournal::where('id',$journal->journalable_id)->value('journalable_id');                                                                                       e('journalable_id');
 
 //                if (!is_null($lastCalcDate)) {
 //                    LoanNdm::query()
 //                        ->where('id', $ndmId)
 //                        ->update(['calc_date' => $lastCalcDate]);
 //                }
-                $contractDate = LoanNdm::query()->whereKey($ndmId)->pluck('contract_date')->first();
-                $calcDate = $lastCalcDate ?? $contractDate;
+                    $contractDate = LoanNdm::query()->whereKey($ndmId)->pluck('contract_date')->first();
+                    $calcDate = $lastCalcDate ?? $contractDate;
 
-                if ($calcDate) {
-                    LoanNdm::query()->whereKey($ndmId)->update(['calc_date' => $calcDate]);
+                    if ($calcDate) {
+                        LoanNdm::query()->whereKey($ndmId)->update(['calc_date' => $calcDate]);
+                    }
+                } elseif (in_array($journal->document_type, [
+                    self::INTEREST_REPAYMENT,
+                    self::LOAN_REPAYMENT,
+                    self::TAX_REPAYMENT,
+                ], true)) {
+                    $journal->transactions()->delete();
+                    $journal->journals()->delete();
                 }
+
 
             });
         });
@@ -168,6 +183,9 @@ class DocumentJournal extends Model
     public function transactions()
     {
         return $this->morphMany(Transaction::class, 'transactionable');
+    }
+    public function journals() {
+        return $this->morphMany(self::class, 'journalable');
     }
 
     public function currency(): BelongsTo
