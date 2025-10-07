@@ -85,10 +85,7 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
-        if (isset($rowCodeMap[0])) {
-            if ($rowCodeMap[0] === 16) dd(1);
-            // ... setCellValueExplicit ...
-        }
+
 
 // from/to գրել C9 և C10 բջիջներում `dd-mm-yy` format-ով առանց ժամի
         $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
@@ -104,8 +101,8 @@ class MonthlyIncomeExpenseController extends Controller
             }
 
             $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
-            $prevNet = (float)($prevBy[$code]['net'] ?? 0.0);
-            $currNet = (float)($currBy[$code]['net'] ?? 0.0);
+            $prevNet = (float)($prevBy[$code]['net']);
+            $currNet = (float)($currBy[$code]['net']);
 
             $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
             $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
