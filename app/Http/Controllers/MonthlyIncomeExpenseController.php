@@ -100,9 +100,21 @@ class MonthlyIncomeExpenseController extends Controller
                 continue;
             }
 
-            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
-            $prevNet = (float)($prevBy[$code]['net']);
-            $currNet = (float)($currBy[$code]['net']);
+//            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
+//            $prevNet = (float)($prevBy[$code]['net']);
+//            $currNet = (float)($currBy[$code]['net']);
+            $code = (string)$rowCodeMap[$row];
+
+// եթե չկա, բջիջը թողնենք դատարկ՝ առանց արժեք դնելու
+            if (isset($prevBy[$code])) {
+                $prevNet = (float)($prevBy[$code]['net'] ?? 0);
+                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
+            }
+
+            if (isset($currBy[$code])) {
+                $currNet = (float)($currBy[$code]['net'] ?? 0);
+                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
+            }
 
             $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
             $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
