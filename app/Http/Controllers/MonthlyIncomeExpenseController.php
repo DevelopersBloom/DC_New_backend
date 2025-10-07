@@ -244,12 +244,12 @@ class MonthlyIncomeExpenseController extends Controller
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
         // ---- 6) Debug merged cells ----
-        Log::info('Merged cells in template: ' . json_encode($sheet->getMergeCells()));
+        Log::info('Merged cells in template: ' . json_encode($sheet->getMergeCells(), JSON_PRETTY_PRINT));
 
         // ---- 7) Unmerge cells in columns C/D for mapped rows ----
         foreach (array_keys($sheet->getMergeCells()) as $rawRange) {
-            $normalized = preg_replace('/^.*?!/', '', $rawRange);
-            $normalized = str_replace('$', '', $normalized);
+            $normalized = preg_replace('/^.*?!/', '', $rawRange); // Remove worksheet prefix
+            $normalized = str_replace('$', '', $normalized); // Remove absolute references
             if (!preg_match('/^[A-Z]+[0-9]+:[A-Z]+[0-9]+$/', $normalized)) {
                 Log::warning('Skipping invalid merge range: ' . $normalized);
                 continue;
@@ -274,6 +274,10 @@ class MonthlyIncomeExpenseController extends Controller
         if ($targetRange) {
             try {
                 $targetRange = str_replace('$', '', $targetRange);
+                if (!preg_match('/^[A-Z]+[0-9]+:[A-Z]+[0-9]+$/', $targetRange)) {
+                    Log::error('Invalid target range format: ' . $targetRange);
+                    return response()->json(['message' => 'Invalid target range format'], 422);
+                }
                 [$tStart, $tEnd] = Coordinate::rangeBoundaries($targetRange);
                 [$tStartCol, $tStartRow] = $tStart;
                 [$tEndCol, $tEndRow] = $tEnd;
@@ -328,6 +332,7 @@ class MonthlyIncomeExpenseController extends Controller
             $cCell = $sheet->getCellByColumnAndRow(3, $row); // C
             $dCell = $sheet->getCellByColumnAndRow(4, $row); // D
             if ($cCell->isFormula() || $dCell->isFormula()) {
+                Log::info("Skipping row $row (code $code) due to formula in C or D");
                 continue;
             }
 
@@ -385,4 +390,5 @@ class MonthlyIncomeExpenseController extends Controller
         return [$c->startOfMonth()->toDateString(), $c->endOfMonth()->toDateString()];
     }
 }
+
 
