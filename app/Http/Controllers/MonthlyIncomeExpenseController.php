@@ -250,36 +250,27 @@ class MonthlyIncomeExpenseController extends Controller
         $targetRange = null; // e.g. 'C12:D300' if you truly must unmerge there
 
         if ($targetRange) {
-            // normalize target range to boundaries
             [$tStart, $tEnd] = Coordinate::rangeBoundaries($targetRange);
             [$tStartCol, $tStartRow] = $tStart;
-            [$tEndCol,   $tEndRow]   = $tEnd;
-
+            [$tEndCol, $tEndRow] = $tEnd;
             foreach (array_keys($sheet->getMergeCells()) as $rawRange) {
-                // Remove sheet name if present and all $ signs
                 $normalized = $rawRange;
                 $bangPos = strpos($normalized, '!');
                 if ($bangPos !== false) {
                     $normalized = substr($normalized, $bangPos + 1);
                 }
                 $normalized = str_replace('$', '', $normalized);
-
                 if (strpos($normalized, ':') === false) {
                     continue; // not a proper range
                 }
-
                 try {
                     [$start, $end] = Coordinate::rangeBoundaries($normalized);
                     [$sCol, $sRow] = $start;
                     [$eCol, $eRow] = $end;
-
-                    $overlaps =
-                        !($eCol < $tStartCol || $sCol > $tEndCol || $eRow < $tStartRow || $sRow > $tEndRow);
-
+                    $overlaps = !($eCol < $tStartCol || $sCol > $tEndCol || $eRow < $tStartRow || $sRow > $tEndRow);
                     if (!$overlaps) {
                         continue;
                     }
-
                     $sheet->unmergeCells($normalized);
                 } catch (\Throwable $e) {
                     \Log::warning('Unmerge skip: ' . $normalized . ' — ' . $e->getMessage());
