@@ -726,7 +726,7 @@ class LoanNdmController extends Controller
                     'credit_account_id' => $acc33512,
                     'amount_amd'        => (float) $data['effective_interest_amount'],
                    // 'debit_partner_id'  => $clientId,
-                    'credit_partner_id' => $lombardId,
+                    'credit_partner_id' => $clientId,
                 ]);
             }
 
