@@ -106,6 +106,7 @@ class DocumentJournal extends Model
                     LoanNdm::query()
                         ->whereKey($ndmId)
                         ->update(['calc_date' => $contractDate]);
+                }
             }
             });
         });
