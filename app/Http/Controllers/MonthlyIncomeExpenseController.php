@@ -181,15 +181,14 @@ class MonthlyIncomeExpenseController extends Controller
     {
         // ---- 1) Parse dates ----
         $fromStr = $request->query('from');
-        $toStr   = $request->query('to');
-
+        $toStr = $request->query('to');
         if (!$fromStr || !$toStr) {
             return response()->json(['message' => 'Provide ?from=YYYY-MM-DD&to=YYYY-MM-DD'], 422);
         }
 
         try {
             $from = Carbon::createFromFormat('Y-m-d', $fromStr)->startOfDay();
-            $to   = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
+            $to = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Invalid date format. Use YYYY-MM-DD'], 422);
         }
@@ -200,11 +199,11 @@ class MonthlyIncomeExpenseController extends Controller
 
         // Prev period: same length, ending day before $from
         $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
-        $prevTo   = $from->copy()->subDay()->endOfDay();
+        $prevTo = $from->copy()->subDay()->endOfDay();
         $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
         // ---- 2) Build data ----
-        $current  = $this->svc->build($from->toDateTimeString(), $to->toDateTimeString());
+        $current = $this->svc->build($from->toDateTimeString(), $to->toDateTimeString());
         $previous = $this->svc->build($prevFrom->toDateTimeString(), $prevTo->toDateTimeString());
 
         $currBy = [];
@@ -233,7 +232,6 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
-        // turn keys to int for reliable lookup
         $rowCodeMap = array_combine(
             array_map('intval', array_keys($rowCodeMap)),
             array_values($rowCodeMap)
@@ -242,26 +240,46 @@ class MonthlyIncomeExpenseController extends Controller
         // ---- 5) Write date range into C9/C10 (dd-mm-yyyy) ----
         $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
         $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
-
         $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
-        // ---- 6) (Optional) Safe unmerge only inside a target range ----
-        // If you don't need unmerge at all, set $targetRange to null (recommended).
-        $targetRange = null; // e.g. 'C12:D300' if you truly must unmerge there
+        // ---- 6) Debug merged cells ----
+        Log::info('Merged cells in template: ' . json_encode($sheet->getMergeCells()));
 
+        // ---- 7) Unmerge cells in columns C/D for mapped rows ----
+        foreach (array_keys($sheet->getMergeCells()) as $rawRange) {
+            $normalized = preg_replace('/^.*?!/', '', $rawRange);
+            $normalized = str_replace('$', '', $normalized);
+            if (!preg_match('/^[A-Z]+[0-9]+:[A-Z]+[0-9]+$/', $normalized)) {
+                Log::warning('Skipping invalid merge range: ' . $normalized);
+                continue;
+            }
+            try {
+                [$start, $end] = Coordinate::rangeBoundaries($normalized);
+                [$sCol, $sRow] = $start;
+                [$eCol, $eRow] = $end;
+                // Unmerge if range overlaps with columns C (3) or D (4) and mapped rows
+                if (($sCol <= 4 && $eCol >= 3) && isset($rowCodeMap[$sRow])) {
+                    $sheet->unmergeCells($normalized);
+                    Log::info('Unmerged range affecting C/D in row ' . $sRow . ': ' . $normalized);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Unmerge failed: ' . $normalized . ' — ' . $e->getMessage());
+            }
+        }
+
+        // ---- 8) (Optional) Safe unmerge only inside a target range ----
+        $targetRange = null; // Keep null unless unmerging is required
+        Log::info('Target range value: ' . ($targetRange ?? 'null'));
         if ($targetRange) {
             try {
-                // Normalize target range
                 $targetRange = str_replace('$', '', $targetRange);
                 [$tStart, $tEnd] = Coordinate::rangeBoundaries($targetRange);
                 [$tStartCol, $tStartRow] = $tStart;
                 [$tEndCol, $tEndRow] = $tEnd;
                 foreach (array_keys($sheet->getMergeCells()) as $rawRange) {
-                    // Normalize range
-                    $normalized = preg_replace('/^.*?!/', '', $rawRange); // Remove worksheet prefix
-                    $normalized = str_replace('$', '', $normalized); // Remove absolute references
-                    // Validate range format
+                    $normalized = preg_replace('/^.*?!/', '', $rawRange);
+                    $normalized = str_replace('$', '', $normalized);
                     if (!preg_match('/^[A-Z]+[0-9]+:[A-Z]+[0-9]+$/', $normalized)) {
                         Log::warning('Skipping invalid range: ' . $normalized);
                         continue;
@@ -284,32 +302,53 @@ class MonthlyIncomeExpenseController extends Controller
             }
         }
 
-        // ---- 7) Fill rows C/D only when we have values & don't overwrite formulas ----
+        // ---- 9) Validate mapped rows ----
         $maxRow = $sheet->getHighestRow();
+        foreach ($rowCodeMap as $row => $code) {
+            if ($row > $maxRow) {
+                Log::warning("Row $row (code $code) exceeds max row $maxRow in v05.xls");
+                continue;
+            }
+            $cCell = $sheet->getCellByColumnAndRow(3, $row);
+            $dCell = $sheet->getCellByColumnAndRow(4, $row);
+            if ($cCell->isInMergeRange() || $dCell->isInMergeRange()) {
+                Log::warning("Row $row (code $code) is still part of a merged range after unmerge");
+            }
+        }
+
+        // ---- 10) Fill rows C/D, set empty when no data ----
         for ($row = 1; $row <= $maxRow; $row++) {
-            if (!isset($rowCodeMap[$row])) continue;
+            if (!isset($rowCodeMap[$row])) {
+                continue;
+            }
 
             $code = (string)$rowCodeMap[$row];
 
-            // skip if C or D has formula (preserve formulas like at C16)
+            // Skip if C or D has a formula (preserve formulas like at C16)
             $cCell = $sheet->getCellByColumnAndRow(3, $row); // C
             $dCell = $sheet->getCellByColumnAndRow(4, $row); // D
             if ($cCell->isFormula() || $dCell->isFormula()) {
                 continue;
             }
 
-            // write only if data exists; don't write nulls (which become 0)
-            if (isset($prevBy[$code]['net'])) {
-                $prevNet = (float)$prevBy[$code]['net'];
-                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
-            }
-            if (isset($currBy[$code]['net'])) {
-                $currNet = (float)$currBy[$code]['net'];
-                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
-            }
+            // Write previous period (column C): empty if no data
+            $sheet->setCellValueExplicitByColumnAndRow(
+                3,
+                $row,
+                isset($prevBy[$code]['net']) ? (float)$prevBy[$code]['net'] : null,
+                isset($prevBy[$code]['net']) ? DataType::TYPE_NUMERIC : DataType::TYPE_NULL
+            );
+
+            // Write current period (column D): empty if no data
+            $sheet->setCellValueExplicitByColumnAndRow(
+                4,
+                $row,
+                isset($currBy[$code]['net']) ? (float)$currBy[$code]['net'] : null,
+                isset($currBy[$code]['net']) ? DataType::TYPE_NUMERIC : DataType::TYPE_NULL
+            );
         }
 
-        // ---- 8) Save & force formula recalculation ----
+        // ---- 11) Save & force formula recalculation ----
         $writer = new XlsWriter($spreadsheet);
         $writer->setPreCalculateFormulas(true); // important for .xls
 
@@ -326,9 +365,9 @@ class MonthlyIncomeExpenseController extends Controller
         $writer->save($path);
 
         return response()->download($path, $filename, [
-            'Content-Type'  => 'application/vnd.ms-excel',
+            'Content-Type' => 'application/vnd.ms-excel',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma'        => 'public',
+            'Pragma' => 'public',
         ])->deleteFileAfterSend(true);
     }
 
@@ -336,7 +375,7 @@ class MonthlyIncomeExpenseController extends Controller
     protected function monthRange(string $yyyyMm): array
     {
         $start = Carbon::createFromFormat('Y-m', $yyyyMm)->startOfMonth()->toDateString();
-        $end   = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
+        $end = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
         return [$start, $end];
     }
 
