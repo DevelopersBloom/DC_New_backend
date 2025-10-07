@@ -20,11 +20,9 @@ trait CalculatesAccountBalancesTrait
 //            ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
 //            ->whereNotNull('t.debit_account_id');
 
-        $q = Transaction::query()
-        ->from('transactions as t')
-            ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
-            ->whereNotNull('t.debit_account_id');
-        $this->applyDateFilter($q, $dateTo);
+        $q = Transaction::query() // soft-deletes scope OK
+        ->join('chart_of_accounts as a', 'a.id', '=', 'transactions.debit_account_id')
+            ->whereNotNull('transactions.debit_account_id');
 
         return $q->selectRaw("
                 t.debit_account_id as account_id,
@@ -42,9 +40,9 @@ trait CalculatesAccountBalancesTrait
 //            ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
 //            ->whereNotNull('t.credit_account_id');
         $q = Transaction::query()
-        ->from('transactions as t')
-            ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
-            ->whereNotNull('t.credit_account_id');
+            ->join('chart_of_accounts as a', 'a.id', '=', 'transactions.credit_account_id')
+            ->whereNotNull('transactions.credit_account_id');
+
 
         $this->applyDateFilter($q, $dateTo);
 
