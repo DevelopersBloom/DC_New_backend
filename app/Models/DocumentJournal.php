@@ -97,10 +97,11 @@ class DocumentJournal extends Model
                 LoanNdm::query()
                     ->where('id', $ndmId)
                     ->update(['calc_date' => $lastCalcDate]);
-            } else {
-                $calcDate = LoanNdm::where('id',$ndmId)->value('contract_date');
-                LoanNdm::query()->where('id', $ndmId)->update(['calc_date' => $calcDate]);
             }
+//            else {
+//                $calcDate = LoanNdm::where('id',$ndmId)->value('contract_date');
+//                LoanNdm::query()->where('id', $ndmId)->update(['calc_date' => $calcDate]);
+//            }
 
 
             });
