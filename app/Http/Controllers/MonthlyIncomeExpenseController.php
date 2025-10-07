@@ -9,29 +9,28 @@ use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
 use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
 use Carbon\Carbon;
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\IncomeExpenseMonthlyReport;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
+use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
+use Carbon\Carbon;
 
 class MonthlyIncomeExpenseController extends Controller
 {
     public function __construct(private IncomeExpenseMonthlyReport $svc)
     {
     }
+
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
-//        $month = $request->query('month');
-//        if (!$month) {
-//            return response()->json(['message' => 'Provide ?month=YYYY-MM'], 422);
-//        }
-//
-//        try {
-//            [$from, $to] = $this->monthRange($month);
-//        } catch (\Throwable $e) {
-//            return response()->json(['message' => 'Invalid month format. Use YYYY-MM'], 422);
-//        }
-//
-//        [$prevFrom, $prevTo] = $this->previousMonthRangeFrom($from);
-//
-//        $current = $this->svc->build($from, $to);
-//        $previous = $this->svc->build($prevFrom, $prevTo);
+        // --- date range from query ---
         $fromStr = $request->query('from');
         $toStr   = $request->query('to');
 
@@ -50,22 +49,25 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => '`from` must be <= `to`'], 422);
         }
 
+        // previous-period window same length as current
         $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
-
-        $prevTo = $from->copy()->subDay()->endOfDay();
+        $prevTo   = $from->copy()->subDay()->endOfDay();
         $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
-        $current = $this->svc->build($from, $to);
+        // --- build data ---
+        $current  = $this->svc->build($from, $to);
         $previous = $this->svc->build($prevFrom, $prevTo);
+
         $currBy = [];
         foreach ($current as $r) {
-            $currBy[(string)$r['code']] = $r;
+            $currBy[(string) $r['code']] = $r;
         }
         $prevBy = [];
         foreach ($previous as $r) {
-            $prevBy[(string)$r['code']] = $r;
+            $prevBy[(string) $r['code']] = $r;
         }
 
+        // --- open template ---
         $templatePath = base_path('v05.xls');
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
@@ -76,24 +78,26 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
+        // Unmerge (clean any absolute refs in ranges)
         foreach ($sheet->getMergeCells() as $range) {
             $sheet->unmergeCells(str_replace('$', '', $range));
         }
 
+        // --- map file ---
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 
-
-// from/to գրել C9 և C10 բջիջներում `dd-mm-yy` format-ով առանց ժամի
+        // --- write date headers (C9, C10) ---
         $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
         $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
         $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
+        // --- write numbers: only if present; do NOT coerce null→0 ---
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
             if (!isset($rowCodeMap[$row])) {
@@ -102,23 +106,27 @@ class MonthlyIncomeExpenseController extends Controller
 
             $code = (string) $rowCodeMap[$row];
 
-            // prev (C սյուն)
-            if (isset($prevBy[$code]['net'])) {
+            // prev -> Column C (3)
+            if (isset($prevBy[$code]['net'])) {                   // true for 0, false for null
                 $prevNet = (float) $prevBy[$code]['net'];
                 $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
             }
-
-// curr (D սյուն)
+            // curr -> Column D (4)
             if (isset($currBy[$code]['net'])) {
                 $currNet = (float) $currBy[$code]['net'];
                 $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
             }
         }
 
-
+        // --- write out ---
         $writer = new XlsWriter($spreadsheet);
-        $filename = "monthly_income_expense.xls";
 
+        // ՔԱՅԼ ԱՊԱՀՈՎՈՒԹՅԱՆ ՀԱՄԱՐ.
+        // Անջատում ենք նախնական հաշվարկը, որ PhpSpreadsheet-ը չմտնի calculation engine,
+        // և absolute coordinate-ների ($D$19) պատճառով սխալ չառաջանա:
+        $writer->setPreCalculateFormulas(false);
+
+        $filename = "monthly_income_expense.xls";
         $dir = storage_path('app/reports');
         if (!is_dir($dir)) {
             @mkdir($dir, 0777, true);
@@ -141,7 +149,7 @@ class MonthlyIncomeExpenseController extends Controller
     protected function monthRange(string $yyyyMm): array
     {
         $start = Carbon::createFromFormat('Y-m', $yyyyMm)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
+        $end   = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
         return [$start, $end];
     }
 
@@ -151,6 +159,7 @@ class MonthlyIncomeExpenseController extends Controller
         return [$c->startOfMonth()->toDateString(), $c->endOfMonth()->toDateString()];
     }
 }
+
 
 //namespace App\Http\Controllers;
 //
