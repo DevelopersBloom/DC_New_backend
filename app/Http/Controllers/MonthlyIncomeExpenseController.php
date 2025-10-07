@@ -245,7 +245,25 @@ class MonthlyIncomeExpenseController extends Controller
 
         $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
+        foreach ($sheet->getMergeCells() as $range) {
+            // Հանել absolute նշանները
+            $normalized = preg_replace('/\$/', '', $range);
 
+            // Skip անենք, եթե սա range չէ (պետք է ունենա :)
+            if (strpos($normalized, ':') === false) {
+                // single cell absolute merged? safe-skip
+                continue;
+            }
+
+            // Որոշ template-ներում merge range-ը գալիս է ձախից աջ/վերևից ներքև կապակցված
+            // PhpSpreadsheet-ը կընդունի նաև շրջվածները, բայց թող նորմալացնենք
+            try {
+                $sheet->unmergeCells($normalized);
+            } catch (\Throwable $e) {
+                // Debug-help՝ որ range-ն է խափանում
+                \Log::warning('Unmerge failed for range: ' . $normalized . ' msg=' . $e->getMessage());
+            }
+        }
         // ---- 6) Fill rows C/D only when we have values & don't overwrite formulas ----
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
