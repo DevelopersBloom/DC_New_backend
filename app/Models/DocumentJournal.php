@@ -91,7 +91,7 @@ class DocumentJournal extends Model
                     ->whereIn('document_type',  $calcTypes)
                     ->max('date'); // վերադարձնում է string/Carbon՝ ըստ քո cast-երի
 
-                $ndmId = DocumentJournal::where('id',$journal->journalable_id)->value;                                                                                       e('journalable_id');
+                $ndmId = DocumentJournal::where('id',$journal->journalable_id)->value('journalable_id');                                                                                       e('journalable_id');
 
                 if (!is_null($lastCalcDate)) {
                     LoanNdm::query()
