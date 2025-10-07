@@ -199,6 +199,15 @@ class LoanNdmController extends Controller
             $loan->user_id = auth()->id();
 
             $loan->save();
+            $journalPayload = $loan->toJournalRow();
+
+            $journal->fill(array_merge($journalPayload, [
+                'journalable_id'   => $loan->id,
+                'journalable_type' => LoanNdm::class,
+            ]));
+
+
+            $journal->save();
 
             DB::commit();
 
