@@ -162,6 +162,7 @@ namespace App\Http\Controllers;
 
 use App\Services\IncomeExpenseMonthlyReport;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -250,31 +251,36 @@ class MonthlyIncomeExpenseController extends Controller
         $targetRange = null; // e.g. 'C12:D300' if you truly must unmerge there
 
         if ($targetRange) {
-            [$tStart, $tEnd] = Coordinate::rangeBoundaries($targetRange);
-            [$tStartCol, $tStartRow] = $tStart;
-            [$tEndCol, $tEndRow] = $tEnd;
-            foreach (array_keys($sheet->getMergeCells()) as $rawRange) {
-                $normalized = $rawRange;
-                $bangPos = strpos($normalized, '!');
-                if ($bangPos !== false) {
-                    $normalized = substr($normalized, $bangPos + 1);
-                }
-                $normalized = str_replace('$', '', $normalized);
-                if (strpos($normalized, ':') === false) {
-                    continue; // not a proper range
-                }
-                try {
-                    [$start, $end] = Coordinate::rangeBoundaries($normalized);
-                    [$sCol, $sRow] = $start;
-                    [$eCol, $eRow] = $end;
-                    $overlaps = !($eCol < $tStartCol || $sCol > $tEndCol || $eRow < $tStartRow || $sRow > $tEndRow);
-                    if (!$overlaps) {
+            try {
+                // Normalize target range
+                $targetRange = str_replace('$', '', $targetRange);
+                [$tStart, $tEnd] = Coordinate::rangeBoundaries($targetRange);
+                [$tStartCol, $tStartRow] = $tStart;
+                [$tEndCol, $tEndRow] = $tEnd;
+                foreach (array_keys($sheet->getMergeCells()) as $rawRange) {
+                    // Normalize range
+                    $normalized = preg_replace('/^.*?!/', '', $rawRange); // Remove worksheet prefix
+                    $normalized = str_replace('$', '', $normalized); // Remove absolute references
+                    // Validate range format
+                    if (!preg_match('/^[A-Z]+[0-9]+:[A-Z]+[0-9]+$/', $normalized)) {
+                        Log::warning('Skipping invalid range: ' . $normalized);
                         continue;
                     }
-                    $sheet->unmergeCells($normalized);
-                } catch (\Throwable $e) {
-                    \Log::warning('Unmerge skip: ' . $normalized . ' — ' . $e->getMessage());
+                    try {
+                        [$start, $end] = Coordinate::rangeBoundaries($normalized);
+                        [$sCol, $sRow] = $start;
+                        [$eCol, $eRow] = $end;
+                        $overlaps = !($eCol < $tStartCol || $sCol > $tEndCol || $eRow < $tStartRow || $sRow > $tEndRow);
+                        if ($overlaps) {
+                            $sheet->unmergeCells($normalized);
+                            Log::info('Unmerged range: ' . $normalized);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('Unmerge failed for range: ' . $normalized . ' — ' . $e->getMessage());
+                    }
                 }
+            } catch (\Throwable $e) {
+                Log::error('Target range processing failed: ' . $targetRange . ' — ' . $e->getMessage());
             }
         }
 
