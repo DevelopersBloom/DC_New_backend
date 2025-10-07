@@ -100,20 +100,21 @@ class MonthlyIncomeExpenseController extends Controller
                 continue;
             }
 
-//            $code = (string)$rowCodeMap[$row]; // օրինակ "1.1" կամ "1.10"
-//            $prevNet = (float)($prevBy[$code]['net']);
-//            $currNet = (float)($currBy[$code]['net']);
-            $code = (string)$rowCodeMap[$row];
+            $code = (string) $rowCodeMap[$row];
 
-// եթե չկա, բջիջը թողնենք դատարկ՝ առանց արժեք դնելու
-            if (isset($prevBy[$code])) {
-                $prevNet = (float)($prevBy[$code]['net'] ?? 0);
-                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
+            // Նախնականացնել՝ որ չօգտագործվեն, եթե չկան
+            $prevNet = null;
+            $currNet = null;
+
+            // Գրել միայն եթե կա համապատասխան արժեք
+            if (isset($prevBy[$code]['net'])) {
+                $prevNet = (float) $prevBy[$code]['net'];
+                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
             }
 
-            if (isset($currBy[$code])) {
-                $currNet = (float)($currBy[$code]['net'] ?? 0);
-                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
+            if (isset($currBy[$code]['net'])) {
+                $currNet = (float) $currBy[$code]['net'];
+                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC); // D
             }
 
             $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC); // C
