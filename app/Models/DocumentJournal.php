@@ -55,7 +55,6 @@ class DocumentJournal extends Model
         'amount_amd'                 => 'decimal:2',
         'amount_currency'            => 'decimal:2',
     ];
-
     protected static function booted(): void
     {
         static::deleting(function (DocumentJournal $journal) {
@@ -67,7 +66,6 @@ class DocumentJournal extends Model
                 $ndmId   = $journal->journalable_id;
                 $ndmType = $journal->journalable_type;
 
-                // գտնել հաջորդ ներգրավումը (կարող է չլինել)
                 $nextAttraction = self::query()
                     ->where('journalable_id',  $ndmId)
                     ->where('journalable_type', $ndmType)
@@ -76,18 +74,75 @@ class DocumentJournal extends Model
                     ->orderBy('date')->orderBy('id')
                     ->first();
 
-                // ջնջել ՄԻԱՅՆ այս ներգրավումից սկսվող տրանզակցիաները,
-                // իսկ վերին սահմանը կիրառել միայն եթե կա հաջորդ ներգրավում
                 Transaction::query()
                     ->where('transactionable_id',  $ndmId)
                     ->where('transactionable_type', $ndmType)
                     ->where('date', '>=', $journal->date)
                     ->forceDelete();
 
-                // deleting event-ի մեջ ՉԵՆՔ կանչում $journal->delete()
+                $calcTypes = [
+                    'Արդյունավետ տոկոսի հաշվարկում',
+                    'Տոկոսի հաշվարկում',
+                ];
+
+                $lastCalcDate =Transaction::query()
+                    ->where('transactionable_id', $journal->journalable_id )
+                    ->where('transactionable_type', $ndmType) // օրինակ՝ 'App\Models                                                                                        \LoanNdm'
+                    ->whereIn('document_type',  $calcTypes)
+                    ->max('date'); // վերադարձնում է string/Carbon՝ ըստ քո cast-երի
+
+                $ndmId = DocumentJournal::where('id',$journal->journalable_id)->value;                                                                                       e('journalable_id');
+
+            if (!is_null($lastCalcDate)) {
+                LoanNdm::query()
+                    ->where('id', $ndmId)
+                    ->update(['calc_date' => $lastCalcDate]);
+            } else {
+                $contractDate = LoanNdm::query()
+                    ->whereKey($ndmId)
+                    ->value('contract_date');
+
+                if ($contractDate) {
+                    LoanNdm::query()
+                        ->whereKey($ndmId)
+                        ->update(['calc_date' => $contractDate]);
+            }
             });
         });
     }
+
+//    protected static function booted(): void
+//    {
+//        static::deleting(function (DocumentJournal $journal) {
+//            if ($journal->document_type !== self::LOAN_ATTRACTION) {
+//                return;
+//            }
+//
+//            DB::transaction(function () use ($journal) {
+//                $ndmId   = $journal->journalable_id;
+//                $ndmType = $journal->journalable_type;
+//
+//                // գտնել հաջորդ ներգրավումը (կարող է չլինել)
+//                $nextAttraction = self::query()
+//                    ->where('journalable_id',  $ndmId)
+//                    ->where('journalable_type', $ndmType)
+//                    ->where('document_type', self::LOAN_ATTRACTION)
+//                    ->where('date', '>', $journal->date)
+//                    ->orderBy('date')->orderBy('id')
+//                    ->first();
+//
+//                // ջնջել ՄԻԱՅՆ այս ներգրավումից սկսվող տրանզակցիաները,
+//                // իսկ վերին սահմանը կիրառել միայն եթե կա հաջորդ ներգրավում
+//                Transaction::query()
+//                    ->where('transactionable_id',  $ndmId)
+//                    ->where('transactionable_type', $ndmType)
+//                    ->where('date', '>=', $journal->date)
+//                    ->forceDelete();
+//
+//                // deleting event-ի մեջ ՉԵՆՔ կանչում $journal->delete()
+//            });
+//        });
+//    }
 //    protected static function boot()
 //    {
 //        parent::boot();
