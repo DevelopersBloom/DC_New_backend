@@ -6,6 +6,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DocumentJournalController;
 use App\Http\Controllers\LoanNdmController;
 use App\Http\Controllers\MonthlyIncomeExpenseController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TransactionsExport;
 use App\Http\Controllers\PostingRuleController;
 use App\Http\Controllers\RateController;
@@ -96,13 +97,20 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('get-deals',[AdminControllerNew::class,'getDeals']);
         Route::put('update-deals',[AdminControllerNew::class,'updateDeals']);
         Route::delete('delete-deal/{id}',[AdminControllerNew::class,'deleteDeal']);
-        Route::get('/reports/monthly-income-expense', MonthlyIncomeExpenseController::class);
+//        Route::get('/reports/monthly-income-expense', MonthlyIncomeExpenseController::class);
 
         //Discount
         Route::get('/get-discounts', [AdminControllerNew::class, 'getDiscounts']);
         Route::post('answer-discount',[DiscountController::class,'answerDiscount']);
         Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount']);
 
+        Route::prefix('reports')->group(function (){
+            Route::get('/monthly-income-expense', MonthlyIncomeExpenseController::class);
+            Route::get('/v03',  [ReportController::class, 'getV03Report']);
+            Route::get('/v06',  [ReportController::class, 'getV06Report']);
+            Route::get('/v07',  [ReportController::class, 'getV07Report']);
+            Route::get('/v013', [ReportController::class, 'getV013Report']);
+        });
         Route::prefix('chart-of-accounts')->group(function () {
 
             Route::get('/search-account', [ChartOfAccountController::class, 'searchAccount']);
@@ -140,7 +148,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::put('/journal/{journal}', [DocumentJournalController::class, 'update']);
 
         Route::get('/transactions/reports', [TransactionController::class, 'reportsJournal']);
-        Route::get('/transactions/reports/export', [TransactionController::class, 'exportReportsJournal']);
+        Route::get('/transactions/reports/export', [ReportController::class, 'getFirstReport']);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);

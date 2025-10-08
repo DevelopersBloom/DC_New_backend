@@ -128,13 +128,6 @@ class TransactionController
             'summary' => $summary,
         ]);
     }
-    public function exportReportsJournal(Request $request)
-    {
-        $to = $request->query('to');
 
-        $filename = 'Հաշվետվություն' . ($to ? "_to_{$to}" : '') . '.xlsx';
-
-        return Excel::download(new ReportsJournalExport($to), $filename);
-    }
 }
 

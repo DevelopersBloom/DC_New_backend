@@ -19,7 +19,6 @@ class MonthlyIncomeExpenseController extends Controller
 
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
-        // --- date range from query ---
         $fromStr = $request->query('from');
         $toStr   = $request->query('to');
 
@@ -38,12 +37,10 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => '`from` must be <= `to`'], 422);
         }
 
-        // previous-period window same length as current
         $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
         $prevTo   = $from->copy()->subDay()->endOfDay();
         $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
-        // --- build data ---
         $current  = $this->svc->build($from, $to);
         $previous = $this->svc->build($prevFrom, $prevTo);
 
@@ -56,7 +53,6 @@ class MonthlyIncomeExpenseController extends Controller
             $prevBy[(string) $r['code']] = $r;
         }
 
-        // --- open template ---
         $templatePath = base_path('v05.xls');
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
@@ -72,21 +68,18 @@ class MonthlyIncomeExpenseController extends Controller
             $sheet->unmergeCells(str_replace('$', '', $range));
         }
 
-        // --- map file ---
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 
-        // --- write date headers (C9, C10) ---
         $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
         $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
         $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
-        // --- write numbers: only if present; do NOT coerce null→0 ---
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
             if (!isset($rowCodeMap[$row])) {
@@ -95,24 +88,18 @@ class MonthlyIncomeExpenseController extends Controller
 
             $code = (string) $rowCodeMap[$row];
 
-            // prev -> Column C (3)
             if (isset($prevBy[$code]['net'])) {                   // true for 0, false for null
                 $prevNet = (float) $prevBy[$code]['net'];
                 $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
             }
-            // curr -> Column D (4)
             if (isset($currBy[$code]['net'])) {
                 $currNet = (float) $currBy[$code]['net'];
                 $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
             }
         }
 
-        // --- write out ---
         $writer = new XlsWriter($spreadsheet);
 
-        // ՔԱՅԼ ԱՊԱՀՈՎՈՒԹՅԱՆ ՀԱՄԱՐ.
-        // Անջատում ենք նախնական հաշվարկը, որ PhpSpreadsheet-ը չմտնի calculation engine,
-        // և absolute coordinate-ների ($D$19) պատճառով սխալ չառաջանա:
         $writer->setPreCalculateFormulas(false);
 
         $filename = "monthly_income_expense.xls";

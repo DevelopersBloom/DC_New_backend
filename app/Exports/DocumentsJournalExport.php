@@ -437,7 +437,7 @@ class DocumentsJournalExport implements
     public function __construct(
         private ?string $from = null,
         private ?string $to = null,
-        private ?string $documentType = null, // optional՝ ֆիլտրի համար
+        private ?string $documentType = null,
     )
     {
     }
