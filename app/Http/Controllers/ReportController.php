@@ -39,10 +39,6 @@ class ReportController
         return $this->downloadTemplate('v013.xls', $request);
     }
 
-    /**
-     * Ընդհանուր helper՝ բեռնավորելու համար static template ֆայլը
-     * և ֆայլի անվան մեջ ներառելու from/to query-ները:
-     */
     private function downloadTemplate(string $templateFile, Request $request)
     {
         $from = (string) $request->query('from', '');
