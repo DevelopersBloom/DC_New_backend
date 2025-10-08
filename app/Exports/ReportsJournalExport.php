@@ -202,7 +202,7 @@ class ReportsJournalExport implements
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
-                            'color'       => ['rgb' => 'B7B7B7'],
+//                            'color'       => ['rgb' => 'B7B7B7'],
                         ],
                     ],
                 ]);
