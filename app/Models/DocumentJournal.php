@@ -289,5 +289,14 @@ class DocumentJournal extends Model
     {
         return $this->belongsTo(NdmRepaymentDetail::class, 'ndm_repayment_id');
     }
+    public function scopeBetweenDates($query, $from = null, $to = null)
+    {
+        if ($from && $to) {
+            return $query->whereBetween('date', [$from, $to]);
+        }
+        if ($from) return $query->where('date', '>=', $from);
+        if ($to)   return $query->where('date', '<=', $to);
+        return $query;
+    }
 
 }
