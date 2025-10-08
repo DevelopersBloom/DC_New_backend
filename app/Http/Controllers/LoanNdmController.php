@@ -967,6 +967,7 @@ class LoanNdmController extends Controller
             'loan_id'   => $loan->id,
             'journal_id'=> $journal->id,
             'amount'    => $remaining,
+            'client' => $loan->client->type,
         ]);
     }
 
