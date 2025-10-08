@@ -263,10 +263,9 @@ class DocumentJournalController
 //            ], 500);
 //        }
 //    }
-    use App\Models\Transaction; // եթե պետք գա
-    use Illuminate\Database\Eloquent\Relations\Relation;
 
-// ...
+
+
 
     public function destroy(DocumentJournal $journal): JsonResponse
     {
