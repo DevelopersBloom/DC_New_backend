@@ -405,9 +405,9 @@ class LoanNdmController extends Controller
         $journal = DocumentJournal::with(['journalable'])
             ->findOrFail($journalId);
 
-        if (!$journal->journalable instanceof LoanNdm) {
-            return response()->json(['message' => 'Journal is not attached to a LoanNdm'], 422);
-        }
+//        if (!$journal->journalable instanceof LoanNdm) {
+//            return response()->json(['message' => 'Journal is not attached to a LoanNdm'], 422);
+//        }
 
         return response()->json([
             'data' => [
