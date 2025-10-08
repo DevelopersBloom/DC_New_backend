@@ -19,6 +19,8 @@ trait CalculatesAccountBalancesTrait
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
             ->whereNotNull('t.debit_account_id');
 
+        $this->notTrashed($q, 't');
+
         $this->applyDateFilter($q, $dateTo);
 
         return $q->selectRaw("
@@ -36,6 +38,7 @@ trait CalculatesAccountBalancesTrait
         $q = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
             ->whereNotNull('t.credit_account_id');
+        $this->notTrashed($q, 't');
 
         $this->applyDateFilter($q, $dateTo);
 
@@ -207,4 +210,9 @@ trait CalculatesAccountBalancesTrait
             ->orderBy('b.partner_name')
             ->orderBy('b.account_code');
     }
+    protected function notTrashed($q, string $alias): void
+    {
+        $q->whereNull("$alias.deleted_at");
+    }
+
 }
