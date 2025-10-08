@@ -415,7 +415,7 @@ class LoanNdmController extends Controller
                 'date'                => optional($journal->date)->format('Y-m-d'),
                 'amount'              => (float)($journal->amount_amd ?? $tx?->amount_amd ?? 0),
                 'cash'                => (bool)$journal->cash,
-                'account_id'          => (int)$journal->debit_account_id,
+                'account_id'          => (int)$journal->debitAccount->code,
                 'comment'             => $journal->comment,
                 'document_number'     => $journal->document_number,
             ]
