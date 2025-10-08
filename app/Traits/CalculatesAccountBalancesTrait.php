@@ -123,9 +123,12 @@ trait CalculatesAccountBalancesTrait
             ->whereNotNull('t.debit_account_id')
             ->whereNotNull('t.debit_partner_id');
 
+
         if ($dateTo) {
             $q->whereDate('t.date','<=',$dateTo);
         }
+        $this->notTrashed($q,'t');
+        $this->notTrashed($q,'a');
 
         return $q->selectRaw("
                 t.debit_partner_id as partner_id,
@@ -150,6 +153,8 @@ trait CalculatesAccountBalancesTrait
         if ($dateTo) {
             $q->whereDate('t.date','<=',$dateTo);
         }
+        $this->notTrashed($q,'t');
+        $this->notTrashed($q,'a');
 
         return $q->selectRaw("
                 t.credit_partner_id as partner_id,
