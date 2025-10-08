@@ -33,6 +33,7 @@ return new class extends Migration
             $table->boolean('is_draft')->default(false);
             $table->unsignedInteger('num');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

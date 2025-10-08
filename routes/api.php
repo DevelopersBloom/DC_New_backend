@@ -131,6 +131,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/transactions', [TransactionController::class, 'index']);
         Route::get('/transactions/export', [TransactionController::class, 'export']);
         Route::get('/transactions/loan-ndms', [DocumentJournalController::class, 'index']);
+        Route::get('/documents-journal/trashed', [DocumentJournalController::class, 'trashed']);
+        Route::post('/documents-journal/{id}/restore', [DocumentJournalController::class, 'restore']);
+        Route::delete('/documents-journal/{id}/force', [DocumentJournalController::class, 'forceDestroy']);
+
         Route::get('/transactions/loan-ndms/export', [DocumentJournalController::class, 'export']);
         Route::delete('/journal/{journal}', [DocumentJournalController::class, 'destroy']);
         Route::put('/journal/{journal}', [DocumentJournalController::class, 'update']);

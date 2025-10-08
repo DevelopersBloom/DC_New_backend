@@ -23,6 +23,7 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('chart_of_accounts');
             $table->text('description')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

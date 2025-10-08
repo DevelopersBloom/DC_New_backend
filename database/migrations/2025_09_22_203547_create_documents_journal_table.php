@@ -55,6 +55,7 @@ return new class extends Migration
             $table->morphs('journalable');
 
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

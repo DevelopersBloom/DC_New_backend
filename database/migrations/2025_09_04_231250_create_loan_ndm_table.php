@@ -28,11 +28,12 @@ return new class extends Migration
             $table->boolean('calculate_first_day')->default(false);
 
             $table->date('contract_date');
+            $table->date('calc_date')->nullable();
             $table->date('disbursement_date'); // հատկացման ամսաթիվ
             $table->date('maturity_date')->nullable();   // Մարման ժամկետ (վերջնական)
             $table->text('comment')->nullable();
             $table->foreignId('pawnshop_id')->constrained('pawnshops');
-
+            $table->foreignId('user_id')->nullable()->constrained('users');
             $table->enum('interest_schedule_mode', [
                 'fixed_day_of_month',
                 'periodicity',
@@ -70,6 +71,7 @@ return new class extends Migration
 
             $table->text('notes')->nullable();
 
+            $table->softDeletes();
             $table->timestamps();
         });
     }
