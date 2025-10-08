@@ -141,10 +141,10 @@ class ReportsJournalExport implements
                     'vertical'   => Alignment::VERTICAL_CENTER,
                     'wrapText'   => true
                 ],
-                'fill'      => [
-                    'fillType'   => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'E6F0FF']
-                ],
+//                'fill'      => [
+//                    'fillType'   => Fill::FILL_SOLID,
+////                    'startColor' => ['rgb' => 'E6F0FF']
+//                ],
                 'borders'   => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -202,7 +202,7 @@ class ReportsJournalExport implements
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
-//                            'color'       => ['rgb' => 'B7B7B7'],
+                            'color'       => ['rgb' => 'B7B7B7'],
                         ],
                     ],
                 ]);
