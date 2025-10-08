@@ -400,7 +400,7 @@ class LoanNdmController extends Controller
             ], 500);
         }
     }
-    public function getLoanAttraction(Request $request, int $journalId): JsonResponse
+    public function getLoanAttraction(int $journalId): JsonResponse
     {
         $journal = DocumentJournal::with(['journalable'])
             ->findOrFail($journalId);
