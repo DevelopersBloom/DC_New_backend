@@ -20,7 +20,7 @@ trait CalculatesAccountBalancesTrait
             ->whereNotNull('t.debit_account_id');
 
         $this->notTrashed($q, 't');
-
+        $this->notTrashed($q, 'a');
         $this->applyDateFilter($q, $dateTo);
 
         return $q->selectRaw("
@@ -39,6 +39,7 @@ trait CalculatesAccountBalancesTrait
             ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
             ->whereNotNull('t.credit_account_id');
         $this->notTrashed($q, 't');
+        $this->notTrashed($q, 'a');
 
         $this->applyDateFilter($q, $dateTo);
 
