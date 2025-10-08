@@ -136,6 +136,19 @@ class DocumentJournalController
         DB::beginTransaction();
         try {
             $journal = DocumentJournal::withTrashed()->findOrFail($id);
+            $journal->loadMissing(['journalable', 'transactions' => fn($q) => $q->withTrashed(),
+                'journals'     => fn($q) => $q->withTrashed()]);
+
+            if ($journal->document_type === DocumentJournal::LOAN_NDM_TYPE) {
+                $journal->transactions()->withTrashed()->forceDelete();
+                $journal->journals()->withTrashed()->forceDelete();
+
+                $source = $journal->journalable;
+                if ($source instanceof \App\Models\LoanNdm) {
+                    method_exists($source, 'forceDelete') ? $source->forceDelete() : $source->delete();
+                }
+            }
+
             $journal->forceDelete();
 
             DB::commit();
@@ -148,6 +161,7 @@ class DocumentJournalController
             ], 500);
         }
     }
+
 
 
 
