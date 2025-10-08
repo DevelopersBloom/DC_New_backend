@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\Journalable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class LoanNdm extends Model
 {
-    use HasFactory;
+    use HasFactory,SoftDeletes;
 
     use Journalable;
 

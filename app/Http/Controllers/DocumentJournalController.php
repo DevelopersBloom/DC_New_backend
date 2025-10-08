@@ -234,29 +234,63 @@ class DocumentJournalController
             ], 500);
         }
     }
+//    public function destroy(DocumentJournal $journal): JsonResponse
+//    {
+//        try {
+//            DB::beginTransaction();
+//
+//            $journal->load('journalable');
+//
+////            $source = $journal->journalable;
+////
+////            if ($source) {
+////                $source->delete();
+////            }
+//
+//            $journal->delete();
+//
+//            DB::commit();
+//
+//            return response()->json([
+//                'message' => 'Document journal deleted successfully'
+//            ]);
+//        } catch (\Throwable $e) {
+//            DB::rollBack();
+//
+//            return response()->json([
+//                'message' => 'Delete failed',
+//                'error'   => $e->getMessage(),
+//            ], 500);
+//        }
+//    }
+    use App\Models\Transaction; // եթե պետք գա
+    use Illuminate\Database\Eloquent\Relations\Relation;
+
+// ...
+
     public function destroy(DocumentJournal $journal): JsonResponse
     {
+        DB::beginTransaction();
         try {
-            DB::beginTransaction();
+            $journal->loadMissing(['journalable', 'transactions', 'journals']);
 
-            $journal->load('journalable');
+            if ($journal->document_type === DocumentJournal::LOAN_NDM_TYPE) {
+                $journal->transactions()->delete();
+                $journal->journals()->delete();
 
-//            $source = $journal->journalable;
-//
-//            if ($source) {
-//                $source->delete();
-//            }
+
+                $source = $journal->journalable;
+                if ($source instanceof \App\Models\LoanNdm) {
+                    $source->delete();
+                }
+            }
 
             $journal->delete();
 
             DB::commit();
-
-            return response()->json([
-                'message' => 'Document journal deleted successfully'
-            ]);
+            return response()->json(['message' => 'Document journal deleted successfully']);
         } catch (\Throwable $e) {
             DB::rollBack();
-
             return response()->json([
                 'message' => 'Delete failed',
                 'error'   => $e->getMessage(),

@@ -525,9 +525,6 @@ class LoanNdmController extends Controller
         }
     }
 
-
-
-
     public function calculateInterest(Request $request)
     {
         $data = $request->validate([
