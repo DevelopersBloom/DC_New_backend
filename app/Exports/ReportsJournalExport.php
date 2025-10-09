@@ -303,7 +303,6 @@ class ReportsJournalExport implements
     protected array $summary = [];
     protected Collection $rows;
 
-    /** որ դաշտերն ենք գումարելու ագրեգացիայի ժամանակ */
     protected array $sumFields = [
         'total_resident', 'total_non_resident',
         'amd_resident', 'amd_non_resident',
@@ -321,22 +320,14 @@ class ReportsJournalExport implements
         $this->summary = [];
     }
 
-    /**
-     * Քեշվող հաշվարկային աղբյուրից բերում ենք հում տողերը,
-     * հետո տեղափոխում “Հաշվետվություն 1” կանոնին համապատասխան վերջնական ցուցակի։
-     */
-    public function collection(): Collection
+        public function collection(): Collection
     {
-        // 1) բերում ենք հիմքային մասշտաբով տողերը (account-level rows)
         $raw = $this->balancesRowsQuery($this->to)->get();
 
-        // 2) ձևափոխում ենք ցուցադրելի վերջնական հավաքածուի
         $final = $this->transformToReport1($raw);
 
-        // 3) ամփոփումների բլոկի համար
         $this->summary = $this->balancesSummary($this->to);
 
-        // 4) պահում ենք “վերջնական տողերը”, որպեսզի map()-ը ստանա հենց սա
         $this->rows = $final->values();
 
         return $this->rows;
@@ -549,31 +540,19 @@ class ReportsJournalExport implements
         ];
     }
 
-    /* ===================== Report-1 transform helpers ===================== */
 
-    /**
-     * Վերածում ենք հում տողերը Report-1 ցուցակի՝
-     * - 5 նիշանոց բազաներ = sum(բոլոր սերունդներ, ներառյալ lettered)
-     * - lettered (^\d{5}[A-Za-z]+$) = պահել առանձին տողով
-     * - մաքուր թվային 6+ նիշանոցները չեն մտնում վերջնական ցուցակ
-     */
     protected function transformToReport1(Collection $rows): Collection
     {
-        // 1) առանձնացնում ենք տառային հաշիվները
         $lettered = $rows->filter(fn($r) => $this->isLetteredCode((string)$r->code));
 
-        // 2) խմբավորում ենք ըստ 5 նիշ բազայի (lettered-ներն էլ նույն բազայի տակ են)
         $grouped = $rows->groupBy(function ($r) {
             return $this->base5((string)$r->code);
         });
 
-        // 3) կառուցում ենք 5 նիշանոց aggregate տողերը՝ գումարելով խմբի բոլոր անդամներին (ներառյալ lettered)
         $baseAggregates = $grouped->map(function (Collection $group, $base5) {
-            // անուն – նախապատվությունը՝ հենց 5 նիշ կոդի name-ը, եթե կա
             $exact = $group->first(fn($x) => (string)$x->code === $base5);
             $name = $exact->name ?? optional($group->sortBy(fn($x) => strlen((string)$x->code))->first())->name ?? $base5;
 
-            // հավաքել գումարային դաշտերը
             $agg = [
                 'code' => $base5,
                 'name' => $name,
@@ -581,22 +560,18 @@ class ReportsJournalExport implements
             foreach ($this->sumFields as $f) {
                 $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
             }
-            // object-ի տեսքով, որպեսզի map()–ում property access-ը աշխատի
             return (object)$agg;
         });
 
-        // 4) lettered տողերը թողնում ենք ինչպես կան (ապահովում ենք բացակա դաշտերը = 0)
         $letteredNormalized = $lettered->map(function ($r) {
             foreach ($this->sumFields as $f) {
                 $r->{$f} = (float)($r->{$f} ?? 0);
             }
-            // ապահովել, որ name/code դաշտերը լինեն string
             $r->code = (string)$r->code;
             $r->name = (string)($r->name ?? $r->code);
             return $r;
         });
 
-        // 5) Վերջնական ցուցակ = 5-անիշ բազաներ + lettered տողեր (առանձին)
         return $baseAggregates
             ->values()
             ->merge($letteredNormalized->values())
@@ -604,18 +579,12 @@ class ReportsJournalExport implements
             ->values();
     }
 
-    /** true, եթե code-ը 5 թվանշանից հետո ունի առնվազն 1 տառ (օր. 10210NI) */
     protected function isLetteredCode(string $code): bool
     {
         return (bool)preg_match('/^\d{5}[A-Za-z]+$/', $code);
     }
 
-    /**
-     * Վերադարձնում է 5-անիշ բազան՝
-     * - “10210NI” → “10210”
-     * - “102101”  → “10210”
-     * - եթե code-ը չի սկսվում 5 թվանշանով՝ վերադարձնում է ամբողջ code-ը որպես base (edge-case)
-     */
+
     protected function base5(string $code): string
     {
         if (preg_match('/^\d{5}/', $code, $m)) {
