@@ -27,15 +27,23 @@ class ReportV01Controller extends Controller
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
         // $toStr = $request->query('to', $this->to);
-        $toStr = "2025-09-10";
+        $toStr = "2025-12-10";
         if (!$toStr) {
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
 
         // 1) Տվյալներ
+        // հենց տվյալների ստանալուց հետո
         $rawRows  = $this->balancesRowsQuery($toStr)->get();
         $rows     = $this->transformToReport1($rawRows)->values();
         $this->summary = $this->balancesSummary($toStr) ?? [];
+
+        $sheetInfo = [
+            "TO={$toStr}",
+            "RAW_COUNT=" . $rawRows->count(),
+            "ROWS_COUNT=" . $rows->count(),
+        ];
+
 
         // 2) Template (.xls)
         $templatePath = base_path('v01.xls'); // հարմարեցրու ըստ քո տեղադրության
@@ -62,6 +70,9 @@ class ReportV01Controller extends Controller
         $sheet->setCellValue('A1', 'HELLO!');
         $sheet->setCellValue('B2', date('Y-m-d H:i:s'));
         $sheet->setCellValue('C3', 12345);
+        $sheet->setCellValue('A5', $sheetInfo[0]);
+        $sheet->setCellValue('A6', $sheetInfo[1]);
+        $sheet->setCellValue('A7', $sheetInfo[2]);
 
         // 3) Գրելու սկիզբ
         $startRow   = 8;
