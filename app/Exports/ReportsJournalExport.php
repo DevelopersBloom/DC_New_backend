@@ -268,28 +268,29 @@
 
 
 namespace App\Exports;
-
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Events\AfterSheet;
 
 use Maatwebsite\Excel\Events\BeforeExport;
+use Maatwebsite\Excel\Events\BeforeWriting;
+use Maatwebsite\Excel\Events\AfterSheet;
+use Maatwebsite\Excel\Files\LocalTemporaryFile;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
+
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 use App\Traits\CalculatesAccountBalancesTrait;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
-use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
 class ReportsJournalExport implements
     FromCollection,
     WithMapping,
@@ -713,9 +714,12 @@ class ReportsJournalExport implements
 
                 $reader = new XlsReader();
                 $reader->setReadDataOnly(false); // պահպանում է ձևավորումները/merges-ը
-                $spreadsheet = $reader->load($templatePath);
 
-                $event->writer->setSpreadsheet($spreadsheet);
+                $tmp = new LocalTemporaryFile($templatePath);
+                // ExcelFormat::XLS — ասել writer-ին, որ XLS է
+                $event->writer->reopen($tmp, ExcelFormat::XLS);
+                $event->writer->getSheetByIndex(0);
+
             },
 
             AfterSheet::class => function (AfterSheet $event) {
