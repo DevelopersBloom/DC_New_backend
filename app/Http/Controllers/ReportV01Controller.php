@@ -64,7 +64,9 @@ class ReportV01Controller extends Controller
         } else {
             foreach ($rows as $row) {
                 $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
-                $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
+                if (!empty($row->name)) {
+                    $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)$row->name, DataType::TYPE_STRING);
+                }
 
                 $nums = [
                     6  => (float)($row->amd_resident ?? 0),
