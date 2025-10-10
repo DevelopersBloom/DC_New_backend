@@ -74,21 +74,51 @@ trait CalculatesAccountBalancesTrait
     }
 
 
+//    protected function balancesRowsQuery(?string $dateTo)
+//    {
+//        return DB::query()
+//            ->fromSub($this->balancesSubquery($dateTo), 'b')
+//            ->selectRaw("
+//                b.account_id,
+//                b.code,
+//                b.name,
+//                b.type,
+//                b.balance as total_resident,
+//                0 as total_non_resident,
+//                (b.balance + 0) as total
+//            ")
+//            ->orderBy('b.code');
+//    }
     protected function balancesRowsQuery(?string $dateTo)
     {
         return DB::query()
             ->fromSub($this->balancesSubquery($dateTo), 'b')
             ->selectRaw("
-                b.account_id,
-                b.code,
-                b.name,
-                b.type,
-                b.balance as total_resident,
-                0 as total_non_resident,
-                (b.balance + 0) as total
-            ")
+            b.account_id,
+            b.code,
+            b.name,
+            b.type,
+
+            b.balance AS amd_resident,
+            0         AS amd_non_resident,
+            0         AS fx_group1_resident,
+            0         AS fx_group1_non_resident,
+            0         AS usd_resident,
+            0         AS usd_non_resident,
+            0         AS eur_resident,
+            0         AS eur_non_resident,
+            0         AS fx_group2_resident,
+            0         AS fx_group2_non_resident,
+            0         AS rub_resident,
+            0         AS rub_non_resident,
+
+            -- Կարող ես պահել նաև total-երը, եթե հարկավոր է
+            0         AS total_non_resident,
+            b.balance AS total
+        ")
             ->orderBy('b.code');
     }
+
 
     /**
      * Ամփոփ թվեր՝ ըստ տիպերի

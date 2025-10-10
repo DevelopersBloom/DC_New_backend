@@ -60,7 +60,6 @@ class ReportV01Controller extends Controller
         $startRow   = 8;
         $currentRow = $startRow;
 
-        dd($rows);
         if ($rows->isEmpty()) {
             $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
         } else {
