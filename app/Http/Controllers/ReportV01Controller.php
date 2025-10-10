@@ -67,7 +67,7 @@ class ReportV01Controller extends Controller
                     1, $currentRow, (string)$row->code, DataType::TYPE_STRING
                 );
 
-                $name = isset($row->name) && trim((string)$row->name) !== '' ? (string)$row->name : '';
+                $name = isset($row->name) && trim((string)$row->name) !== '' ? (string)$row->name : 0;
                 $sheet->getStyleByColumnAndRow(2, $currentRow)->getNumberFormat()->setFormatCode('@');
                 $sheet->getStyleByColumnAndRow(2, $currentRow)->setQuotePrefix(true);
                 $sheet->getCellByColumnAndRow(2, $currentRow)->setValueExplicit($name, DataType::TYPE_STRING);
