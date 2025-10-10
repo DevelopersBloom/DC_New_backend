@@ -32,21 +32,13 @@ class ReportV01Controller extends Controller
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
 
-        // 1) Տվյալներ
-        // հենց տվյալների ստանալուց հետո
         $rawRows  = $this->balancesRowsQuery($toStr)->get();
         $rows     = $this->transformToReport1($rawRows)->values();
         $this->summary = $this->balancesSummary($toStr) ?? [];
 
-        $sheetInfo = [
-            "TO={$toStr}",
-            "RAW_COUNT=" . $rawRows->count(),
-            "ROWS_COUNT=" . $rows->count(),
-        ];
-
 
         // 2) Template (.xls)
-        $templatePath = base_path('v01.xls'); // հարմարեցրու ըստ քո տեղադրության
+        $templatePath = base_path('v01.xls');
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
         }
@@ -55,42 +47,27 @@ class ReportV01Controller extends Controller
         $reader->setReadDataOnly(false);
         $spreadsheet = $reader->load($templatePath);
 
-        // ✅ ընտրում ենք աշխատաշիթը՝ նախ փորձելով Sheet1, հետո 0-րդը
         $sheet = $spreadsheet->getSheetByName('Sheet1') ?: $spreadsheet->getSheet(0);
         $spreadsheet->setActiveSheetIndex($sheet->getParent()->getIndex($sheet));
 
-        // 🧹 Անջատենք merge-երը տվյալների զոնայում՝ A8:Q10000
         foreach ($sheet->getMergeCells() as $mergedRange) {
             if ($this->rangesOverlap($mergedRange, 'A8:Q10000')) {
                 $sheet->unmergeCells(str_replace('$', '', $mergedRange));
             }
         }
 
-        // 🔎 Smoke test — որ հասկանանք՝ գրելու/շիթի/ֆայլի մասով ամեն ինչ OK է
-        $sheet->setCellValue('A1', 'HELLO!');
-        $sheet->setCellValue('B2', date('Y-m-d H:i:s'));
-        $sheet->setCellValue('C3', 12345);
-        $sheet->setCellValue('A5', $sheetInfo[0]);
-        $sheet->setCellValue('A6', $sheetInfo[1]);
-        $sheet->setCellValue('A7', $sheetInfo[2]);
 
-        // 3) Գրելու սկիզբ
         $startRow   = 8;
         $currentRow = $startRow;
 
+        dd($rows);
         if ($rows->isEmpty()) {
-            // ⛳ եթե տվյալ չկա, placeholder
             $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
         } else {
             foreach ($rows as $row) {
-                // A (1): code
                 $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
-                // B (2): name
                 $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
 
-                // ❌ Չենք դիպչում C(3), D(4), E(5)
-
-                // ✅ Գրենք F..Q (6..17)
                 $nums = [
                     6  => (float)($row->amd_resident ?? 0),
                     7  => (float)($row->amd_non_resident ?? 0),
@@ -107,8 +84,6 @@ class ReportV01Controller extends Controller
                 ];
 
                 foreach ($nums as $colIndex => $val) {
-                    // XLS-ում երբեմն Explicit NUMERIC-ը «անտեսվում» է format-ի պատճառով,
-                    // բայց սա ճիշտ է գրառում է անում՝ արժեքը իրական թիվ է պահում:
                     $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val, DataType::TYPE_NUMERIC);
                 }
 
@@ -116,7 +91,6 @@ class ReportV01Controller extends Controller
             }
         }
 
-        // 4) Ամփոփում
         $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
         $values = [
             $this->summary['Ակտիվներ'] ?? 0,
@@ -131,9 +105,7 @@ class ReportV01Controller extends Controller
             $sheet->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
         }
 
-        // 5) Պահպանում (.xls)
         $writer = new XlsWriter($spreadsheet);
-        // Հին XLS-ում ֆորմուլաների precalc-ը հաճախ «ծանրացնում» է. անջատենք
         $writer->setPreCalculateFormulas(false);
 
         $dir = storage_path('app/reports');
@@ -142,13 +114,10 @@ class ReportV01Controller extends Controller
         $filename = 'base_pats_v01_OUT.xls';
         $path = $dir . DIRECTORY_SEPARATOR . $filename;
 
-        // Header/Output buffering cleanup — կարևոր է download-ի համար
         while (ob_get_level() > 0) { @ob_end_clean(); }
 
         $writer->save($path);
 
-        // ⛳ ցանկության դեպքում՝ sanity log
-        // \Log::info('Report saved', ['path' => $path, 'size' => @filesize($path)]);
 
         return response()->download($path, $filename, [
             'Content-Type'  => 'application/vnd.ms-excel',
@@ -157,7 +126,6 @@ class ReportV01Controller extends Controller
         ])->deleteFileAfterSend(true);
     }
 
-    // ✔️ Օգնիչ՝ պարզելու համար՝ overlap կա՞ data-range-ի հետ
     protected function rangesOverlap(string $r1, string $r2): bool
     {
         [$s1, $e1] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::rangeBoundaries(str_replace('$', '', $r1));
