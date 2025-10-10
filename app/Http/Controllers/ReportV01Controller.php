@@ -18,16 +18,6 @@ class ReportV01Controller extends Controller
     protected ?string $to;
     protected array $summary = [];
 
-    protected array $sumFields = [
-        'total_resident','total_non_resident',
-        'amd_resident','amd_non_resident',
-        'fx_group1_resident','fx_group1_non_resident',
-        'usd_resident','usd_non_resident',
-        'eur_resident','eur_non_resident',
-        'fx_group2_resident','fx_group2_non_resident',
-        'rub_resident','rub_non_resident',
-    ];
-
     public function __construct(?string $to = null)
     {
         $this->to = $to;
@@ -42,13 +32,13 @@ class ReportV01Controller extends Controller
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
 
-        // 1) Տվյալների ստացում
+        // 1) Տվյալներ
         $rawRows  = $this->balancesRowsQuery($toStr)->get();
         $rows     = $this->transformToReport1($rawRows)->values();
         $this->summary = $this->balancesSummary($toStr) ?? [];
 
-        // 2) Բացում template-ը
-        $templatePath = base_path('v01.xls'); // կամ base_pats(v01).xls
+        // 2) Template
+        $templatePath = base_path('v01.xls'); // հարմարեցրու՝ base_pats(v01).xls
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
         }
@@ -56,44 +46,61 @@ class ReportV01Controller extends Controller
         $reader = new XlsReader();
         $reader->setReadDataOnly(false);
         $spreadsheet = $reader->load($templatePath);
-        $sheet = $spreadsheet->getActiveSheet();
 
-        // 3) Գրելու սկիզբը
-        $startRow = 8; // A8
-        $currentRow = $startRow;
+        // ✅ Փորձում ենք ստանալ կոնկրետ sheet անունով, այլապես՝ 0-րդը
+        $sheet = $spreadsheet->getSheetByName('Sheet1') ?? $spreadsheet->getSheet(0);
+        $spreadsheet->setActiveSheetIndex($sheet->getParent()->getIndex($sheet));
 
-        // 4) Գրենք Ա, Բ, ապա F..Q, CDE-ին չդիպչելով
-        foreach ($rows as $row) {
-            // A: code
-            $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
-            // B: name
-            $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
-
-            // F (6) – Q (17) թվային դաշտեր
-            $nums = [
-                6  => (float)($row->amd_resident ?? 0),
-                7  => (float)($row->amd_non_resident ?? 0),
-                8  => (float)($row->fx_group1_resident ?? 0),
-                9  => (float)($row->fx_group1_non_resident ?? 0),
-                10 => (float)($row->usd_resident ?? 0),
-                11 => (float)($row->usd_non_resident ?? 0),
-                12 => (float)($row->eur_resident ?? 0),
-                13 => (float)($row->eur_non_resident ?? 0),
-                14 => (float)($row->fx_group2_resident ?? 0),
-                15 => (float)($row->fx_group2_non_resident ?? 0),
-                16 => (float)($row->rub_resident ?? 0),
-                17 => (float)($row->rub_non_resident ?? 0),
-            ];
-
-            foreach ($nums as $colIndex => $val) {
-                $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val, DataType::TYPE_NUMERIC);
+        // 🧹 Անջատենք merge-երը տվյալների զոնայում՝ A8:Q10000
+        foreach ($sheet->getMergeCells() as $mergedRange) {
+            // եթե հատվում է տվյալների range-ին, unmerge
+            if ($this->rangesOverlap($mergedRange, 'A8:Q10000')) {
+                $sheet->unmergeCells(str_replace('$', '', $mergedRange));
             }
-
-            // ❌ ՉԻ գրվում C(3), D(4), E(5) — թողնում ենք template-ի արժեքները/բանաձևերը
-            $currentRow++;
         }
 
-        // 5) Ամփոփում (S2:T5) — ըստ template-ի
+        // 3) Գրելու սկիզբ
+        $startRow   = 8;
+        $currentRow = $startRow;
+
+        if ($rows->isEmpty()) {
+            // ⛳ եթե տվյալ չկա, placeholder, որ համոզվես՝ գրելը աշխատում է
+            $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
+        } else {
+            foreach ($rows as $row) {
+                // A (1): code
+                $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
+
+                // B (2): name
+                $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
+
+                // ❌ Չենք դիպչում C(3), D(4), E(5)
+
+                // ✅ Գրենք F..Q (6..17)
+                $nums = [
+                    6  => (float)($row->amd_resident ?? 0),
+                    7  => (float)($row->amd_non_resident ?? 0),
+                    8  => (float)($row->fx_group1_resident ?? 0),
+                    9  => (float)($row->fx_group1_non_resident ?? 0),
+                    10 => (float)($row->usd_resident ?? 0),
+                    11 => (float)($row->usd_non_resident ?? 0),
+                    12 => (float)($row->eur_resident ?? 0),
+                    13 => (float)($row->eur_non_resident ?? 0),
+                    14 => (float)($row->fx_group2_resident ?? 0),
+                    15 => (float)($row->fx_group2_non_resident ?? 0),
+                    16 => (float)($row->rub_resident ?? 0),
+                    17 => (float)($row->rub_non_resident ?? 0),
+                ];
+
+                foreach ($nums as $colIndex => $val) {
+                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val, DataType::TYPE_NUMERIC);
+                }
+
+                $currentRow++;
+            }
+        }
+
+        // 4) Ամփոփում (եթե պետք է)
         $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
         $values = [
             $this->summary['Ակտիվներ'] ?? 0,
@@ -102,19 +109,21 @@ class ReportV01Controller extends Controller
             $this->summary['Հաշվեկշիռ'] ?? ($this->summary['Հաշվեշիռ'] ?? 0),
         ];
         foreach ($labels as $i => $label) {
-            $r = 2 + $i; // 2..5
+            $r = 2 + $i; // rows 2..5
             $sheet->setCellValue("S{$r}", $label);
             $sheet->setCellValueExplicit("T{$r}", (float)$values[$i], DataType::TYPE_NUMERIC);
             $sheet->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
         }
 
-        // 6) Պահպանել և տալ download
+        // 5) Գրելը
         $writer = new XlsWriter($spreadsheet);
         $writer->setPreCalculateFormulas(false);
 
         $dir = storage_path('app/reports');
         if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
-        $filename = 'base_pats_v01.xls';
+
+        // 👉 պահում ենք ՆՈՐ անունով, որ շփոթ չլինի հնի հետ
+        $filename = 'base_pats_v01_OUT.xls';
         $path = $dir . DIRECTORY_SEPARATOR . $filename;
 
         while (ob_get_level() > 0) { @ob_end_clean(); }
@@ -127,52 +136,57 @@ class ReportV01Controller extends Controller
         ])->deleteFileAfterSend(true);
     }
 
-    /** Helpers — նույնը, ինչ նախորդ կոդումդ օգտագործում էիր **/
+    // ✔️ Օգնիչ՝ պարզելու համար՝ overlap կա՞ data-range-ի հետ
+    protected function rangesOverlap(string $r1, string $r2): bool
+    {
+        [$s1, $e1] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::rangeBoundaries(str_replace('$', '', $r1));
+        [$s2, $e2] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::rangeBoundaries(str_replace('$', '', $r2));
 
+        return !(
+            $e1[0] < $s2[0] || $e2[0] < $s1[0] ||  // columns disjoint
+            $e1[1] < $s2[1] || $e2[1] < $s1[1]     // rows disjoint
+        );
+    }
+
+    /** քո helpers — նույնը, ինչ առաջ էր */
     protected function transformToReport1($rows)
     {
-        $lettered = $rows->filter(fn($r) => $this->isLetteredCode((string)$r->code));
-        $grouped = $rows->groupBy(fn($r) => $this->base5((string)$r->code));
+        $sumFields = [
+            'total_resident','total_non_resident',
+            'amd_resident','amd_non_resident',
+            'fx_group1_resident','fx_group1_non_resident',
+            'usd_resident','usd_non_resident',
+            'eur_resident','eur_non_resident',
+            'fx_group2_resident','fx_group2_non_resident',
+            'rub_resident','rub_non_resident',
+        ];
 
-        $baseAggregates = $grouped->map(function ($group, $base5) {
+        $lettered = $rows->filter(fn($r) => (bool)preg_match('/^\d{5}[A-Za-z]+$/', (string)$r->code));
+        $grouped  = $rows->groupBy(fn($r) => preg_match('/^\d{5}/', (string)$r->code, $m) ? $m[0] : (string)$r->code);
+
+        $baseAggregates = $grouped->map(function ($group, $base5) use ($sumFields) {
             $exact = $group->first(fn($x) => (string)$x->code === $base5);
             $name  = $exact->name
                 ?? optional($group->sortBy(fn($x) => strlen((string)$x->code))->first())->name
                 ?? $base5;
 
             $agg = ['code' => $base5, 'name' => $name];
-            foreach ($this->sumFields as $f) {
+            foreach ($sumFields as $f) {
                 $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
             }
             return (object)$agg;
         });
 
-        $letteredNormalized = $lettered->map(function ($r) {
-            foreach ($this->sumFields as $f) {
-                $r->{$f} = (float)($r->{$f} ?? 0);
-            }
+        $letteredNormalized = $lettered->map(function ($r) use ($sumFields) {
+            foreach ($sumFields as $f) { $r->{$f} = (float)($r->{$f} ?? 0); }
             $r->code = (string)$r->code;
             $r->name = (string)($r->name ?? $r->code);
             return $r;
         });
 
-        return $baseAggregates
-            ->values()
+        return $baseAggregates->values()
             ->merge($letteredNormalized->values())
             ->sortBy('code')
             ->values();
-    }
-
-    protected function isLetteredCode(string $code): bool
-    {
-        return (bool)preg_match('/^\d{5}[A-Za-z]+$/', $code);
-    }
-
-    protected function base5(string $code): string
-    {
-        if (preg_match('/^\d{5}/', $code, $m)) {
-            return $m[0];
-        }
-        return $code;
     }
 }
