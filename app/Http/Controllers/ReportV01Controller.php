@@ -62,18 +62,9 @@ class ReportV01Controller extends Controller
         if ($rows->isEmpty()) {
             $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
         } else {
-            foreach ($spreadsheet->getNamedRanges() as $named) {
-                $spreadsheet->removeNamedRange($named->getName());
-            }
             foreach ($rows as $row) {
-                $sheet->setCellValueExplicitByColumnAndRow(
-                    1, $currentRow, (string)$row->code, DataType::TYPE_STRING
-                );
-
-                $name = isset($row->name) && trim((string)$row->name) !== '' ? (string)$row->name : 0;
-                $sheet->getStyleByColumnAndRow(2, $currentRow)->getNumberFormat()->setFormatCode('@');
-                $sheet->getStyleByColumnAndRow(2, $currentRow)->setQuotePrefix(true);
-                $sheet->getCellByColumnAndRow(2, $currentRow)->setValueExplicit($name, DataType::TYPE_STRING);
+                $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
+                $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
 
                 $nums = [
                     6  => (float)($row->amd_resident ?? 0),
