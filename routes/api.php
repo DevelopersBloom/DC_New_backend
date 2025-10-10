@@ -111,7 +111,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::get('/v07',  [ReportController::class, 'getV07Report']);
             Route::get('/v013', [ReportController::class, 'getV013Report']);
         });
-        Route::get('/transactions/reports/export', \App\Http\Controllers\ReportV01Controller::class);
+        Route::get('/transactions/reports/export', [ReportController::class, 'getFirstReport']);
 
         Route::prefix('chart-of-accounts')->group(function () {
 
