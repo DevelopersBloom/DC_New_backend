@@ -37,7 +37,6 @@ class ReportV01Controller extends Controller
         $this->summary = $this->balancesSummary($toStr) ?? [];
 
 
-        // 2) Template (.xls)
         $templatePath = base_path('v01.xls');
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);

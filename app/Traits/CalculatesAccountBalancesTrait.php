@@ -63,6 +63,7 @@ trait CalculatesAccountBalancesTrait
         return DB::query()
             ->fromSub($union, 'u')
             ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
+            ->whereNull('ca.deleted_at')
             ->select([
                 'u.account_id',
                 'ca.code',
@@ -112,7 +113,6 @@ trait CalculatesAccountBalancesTrait
             0         AS rub_resident,
             0         AS rub_non_resident,
 
-            -- Կարող ես պահել նաև total-երը, եթե հարկավոր է
             0         AS total_non_resident,
             b.balance AS total
         ")
