@@ -268,6 +268,7 @@
 
 
 namespace App\Exports;
+use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -278,19 +279,12 @@ use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-use Maatwebsite\Excel\Events\BeforeExport;
 use Maatwebsite\Excel\Events\BeforeWriting;
 use Maatwebsite\Excel\Events\AfterSheet;
 use Maatwebsite\Excel\Files\LocalTemporaryFile;
 use Maatwebsite\Excel\Excel as ExcelFormat;
-use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
 
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-
-use App\Traits\CalculatesAccountBalancesTrait;
 class ReportsJournalExport implements
     FromCollection,
     WithMapping,
@@ -301,6 +295,212 @@ class ReportsJournalExport implements
     ShouldAutoSize
 {
     use CalculatesAccountBalancesTrait;
+
+
+    protected ?string $to;
+    protected array $summary = [];
+    protected Collection $rows;
+
+    protected array $sumFields = [
+        'total_resident','total_non_resident',
+        'amd_resident','amd_non_resident',
+        'fx_group1_resident','fx_group1_non_resident',
+        'usd_resident','usd_non_resident',
+        'eur_resident','eur_non_resident',
+        'fx_group2_resident','fx_group2_non_resident',
+        'rub_resident','rub_non_resident',
+    ];
+
+    public function __construct(?string $to = null)
+    {
+        $this->to = $to;
+        $this->rows = collect();
+        $this->summary = [];
+    }
+
+    public function collection(): Collection
+    {
+        $raw   = $this->balancesRowsQuery($this->to)->get();
+        $final = $this->transformToReport1($raw);
+
+        $this->summary = $this->balancesSummary($this->to);
+        $this->rows    = $final->values();
+
+        return $this->rows;
+    }
+
+// ⬇️ Տվյալների map-ը (գրվում է template-ի մեջ՝ startCell-ից)
+    public function map($row): array
+    {
+        return [
+            $row->code,
+            $row->name,
+            (float)($row->total_resident ?? 0) + (float)($row->total_non_resident ?? 0),
+
+            (float)($row->total_resident ?? 0),
+            (float)($row->total_non_resident ?? 0),
+
+            (float)($row->amd_resident ?? 0),
+            (float)($row->amd_non_resident ?? 0),
+
+            (float)($row->fx_group1_resident ?? 0),
+            (float)($row->fx_group1_non_resident ?? 0),
+
+            (float)($row->usd_resident ?? 0),
+            (float)($row->usd_non_resident ?? 0),
+
+            (float)($row->eur_resident ?? 0),
+            (float)($row->eur_non_resident ?? 0),
+
+            (float)($row->fx_group2_resident ?? 0),
+            (float)($row->fx_group2_non_resident ?? 0),
+
+            (float)($row->rub_resident ?? 0),
+            (float)($row->rub_non_resident ?? 0),
+        ];
+    }
+
+// ⬇️ Որտեղից սկսել գրել template-ի մեջ
+    public function startCell(): string
+    {
+        return 'A8'; // template-ում վերնագրերը վերևում են, այստեղից սկսում ենք տվյալների լցնումը
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'C' => '#,##0',
+            'D' => '#,##0','E' => '#,##0',
+            'F' => '#,##0','G' => '#,##0',
+            'H' => '#,##0','I' => '#,##0',
+            'J' => '#,##0','K' => '#,##0',
+            'L' => '#,##0','M' => '#,##0',
+            'N' => '#,##0','O' => '#,##0',
+            'P' => '#,##0','Q' => '#,##0',
+            'T' => '#,##0',
+        ];
+    }
+
+    public function columnWidths(): array
+    {
+        return [
+            'A' => 14, 'B' => 60,
+            'C' => 18,
+            'D' => 16, 'E' => 16,
+            'F' => 16, 'G' => 16,
+            'H' => 16, 'I' => 16,
+            'J' => 16, 'K' => 16,
+            'L' => 16, 'M' => 16,
+            'N' => 16, 'O' => 16,
+            'P' => 16, 'Q' => 16,
+            'S' => 22, 'T' => 18,
+        ];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        // Template-ը արդեն ձեւավորված է
+        return [];
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            // ✅ Օգտագործում ենք reopen(template) `BeforeWriting` event-ում
+            BeforeWriting::class => function (BeforeWriting $event) {
+                $templatePath = base_path('v01.xls'); // ⇐ փոխիր ըստ իրական ուղու
+                if (!is_file($templatePath)) {
+                    throw new \RuntimeException("Template not found at {$templatePath}");
+                }
+
+                // Եթե storage/tmp-ը պետք է override անես (permission խնդիրների դեպքում).
+                // config(['excel.temporary_files.local_path' => storage_path('app/tmp-excel')]);
+
+                // Վերաբացում ենք XLS template-ը writer-ի վրա (ՈՉ setSpreadsheet)
+                $tmp = new LocalTemporaryFile($templatePath);
+                $event->writer->reopen($tmp, ExcelFormat::XLS);
+
+                // Ընտրում ենք առաջին թերթը (եթե ունես կոնկրետ անուն՝ getSheetByIndex փոխարեն օգտագործիր getSheetByName)
+                $event->writer->getSheetByIndex(0);
+            },
+
+            AfterSheet::class => function (AfterSheet $event) {
+                $s = $event->sheet->getDelegate();
+
+                if (!$s->getFreezePane()) {
+                    $s->freezePane('A5');
+                }
+
+                // Ամփոփում՝ եթե template-ում նախատեսված է
+                $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
+                $values = [
+                    $this->summary['Ակտիվներ'] ?? 0,
+                    $this->summary['Պարտավորություններ'] ?? 0,
+                    $this->summary['Կապիտալ'] ?? 0,
+                    $this->summary['Հաշվեկշիռ'] ?? ($this->summary['Հաշվեշիռ'] ?? 0),
+                ];
+
+                foreach ($labels as $i => $label) {
+                    $r = 2 + $i;
+                    $s->setCellValue("S{$r}", $label);
+                    $s->setCellValue("T{$r}", $values[$i]);
+                    $s->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
+                }
+            },
+        ];
+    }
+
+// -------- Helper-ները 그대로 ----------
+    protected function transformToReport1(Collection $rows): Collection
+    {
+        $lettered = $rows->filter(fn($r) => $this->isLetteredCode((string)$r->code));
+        $grouped = $rows->groupBy(fn($r) => $this->base5((string)$r->code));
+
+        $baseAggregates = $grouped->map(function (Collection $group, $base5) {
+            $exact = $group->first(fn($x) => (string)$x->code === $base5);
+            $name  = $exact->name
+                ?? optional($group->sortBy(fn($x) => strlen((string)$x->code))->first())->name
+                ?? $base5;
+
+            $agg = ['code' => $base5, 'name' => $name];
+            foreach ($this->sumFields as $f) {
+                $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
+            }
+            return (object)$agg;
+        });
+
+        $letteredNormalized = $lettered->map(function ($r) {
+            foreach ($this->sumFields as $f) {
+                $r->{$f} = (float)($r->{$f} ?? 0);
+            }
+            $r->code = (string)$r->code;
+            $r->name = (string)($r->name ?? $r->code);
+            return $r;
+        });
+
+        return $baseAggregates
+            ->values()
+            ->merge($letteredNormalized->values())
+            ->sortBy('code')
+            ->values();
+    }
+
+    protected function isLetteredCode(string $code): bool
+    {
+        return (bool)preg_match('/^\d{5}[A-Za-z]+$/', $code);
+    }
+
+    protected function base5(string $code): string
+    {
+        if (preg_match('/^\d{5}/', $code, $m)) {
+            return $m[0];
+        }
+        return $code;
+    }
+
+
+}
+
 
 //    protected ?string $to;
 //    protected array $summary = [];
@@ -595,220 +795,3 @@ class ReportsJournalExport implements
 //        }
 //        return $code;
 //    }
-
-    protected ?string $to;
-    protected array $summary = [];
-    protected Collection $rows;
-
-    protected array $sumFields = [
-        'total_resident','total_non_resident',
-        'amd_resident','amd_non_resident',
-        'fx_group1_resident','fx_group1_non_resident',
-        'usd_resident','usd_non_resident',
-        'eur_resident','eur_non_resident',
-        'fx_group2_resident','fx_group2_non_resident',
-        'rub_resident','rub_non_resident',
-    ];
-
-    public function __construct(?string $to = null)
-    {
-        $this->to = $to;
-        $this->rows = collect();
-        $this->summary = [];
-    }
-
-    public function collection(): Collection
-    {
-        $raw   = $this->balancesRowsQuery($this->to)->get();
-        $final = $this->transformToReport1($raw);
-
-        $this->summary = $this->balancesSummary($this->to);
-        $this->rows    = $final->values();
-
-        return $this->rows;
-    }
-
-    // ⬇️ Տվյալների map-ը (գրվում է template-ի մեջ՝ startCell-ից)
-    public function map($row): array
-    {
-        return [
-            $row->code,
-            $row->name,
-            (float)($row->total_resident ?? 0) + (float)($row->total_non_resident ?? 0),
-
-            (float)($row->total_resident ?? 0),
-            (float)($row->total_non_resident ?? 0),
-
-            (float)($row->amd_resident ?? 0),
-            (float)($row->amd_non_resident ?? 0),
-
-            (float)($row->fx_group1_resident ?? 0),
-            (float)($row->fx_group1_non_resident ?? 0),
-
-            (float)($row->usd_resident ?? 0),
-            (float)($row->usd_non_resident ?? 0),
-
-            (float)($row->eur_resident ?? 0),
-            (float)($row->eur_non_resident ?? 0),
-
-            (float)($row->fx_group2_resident ?? 0),
-            (float)($row->fx_group2_non_resident ?? 0),
-
-            (float)($row->rub_resident ?? 0),
-            (float)($row->rub_non_resident ?? 0),
-        ];
-    }
-
-    // ⬇️ Որտեղից սկսել գրել template-ի մեջ (հարմարեցրու ըստ քո ֆայլի)
-    public function startCell(): string
-    {
-        return 'A8'; // պետք չէ headings(), որովհետեւ template-ը արդեն ունի վերնագրեր/ձեւավորումներ
-    }
-
-    public function columnFormats(): array
-    {
-        return [
-            'C' => '#,##0',
-            'D' => '#,##0','E' => '#,##0',
-            'F' => '#,##0','G' => '#,##0',
-            'H' => '#,##0','I' => '#,##0',
-            'J' => '#,##0','K' => '#,##0',
-            'L' => '#,##0','M' => '#,##0',
-            'N' => '#,##0','O' => '#,##0',
-            'P' => '#,##0','Q' => '#,##0',
-            'T' => '#,##0',
-        ];
-    }
-
-    public function columnWidths(): array
-    {
-        return [
-            'A' => 14, 'B' => 60,
-            'C' => 18,
-            'D' => 16, 'E' => 16,
-            'F' => 16, 'G' => 16,
-            'H' => 16, 'I' => 16,
-            'J' => 16, 'K' => 16,
-            'L' => 16, 'M' => 16,
-            'N' => 16, 'O' => 16,
-            'P' => 16, 'Q' => 16,
-            'S' => 22, 'T' => 18,
-        ];
-    }
-
-    public function styles(Worksheet $sheet)
-    {
-        // Template-ը արդեն ձեւավորված է, ուստի այստեղ ոչինչ պարտադիր չէ
-        return [];
-    }
-
-    public function registerEvents(): array
-    {
-        return [
-            // ✅ Բացում ենք *.xls template-ը հենց XLS reader-ով, որ չլինի ZipArchive error 19
-            BeforeExport::class => function (BeforeExport $event) {
-                $templatePath = base_path('v01.xls'); // փոխիր, եթե այլ տեղ է
-                if (!is_file($templatePath)) {
-                    throw new \RuntimeException("Template not found at {$templatePath}");
-                }
-
-                $reader = new XlsReader();
-                $reader->setReadDataOnly(false); // պահպանում է ձևավորումները/merges-ը
-
-                $tmp = new LocalTemporaryFile($templatePath);
-                // ExcelFormat::XLS — ասել writer-ին, որ XLS է
-                $event->writer->reopen($tmp, ExcelFormat::XLS);
-                $event->writer->getSheetByIndex(0);
-
-            },
-
-            AfterSheet::class => function (AfterSheet $event) {
-                $s = $event->sheet->getDelegate();
-
-                // Եթե template-ում արդեն freeze կա, սա կարելի է բաց թողնել
-                if (!$s->getFreezePane()) {
-                    $s->freezePane('A5');
-                }
-
-                // Ամփոփում՝ եթե template-ում նախատեսված է (ձևավորումը optional)
-                $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
-                $values = [
-                    $this->summary['Ակտիվներ'] ?? 0,
-                    $this->summary['Պարտավորություններ'] ?? 0,
-                    $this->summary['Կապիտալ'] ?? 0,
-                    $this->summary['Հաշվեկշիռ'] ?? ($this->summary['Հաշվեշիռ'] ?? 0),
-                ];
-
-                foreach ($labels as $i => $label) {
-                    $r = 2 + $i;
-                    $s->setCellValue("S{$r}", $label);
-                    $s->setCellValue("T{$r}", $values[$i]);
-
-                    $s->getStyle("S{$r}:T{$r}")->applyFromArray([
-                        'borders' => [
-                            'allBorders' => [
-                                'borderStyle' => Border::BORDER_THIN,
-                                'color'       => ['rgb' => 'B7B7B7'],
-                            ],
-                        ],
-                        'alignment' => [
-                            'vertical'   => Alignment::VERTICAL_CENTER,
-                            'horizontal' => Alignment::HORIZONTAL_RIGHT,
-                        ],
-                    ]);
-                    $s->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
-                }
-            },
-        ];
-    }
-
-    protected function transformToReport1(Collection $rows): Collection
-    {
-        $lettered = $rows->filter(fn($r) => $this->isLetteredCode((string)$r->code));
-
-        $grouped = $rows->groupBy(fn($r) => $this->base5((string)$r->code));
-
-        $baseAggregates = $grouped->map(function (Collection $group, $base5) {
-            $exact = $group->first(fn($x) => (string)$x->code === $base5);
-            $name  = $exact->name
-                ?? optional($group->sortBy(fn($x) => strlen((string)$x->code))->first())->name
-                ?? $base5;
-
-            $agg = ['code' => $base5, 'name' => $name];
-            foreach ($this->sumFields as $f) {
-                $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
-            }
-            return (object)$agg;
-        });
-
-        $letteredNormalized = $lettered->map(function ($r) {
-            foreach ($this->sumFields as $f) {
-                $r->{$f} = (float)($r->{$f} ?? 0);
-            }
-            $r->code = (string)$r->code;
-            $r->name = (string)($r->name ?? $r->code);
-            return $r;
-        });
-
-        return $baseAggregates
-            ->values()
-            ->merge($letteredNormalized->values())
-            ->sortBy('code')
-            ->values();
-    }
-
-    protected function isLetteredCode(string $code): bool
-    {
-        return (bool)preg_match('/^\d{5}[A-Za-z]+$/', $code);
-    }
-
-    protected function base5(string $code): string
-    {
-        if (preg_match('/^\d{5}/', $code, $m)) {
-            return $m[0];
-        }
-        return $code;
-    }
-
-
-}
