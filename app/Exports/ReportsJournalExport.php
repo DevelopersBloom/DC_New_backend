@@ -288,7 +288,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 use App\Traits\CalculatesAccountBalancesTrait;
 use PhpOffice\PhpWord\IOFactory;
-
+use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
+use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
 class ReportsJournalExport implements
     FromCollection,
     WithMapping,
