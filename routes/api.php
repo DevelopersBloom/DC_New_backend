@@ -111,7 +111,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::get('/v07',  [ReportController::class, 'getV07Report']);
             Route::get('/v013', [ReportController::class, 'getV013Report']);
         });
-        Route::get('/transactions/reports', \App\Http\Controllers\ReportV01Controller::class);
+        Route::get('/transactions/reports/export', \App\Http\Controllers\ReportV01Controller::class);
 
         Route::prefix('chart-of-accounts')->group(function () {
 
@@ -149,7 +149,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('/journal/{journal}', [DocumentJournalController::class, 'destroy']);
         Route::put('/journal/{journal}', [DocumentJournalController::class, 'update']);
 
-        Route::get('/transactions/reports/export', [ReportController::class, 'getFirstReport']);
+        Route::get('/transactions/reports', [\App\Http\Controllers\ReportV01Controller::class]);
 
         // Pawnshop Management
 //        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
