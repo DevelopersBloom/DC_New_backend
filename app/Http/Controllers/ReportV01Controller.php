@@ -62,6 +62,9 @@ class ReportV01Controller extends Controller
         if ($rows->isEmpty()) {
             $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
         } else {
+            foreach ($spreadsheet->getNamedRanges() as $named) {
+                $spreadsheet->removeNamedRange($named->getName());
+            }
             foreach ($rows as $row) {
                 $sheet->setCellValueExplicitByColumnAndRow(
                     1, $currentRow, (string)$row->code, DataType::TYPE_STRING
