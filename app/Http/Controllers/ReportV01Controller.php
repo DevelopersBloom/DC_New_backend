@@ -63,11 +63,14 @@ class ReportV01Controller extends Controller
             $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
         } else {
             foreach ($rows as $row) {
-                $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
-                if (!empty($row->name)) {
-                    $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)$row->name, DataType::TYPE_STRING);
-                }
+                $sheet->setCellValueExplicitByColumnAndRow(
+                    1, $currentRow, (string)$row->code, DataType::TYPE_STRING
+                );
 
+                $name = isset($row->name) && trim((string)$row->name) !== '' ? (string)$row->name : '';
+                $sheet->setCellValueExplicitByColumnAndRow(
+                    2, $currentRow, $name, DataType::TYPE_STRING
+                );
                 $nums = [
                     6  => (float)($row->amd_resident ?? 0),
                     7  => (float)($row->amd_non_resident ?? 0),
