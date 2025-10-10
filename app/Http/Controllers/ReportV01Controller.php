@@ -42,7 +42,8 @@ class ReportV01Controller extends Controller
      */
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
-        $toStr = $request->query('to', $this->to);
+        $toStr = "2025-09-10";
+        //$toStr = $request->query('to', $this->to);
         if (!$toStr) {
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
