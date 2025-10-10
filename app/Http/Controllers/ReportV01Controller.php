@@ -15,11 +15,9 @@ class ReportV01Controller extends Controller
 {
     use CalculatesAccountBalancesTrait;
 
-    /** կարգավորումներ */
     protected ?string $to;
     protected array $summary = [];
 
-    /** գումարվող դաշտերի ցանկը */
     protected array $sumFields = [
         'total_resident','total_non_resident',
         'amd_resident','amd_non_resident',
@@ -36,25 +34,21 @@ class ReportV01Controller extends Controller
         $this->summary = [];
     }
 
-    /**
-     * GET /reports/journal?to=YYYY-MM-DD
-     * Կարող ես փոխել ըստ կարիքի. Քանի որ քո հաշվարկները կախված են $to-ից, թողել եմ նույնը:
-     */
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
+        // $toStr = $request->query('to', $this->to);
         $toStr = "2025-09-10";
-        //$toStr = $request->query('to', $this->to);
         if (!$toStr) {
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
 
-        // 1) Բերում ենք տողերը և ամփոփումը (քո trait-ից)
-        $rawRows  = $this->balancesRowsQuery($toStr)->get();   // Collection
+        // 1) Տվյալների ստացում
+        $rawRows  = $this->balancesRowsQuery($toStr)->get();
         $rows     = $this->transformToReport1($rawRows)->values();
         $this->summary = $this->balancesSummary($toStr) ?? [];
 
-        // 2) Բացում ենք template-ը (XLS)
-        $templatePath = base_path('v01.xls'); // փոխիր իրական ուղով՝ base_pats(v01).xls
+        // 2) Բացում template-ը
+        $templatePath = base_path('v01.xls'); // կամ base_pats(v01).xls
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
         }
@@ -64,29 +58,42 @@ class ReportV01Controller extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // 3) Սկսման բջիջը՝ ըստ քո պահանջի (A8)
+        // 3) Գրելու սկիզբը
         $startRow = 8; // A8
         $currentRow = $startRow;
 
-        // 4) Գրենք տողերը template-ի մեջ ըստ map()-իդ տրամաբանության
+        // 4) Գրենք Ա, Բ, ապա F..Q, CDE-ին չդիպչելով
         foreach ($rows as $row) {
-            $mapped = $this->mapRow($row); // ստանում ենք array 17 սյուներով (A..Q)
+            // A: code
+            $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
+            // B: name
+            $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
 
-            // Ա–Q = 1..17 սյուն
-            $col = 1;
-            foreach ($mapped as $value) {
-                // թվերը որպես numeric, տեքստերը՝ general
-                if (is_numeric($value)) {
-                    $sheet->setCellValueExplicitByColumnAndRow($col, $currentRow, (float)$value, DataType::TYPE_NUMERIC);
-                } else {
-                    $sheet->setCellValueExplicitByColumnAndRow($col, $currentRow, (string)$value, DataType::TYPE_STRING);
-                }
-                $col++;
+            // F (6) – Q (17) թվային դաշտեր
+            $nums = [
+                6  => (float)($row->amd_resident ?? 0),
+                7  => (float)($row->amd_non_resident ?? 0),
+                8  => (float)($row->fx_group1_resident ?? 0),
+                9  => (float)($row->fx_group1_non_resident ?? 0),
+                10 => (float)($row->usd_resident ?? 0),
+                11 => (float)($row->usd_non_resident ?? 0),
+                12 => (float)($row->eur_resident ?? 0),
+                13 => (float)($row->eur_non_resident ?? 0),
+                14 => (float)($row->fx_group2_resident ?? 0),
+                15 => (float)($row->fx_group2_non_resident ?? 0),
+                16 => (float)($row->rub_resident ?? 0),
+                17 => (float)($row->rub_non_resident ?? 0),
+            ];
+
+            foreach ($nums as $colIndex => $val) {
+                $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val, DataType::TYPE_NUMERIC);
             }
+
+            // ❌ ՉԻ գրվում C(3), D(4), E(5) — թողնում ենք template-ի արժեքները/բանաձևերը
             $currentRow++;
         }
 
-        // 5) Ամփոփման արժեքներ՝ S2:T5 (հարմարեցրու, եթե template-ում այլ վայր է)
+        // 5) Ամփոփում (S2:T5) — ըստ template-ի
         $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
         $values = [
             $this->summary['Ակտիվներ'] ?? 0,
@@ -95,20 +102,18 @@ class ReportV01Controller extends Controller
             $this->summary['Հաշվեկշիռ'] ?? ($this->summary['Հաշվեշիռ'] ?? 0),
         ];
         foreach ($labels as $i => $label) {
-            $r = 2 + $i; // rows 2..5
+            $r = 2 + $i; // 2..5
             $sheet->setCellValue("S{$r}", $label);
             $sheet->setCellValueExplicit("T{$r}", (float)$values[$i], DataType::TYPE_NUMERIC);
             $sheet->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
         }
 
-        // 6) Պահպանում ենք XLS writer-ով և տալիս download
+        // 6) Պահպանել և տալ download
         $writer = new XlsWriter($spreadsheet);
         $writer->setPreCalculateFormulas(false);
 
         $dir = storage_path('app/reports');
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
+        if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
         $filename = 'base_pats_v01.xls';
         $path = $dir . DIRECTORY_SEPARATOR . $filename;
 
@@ -122,38 +127,7 @@ class ReportV01Controller extends Controller
         ])->deleteFileAfterSend(true);
     }
 
-    /** map()—ի «Controller» տարբերակը (A..Q) */
-    protected function mapRow($row): array
-    {
-        return [
-            $row->code,                     // A
-            $row->name,                     // B
-            (float)($row->total_resident ?? 0) + (float)($row->total_non_resident ?? 0), // C
-
-            (float)($row->total_resident ?? 0),      // D
-            (float)($row->total_non_resident ?? 0),  // E
-
-            (float)($row->amd_resident ?? 0),        // F
-            (float)($row->amd_non_resident ?? 0),    // G
-
-            (float)($row->fx_group1_resident ?? 0),  // H
-            (float)($row->fx_group1_non_resident ?? 0), // I
-
-            (float)($row->usd_resident ?? 0),        // J
-            (float)($row->usd_non_resident ?? 0),    // K
-
-            (float)($row->eur_resident ?? 0),        // L
-            (float)($row->eur_non_resident ?? 0),    // M
-
-            (float)($row->fx_group2_resident ?? 0),  // N
-            (float)($row->fx_group2_non_resident ?? 0), // O
-
-            (float)($row->rub_resident ?? 0),        // P
-            (float)($row->rub_non_resident ?? 0),    // Q
-        ];
-    }
-
-    /** ------ Helpers (քո export logic-ից 그대로) ------ */
+    /** Helpers — նույնը, ինչ նախորդ կոդումդ օգտագործում էիր **/
 
     protected function transformToReport1($rows)
     {
