@@ -593,6 +593,7 @@ class ReportsJournalExport implements
 //        }
 //        return $code;
 //    }
+
     protected ?string $to;
     protected array $summary = [];
     protected Collection $rows;
@@ -616,14 +617,16 @@ class ReportsJournalExport implements
 
     public function collection(): Collection
     {
-        $raw = $this->balancesRowsQuery($this->to)->get();
+        $raw   = $this->balancesRowsQuery($this->to)->get();
         $final = $this->transformToReport1($raw);
+
         $this->summary = $this->balancesSummary($this->to);
-        $this->rows = $final->values();
+        $this->rows    = $final->values();
+
         return $this->rows;
     }
 
-    // ⬇️ Քո շարքերի mapping-ը (գրվում է template-ի մեջ՝ A5-ից սկսած)
+    // ⬇️ Տվյալների map-ը (գրվում է template-ի մեջ՝ startCell-ից)
     public function map($row): array
     {
         return [
@@ -654,9 +657,10 @@ class ReportsJournalExport implements
         ];
     }
 
+    // ⬇️ Որտեղից սկսել գրել template-ի մեջ (հարմարեցրու ըստ քո ֆայլի)
     public function startCell(): string
     {
-        return 'A8';
+        return 'A8'; // պետք չէ headings(), որովհետեւ template-ը արդեն ունի վերնագրեր/ձեւավորումներ
     }
 
     public function columnFormats(): array
@@ -692,31 +696,36 @@ class ReportsJournalExport implements
 
     public function styles(Worksheet $sheet)
     {
-//        $sheet->getDefaultRowDimension()->setRowHeight(20);
-//        $sheet->getParent()->getDefaultStyle()->getFont()->setName('DejaVu Sans')->setSize(10);
+        // Template-ը արդեն ձեւավորված է, ուստի այստեղ ոչինչ պարտադիր չէ
         return [];
     }
 
     public function registerEvents(): array
     {
         return [
+            // ✅ Բացում ենք *.xls template-ը հենց XLS reader-ով, որ չլինի ZipArchive error 19
             BeforeExport::class => function (BeforeExport $event) {
-                $templatePath = base_path('v01.xls');
+                $templatePath = base_path('v01.xls'); // փոխիր, եթե այլ տեղ է
+                if (!is_file($templatePath)) {
+                    throw new \RuntimeException("Template not found at {$templatePath}");
+                }
 
-                $spreadsheet = IOFactory::load($templatePath);
+                $reader = new XlsReader();
+                $reader->setReadDataOnly(false); // պահպանում է ձևավորումները/merges-ը
+                $spreadsheet = $reader->load($templatePath);
+
                 $event->writer->setSpreadsheet($spreadsheet);
-
-                // Եթե template-ում sheet-ի անունը կոնկրետ է, միգուցե ցանկանաս հենց այն ընտրել.
-                // $event->writer->getDelegate()->setActiveSheetIndexByName('Sheet1');
             },
 
             AfterSheet::class => function (AfterSheet $event) {
                 $s = $event->sheet->getDelegate();
 
+                // Եթե template-ում արդեն freeze կա, սա կարելի է բաց թողնել
                 if (!$s->getFreezePane()) {
                     $s->freezePane('A5');
                 }
 
+                // Ամփոփում՝ եթե template-ում նախատեսված է (ձևավորումը optional)
                 $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
                 $values = [
                     $this->summary['Ակտիվներ'] ?? 0,
@@ -730,7 +739,6 @@ class ReportsJournalExport implements
                     $s->setCellValue("S{$r}", $label);
                     $s->setCellValue("T{$r}", $values[$i]);
 
-                    // Եթե template-ը արդեն ոճավորված է՝ այս մասը պարտադիր չէ
                     $s->getStyle("S{$r}:T{$r}")->applyFromArray([
                         'borders' => [
                             'allBorders' => [
@@ -752,6 +760,7 @@ class ReportsJournalExport implements
     protected function transformToReport1(Collection $rows): Collection
     {
         $lettered = $rows->filter(fn($r) => $this->isLetteredCode((string)$r->code));
+
         $grouped = $rows->groupBy(fn($r) => $this->base5((string)$r->code));
 
         $baseAggregates = $grouped->map(function (Collection $group, $base5) {
