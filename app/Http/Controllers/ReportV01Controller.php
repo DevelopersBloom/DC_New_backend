@@ -134,8 +134,8 @@ class ReportV01Controller extends Controller
             $e1[1] < $s2[1] || $e2[1] < $s1[1]     // rows disjoint
         );
     }
+// ReportV01Controller.php (նույն class-ի ներսում)
 
-    /** քո helpers — նույնը, ինչ առաջ էր */
     protected function transformToReport1($rows)
     {
         $sumFields = [
@@ -171,9 +171,53 @@ class ReportV01Controller extends Controller
             return $r;
         });
 
-        return $baseAggregates->values()
+        $final = $baseAggregates->values()
             ->merge($letteredNormalized->values())
             ->sortBy('code')
             ->values();
+
+        // === Հաշվում ենք 6* և 7* հանրագումարները՝ ՄՈՒԼ Rows-ից (ոչ թե final-ից)
+        $sum6 = $this->sumByPrefix($rows, '6', $sumFields);
+        $sum7 = $this->sumByPrefix($rows, '7', $sumFields);
+
+        // 6 - 7 = 52000 համարի համար
+        $net52000 = [];
+        foreach ($sumFields as $f) {
+            $net52000[$f] = (float)($sum6[$f] - $sum7[$f]); // կարող է լինել մինուս — OK
+        }
+
+        $finalNo67 = $final->reject(fn($r) => preg_match('/^[67]/', (string)$r->code));
+
+        $existing52000Key = $finalNo67->search(fn($r) => (string)$r->code === '52000');
+
+        if ($existing52000Key !== false) {
+            $r = $finalNo67[$existing52000Key];
+            foreach ($sumFields as $f) { $r->{$f} = $net52000[$f]; }
+            // պահպանում ենք name-ը, եթե կար
+            $finalNo67[$existing52000Key] = $r;
+        } else {
+            $finalNo67->push((object) array_merge([
+                'code' => '52000',
+                'name' => 'Եկամուտ-Ծախս (6−7)',
+            ], $net52000));
+        }
+
+        return $finalNo67->sortBy('code')->values();
     }
+    protected function sumByPrefix($rows, string $prefix, array $sumFields): array
+    {
+        $agg = [];
+        foreach ($sumFields as $f) { $agg[$f] = 0.0; }
+
+        foreach ($rows as $r) {
+            $code = (string)($r->code ?? '');
+            if (preg_match('/^' . preg_quote($prefix, '/') . '/', $code)) {
+                foreach ($sumFields as $f) {
+                    $agg[$f] += (float)($r->{$f} ?? 0);
+                }
+            }
+        }
+        return $agg;
+    }
+
 }
