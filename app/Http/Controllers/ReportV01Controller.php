@@ -49,11 +49,11 @@ class ReportV01Controller extends Controller
         $sheet = $spreadsheet->getSheetByName('Sheet1') ?: $spreadsheet->getSheet(0);
         $spreadsheet->setActiveSheetIndex($sheet->getParent()->getIndex($sheet));
 
-        foreach ($sheet->getMergeCells() as $mergedRange) {
-            if ($this->rangesOverlap($mergedRange, 'A8:Q10000')) {
-                $sheet->unmergeCells(str_replace('$', '', $mergedRange));
-            }
-        }
+//        foreach ($sheet->getMergeCells() as $mergedRange) {
+//            if ($this->rangesOverlap($mergedRange, 'A8:Q10000')) {
+//                $sheet->unmergeCells(str_replace('$', '', $mergedRange));
+//            }
+//        }
 
 
         $startRow   = 8;
