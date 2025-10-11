@@ -120,9 +120,54 @@ class DocumentJournal extends Model
         });
 
         static::restoring(function (DocumentJournal $journal) {
-            dd($journal);
             DB::transaction(function () use ($journal) {
+            if ($journal->documnt_type == self::LOAN_NDM_TYPE) {
 
+                $ndmId   = $journal->journalable_id;
+                $ndmType = $journal->journalable_type ?: \App\Models\LoanNdm::class;
+                dd($ndmId);
+                if (class_exists($ndmType)) {
+                    $ndmType::withTrashed()->whereKey($ndmId)->restore();
+                } else {
+                    \App\Models\LoanNdm::withTrashed()->whereKey($ndmId)->restore();
+                }
+
+                $journal->journals()
+                    ->onlyTrashed()
+                    ->get()
+                    ->each(function (DocumentJournal $child) {
+                        $child->restore();
+
+                        $child->transactions()->onlyTrashed()->restore();
+                    });
+
+                $journal->transactions()->onlyTrashed()->restore();
+
+                \App\Models\Transaction::onlyTrashed()
+                    ->where('transactionable_id',  $ndmId)
+                    ->where('transactionable_type', $ndmType)
+                    ->restore();
+
+                $calcTypes = ['Արդյունավետ տոկոսի հաշվարկում', 'Տոկոսի հաշվարկում'];
+
+                $lastCalcDate = \App\Models\Transaction::query()
+                    ->where('transactionable_id',  $ndmId)
+                    ->where('transactionable_type', $ndmType)
+                    ->whereIn('document_type', $calcTypes)
+                    ->max('date');
+
+                $contractDate = \App\Models\LoanNdm::query()
+                    ->whereKey($ndmId)
+                    ->value('contract_date');
+
+                $calcDate = $lastCalcDate ?? $contractDate;
+
+                if ($calcDate) {
+                    \App\Models\LoanNdm::query()
+                        ->whereKey($ndmId)
+                        ->update(['calc_date' => $calcDate]);
+                }
+            }
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
 
                     $ndmId   = $journal->journalable_id;
@@ -172,53 +217,8 @@ class DocumentJournal extends Model
                 ], true)) {
                     $journal->transactions()->onlyTrashed()->restore();
                     $journal->journals()->onlyTrashed()->restore();
-                } elseif ($journal->documnt_type == self::LOAN_NDM_TYPE) {
-
-                    $ndmId   = $journal->journalable_id;
-                    $ndmType = $journal->journalable_type ?: \App\Models\LoanNdm::class;
-dd($ndmId);
-                    if (class_exists($ndmType)) {
-                        $ndmType::withTrashed()->whereKey($ndmId)->restore();
-                    } else {
-                        \App\Models\LoanNdm::withTrashed()->whereKey($ndmId)->restore();
-                    }
-
-                    $journal->journals()
-                        ->onlyTrashed()
-                        ->get()
-                        ->each(function (DocumentJournal $child) {
-                            $child->restore();
-
-                            $child->transactions()->onlyTrashed()->restore();
-                        });
-
-                    $journal->transactions()->onlyTrashed()->restore();
-
-                    \App\Models\Transaction::onlyTrashed()
-                        ->where('transactionable_id',  $ndmId)
-                        ->where('transactionable_type', $ndmType)
-                        ->restore();
-
-                    $calcTypes = ['Արդյունավետ տոկոսի հաշվարկում', 'Տոկոսի հաշվարկում'];
-
-                    $lastCalcDate = \App\Models\Transaction::query()
-                        ->where('transactionable_id',  $ndmId)
-                        ->where('transactionable_type', $ndmType)
-                        ->whereIn('document_type', $calcTypes)
-                        ->max('date');
-
-                    $contractDate = \App\Models\LoanNdm::query()
-                        ->whereKey($ndmId)
-                        ->value('contract_date');
-
-                    $calcDate = $lastCalcDate ?? $contractDate;
-
-                    if ($calcDate) {
-                        \App\Models\LoanNdm::query()
-                            ->whereKey($ndmId)
-                            ->update(['calc_date' => $calcDate]);
-                    }
                 }
+
 
             });
         });
