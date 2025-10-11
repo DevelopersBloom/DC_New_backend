@@ -63,66 +63,6 @@ class DocumentJournal extends Model
     ];
     protected static function booted(): void
     {
-//        static::deleting(function (DocumentJournal $journal) {
-////            if ($journal->document_type !== self::LOAN_ATTRACTION) {
-////                return;
-////            }
-//
-//            DB::transaction(function () use ($journal) {
-//                if ($journal->document_type == self::LOAN_ATTRACTION) {
-//                    $ndmId   = $journal->journalable_id;
-//                    $ndmType = $journal->journalable_type;
-//
-//                    $nextAttraction = self::query()
-//                        ->where('journalable_id',  $ndmId)
-//                        ->where('journalable_type', $ndmType)
-//                        ->where('document_type', self::LOAN_ATTRACTION)
-//                        ->where('date', '>', $journal->date)
-//                        ->orderBy('date')->orderBy('id')
-//                        ->first();
-//
-//                    Transaction::query()
-//                        ->where('transactionable_id',  $ndmId)
-//                        ->where('transactionable_type', $ndmType)
-//                        ->where('date', '>=', $journal->date)
-//                        ->forceDelete();
-//
-//                    $calcTypes = [
-//                        'Արդյունավետ տոկոսի հաշվարկում',
-//                        'Տոկոսի հաշվարկում',
-//                    ];
-//
-//                    $lastCalcDate =Transaction::query()
-//                        ->where('transactionable_id', $journal->journalable_id )
-//                        ->where('transactionable_type', $ndmType) // օրինակ՝ 'App\Models                                                                                        \LoanNdm'
-//                        ->whereIn('document_type',  $calcTypes)
-//                        ->max('date'); // վերադարձնում է string/Carbon՝ ըստ քո cast-երի
-//
-//                    $ndmId = DocumentJournal::where('id',$journal->journalable_id)->value('journalable_id');                                                                                       e('journalable_id');
-//
-////                if (!is_null($lastCalcDate)) {
-////                    LoanNdm::query()
-////                        ->where('id', $ndmId)
-////                        ->update(['calc_date' => $lastCalcDate]);
-////                }
-//                    $contractDate = LoanNdm::query()->whereKey($ndmId)->pluck('contract_date')->first();
-//                    $calcDate = $lastCalcDate ?? $contractDate;
-//
-//                    if ($calcDate) {
-//                        LoanNdm::query()->whereKey($ndmId)->update(['calc_date' => $calcDate]);
-//                    }
-//                } elseif (in_array($journal->document_type, [
-//                    self::INTEREST_REPAYMENT,
-//                    self::LOAN_REPAYMENT,
-//                    self::TAX_REPAYMENT,
-//                ], true)) {
-//                    $journal->transactions()->forceDelete();
-//                    $journal->journals()->forceDelete();
-//                }
-//
-//
-//            });
-//        });
         static::deleting(function (DocumentJournal $journal) {
             DB::transaction(function () use ($journal) {
 
@@ -231,6 +171,51 @@ class DocumentJournal extends Model
                 ], true)) {
                     $journal->transactions()->onlyTrashed()->restore();
                     $journal->journals()->onlyTrashed()->restore();
+                } elseif ($journal->documnt_type === self::LOAN_NDM_TYPE) {
+                    $ndmId   = $journal->journalable_id;
+                    $ndmType = $journal->journalable_type ?: \App\Models\LoanNdm::class;
+
+                    if (class_exists($ndmType)) {
+                        $ndmType::withTrashed()->whereKey($ndmId)->restore();
+                    } else {
+                        \App\Models\LoanNdm::withTrashed()->whereKey($ndmId)->restore();
+                    }
+
+                    $journal->journals()
+                        ->onlyTrashed()
+                        ->get()
+                        ->each(function (DocumentJournal $child) {
+                            $child->restore();
+
+                            $child->transactions()->onlyTrashed()->restore();
+                        });
+
+                    $journal->transactions()->onlyTrashed()->restore();
+
+                    \App\Models\Transaction::onlyTrashed()
+                        ->where('transactionable_id',  $ndmId)
+                        ->where('transactionable_type', $ndmType)
+                        ->restore();
+
+                    $calcTypes = ['Արդյունավետ տոկոսի հաշվարկում', 'Տոկոսի հաշվարկում'];
+
+                    $lastCalcDate = \App\Models\Transaction::query()
+                        ->where('transactionable_id',  $ndmId)
+                        ->where('transactionable_type', $ndmType)
+                        ->whereIn('document_type', $calcTypes)
+                        ->max('date');
+
+                    $contractDate = \App\Models\LoanNdm::query()
+                        ->whereKey($ndmId)
+                        ->value('contract_date');
+
+                    $calcDate = $lastCalcDate ?? $contractDate;
+
+                    if ($calcDate) {
+                        \App\Models\LoanNdm::query()
+                            ->whereKey($ndmId)
+                            ->update(['calc_date' => $calcDate]);
+                    }
                 }
 
             });
