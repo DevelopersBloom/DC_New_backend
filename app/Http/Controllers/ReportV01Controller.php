@@ -64,7 +64,7 @@ class ReportV01Controller extends Controller
         } else {
             foreach ($rows as $row) {
                 $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
-              //  $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
+                $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
 
                 $nums = [
                     6  => (float)($row->amd_resident ?? 0),
@@ -89,19 +89,19 @@ class ReportV01Controller extends Controller
             }
         }
 
-        $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
-        $values = [
-            $this->summary['Ակտիվներ'] ?? 0,
-            $this->summary['Պարտավորություններ'] ?? 0,
-            $this->summary['Կապիտալ'] ?? 0,
-            $this->summary['Հաշվեկշիռ'] ?? ($this->summary['Հաշվեշիռ'] ?? 0),
-        ];
-        foreach ($labels as $i => $label) {
-            $r = 2 + $i; // rows 2..5
-            $sheet->setCellValue("S{$r}", $label);
-            $sheet->setCellValueExplicit("T{$r}", (float)$values[$i], DataType::TYPE_NUMERIC);
-            $sheet->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
-        }
+//        $labels = ['Ակտիվներ','Պարտավորություններ','Կապիտալ','Հաշվեկշիռ'];
+//        $values = [
+//            $this->summary['Ակտիվներ'] ?? 0,
+//            $this->summary['Պարտավորություններ'] ?? 0,
+//            $this->summary['Կապիտալ'] ?? 0,
+//            $this->summary['Հաշվեկշիռ'] ?? ($this->summary['Հաշվեշիռ'] ?? 0),
+//        ];
+//        foreach ($labels as $i => $label) {
+//            $r = 2 + $i; // rows 2..5
+//            $sheet->setCellValue("S{$r}", $label);
+//            $sheet->setCellValueExplicit("T{$r}", (float)$values[$i], DataType::TYPE_NUMERIC);
+//            $sheet->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
+//        }
 
         $writer = new XlsWriter($spreadsheet);
         $writer->setPreCalculateFormulas(false);
