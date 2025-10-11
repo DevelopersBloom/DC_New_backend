@@ -10,7 +10,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
 use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
-
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 class ReportV01Controller extends Controller
 {
     use CalculatesAccountBalancesTrait;
@@ -37,12 +38,17 @@ class ReportV01Controller extends Controller
         $this->summary = $this->balancesSummary($toStr) ?? [];
 
 
+//        $templatePath = base_path('v01.xls');
+
         $templatePath = base_path('v01.xlsm');
+
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
         }
 
-        $reader = new XlsReader();
+//        $reader = new XlsReader();
+        $reader = new XlsxReader();
+
         $reader->setReadDataOnly(false);
         $spreadsheet = $reader->load($templatePath);
 
@@ -103,13 +109,15 @@ class ReportV01Controller extends Controller
 //            $sheet->getStyle("T{$r}")->getNumberFormat()->setFormatCode('#,##0');
 //        }
 
-        $writer = new XlsWriter($spreadsheet);
+//        $writer = new XlsWriter($spreadsheet)
+        $writer = new XlsxWriter($spreadsheet);
         $writer->setPreCalculateFormulas(false);
 
         $dir = storage_path('app/reports');
         if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
 
-        $filename = 'base_pats_v01_OUT.xls';
+//        $filename = 'base_pats_v01_OUT.xls';
+        $filename = 'base_pats_v01_OUT.xlsm';
         $path = $dir . DIRECTORY_SEPARATOR . $filename;
 
         while (ob_get_level() > 0) { @ob_end_clean(); }
@@ -117,11 +125,15 @@ class ReportV01Controller extends Controller
         $writer->save($path);
 
 
+//        return response()->download($path, $filename, [
+//            'Content-Type'  => 'application/vnd.ms-excel',
+//            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+//            'Pragma'        => 'public',
+//        ])->deleteFileAfterSend(true);
         return response()->download($path, $filename, [
-            'Content-Type'  => 'application/vnd.ms-excel',
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma'        => 'public',
-        ])->deleteFileAfterSend(true);
+            'Content-Type' => 'application/vnd.ms-excel.sheet.macroEnabled.12', // եթե .xlsm
+            // 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // եթե .xlsx
+        ]);
     }
 
     protected function rangesOverlap(string $r1, string $r2): bool
