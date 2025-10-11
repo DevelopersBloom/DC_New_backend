@@ -109,7 +109,7 @@ class ReportV01Controller extends Controller
         $dir = storage_path('app/reports');
         if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
 
-        $filename = 'base_pats_v01_OUT.xlsx';
+        $filename = 'base_pats_v01_OUT.xls';
         $path = $dir . DIRECTORY_SEPARATOR . $filename;
 
         while (ob_get_level() > 0) { @ob_end_clean(); }
