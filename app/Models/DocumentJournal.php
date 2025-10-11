@@ -120,6 +120,7 @@ class DocumentJournal extends Model
         });
 
         static::restoring(function (DocumentJournal $journal) {
+            dd($journal);
             DB::transaction(function () use ($journal) {
 
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
