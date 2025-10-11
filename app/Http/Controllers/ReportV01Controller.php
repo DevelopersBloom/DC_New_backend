@@ -104,7 +104,7 @@ class ReportV01Controller extends Controller
 //        }
 
         $writer = new XlsWriter($spreadsheet);
-        $writer->setPreCalculateFormulas(false);
+        $writer->setPreCalculateFormulas(true);
 
         $dir = storage_path('app/reports');
         if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
