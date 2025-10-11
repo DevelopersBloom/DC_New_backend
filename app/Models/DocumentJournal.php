@@ -171,10 +171,11 @@ class DocumentJournal extends Model
                 ], true)) {
                     $journal->transactions()->onlyTrashed()->restore();
                     $journal->journals()->onlyTrashed()->restore();
-                } elseif ($journal->documnt_type === self::LOAN_NDM_TYPE) {
+                } elseif ($journal->documnt_type == self::LOAN_NDM_TYPE) {
+
                     $ndmId   = $journal->journalable_id;
                     $ndmType = $journal->journalable_type ?: \App\Models\LoanNdm::class;
-
+dd($ndmId);
                     if (class_exists($ndmType)) {
                         $ndmType::withTrashed()->whereKey($ndmId)->restore();
                     } else {
