@@ -168,7 +168,6 @@ class DocumentJournal extends Model
                 }
             }
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
-                    dd($ndmId);
 
                     $ndmId   = $journal->journalable_id;
                     $ndmType = $journal->journalable_type;
@@ -216,6 +215,8 @@ class DocumentJournal extends Model
                     self::LOAN_REPAYMENT,
                     self::TAX_REPAYMENT,
                 ], true)) {
+                    dd(56);
+
                     $journal->transactions()->onlyTrashed()->restore();
                     $journal->journals()->onlyTrashed()->restore();
                 }
