@@ -125,7 +125,6 @@ class DocumentJournal extends Model
 
                 $ndmId   = $journal->journalable_id;
                 $ndmType = $journal->journalable_type ?: \App\Models\LoanNdm::class;
-                dd($ndmId);
                 if (class_exists($ndmType)) {
                     $ndmType::withTrashed()->whereKey($ndmId)->restore();
                 } else {
@@ -169,6 +168,7 @@ class DocumentJournal extends Model
                 }
             }
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
+                    dd($ndmId);
 
                     $ndmId   = $journal->journalable_id;
                     $ndmType = $journal->journalable_type;
@@ -210,7 +210,8 @@ class DocumentJournal extends Model
                         LoanNdm::query()->whereKey($ndmId)->update(['calc_date' => $calcDate]);
                     }
 
-                } elseif (in_array($journal->document_type, [
+                }
+                elseif (in_array($journal->document_type, [
                     self::INTEREST_REPAYMENT,
                     self::LOAN_REPAYMENT,
                     self::TAX_REPAYMENT,
