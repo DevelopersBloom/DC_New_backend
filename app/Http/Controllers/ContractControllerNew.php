@@ -227,14 +227,14 @@ class ContractControllerNew extends Controller
 
             $this->contractService->createPayment($contract);
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-            $acc1111 = ChartOfAccount::idByCode('1111');
-            $acc2222 = ChartOfAccount::idByCode('2222');
+            $acc1100 = ChartOfAccount::idByCode('1100');
+            $acc2220 = ChartOfAccount::idByCode('2220');
             Transaction::create([
                 'date'              => $contract->date,
                 'document_type'     => Transaction::CONTRACT_PAYMENT,
                 'document_number'   => $transactionDocumentNumber,
-                'debit_account_id'  => $acc1111,
-                'credit_account_id' => $acc2222,
+                'debit_account_id'  => $acc1100,
+                'credit_account_id' => $acc2220,
                 'currency_id'       => 1, //testing
                 'amount_amd'        => $contract->provided_amount,
                 'comment'           => 'contract_payment',
