@@ -69,7 +69,15 @@ class ReportV01Controller extends Controller
             $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_NUMERIC);
         } else {
             foreach ($rows as $row) {
-                $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
+                $code = (string)$row->code;
+
+                if (preg_match('/^\d+$/', $code)) {
+                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (float)$code, DataType::TYPE_NUMERIC);
+                } else {
+                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, $code, DataType::TYPE_STRING);
+                }
+
+//                $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_NUMERIC);
               //  $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
 
                 $nums = [
