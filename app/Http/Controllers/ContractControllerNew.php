@@ -7,6 +7,7 @@ use App\Http\Requests\ClientRequest;
 use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
+use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\Deal;
@@ -226,13 +227,14 @@ class ContractControllerNew extends Controller
 
             $this->contractService->createPayment($contract);
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-
+            $acc1111 = ChartOfAccount::idByCode('1111');
+            $acc2222 = ChartOfAccount::idByCode('2222');
             Transaction::create([
                 'date'              => $contract->date,
                 'document_type'     => Transaction::CONTRACT_PAYMENT,
                 'document_number'   => $transactionDocumentNumber,
-                'debit_account_id'  => '1111',
-                'credit_account_id' => '2222',
+                'debit_account_id'  => $acc1111,
+                'credit_account_id' => $acc2222,
                 'currency_id'       => 1, //testing
                 'amount_amd'        => $contract->provided_amount,
                 'comment'           => 'contract_payment',

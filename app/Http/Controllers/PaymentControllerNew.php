@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ExecuteItemRequest;
+use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\DealAction;
@@ -61,13 +62,14 @@ class PaymentControllerNew extends Controller
         $deal->discount = $result['discount'];
         $deal->delay_days = $result['delay_days'];
         $deal->save();
-
+        $acc1111 = ChartOfAccount::idByCode('1111');
+        $acc2222 = ChartOfAccount::idByCode('2222');
         $deal->transactions()->create([
             'date'              => $deal->date,
             'document_type'     => Transaction::REGULAR_PAYMENT,
             'document_number'   => Transaction::getNextDocumentNumber(),
-            'debit_account_id'  => '1111',
-            'credit_account_id' => '2222',
+            'debit_account_id'  => $acc1111,
+            'credit_account_id' => $acc2222,
             'currency_id'       => 1, //testing
             'amount_amd'        => $result['interest_amount'],
             'comment'           => 'regular_payment',
@@ -79,8 +81,8 @@ class PaymentControllerNew extends Controller
                 'date'              => $deal->date,
                 'document_type'     => Transaction::PENALTY_PAYMENT,
                 'document_number'   => Transaction::getNextDocumentNumber(),
-                'debit_account_id'  => '1111',
-                'credit_account_id' => '2222',
+                'debit_account_id'  => $acc1111,
+                'credit_account_id' => $acc2222,
                 'currency_id'       => 1, //testing
                 'amount_amd'        => $result['penalty'],
                 'comment'           => 'penalty_payment',
@@ -156,13 +158,14 @@ class PaymentControllerNew extends Controller
 
         $contract->closed_at = now();
         $contract->save();
-
+        $acc1111 = ChartOfAccount::idByCode('1111');
+        $acc2222 = ChartOfAccount::idByCode('2222');
         $deal->transactions()->create([
             'date'              => $deal->date,
             'document_type'     => Transaction::FULL_PAYMENT,
             'document_number'   => Transaction::getNextDocumentNumber(),
-            'debit_account_id'  => '1111',
-            'credit_account_id' => '2222',
+            'debit_account_id'  => $acc1111,
+            'credit_account_id' => $acc2222,
             'currency_id'       => 1, //testing
             'amount_amd'        => $amount,
             'comment'           => 'full_payment',
@@ -270,12 +273,14 @@ class PaymentControllerNew extends Controller
 
         $deal->payment_id = $payment_id;
         $deal->save();
+        $acc1111 = ChartOfAccount::idByCode('1111');
+        $acc2222 = ChartOfAccount::idByCode('2222');
         $deal->transactions()->create([
             'date'              => $deal->date,
             'document_type'     => Transaction::PARTIAL_PAYMENT,
             'document_number'   => Transaction::getNextDocumentNumber(),
-            'debit_account_id'  => '1111',
-            'credit_account_id' => '2222',
+            'debit_account_id'  => $acc1111,
+            'credit_account_id' => $acc2222,
             'currency_id'       => 1, //testing
             'amount_amd'        => $partialAmount,
             'comment'           => 'partial_payment',
