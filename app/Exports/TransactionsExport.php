@@ -42,10 +42,7 @@
 //        $this->to   = $to;
 //    }
 //
-//    /**
-//     * Տվյալների լցնում
-//     * @return Collection
-//     */
+
 //    public function collection(): Collection
 //    {
 //        $query = Transaction::with([
@@ -55,14 +52,12 @@
 //            'creditCurrency:id,code',
 //            'amountCurrencyRelation:id,code',
 //            'user:id,name,surname',
-//            // NEW: partner-ների հարաբերությունները
 //            'debitPartner:id,type,name,surname,company_name,tax_number,social_card_number',
 //            'creditPartner:id,type,name,surname,company_name,tax_number,social_card_number',
 //        ])->select([
 //            'id','date','document_number','document_type',
 //            'amount_amd','amount_currency','amount_currency_id',
 //            'debit_account_id','credit_account_id','user_id',
-//            // NEW: վերցնենք ID-ները, ոչ թե չկան սյունակներ
 //            'debit_partner_id','credit_partner_id',
 //            'debit_currency_id','credit_currency_id',
 //        ]);
@@ -77,10 +72,7 @@
 //
 //        return $query->orderBy('date','desc')->get();
 //    }
-//
-//    /**
-//     * Գլխագրեր (Հայերեն)
-//     */
+
 //    public function headings(): array
 //    {
 //        return [
@@ -186,9 +178,6 @@
 ////        ];
 ////    }
 //
-//    /**
-//     * Ընդհանուր ոճավորում (լռելյայն տառատեսակներ և այլն)
-//     */
 //    public function styles(Worksheet $sheet)
 //    {
 //        $sheet->getDefaultRowDimension()->setRowHeight(18);
@@ -325,18 +314,14 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function collection(): Collection
     {
-        // 1) Բերում ենք բոլոր հաշիվները (id, code, name, type) map-ի մեջ
         $accounts = ChartOfAccount::query()->select('id', 'code', 'name', 'account_type')->get();
 
         $accById = $accounts->keyBy('id');
 
-        // Օգնական՝ account_type ⇒ sign rule
         $isDebitPositive = function (?string $type): bool {
-            // Արագ հարմարեցում՝ եթե ունես այլ անվանում contra-asset՝ ավելացրու այստեղ
             return in_array($type, ['active', 'expense', 'off_balance', 'contra_asset', 'contra']);
         };
 
-        // 2) Ընդհանուր debit/credit գումարներ ամեն հաշվեհամարի համար ընտրված ժամանակահատվածում
         $tx = Transaction::query()
             ->when($this->from, fn($q) => $q->where('date', '>=', $this->from))
             ->when($this->to, fn($q) => $q->where('date', '<=', $this->to))

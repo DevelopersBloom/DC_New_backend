@@ -215,91 +215,6 @@ DealController extends Controller
         ]);
     }
 
-//    public function index(Request $request){
-//        $dealType = $request->input('type', Deal::HISTORY);
-//        $deals = Deal::where('pawnshop_id', auth()->user()->pawnshop_id)
-//            ->select('id',DB::raw("DATE(date) as date"),
-//                'cashbox','bank_cashbox','amount','pawnshop_id','cash','order_id','contract_id','type','interest_amount','delay_days','created_by')
-//                ->with(['order:id,client_name,order,contract_id,purpose','contract:id,num,discount,penalty_amount,discount,mother'])
-//            ->with('createdBy:id,name,surname')
-//            ->when($request->dateFrom,function ($query) use ($request){
-//                $query->where(function ($query) use ($request) {
-//                    $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [Carbon::parse($request->dateFrom)->setTimezone('Asia/Yerevan')]);
-//                })->get();
-//            })
-//            ->when($request->dateTo,function ($query) use ($request){
-//                $query->where(function ($query) use ($request) {
-//                    $query->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [Carbon::parse($request->dateTo)->setTimezone('Asia/Yerevan')]);
-//                })->get();
-//            })
-//            ->when($dealType === Deal::IN_DEAL, function ($query) {
-//                $query->where('type', 'in');
-//            })
-//            ->when($dealType === Deal::OUT_DEAL, function ($query) {
-//                $query->where('type', 'out');
-//            })
-//            ->when($dealType === Deal::EXPENSE_DEAL, function ($query) {
-//                $query->where('type', 'cost_out');
-//            })
-//            ->when($request->hasAny(['name', 'surname', 'middle_name', 'passport_series', 'phone']), function ($query) use ($request) {
-//                $query->whereHas('contract.client', function ($query) use ($request) {
-//                    if ($request->filled('name')) {
-//                        $query->where('name', 'like', '%' . $request->name . '%');
-//                    }
-//                    if ($request->filled('surname')) {
-//                        $query->where('surname', 'like', '%' . $request->surname . '%');
-//                    }
-//                    if ($request->filled('middle_name')) {
-//                        $query->where('middle_name', 'like', '%' . $request->middle_name . '%');
-//                    }
-//                    if ($request->filled('passport_series')) {
-//                        $query->where('passport_series', 'like', '%' . $request->passport_series . '%');
-//                    }
-//                    if ($request->filled('phone')) {
-//                        $query->where('phone', 'like', '%' . $request->phone . '%');
-//                    }
-//                    if ($request->filled('status')) {
-//                        $query->where('status', 'like', '%' . $request->status . '%');
-//                    }
-//                    if ($request->filled('category_id')) {
-//                        $query->where('category_id', 'like', '%' . $request->category_id . '%');
-//                    }
-//                    if ($request->filled('estimated_amount_from')) {
-//                        $query->where('estimated_amount', '>=', $request->estimated_amount_from);
-//                    }
-//                    if ($request->filled('estimated_amount_to')) {
-//                        $query->where('estimated_amount', '<=', $request->estimated_amount_to);
-//                    }
-//                    if ($request->filled('provided_amount_from')) {
-//                        $query->where('provided_amount', '>=', $request->provided_amount_from);
-//                    }
-//                    if ($request->filled('provided_amount_to')) {
-//                        $query->where('provided_amount', '<=', $request->provided_amount_to);
-//                    }
-//                    if ($request->filled('date_from')) {
-//                        $query->where('created_at', '>=', Carbon::parse($request->date_from)->setTimezone('Asia/Yerevan'));
-//                    }
-//                    if ($request->filled('date_to')) {
-//                        $query->where('created_at', '<=', Carbon::parse($request->date_to)->setTimezone('Asia/Yerevan'));
-//                    }
-//                });
-//            })
-//            ->when($request->filled('deal_days'), function ($query) use ($request) {
-//                $query->where('delay_days', $request->deal_days);
-//            })
-//            ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")->orderBy('id','DESC')
-//            ->paginate(10);
-//
-//        $deals->getCollection()->transform(function ($deal) {
-//            $deal->total_amount = $deal->cashbox + $deal->bank_cashbox;
-//            return $deal;
-//        });
-//
-//        return response()->json([
-//            'deals' => $deals
-//        ]);
-//
-//    }
     public function addCashbox(Request $request)
     {
         $amount = $request->amount;
@@ -313,7 +228,6 @@ DealController extends Controller
         $orderId = null;
         $orderIdOut = null;
 
-        // Case 1: Bank replenishment by unknown person (non-cash IN only)
         if ($fromUnknownUser) {
             $orderId = $this->createCashboxOrder(
                 $name,
@@ -330,7 +244,6 @@ DealController extends Controller
             ]);
         }
 
-        // Case 2: Cash replenishment into cashbox (cash IN only)
         if ($isCash) {
             $orderId = $this->createCashboxOrder(
                 $name,
@@ -347,7 +260,6 @@ DealController extends Controller
             ]);
         }
 
-        // Case 3: Transfer from cashbox to bank (cash OUT + bank IN)
         $orderId = $this->createCashboxOrder(
             $name,
             $amount,
@@ -374,38 +286,6 @@ DealController extends Controller
     }
 
 
-//    public function addCashbox1(Request $request)
-//    {
-//        $cash = $request->cash; //$cash=true -> դրամարկղի համալրում։անկանխիկ հաշվի համալրում
-//        $name = $request->name;
-//        $amount = $request->amount;
-//        $receiver = $request->receiver;
-//        $save = $request->save_template;
-////        $purpose_out = "Դրամարկղ";
-////        $purpose_in = "Անկանխիկ հաշվիվ";
-////        if ($cash) {
-////            $purpose_out = "Անկանխիկ հաշվիվ";
-////            $purpose_in = "Դրամարկղ";
-////        }
-//        $purpose_out = "Անկանխիկ հաշվիվ";
-//        $purpose_in = "Դրամարկղ";
-//        $order_id = null;
-//        $order_id_out = null;
-//        if ($cash) {
-//            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
-//        } else {
-//            $order_id = $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_out,$cash);
-//            $order_id_out = $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_in, !$cash);
-//        }
-////        $this->createCashboxOrder($name,$amount, 'out', $receiver,$purpose_out, !$cash);
-////        $this->createCashboxOrder($name,$amount, 'in', auth()->user()->pawnshop->bank,$purpose_in,$cash);
-//
-//        return response()->json([
-//            "success" => "success",
-//            "order_id" => $order_id,
-//            'order_id_out' => $order_id_out
-//        ]);
-//    }
     public function addCostNDM(Request $request)
     {
         $name = $request->name;

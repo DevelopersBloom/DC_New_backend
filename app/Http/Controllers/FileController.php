@@ -93,17 +93,6 @@ class FileController extends Controller
             'cash' => $cash,
 
         ]);
-        // Set values for the bond section
-        $table_values = [];
-//        foreach ($contract->items as $item) {
-//            $table_values[] = [
-//                'item_description' => $item->category->title . ',' . $item->subcategory .
-//                    ($item->model ? ',' . $item->model : ''),
-//                'i_t' => $item->hallmark,
-//                'i_w' => $item->weight,
-//                'i_cw' => $item->clear_weight
-//            ];
-//        }
         $table_values = [];
         $car_values = [];
 
@@ -148,20 +137,6 @@ class FileController extends Controller
         } else {
             $templateProcessor->cloneRowAndSetValues('item', $table_values);
         }
-        //$templateProcessor->cloneRowAndSetValues('item_description', $table_values);
-
-//        $payment_values = [];
-//        $i = 1;
-//        foreach ($contract->payments as $payment) {
-//            $payment_values[] = [
-//                'p_n' => $i . '.',
-//                'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
-//                'p_m' => $payment->amount,
-//                'p_text' => $this->numberToText($payment->amount)
-//            ];
-//            $i++;
-//        }
-//        $templateProcessor->cloneRowAndSetValues('p_n', $payment_values);
         $payment_values = [];
         $i = 1;
 
@@ -199,7 +174,6 @@ class FileController extends Controller
         ];
         return response()->download($pathToSave, $downloadName)->deleteFileAfterSend(true);
 
-        //return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
 
     public function downloadContract($id)
@@ -358,9 +332,6 @@ class FileController extends Controller
             $actTemplate->saveAs($actPath);
             $filesToZip[] = $actPath;
             $applicationTemplate = new TemplateProcessor(public_path('files/car_application.docx'));
-//            $registrationParts = explode(' ', $car->registration);
-//            $registrationSeria = $registrationParts[0] ?? '';
-//            $registrationNum = $registrationParts[1] ?? '';
             $registration = str_replace(' ', '', $car->registration);
 
             $registrationSeria = mb_substr($registration, 0, 2);
@@ -466,9 +437,6 @@ class FileController extends Controller
         $order = Order::where('id', $id)->first();
 
         if ($order) {
-//            if ($order->purpose === Contract::CONTRACT_OPENING) {
-//                return $this->downloadContract($order->contract_id);
-//            }
             switch ($order->type) {
                 case 'in':
                     return $this->downloadOrderIn($id);
@@ -656,7 +624,6 @@ class FileController extends Controller
 //            $bondFilePath = $bondFile->getFile()->getPathname();
 //            $zip->addFile($bondFilePath, "{$id}_Գրավատոմս.docx");
 
-            // If contract has orders, add order documents
             $orders = Order::where('contract_id', $id)->get();
             foreach ($orders as $order) {
                 $orderFile = $this->downloadOrder($order->id);
@@ -685,29 +652,6 @@ class FileController extends Controller
 
         return response()->download($zipFilePath)->deleteFileAfterSend(true);
     }
-//    public function downloadCostOrderInOld($id)
-//    {
-//        $templateProcessor = new TemplateProcessor(public_path('/files/cost_in_template.docx'));
-//        $order = Order::where('id', $id)->first();
-//        $templateProcessor->setValues([
-//            'amount' => $this->makeMoney($order->amount),
-//            'receiver' => $order->receiver,
-//            'order' => $order->order,
-//            'date' => $order->date,
-//            'purpose' => $order->purpose,
-//            'amount_text' => $this->numberToText($order->amount),
-//        ]);
-//        $filename = time() . 'cost_order_in.docx';
-//        $pathToSave = public_path('/files/download/' . $filename);
-//        $templateProcessor->saveAs($pathToSave);
-//        $downloadName = $order->order . ' Ծախս.docx';
-//        $headers = [
-//            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-//            'Content-Disposition' => 'attachment; filename=' . $downloadName,
-//        ];
-//        // Return the document as a response and delete the temporary file after sending
-//        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
-//    }
     public function exportZip()
     {
         $timestamp = now()->format('Y_m_d_H_i_s');

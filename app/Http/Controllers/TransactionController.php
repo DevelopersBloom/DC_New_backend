@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\LoanNdmJournalExport;
-use App\Exports\ReportsJournalExport;
 use App\Exports\TransactionsExport;
-use App\Models\LoanNdm;
 use App\Models\Transaction;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;

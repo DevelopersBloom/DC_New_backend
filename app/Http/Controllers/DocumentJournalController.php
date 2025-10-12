@@ -162,14 +162,11 @@ class DocumentJournalController
         }
     }
 
-
-
-
     public function export(Request $request)
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
-        $type = $request->query('document_type'); // optional
+        $type = $request->query('document_type');
 
         return Excel::download(
             new DocumentsJournalExport($from, $to, $type),
@@ -231,7 +228,6 @@ class DocumentJournalController
                     }
 
                     $source->save();
-
             }
 
             DB::commit();
@@ -248,39 +244,6 @@ class DocumentJournalController
             ], 500);
         }
     }
-//    public function destroy(DocumentJournal $journal): JsonResponse
-//    {
-//        try {
-//            DB::beginTransaction();
-//
-//            $journal->load('journalable');
-//
-////            $source = $journal->journalable;
-////
-////            if ($source) {
-////                $source->delete();
-////            }
-//
-//            $journal->delete();
-//
-//            DB::commit();
-//
-//            return response()->json([
-//                'message' => 'Document journal deleted successfully'
-//            ]);
-//        } catch (\Throwable $e) {
-//            DB::rollBack();
-//
-//            return response()->json([
-//                'message' => 'Delete failed',
-//                'error'   => $e->getMessage(),
-//            ], 500);
-//        }
-//    }
-
-
-
-
     public function destroy(DocumentJournal $journal): JsonResponse
     {
         DB::beginTransaction();
@@ -310,5 +273,4 @@ class DocumentJournalController
             ], 500);
         }
     }
-
 }
