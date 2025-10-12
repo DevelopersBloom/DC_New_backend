@@ -121,5 +121,9 @@ class Deal extends Model
     {
         return $this->hasMany(DealAction::class, 'deal_id', 'id');
     }
+    public function transactions()
+    {
+        return $this->morphMany(Transaction::class, 'transactionable');
+    }
 
 }
