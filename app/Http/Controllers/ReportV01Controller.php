@@ -28,7 +28,7 @@ class ReportV01Controller extends Controller
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
         // $toStr = $request->query('to', $this->to);
-        $toStr = "2025-12-10";
+        $toStr = "2035-12-10";
         if (!$toStr) {
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
@@ -66,7 +66,7 @@ class ReportV01Controller extends Controller
         $currentRow = $startRow;
 
         if ($rows->isEmpty()) {
-            $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_NUMERIC);
         } else {
             foreach ($rows as $row) {
                 $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (string)$row->code, DataType::TYPE_STRING);
@@ -131,7 +131,7 @@ class ReportV01Controller extends Controller
 //            'Pragma'        => 'public',
 //        ])->deleteFileAfterSend(true);
         return response()->download($path, $filename, [
-            'Content-Type' => 'application/vnd.ms-excel.sheet.macroEnabled.12', // եթե .xlsm
+            'Content-Type' => 'application/vnd.ms-excel.sheet.macroEnabled.12',
             // 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // եթե .xlsx
         ]);
     }
