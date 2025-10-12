@@ -15,7 +15,11 @@ class Transaction extends Model
     const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
     const LOAN_NDM_TYPE = 'Ներգրավված Դրամական Միջոցներ';
     const LOAN_ATTRACTION = 'Վարկի ներգրավում';
-
+    const CONTRACT_PAYMENT = 'Վարկի տրամադրում';
+    const REGULAR_PAYMENT = 'Տոկոսի վճարում';
+    const FULL_PAYMENT = 'Ամբողջական վճարում';
+    const PARTIAL_PAYMENT = 'Մայր գումարի վճարում';
+    const PENALTY_PAYMENT = 'Տույժի վճարում';
     protected $fillable = [
         'date',
         'document_number',
@@ -163,5 +167,10 @@ class Transaction extends Model
         return $p->type === 'legal'
             ? ($p->company_name ?? '')
             : trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
+    }
+    public static function getNextDocumentNumber(): int
+    {
+        $max = self::max('document_number');
+        return $max ? ((int) $max + 1) : 1;
     }
 }

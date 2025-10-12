@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exports\DailyExport;
-use App\Exports\DailyExportSheet1;
-use App\Exports\PaymentsExport;
 use App\Http\Requests\ClientRequest;
 use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
@@ -14,23 +12,18 @@ use App\Models\ContractAmountHistory;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
-use App\Models\Payment;
+use App\Models\Transaction;
 use App\Services\ClientService;
 use App\Services\ContractService;
 use App\Services\EffectiveRateService;
 use App\Services\FileService;
 use App\Traits\ContractTrait;
-use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\ContractsExport;
-use PhpOffice\PhpWord\Shared\ZipArchive;
 
 class ContractControllerNew extends Controller
 {
@@ -56,12 +49,7 @@ class ContractControllerNew extends Controller
             'type','subspecies','model','delay'
 
         ]);
-//        $contracts = $this->contractService->getContracts($filters);
-//
-//        return response()->json([
-//            'contracts' => $contracts,
-//            'total' => $contracts->total()
-//        ]);
+
         $data = $this->contractService->getContracts($filters);
 
         return response()->json([
@@ -78,9 +66,6 @@ class ContractControllerNew extends Controller
             'payments' => function ($query) {
                 $query->orderBy('date', 'ASC');
             },
-//            'history' => function ($query) {
-//                $query->with(['type', 'user', 'order'])->orderBy('id', 'DESC');
-//            },
             'history' => function ($query) {
                 $query->whereDoesntHave('order', function ($q) {
                     $q->where('filter', Order::REFUND_LUMP_FILTER);
@@ -100,9 +85,9 @@ class ContractControllerNew extends Controller
         if ($contract->payment_type == 'amortized') {
             $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract);
         }
-//        return $currentPaymentAmount;
         return new ContractDetailResource($contract);
     }
+
     public function getHistoryDetails(int $id)
     {
         $history = History::with('user', 'order','contract')->find($id);
@@ -174,7 +159,6 @@ class ContractControllerNew extends Controller
             $date = Carbon::now();
             $deadline = Carbon::now('Asia/Yerevan')->addDays($contractRequest->validated()['deadline'])->format('Y-m-d H:i:s');
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
-            // Store contract items
             $category_id = null;
             $items = $itemRequest->validated()['items'];
             foreach ($items as $item_data) {
@@ -183,22 +167,15 @@ class ContractControllerNew extends Controller
             }
             $contract->category_id = $category_id;
             $contract->save();
-//            auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contractRequest->provided_amount;
-//            auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contractRequest->estimated_amount;
-//            auth()->user()->pawnshop->save();
-            // Upload contract files if provided
             $filesData = $contractRequest->all()['files'] ?? null;
             if ($filesData) {
                 $this->fileService->uploadContractFiles($contract->id, $filesData);
             }
 
-            // Create contract payments
             $this->contractService->createPayment($contract);
 
-            // Create orders and history entries
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000 ? true : false;
-//            $this->createOrderAndHistory($contract,$client->id, $client_name, $cash,$category_id);
 
             $this->createOrderHistoryEntry($contract,$client->id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$contract->num,$pawnshop_id,$date);
 
@@ -229,7 +206,6 @@ class ContractControllerNew extends Controller
 
     public function payContractAmount(Request $request)
     {
-        // Validate request data
         $validatedData = $request->validate([
             'contract_id' => 'required|integer|exists:contracts,id',
         ]);
@@ -245,9 +221,24 @@ class ContractControllerNew extends Controller
             $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
             $contract->date = Carbon::now();
             $contract->save();
+            $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
 
             $this->contractService->createPayment($contract);
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
+
+            $contract->transactions()->create([
+                'date'              => $contract->date,
+                'document_type'     => Transaction::CONTRACT_PAYMENT,
+                'document_number'   => $transactionDocumentNumber,
+                'debit_account_id'  => '1111',
+                'credit_account_id' => '2222',
+                'currency_id'       => 1, //testing
+                'amount_amd'        => $contract->provided_amount,
+                'comment'           => 'contract_payment',
+                'debit_partner_id' => 2,//testing
+                'credit_partner_id' => $contract->client_id,
+            ]);
+
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
                 'amount' => $contract->provided_amount,

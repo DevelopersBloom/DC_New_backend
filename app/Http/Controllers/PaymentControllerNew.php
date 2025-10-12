@@ -10,6 +10,7 @@ use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Transaction;
 use App\Services\PaymentService;
 use App\Traits\ContractTrait;
 use App\Traits\FileTrait;
@@ -21,7 +22,8 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentControllerNew extends Controller
 {
-    use ContractTrait, FileTrait, HistoryTrait;
+    use ContractTrait, HistoryTrait;
+    //use FileTrait;
 
     protected PaymentService $paymentService;
 
@@ -59,20 +61,37 @@ class PaymentControllerNew extends Controller
         $deal->discount = $result['discount'];
         $deal->delay_days = $result['delay_days'];
         $deal->save();
-        $payment_id = $result['id'];
-//        $order_id = $this->generateOrderInNew($request,$payments)->id;
-//        $history = $this->createHistory($request, $order_id,$result['interest_amount'],$result['delay_days'],$result['penalty'],
-//            $result['discount']);
-//        $this->createDeal($amount ?? $result['$payments_sum'],
-//           $result['interest_amount'],$result['delay_days'],$result['penalty'],
-//           $result['discount'], 'in', $contract->id,$contract->client->id,
-//            $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,$payment_id,null,1);
-//       $this->updateContractStatus($contract);
+
+        $deal->transactions()->create([
+            'date'              => $deal->date,
+            'document_type'     => Transaction::REGULAR_PAYMENT,
+            'document_number'   => Transaction::getDocumentNumberAttribute(),
+            'debit_account_id'  => '1111',
+            'credit_account_id' => '2222',
+            'currency_id'       => 1, //testing
+            'amount_amd'        => $result['interest_amount'],
+            'comment'           => 'regular_payment',
+            'debit_partner_id' => 2,//testing
+            'credit_partner_id' => $contract->client_id,
+        ]);
+        if ($result['penalty'] > 0) {
+            $deal->transactions()->create([
+                'date'              => $deal->date,
+                'document_type'     => Transaction::PENALTY_PAYMENT,
+                'document_number'   => Transaction::getDocumentNumberAttribute(),
+                'debit_account_id'  => '1111',
+                'credit_account_id' => '2222',
+                'currency_id'       => 1, //testing
+                'amount_amd'        => $result['penalty'],
+                'comment'           => 'penalty_payment',
+                'debit_partner_id' => 2,//testing
+                'credit_partner_id' => $contract->client_id,
+            ]);
+        }
+
        return response()->json([
            'success' => 'success',
            'message' => 'Successfully created payment!'
-//          'contract' => $this->getFullContract($request->contract_id),
-//          'data' => $request->all()
        ]);
     }
 
@@ -137,8 +156,19 @@ class PaymentControllerNew extends Controller
 
         $contract->closed_at = now();
         $contract->save();
-        // Generate history for the payment
 
+        $deal->transactions()->create([
+            'date'              => $deal->date,
+            'document_type'     => Transaction::FULL_PAYMENT,
+            'document_number'   => Transaction::getDocumentNumberAttribute(),
+            'debit_account_id'  => '1111',
+            'credit_account_id' => '2222',
+            'currency_id'       => 1, //testing
+            'amount_amd'        => $amount,
+            'comment'           => 'full_payment',
+            'debit_partner_id' => 2,//testing
+            'credit_partner_id' => $contract->client_id,
+        ]);
         // Check if early payment is eligible for a refund
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
             $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
@@ -185,17 +215,11 @@ class PaymentControllerNew extends Controller
     {
         $lump_amount_original = $providedAmont * $lumpRate/100;
         $lump_amount = round($lump_amount_original);
-//        $lump_amount = ($lump_amount_original >= 1375)
-//            ? ceil($lump_amount_original / 10) * 10
-//            : floor($lump_amount_original / 10) * 10;
-        //$remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now());
+
         $remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now()->startOfDay());
 
         $refund_amount_original = $lump_amount/$deadlineDays*$remainingDays;
         $refund_amount = round($refund_amount_original);
-//        $refund_amount = ($refund_amount_original >= 1375)
-//            ? ceil($refund_amount_original / 10) * 10
-//            : floor($refund_amount_original / 10) * 10;
 
         return round($refund_amount/10)*10;
     }
@@ -246,7 +270,18 @@ class PaymentControllerNew extends Controller
 
         $deal->payment_id = $payment_id;
         $deal->save();
-        // Update contract status and check if any payments remain
+        $deal->transactions()->create([
+            'date'              => $deal->date,
+            'document_type'     => Transaction::PARTIAL_PAYMENT,
+            'document_number'   => Transaction::getDocumentNumberAttribute(),
+            'debit_account_id'  => '1111',
+            'credit_account_id' => '2222',
+            'currency_id'       => 1, //testing
+            'amount_amd'        => $partialAmount,
+            'comment'           => 'partial_payment',
+            'debit_partner_id' => 2,//testing
+            'credit_partner_id' => $contract->client_id,
+        ]);
         $this->updateContractStatus($contract);
 
         return response()->json([
