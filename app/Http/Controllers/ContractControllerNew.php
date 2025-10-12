@@ -9,6 +9,7 @@ use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
+use App\Models\Deal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
@@ -226,7 +227,7 @@ class ContractControllerNew extends Controller
             $this->contractService->createPayment($contract);
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
 
-            $contract->transactions()->create([
+            Transaction::create([
                 'date'              => $contract->date,
                 'document_type'     => Transaction::CONTRACT_PAYMENT,
                 'document_number'   => $transactionDocumentNumber,
@@ -237,6 +238,8 @@ class ContractControllerNew extends Controller
                 'comment'           => 'contract_payment',
                 'debit_partner_id' => 2,//testing
                 'credit_partner_id' => $contract->client_id,
+                'transactionable_id' => $deal_id,
+                'transactionable_type' => Deal::class,
             ]);
 
             ContractAmountHistory::create([

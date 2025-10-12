@@ -65,7 +65,7 @@ class PaymentControllerNew extends Controller
         $deal->transactions()->create([
             'date'              => $deal->date,
             'document_type'     => Transaction::REGULAR_PAYMENT,
-            'document_number'   => Transaction::getDocumentNumberAttribute(),
+            'document_number'   => Transaction::getNextDocumentNumber(),
             'debit_account_id'  => '1111',
             'credit_account_id' => '2222',
             'currency_id'       => 1, //testing
@@ -78,7 +78,7 @@ class PaymentControllerNew extends Controller
             $deal->transactions()->create([
                 'date'              => $deal->date,
                 'document_type'     => Transaction::PENALTY_PAYMENT,
-                'document_number'   => Transaction::getDocumentNumberAttribute(),
+                'document_number'   => Transaction::getNextDocumentNumber(),
                 'debit_account_id'  => '1111',
                 'credit_account_id' => '2222',
                 'currency_id'       => 1, //testing
@@ -160,7 +160,7 @@ class PaymentControllerNew extends Controller
         $deal->transactions()->create([
             'date'              => $deal->date,
             'document_type'     => Transaction::FULL_PAYMENT,
-            'document_number'   => Transaction::getDocumentNumberAttribute(),
+            'document_number'   => Transaction::getNextDocumentNumber(),
             'debit_account_id'  => '1111',
             'credit_account_id' => '2222',
             'currency_id'       => 1, //testing
@@ -273,7 +273,7 @@ class PaymentControllerNew extends Controller
         $deal->transactions()->create([
             'date'              => $deal->date,
             'document_type'     => Transaction::PARTIAL_PAYMENT,
-            'document_number'   => Transaction::getDocumentNumberAttribute(),
+            'document_number'   => Transaction::getNextDocumentNumber(),
             'debit_account_id'  => '1111',
             'credit_account_id' => '2222',
             'currency_id'       => 1, //testing
