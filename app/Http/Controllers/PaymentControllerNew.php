@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
 class PaymentControllerNew extends Controller
 {
     use ContractTrait, HistoryTrait;
-    //use FileTrait;
+    use FileTrait;
 
     protected PaymentService $paymentService;
 
