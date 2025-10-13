@@ -170,7 +170,7 @@ class ChartOfAccountController
             return response()->json(['message' => 'Related LoanNdm not found'], 404);
         }
 
-        $remaining = $loan->remainingCapacity();
+        $remaining = $journal->remainingCapacity();
 
         return response()->json([
             'loan_id'   => $loan->id,
