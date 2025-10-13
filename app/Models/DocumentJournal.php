@@ -287,5 +287,24 @@ class DocumentJournal extends Model
         if ($to)   return $query->where('date', '<=', $to);
         return $query;
     }
+    public function remainingCapacity(?string $toDate = null): float
+    {
+        $totalAttraction = Transaction::where('transactionable_id', $this->id)
+            ->where('transactionable_type', DocumentJournal::class)
+            ->where('document_type',Transaction::LOAN_ATTRACTION)
+            ->sum('amount');
+
+        $totalRepayment = Transaction::where('transactionable_id', $this->id)
+            ->where('transactionable_type',DocumentJournal::class)
+            ->where('document_type',Transaction::LOAN_REPAYMENT)
+            ->sum('amount');
+
+        $loanAmount = LoanNdm::where('id',$this->journalable_id)->select('amount');
+
+        $remainingBalance = $loanAmount - $totalAttraction + $totalRepayment;
+
+        return $remainingBalance;
+    }
+
 
 }
