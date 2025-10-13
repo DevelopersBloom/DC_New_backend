@@ -337,7 +337,6 @@ class ReportV01Controller extends Controller
         );
     }
 
-    // Փոփոխված մեթոդը 5-անիշ կոդերը գումարելու (ներառյալ տառերովը) և տառ պարունակող կոդերը (օրինակ՝ 33512NV) առանձին տողով ցույց տալու համար
     protected function transformToReport1($rows)
     {
         $sumFields = [
@@ -350,16 +349,11 @@ class ReportV01Controller extends Controller
             'rub_resident', 'rub_non_resident',
         ];
 
-        // 1. Բաժանում ենք տառ պարունակող կոդերը (օրինակ՝ 33512NV), որոնք պետք է երևան որպես առանձին տողեր։
         $lettered = $rows->filter(fn($r) => (bool)preg_match('/[A-Za-z]/', (string)$r->code));
 
-        // 2. Խմբավորում ենք ԲՈԼՈՐ տողերը (այսինքն՝ օգտագործում ենք $rows-ը), ըստ առաջին 5 թվանշանի։
-        // Սա ապահովում է, որ 33512NV-ի տվյալները կգումարվեն 33512-ի մեջ։
         $grouped = $rows->groupBy(fn($r) => preg_match('/^\d{5}/', (string)$r->code, $m) ? $m[0] : (string)$r->code);
 
-        // 3. Հաշվարկում ենք 5-անիշ հիմնական կոդերի գումարային տողերը։
         $baseAggregates = $grouped->map(function ($group, $base5) use ($sumFields) {
-            // Միայն 5-անիշ թվային բանալիները պահել։
             if (!preg_match('/^\d{5}$/', $base5)) {
                 return null;
             }
@@ -374,9 +368,8 @@ class ReportV01Controller extends Controller
                 $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
             }
             return (object)$agg;
-        })->filter()->values(); // Հեռացնում է null-երը
+        })->filter()->values();
 
-        // 4. Նորմալացնում ենք տառ պարունակող կոդերը (որոնք կցուցադրվեն առանձին տողով):
         $letteredNormalized = $lettered->map(function ($r) use ($sumFields) {
             foreach ($sumFields as $f) {
                 $r->{$f} = (float)($r->{$f} ?? 0);
@@ -386,13 +379,11 @@ class ReportV01Controller extends Controller
             return $r;
         });
 
-        // 5. Միացնում ենք ագրեգացված 5-անիշ կոդերը և առանձին տառ պարունակող կոդերը։
         $final = $baseAggregates->values()
             ->merge($letteredNormalized->values())
             ->sortBy('code')
             ->values();
 
-        // 6. Net 52000 հաշվարկը մնում է անփոփոխ՝ օգտագործելով $rows-ը՝ բոլոր 6x/7x կոդերը ներառելու համար։
         $sum6 = $this->sumByPrefix($rows, '6', $sumFields);
         $sum7 = $this->sumByPrefix($rows, '7', $sumFields);
 
