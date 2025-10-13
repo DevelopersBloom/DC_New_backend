@@ -766,14 +766,14 @@ class LoanNdmController extends Controller
 
                 $j->transactions()->create([
                     'date'              => $data['operation_date'],
-                    'document_type'     => 'Վարկի մարում',
+                    'document_type'     => Transaction::LOAN_REPAYMENT,
                     'document_number' => $transactionDocumentNumber,
                     'debit_account_id'  => $acc33512NV,
                     'credit_account_id' => $loanAccountId,
                     'currency_id'       => $commonJ['currency_id'],
                     'amount_amd'        => $principal,
                     'amount_currency'   => $principal,
-                    'comment'           => 'Վարկի մարում',
+                    'comment'           => 'loan_repayment',
                     'debit_partner_id' => $clientId,
                     'credit_partner_id' => $lombardId,
                 ]);
@@ -813,28 +813,6 @@ class LoanNdmController extends Controller
         });
     }
 
-    public function remainingAmount(int $journalId)
-    {
-        $journal = DocumentJournal::with('journalable')->findOrFail($journalId);
-
-        /** @var \App\Models\LoanNdm|null $loan */
-        $loan = $journal->journalable instanceof \App\Models\LoanNdm
-            ? $journal->journalable
-            : \App\Models\LoanNdm::find($journal->journalable_id);
-
-        if (!$loan) {
-            return response()->json(['message' => 'Related LoanNdm not found'], 404);
-        }
-
-        $remaining = $loan->remainingCapacity();
-
-        return response()->json([
-            'loan_id'   => $loan->id,
-            'journal_id'=> $journal->id,
-            'amount'    => $remaining,
-            'client' => $loan->client->type,
-        ]);
-    }
 
 
 public function loanNdmJournal(Request $request): JsonResponse

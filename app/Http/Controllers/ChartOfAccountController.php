@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreChartOfAccountRequest;
 use App\Models\ChartOfAccount;
+use App\Models\DocumentJournal;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -156,4 +157,27 @@ class ChartOfAccountController
 
         return response()->json($pageData);
     }
+    public function remainingAmount(int $journalId)
+    {
+        $journal = DocumentJournal::with('journalable')->findOrFail($journalId);
+
+        /** @var \App\Models\LoanNdm|null $loan */
+        $loan = $journal->journalable instanceof \App\Models\LoanNdm
+            ? $journal->journalable
+            : \App\Models\LoanNdm::find($journal->journalable_id);
+
+        if (!$loan) {
+            return response()->json(['message' => 'Related LoanNdm not found'], 404);
+        }
+
+        $remaining = $loan->remainingCapacity();
+
+        return response()->json([
+            'loan_id'   => $loan->id,
+            'journal_id'=> $journal->id,
+            'amount'    => $remaining,
+            'client' => $loan->client->type,
+        ]);
+    }
+
 }

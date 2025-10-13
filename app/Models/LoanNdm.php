@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Traits\Journalable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class LoanNdm extends Model
 {
@@ -148,28 +149,28 @@ class LoanNdm extends Model
             'user_id'          => auth()->user()->id,
         ];
     }
-    public function remainingCapacity(?string $toDate = null): float
-    {
-        $loanAccountId = (int) $this->account_id;
-
-        $tx = \App\Models\Transaction::query()
-            ->whereHasMorph('transactionable', [\App\Models\DocumentJournal::class], function ($q) {
-                $q->where('journalable_type', 'App\Models\DocumentJournal')
-                    ->where('journalable_id', $this->id);
-            })
-            ->when($toDate, fn($q) => $q->whereDate('date', '<=', $toDate));
-
-        $utilized = (float) (clone $tx)
-            ->where('credit_account_id', $loanAccountId)
-            ->sum('amount_amd');
-
-        $repaidPrincipal = (float) (clone $tx)
-            ->where('debit_account_id', $loanAccountId)
-            ->sum('amount_amd');
-
-        $drawnPrincipal = max(0.0, $utilized - $repaidPrincipal);
-        $remaining      = (float) $this->amount - $drawnPrincipal;
-
-        return max(0.0, round($remaining, 2));
-    }
+//    public function remainingCapacity(?string $toDate = null): float
+//    {
+//        $loanAccountId = (int) $this->account_id;
+//
+//        $tx = Transaction::query()
+//            ->whereHasMorph('transactionable', [\App\Models\DocumentJournal::class], function ($q) {
+//                $q->where('journalable_type', 'App\Models\DocumentJournal')
+//                    ->where('journalable_id', $this->id);
+//            })
+//            ->when($toDate, fn($q) => $q->whereDate('date', '<=', $toDate));
+//
+//        $utilized = (float) (clone $tx)
+//            ->where('credit_account_id',  )
+//            ->sum('amount_amd');
+//
+//        $repaidPrincipal = (float) (clone $tx)
+//            ->where('debit_account_id', $loanAccountId)
+//            ->sum('amount_amd');
+//
+//        $drawnPrincipal = max(0.0, $utilized - $repaidPrincipal);
+//        $remaining      = (float) $this->amount - $drawnPrincipal;
+//
+//        return max(0.0, round($remaining, 2));
+//    }
 }

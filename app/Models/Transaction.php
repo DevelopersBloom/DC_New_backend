@@ -15,6 +15,7 @@ class Transaction extends Model
     const REMINDER_ORDER_TYPE = 'Հիշարար օրդեր';
     const LOAN_NDM_TYPE = 'Ներգրավված Դրամական Միջոցներ';
     const LOAN_ATTRACTION = 'Վարկի ներգրավում';
+    const LOAN_REPAYMENT = 'Վարկի մարում';
     const CONTRACT_PAYMENT = 'Վարկի տրամադրում';
     const REGULAR_PAYMENT = 'Տոկոսի վճարում';
     const FULL_PAYMENT = 'Ամբողջական վճարում';
