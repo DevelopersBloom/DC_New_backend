@@ -736,7 +736,7 @@ class LoanNdmController extends Controller
                         'credit_partner_id' => $lombardId,
                     ]);
 
-                $j->transactions()->create([
+                $baseJournal->transactions()->create([
                     'date'              => $data['operation_date'],
                     'document_type'     => 'Տոկոսի մարում',
                     'document_number' => $transactionDocumentNumber,
@@ -764,7 +764,7 @@ class LoanNdmController extends Controller
                         'credit_partner_id' => $lombardId,
                     ]);
 
-                $j->transactions()->create([
+                $baseJournal->transactions()->create([
                     'date'              => $data['operation_date'],
                     'document_type'     => Transaction::LOAN_REPAYMENT,
                     'document_number' => $transactionDocumentNumber,
@@ -792,7 +792,7 @@ class LoanNdmController extends Controller
                         'credit_partner_id' => $lombardId,
                     ]);
 
-                $j->transactions()->create([
+                $baseJournal->transactions()->create([
                     'date'              => $data['operation_date'],
                     'document_type'     => 'Հարկի գանձում տոկոսի մարումից',
                     'document_number' => $transactionDocumentNumber,
