@@ -435,4 +435,19 @@ class ReportV01Controller extends Controller
 
         return $finalNo67->sortBy('code')->values();
     }
+    protected function sumByPrefix($rows, string $prefix, array $sumFields): array
+    {
+        $agg = [];
+        foreach ($sumFields as $f) { $agg[$f] = 0.0; }
+
+        foreach ($rows as $r) {
+            $code = (string)($r->code ?? '');
+            if (preg_match('/^' . preg_quote($prefix, '/') . '/', $code)) {
+                foreach ($sumFields as $f) {
+                    $agg[$f] += (float)($r->{$f} ?? 0);
+                }
+            }
+        }
+        return $agg;
+    }
 }
