@@ -301,9 +301,13 @@ class DocumentJournal extends Model
 
         $loanAmount = LoanNdm::where('id',$this->journalable_id)->select('amount');
 
-        $remainingBalance = $loanAmount - $totalAttraction + $totalRepayment;
+        $loanAmount = (float) (LoanNdm::query()
+            ->whereKey($this->journalable_id)
+            ->value('amount') ?? 0);
 
-        return $remainingBalance;
+        $remainingBalance = (float)$loanAmount - (float)$totalAttraction + (float)$totalRepayment;
+
+        return max($remainingBalance,0);
     }
 
 
