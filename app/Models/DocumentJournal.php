@@ -292,12 +292,12 @@ class DocumentJournal extends Model
         $totalAttraction = Transaction::where('transactionable_id', $this->id)
             ->where('transactionable_type', DocumentJournal::class)
             ->where('document_type',Transaction::LOAN_ATTRACTION)
-            ->sum('amount');
+            ->sum('amount_amd');
 
         $totalRepayment = Transaction::where('transactionable_id', $this->id)
             ->where('transactionable_type',DocumentJournal::class)
             ->where('document_type',Transaction::LOAN_REPAYMENT)
-            ->sum('amount');
+            ->sum('amount_amd');
 
         $loanAmount = LoanNdm::where('id',$this->journalable_id)->select('amount');
 
