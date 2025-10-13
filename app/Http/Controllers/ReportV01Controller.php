@@ -129,8 +129,9 @@ class ReportV01Controller extends Controller
         ];
 
         $lettered = $rows->filter(fn($r) => (bool)preg_match('/^\d{5}[A-Za-z]+$/', (string)$r->code));
-        $grouped  = $rows->groupBy(fn($r) => preg_match('/^\d{5}/', (string)$r->code, $m) ? $m[0] : (string)$r->code);
-
+        $grouped = $rows->groupBy(fn($r) =>
+        preg_match('/^\d{5}/', (string)$r->code, $m) ? $m[0] : (string)$r->code
+        );
         $baseAggregates = $grouped->map(function ($group, $base5) use ($sumFields) {
             $exact = $group->first(fn($x) => (string)$x->code === $base5);
             $name  = $exact->name
@@ -142,19 +143,19 @@ class ReportV01Controller extends Controller
                 $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
             }
             return (object)$agg;
-        });
+        })->values();
 
-        $letteredNormalized = $lettered->map(function ($r) use ($sumFields) {
-            foreach ($sumFields as $f) { $r->{$f} = (float)($r->{$f} ?? 0); }
-            $r->code = (string)$r->code;
-            $r->name = (string)($r->name ?? $r->code);
-            return $r;
-        });
-
-        $final = $baseAggregates->values()
-            ->merge($letteredNormalized->values())
-            ->sortBy('code')
-            ->values();
+//        $letteredNormalized = $lettered->map(function ($r) use ($sumFields) {
+//            foreach ($sumFields as $f) { $r->{$f} = (float)($r->{$f} ?? 0); }
+//            $r->code = (string)$r->code;
+//            $r->name = (string)($r->name ?? $r->code);
+//            return $r;
+//        });
+//
+//        $final = $baseAggregates->values()
+//            ->merge($letteredNormalized->values())
+//            ->sortBy('code')
+//            ->values();
 
         $sum6 = $this->sumByPrefix($rows, '6', $sumFields);
         $sum7 = $this->sumByPrefix($rows, '7', $sumFields);
@@ -164,7 +165,8 @@ class ReportV01Controller extends Controller
             $net52000[$f] = (float)($sum6[$f] - $sum7[$f]);
         }
 
-        $finalNo67 = $final->reject(fn($r) => preg_match('/^[67]/', (string)$r->code));
+      //  $finalNo67 = $final->reject(fn($r) => preg_match('/^[67]/', (string)$r->code));
+        $finalNo67 = $baseAggregates->reject(fn($r) => preg_match('/^[67]/', (string)$r->code))->values();
 
         $hasNonZero52000 = false;
         foreach ($sumFields as $f) {
@@ -190,8 +192,13 @@ class ReportV01Controller extends Controller
                 $finalNo67 = $finalNo67->values(); // reindex
             }
         }
-
-        return $finalNo67->sortBy('code')->values();
+        $onlyFiveDigit = $finalNo67
+            ->filter(fn($r) => preg_match('/^\d{5}$/', (string)$r->code))
+            ->sortBy('code')
+            ->values();
+//        return $finalNo67->sortBy('code')->values();
+        return $onlyFiveDigit;
+        ;
     }
 
     protected function sumByPrefix($rows, string $prefix, array $sumFields): array
