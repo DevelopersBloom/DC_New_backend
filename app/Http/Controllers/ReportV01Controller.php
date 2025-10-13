@@ -128,11 +128,13 @@ class ReportV01Controller extends Controller
             'rub_resident','rub_non_resident',
         ];
 
-        $lettered = $rows->filter(fn($r) => (bool)preg_match('/^\d{5}[A-Za-z]+$/', (string)$r->code));
-        $grouped = $rows->groupBy(fn($r) =>
-        preg_match('/^\d{5}/', (string)$r->code, $m) ? $m[0] : (string)$r->code
-        );
+        $grouped  = $rows->groupBy(fn($r) => preg_match('/^\d{5}/', (string)$r->code, $m) ? $m[0] : (string)$r->code);
+
         $baseAggregates = $grouped->map(function ($group, $base5) use ($sumFields) {
+            if (!preg_match('/^\d{5}$/', $base5)) {
+                return null;
+            }
+
             $exact = $group->first(fn($x) => (string)$x->code === $base5);
             $name  = $exact->name
                 ?? optional($group->sortBy(fn($x) => strlen((string)$x->code))->first())->name
@@ -143,19 +145,11 @@ class ReportV01Controller extends Controller
                 $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
             }
             return (object)$agg;
-        })->values();
+        })->filter()->values();
 
-//        $letteredNormalized = $lettered->map(function ($r) use ($sumFields) {
-//            foreach ($sumFields as $f) { $r->{$f} = (float)($r->{$f} ?? 0); }
-//            $r->code = (string)$r->code;
-//            $r->name = (string)($r->name ?? $r->code);
-//            return $r;
-//        });
-//
-//        $final = $baseAggregates->values()
-//            ->merge($letteredNormalized->values())
-//            ->sortBy('code')
-//            ->values();
+        $final = $baseAggregates->values()
+            ->sortBy('code')
+            ->values();
 
         $sum6 = $this->sumByPrefix($rows, '6', $sumFields);
         $sum7 = $this->sumByPrefix($rows, '7', $sumFields);
@@ -165,8 +159,7 @@ class ReportV01Controller extends Controller
             $net52000[$f] = (float)($sum6[$f] - $sum7[$f]);
         }
 
-      //  $finalNo67 = $final->reject(fn($r) => preg_match('/^[67]/', (string)$r->code));
-        $finalNo67 = $baseAggregates->reject(fn($r) => preg_match('/^[67]/', (string)$r->code))->values();
+        $finalNo67 = $final->reject(fn($r) => preg_match('/^[67]/', (string)$r->code));
 
         $hasNonZero52000 = false;
         foreach ($sumFields as $f) {
@@ -192,14 +185,86 @@ class ReportV01Controller extends Controller
                 $finalNo67 = $finalNo67->values(); // reindex
             }
         }
-        $onlyFiveDigit = $finalNo67
-            ->filter(fn($r) => preg_match('/^\d{5}$/', (string)$r->code))
-            ->sortBy('code')
-            ->values();
-//        return $finalNo67->sortBy('code')->values();
-        return $onlyFiveDigit;
-        ;
+
+        return $finalNo67->sortBy('code')->values();
     }
+//    protected function transformToReport1($rows)
+//    {
+//        $sumFields = [
+//            'total_resident','total_non_resident',
+//            'amd_resident','amd_non_resident',
+//            'fx_group1_resident','fx_group1_non_resident',
+//            'usd_resident','usd_non_resident',
+//            'eur_resident','eur_non_resident',
+//            'fx_group2_resident','fx_group2_non_resident',
+//            'rub_resident','rub_non_resident',
+//        ];
+//
+//        $lettered = $rows->filter(fn($r) => (bool)preg_match('/^\d{5}[A-Za-z]+$/', (string)$r->code));
+//        $grouped  = $rows->groupBy(fn($r) => preg_match('/^\d{5}/', (string)$r->code, $m) ? $m[0] : (string)$r->code);
+//
+//        $baseAggregates = $grouped->map(function ($group, $base5) use ($sumFields) {
+//            $exact = $group->first(fn($x) => (string)$x->code === $base5);
+//            $name  = $exact->name
+//                ?? optional($group->sortBy(fn($x) => strlen((string)$x->code))->first())->name
+//                ?? $base5;
+//
+//            $agg = ['code' => $base5, 'name' => $name];
+//            foreach ($sumFields as $f) {
+//                $agg[$f] = (float)$group->sum(fn($x) => (float)($x->{$f} ?? 0));
+//            }
+//            return (object)$agg;
+//        });
+//
+//        $letteredNormalized = $lettered->map(function ($r) use ($sumFields) {
+//            foreach ($sumFields as $f) { $r->{$f} = (float)($r->{$f} ?? 0); }
+//            $r->code = (string)$r->code;
+//            $r->name = (string)($r->name ?? $r->code);
+//            return $r;
+//        });
+//
+//        $final = $baseAggregates->values()
+//            ->merge($letteredNormalized->values())
+//            ->sortBy('code')
+//            ->values();
+//
+//        $sum6 = $this->sumByPrefix($rows, '6', $sumFields);
+//        $sum7 = $this->sumByPrefix($rows, '7', $sumFields);
+//
+//        $net52000 = [];
+//        foreach ($sumFields as $f) {
+//            $net52000[$f] = (float)($sum6[$f] - $sum7[$f]);
+//        }
+//
+//        $finalNo67 = $final->reject(fn($r) => preg_match('/^[67]/', (string)$r->code));
+//
+//        $hasNonZero52000 = false;
+//        foreach ($sumFields as $f) {
+//            if (abs($net52000[$f]) > 0.0) { $hasNonZero52000 = true; break; }
+//        }
+//
+//        $existing52000Key = $finalNo67->search(fn($r) => (string)$r->code === '52000');
+//
+//        if ($hasNonZero52000) {
+//            if ($existing52000Key !== false) {
+//                $r = $finalNo67[$existing52000Key];
+//                foreach ($sumFields as $f) { $r->{$f} = $net52000[$f]; }
+//                $finalNo67[$existing52000Key] = $r;
+//            } else {
+//                // Add new
+//                $finalNo67->push((object) array_merge([
+//                    'code' => '52000',
+//                ], $net52000));
+//            }
+//        } else {
+//            if ($existing52000Key !== false) {
+//                $finalNo67->forget($existing52000Key);
+//                $finalNo67 = $finalNo67->values(); // reindex
+//            }
+//        }
+//
+//        return $finalNo67->sortBy('code')->values();
+//    }
 
     protected function sumByPrefix($rows, string $prefix, array $sumFields): array
     {
