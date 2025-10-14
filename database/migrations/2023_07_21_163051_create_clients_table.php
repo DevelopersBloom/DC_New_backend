@@ -55,8 +55,8 @@ return new class extends Migration
 
             $table->boolean('has_contract')->default(true);
             $table->date('date')->nullable();
-            $table->foreignId('classification_id')->nullable()->constrained('clients_classifications')->nullOnDelete();
-            $table->foreignId('acra_classification_id')->nullable()->constrained('clients_classifications')->nullOnDelete();
+            $table->foreignId('classification_id')->nullable()->constrained('clients_classification')->nullOnDelete();
+            $table->foreignId('acra_classification_id')->nullable()->constrained('clients_classification')->nullOnDelete();
 
             $table->softDeletes();
             $table->timestamps();
