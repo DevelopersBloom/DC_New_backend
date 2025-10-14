@@ -34,7 +34,7 @@ class DatabaseSeeder extends Seeder
             PawnshopConfigSeeder::class
         ]);
         $this->call(CurrencySeeder::class);
-        $this->call(ClientClassification::class);
+        $this->call(ClientClassificationSeeder::class);
 
     }
 }

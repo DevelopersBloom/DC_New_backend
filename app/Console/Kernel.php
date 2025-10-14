@@ -17,7 +17,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->job(new UpdateClientClassifications)
-            ->dailyAt('22:15')
+            ->dailyAt('22:25')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping()
             ->onOneServer();
