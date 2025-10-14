@@ -32,7 +32,7 @@ class UpdateClientClassifications implements ShouldQueue
                 foreach ($clients as $client) {
                     try {
                         $maxOverdue = $service->maxOverdueDaysForClient($client);
-
+dd($maxOverdue);
                         $classification = $service->classificationByOverdue($maxOverdue);
 
                         if ($client->classification_id !== $classification->id) {
