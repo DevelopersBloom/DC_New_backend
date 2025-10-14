@@ -9,7 +9,7 @@ class ClientClassificationSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('customer_classifications')->insert([
+        DB::table('clients_classifications')->insert([
             [
                 'title' => 'Ստանդարտ',
                 'name' => 'standard',
