@@ -17,10 +17,10 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->job(new UpdateClientClassifications)
-            ->dailyAt('22:35')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping()
-            ->onOneServer();
+            ->onOneServer()
+            ->everyMinute();
     }
 
     /**
