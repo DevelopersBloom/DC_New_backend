@@ -54,6 +54,8 @@ class Client extends Model
 
         'has_contract',
         'date',
+        'classification_id',
+        'acra_classification_id',
     ];
 
     protected $casts = [
@@ -168,6 +170,12 @@ class Client extends Model
         return $this->type === 'legal'
             ? ($this->company_name ?? '')
             : trim(($this->name ?? '') . ' ' . ($this->surname ?? ''));
+    }
+    public function classification() {
+        return $this->belongsTo(ClientClassification::class, 'classification_id');
+    }
+    public function acraClassification() {
+        return $this->belongsTo(ClientClassification::class, 'acra_classification_id');
     }
 
 
