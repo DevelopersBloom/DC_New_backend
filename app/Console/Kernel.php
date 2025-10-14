@@ -19,7 +19,7 @@ class Kernel extends ConsoleKernel
         $schedule->job(new UpdateClientClassifications)
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping()
-            ->onOneServer()
+         //   ->onOneServer()
             ->everyMinute();
     }
 
