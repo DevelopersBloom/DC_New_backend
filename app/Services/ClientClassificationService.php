@@ -29,7 +29,7 @@ class ClientClassificationService
                 if ($isPaid) continue;
 
 
-                $isUnpaid = (!$isPaid || $amount > 0);
+                $isUnpaid = (!$isPaid);
 
                 if ($isUnpaid && $due->lt($today)) {
                     $overdueDays = $due->diffInDays($today);
