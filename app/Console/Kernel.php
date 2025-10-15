@@ -11,16 +11,16 @@ class Kernel extends ConsoleKernel
     /**
      * Define the application's command schedule.
      *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @param Schedule $schedule
      * @return void
      */
     protected function schedule(Schedule $schedule)
     {
         $schedule->job(new UpdateClientClassifications)
+            ->dailyAt('21:00')
             ->timezone('Asia/Yerevan')
-            ->withoutOverlapping()
-         //   ->onOneServer()
-            ->everyMinute();
+            ->withoutOverlapping(10)
+            ->appendOutputTo(storage_path('logs/schedule.log'));
     }
 
     /**

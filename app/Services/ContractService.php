@@ -328,6 +328,7 @@ class   ContractService
 
             $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
             $payment['date'] = $paymentDate->format('Y-m-d');
+            $payment['to_date'] = $paymentDate->format('Y-m-d');
             $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
             $payment['pawnshop_id'] = $pawnshop_id;
@@ -375,6 +376,7 @@ class   ContractService
             $payment = [
                 'contract_id' => $contract->id,
                 'date' => $paymentDate->format('Y-m-d'),
+                'to_date' => $paymentDate->format('Y-m-d'),
                 'amount' => round($annuityPayment, 2),
                 'principal_payment' => round($principalPayment, 2),
                 'interest_payment' => round($interest, 2),

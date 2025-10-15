@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
-    use HasFactory , SoftDeletes;
+    use HasFactory,SoftDeletes;
 
     protected $fillable = [
         'PGI_ID',
@@ -36,6 +36,7 @@ class Payment extends Model
         'principal_payment',
         'interest_payment',
         'remaining',
+        'to_date'
     ];
 
     public function contract(){
