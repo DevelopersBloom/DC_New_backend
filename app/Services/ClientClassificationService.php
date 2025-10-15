@@ -24,20 +24,17 @@ class ClientClassificationService
                 $isPaid     = $p->status === 'completed';
                 $paidAt     = $isPaid ? Carbon::parse($p->date, 'Asia/Yerevan') : null;
 
-                $due = Carbon::parse($p->date, 'Asia/Yerevan')->startOfDay();
+                $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
 
                 if ($isPaid) continue;
 
-
-                $isUnpaid = (!$isPaid);
-
-                if ($isUnpaid && $due->lt($today)) {
+                if (!$isPaid && $due->lt($today)) {
                     $overdueDays = $due->diffInDays($today);
                 }
-//                elseif ($isPaid && $paidAt->gt($due)) {
-//                    // վճարվել է ուշ — հաշվում ենք ուշացման օրերը
-//                    $overdueDays = $due->diffInDays($paidAt);
-//                }
+                elseif ($isPaid && $paidAt->gt($due)) {
+                    // վճարվել է ուշ — հաշվում ենք ուշացման օրերը
+                    $overdueDays = $due->diffInDays($paidAt);
+                }
                 else {
                     $overdueDays = 0;
                 }
