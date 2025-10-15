@@ -266,11 +266,11 @@ class   ContractService
             'num' => $data['num'] ?? $maxNum + 1, //if import from excel , use data['num']
             'estimated_amount' => $data['estimated_amount'],
             'provided_amount' => $data['provided_amount'],
-            'contract_amount' => $data['contract_amount'],
+            'contract_amount' => $data['contract_amount'] ?? null,
             'left' => $data['left'] ?? $data['provided_amount'],
             'mother' => $data['mother'] ?? $data['provided_amount'], // Default to provided amount
             'interest_rate' => $data['interest_rate'],
-            'effective_rate' => $data['effective_rate'],
+            'effective_rate' => $data['effective_rate'] ?? null,
             'penalty' => $data['penalty'],
             'deadline' => $deadline,
             'deadline_days' => $data['deadline'],
