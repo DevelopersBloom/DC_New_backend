@@ -9,6 +9,8 @@ class ClientClassification extends Model
 {
     use HasFactory;
 
+    protected $table = 'clients_classification';
+
     protected $fillable = [
         'title',
         'name',
