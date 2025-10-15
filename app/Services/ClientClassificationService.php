@@ -26,7 +26,7 @@ class ClientClassificationService
 
                 $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
 
-                if ($isPaid) continue;
+                //if ($isPaid) continue;
 
                 if (!$isPaid && $due->lt($today)) {
                     $overdueDays = $due->diffInDays($today);
