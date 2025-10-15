@@ -30,9 +30,10 @@ class UpdateClientClassifications implements ShouldQueue
             ->with('contracts.payments')
             ->chunkById(200, function ($clients) use ($service) {
                 foreach ($clients as $client) {
-                    Log::info('Cient id', $client->id);
 
                     try {
+                        Log::info('Processing client', ['id' => $client->id]);
+
                         $maxOverdue = $service->maxOverdueDaysForClient($client);
                         $classification = $service->classificationByOverdue($maxOverdue);
 
