@@ -57,7 +57,8 @@ return new class extends Migration
             $table->date('date')->nullable();
             $table->foreignId('classification_id')->nullable()->constrained('clients_classification')->nullOnDelete();
             $table->foreignId('acra_classification_id')->nullable()->constrained('clients_classification')->nullOnDelete();
-
+            $table->boolean('is_linked_to_company')->default(false);
+            $table->boolean('is_company_employee')->default(false);
             $table->softDeletes();
             $table->timestamps();
         });

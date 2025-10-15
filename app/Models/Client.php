@@ -56,6 +56,8 @@ class Client extends Model
         'date',
         'classification_id',
         'acra_classification_id',
+        'is_linked_to_company',
+        'is_company_employee',
     ];
 
     protected $casts = [
@@ -63,6 +65,8 @@ class Client extends Model
         'date'              => 'date',
         'passport_validity' => 'date',
         'date_of_birth'     => 'date',
+        'is_linked_to_company' => 'boolean',
+        'is_company_employee'  => 'boolean',
     ];
 
     protected static function boot()

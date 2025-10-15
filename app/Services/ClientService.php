@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Resources\ClientResource;
 use App\Models\Client;
 use App\Models\ClientPawnshop;
 use Carbon\Carbon;
@@ -156,12 +157,12 @@ class ClientService
                     fn($q) => $q->where('status', 'initial')
                 )
                     ->select('id','num','client_id','estimated_amount','provided_amount','interest_rate',
-                        'penalty','category_id','deadline','status')
+                        'penalty','category_id','deadline','status','is_linked_to_company','is_company_employee')
                     ->with('category:id,name');
             }
         ])->findOrFail($clientId);
 
-        return new \App\Http\Resources\ClientResource($client);
+        return new ClientResource($client);
     }
 
     /**

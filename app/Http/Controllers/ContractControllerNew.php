@@ -67,7 +67,7 @@ class ContractControllerNew extends Controller
         $contract = Contract::with([
             'client',
             'payments' => function ($query) {
-                $query->orderBy('date', 'ASC');
+                $query->orderBy('to_date', 'ASC');
             },
             'history' => function ($query) {
                 $query->whereDoesntHave('order', function ($q) {
@@ -80,7 +80,9 @@ class ContractControllerNew extends Controller
             'files',
             'deals',
 
-        ])->findOrFail($id);
+        ])->withMax('payments', 'to_date')
+            ->withMin('payments', 'to_date')
+            ->findOrFail($id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
         $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];

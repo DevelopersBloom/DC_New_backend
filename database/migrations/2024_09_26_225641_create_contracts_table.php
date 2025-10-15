@@ -20,7 +20,9 @@ return new class extends Migration
             $table->unsignedBigInteger('client_id');
             $table->decimal('estimated_amount', 15, 2);
             $table->decimal('provided_amount', 15, 2);
+            $table->decimal('contract_amount', 15, 2)->nullable();
             $table->decimal('interest_rate', 5, 2)->nullable();
+            $table->decimal('effective_rate',5, 2)->nullable();
             $table->decimal('penalty', 15, 2)->nullable();
             $table->decimal('discount', 15, 2)->nullable();
             $table->date('deadline');

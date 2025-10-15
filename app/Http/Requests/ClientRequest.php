@@ -38,6 +38,8 @@ class ClientRequest extends FormRequest
 
             'date' => ['nullable','date'],
             'has_contract' => ['sometimes','boolean'],
+            'is_linked_to_company' => ['sometimes','boolean'],
+            'is_company_employee'  => ['sometimes','boolean'],
         ];
 
         if ($type === 'individual') {

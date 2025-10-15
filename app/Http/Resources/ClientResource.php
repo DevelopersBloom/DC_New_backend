@@ -68,6 +68,8 @@ class ClientResource extends JsonResource
 
             'has_contract' => (bool) $this->has_contract,
             'date'         => optional($this->date)->format('Y-m-d'),
+            'is_linked_to_company' => (bool)$this->is_linked_to_company,
+            'is_company_employee' => (bool)$this->is_company_employee
         ];
 
         $individual = [

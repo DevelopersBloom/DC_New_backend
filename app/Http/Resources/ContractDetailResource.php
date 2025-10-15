@@ -18,18 +18,29 @@ class ContractDetailResource extends JsonResource
      */
     public function toArray($request): array
     {
+        $maturityDate = $this->payments_to_date_max
+            ? Carbon::parse($this->payments_to_date_max)->format('d-m-Y')
+            : null;
+        $interestStartDate = $this->payments_to_date_min
+            ? Carbon::parse($this->payments_to_date_min)->format('d-m-Y')
+            : null;
+
         return [
             'contract' => [
                 'id'               => $this->id,
                 'num'              => $this->num,
                 'estimated_amount' => $this->estimated_amount,
                 'provided_amount'  => $this->provided_amount,
+                'contract_amount'  => $this->contract_amount,
                 'interest_rate'    => $this->interest_rate,
+                'effective_rate'    => $this->effective_rate,
                 'penalty'          => $this->penalty,
                 'lump_rate'        => $this->lump_rate,
                 'description'      => $this->description,
                 'status'           => $this->status,
-                'effectiveRate'    => $this->effectiveRate
+                'effectiveRate'    => $this->effectiveRate,
+                'interest_end'=> $maturityDate,
+                'interest_start'    => $interestStartDate,
             ],
             'client' => [
                 'id'                => $this->client->id,
@@ -47,6 +58,9 @@ class ContractDetailResource extends JsonResource
                 'passport_series'   => $this->client->passport_series,
                 'passport_validity' => $this->client->passport_validity,
                 'passport_issued'   => $this->client->passport_issued,
+                'is_linked_to_company' => (bool)$this->client->is_linked_to_company,
+                'is_company_employee' => (bool)$this->client->is_company_employee,
+                ''
             ],
             'payments' => $this->payments->map(function ($payment) {
                 return [
