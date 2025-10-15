@@ -67,13 +67,13 @@ class ClientClassificationService
             return $byName['standard'] ?? ClientClassification::where('name', 'standard')->first();
         }
         if ($d >= 1 && $d <= 90) {
-            return $byName['monitored'] ?? ClientClassification::where('name', 'watch')->first();
+            return $byName['monitored'] ?? ClientClassification::where('name', 'monitored')->first();
         }
         if ($d >= 91 && $d <= 180) {
             return $byName['substandard'] ?? ClientClassification::where('name', 'substandard')->first();
         }
         if ($d >= 181 && $d <= 270) {
-            return $byName['suspicious'] ?? ClientClassification::where('name', 'doubtful')->first();
+            return $byName['suspicious'] ?? ClientClassification::where('name', 'suspicious')->first();
         }
         return $byName['loss'] ?? ClientClassification::where('name', 'loss')->first();
     }
