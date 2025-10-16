@@ -90,6 +90,41 @@ class ContractControllerNew extends Controller
         if ($contract->payment_type == 'amortized') {
             $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract);
         }
+        $unearnedInterest = 0;
+        if ($contract->payment_type === 'amortized') {
+            $unearnedInterest = $contract->payments
+                ->where('status', 'initial')
+                ->sum(function ($p) {
+                    return max(0, (float)($p->interest_payment ?? 0));
+                });
+        } else {
+            $unearnedInterest = $contract->payments
+                ->sum(function ($p) {
+                    return max(0, (float)($p->amount ?? 0));
+                });
+        }
+        $contract->unearned_interest = round($unearnedInterest, 2);
+        $writtenOff = null;
+        if (($contract->client->classification ?? null) === 'loss') {
+            if ($contract->payment_type === 'amortized') {
+                $row = $contract->payments
+                    ->where('status', 'initial')
+                    ->sortBy('to_date')
+                    ->first();
+
+                if (!$row) {
+                    $row = $contract->payments->sortByDesc('to_date')->first();
+                }
+
+                $writtenOff = max(0, (float)($row->remaining ?? 0));
+            } else {
+                $row = $contract->payments->firstWhere('last_payment', 1);
+
+                $writtenOff = max(0, (float)($row->mother ?? 0));
+            }
+        }
+        $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
+
         return new ContractDetailResource($contract);
     }
 

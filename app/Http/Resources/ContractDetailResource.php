@@ -41,6 +41,7 @@ class ContractDetailResource extends JsonResource
                 'effectiveRate'    => $this->effectiveRate,
                 'interest_end'=> $maturityDate,
                 'interest_start'    => $interestStartDate,
+                'unearned_interest' => $this->unearned_interest,
             ],
             'client' => [
                 'id'                => $this->client->id,
