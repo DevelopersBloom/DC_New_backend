@@ -62,13 +62,77 @@ class ContractControllerNew extends Controller
             'executed' => $data['executedContracts'],
         ]);
     }
+//    public function show($id)
+//    {
+//        $contract = Contract::with([
+//            'client',
+//            'payments' => function ($query) {
+//                $query->orderBy('to_date', 'ASC');
+//            },
+//            'history' => function ($query) {
+//                $query->whereDoesntHave('order', function ($q) {
+//                    $q->where('filter', Order::REFUND_LUMP_FILTER);
+//                })
+//                    ->with(['type', 'user', 'order'])
+//                    ->orderBy('id', 'DESC');
+//            },
+//            'items',
+//            'files',
+//            'deals',
+//
+//        ])->withMax('payments', 'to_date')
+//            ->withMin('payments', 'to_date')
+//            ->findOrFail($id);
+//        $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+//        $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
+//        $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
+//        $contract->effectiveRate = 0;
+//        if ($contract->payment_type == 'amortized') {
+//            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract);
+//        }
+//        $unearnedInterest = 0;
+//        if ($contract->payment_type === 'amortized') {
+//            $unearnedInterest = $contract->payments
+//                ->where('status', 'initial')
+//                ->sum(function ($p) {
+//                    return max(0, (float)($p->interest_payment ?? 0));
+//                });
+//        } else {
+//            $unearnedInterest = $contract->payments
+//                ->sum(function ($p) {
+//                    return max(0, (float)($p->amount ?? 0));
+//                });
+//        }
+//        $contract->unearned_interest = round($unearnedInterest, 2);
+//        $writtenOff = null;
+//        if (($contract->client->classification ?? null) === 'loss') {
+//            if ($contract->payment_type === 'amortized') {
+//                $row = $contract->payments
+//                    ->where('status', 'initial')
+//                    ->sortBy('to_date')
+//                    ->first();
+//
+//                if (!$row) {
+//                    $row = $contract->payments->sortByDesc('to_date')->first();
+//                }
+//
+//                $writtenOff = max(0, (float)($row->remaining ?? 0));
+//            } else {
+//                $row = $contract->payments->firstWhere('last_payment', 1);
+//
+//                $writtenOff = max(0, (float)($row->mother ?? 0));
+//            }
+//        }
+//        $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
+//
+//        return new ContractDetailResource($contract);
+//    }
+
     public function show($id)
     {
         $contract = Contract::with([
             'client',
-            'payments' => function ($query) {
-                $query->orderBy('to_date', 'ASC');
-            },
+            'payments' => function ($query) { $query->orderBy('to_date', 'ASC'); },
             'history' => function ($query) {
                 $query->whereDoesntHave('order', function ($q) {
                     $q->where('filter', Order::REFUND_LUMP_FILTER);
@@ -79,55 +143,87 @@ class ContractControllerNew extends Controller
             'items',
             'files',
             'deals',
-
-        ])->withMax('payments', 'to_date')
+        ])
+            ->withMax('payments', 'to_date')
             ->withMin('payments', 'to_date')
             ->findOrFail($id);
+
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
-        $contract->penalty_amount  = $currentPaymentAmount['penalty_amount'];
+        $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
+
         $contract->effectiveRate = 0;
         if ($contract->payment_type == 'amortized') {
             $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract);
         }
+
         $unearnedInterest = 0;
         if ($contract->payment_type === 'amortized') {
             $unearnedInterest = $contract->payments
                 ->where('status', 'initial')
-                ->sum(function ($p) {
-                    return max(0, (float)($p->interest_payment ?? 0));
-                });
+                ->sum(fn($p) => max(0, (float)($p->interest_payment ?? 0)));
         } else {
             $unearnedInterest = $contract->payments
-                ->sum(function ($p) {
-                    return max(0, (float)($p->amount ?? 0));
-                });
+                ->sum(fn($p) => max(0, (float)($p->amount ?? 0)));
         }
         $contract->unearned_interest = round($unearnedInterest, 2);
+
         $writtenOff = null;
         if (($contract->client->classification ?? null) === 'loss') {
             if ($contract->payment_type === 'amortized') {
-                $row = $contract->payments
-                    ->where('status', 'initial')
-                    ->sortBy('to_date')
-                    ->first();
-
-                if (!$row) {
-                    $row = $contract->payments->sortByDesc('to_date')->first();
-                }
-
+                $row = $contract->payments->where('status', 'initial')->sortBy('to_date')->first();
+                if (!$row) { $row = $contract->payments->sortByDesc('to_date')->first(); }
                 $writtenOff = max(0, (float)($row->remaining ?? 0));
             } else {
                 $row = $contract->payments->firstWhere('last_payment', 1);
-
                 $writtenOff = max(0, (float)($row->mother ?? 0));
             }
         }
         $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
 
+        $writtenOffInterest = null;
+        if (!empty($contract->written_off_amount) && !empty($contract->interest_rate)) {
+            $today    = Carbon::now('Asia/Yerevan')->startOfDay();
+            $deadline = $contract->deadline ? Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay() : null;
+
+            $days = 0;
+            if ($deadline) {
+                $days = $today->lt($deadline) ? $today->diffInDays($deadline) : 0;
+            }
+
+            $writtenOffInterest = $this->calcAmount(
+                $contract->written_off_amount,
+                $days,
+                $contract->interest_rate
+            );
+        }
+        $contract->written_off_interest = $writtenOffInterest;
+
+        $lastDue = null;
+        if ($contract->payment_type === 'classic') {
+            $lastRow = $contract->payments->firstWhere('last_payment', 1)
+                ?: $contract->payments->sortByDesc('to_date')->first();
+            $lastDue = $lastRow?->to_date;
+        } else {
+            $lastDue = $contract->payments_max_to_date ?: $contract->payments->max('to_date');
+        }
+
+        $overdueAmount = 0.0;
+        if ($lastDue) {
+            $today = Carbon::now('Asia/Yerevan')->startOfDay();
+            $due   = Carbon::parse($lastDue, 'Asia/Yerevan')->startOfDay();
+
+            if ($today->gt($due)) {
+                $principalLeft = (float)$contract->left;
+
+                $overdueAmount = round(max(0, $principalLeft), 2);
+            }
+        }
+
+        $contract->overdue_amount = $overdueAmount;
+
         return new ContractDetailResource($contract);
     }
-
     public function getHistoryDetails(int $id)
     {
         $history = History::with('user', 'order','contract')->find($id);
