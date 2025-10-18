@@ -83,16 +83,18 @@ class PaymentService {
             $this->completePayment($payment,$payer, $cash,$contract->id,$deal_id);
             $contract->collected += $paymentFinal;
             if ($contract->payment_type == 'amortized') {
-                dd($payment);
                 $contract->left = max(0,$contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
 
             }
+            $contract->save();
             return ['interest_amount' => $paymentFinal,
                     'amount' => $amount - $paymentFinal];
         } else {
             $this->partiallyCompletePayment($payment, $amount,$deal_id);
             $contract->collected += $amount;
+            $contract->save();
+
             return ['interest_amount' => $amount,
                     'amount' => 0];
         }
