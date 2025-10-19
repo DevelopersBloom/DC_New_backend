@@ -33,10 +33,6 @@ class ContractCalculationService
      */
     public function calculateAllMetrics(Contract $contract, Carbon $calcToday): Contract
     {
-        $currentPaymentAmount = $this->paymentService->calculateCurrentPayment($contract, $calcToday);
-        $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
-        $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
-
         // 2. Տոկոսի և Արդյունավետ Տոկոսադրույքի Հաշվարկ (Մինչև $calcToday)
         $this->calculateInterestRates($contract, $calcToday);
 

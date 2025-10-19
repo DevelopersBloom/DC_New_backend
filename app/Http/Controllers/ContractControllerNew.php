@@ -345,6 +345,10 @@ class ContractControllerNew extends Controller
             ->withMin('payments', 'to_date')
             ->findOrFail($id);
 
+        $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+
+        $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
+        $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
         $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 
         return new ContractDetailResource($contract);
