@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Client;
 use App\Models\ClientClassification;
+use App\Models\Contract;
 use Carbon\Carbon;
 
 class ClientClassificationService
@@ -73,5 +74,36 @@ class ClientClassificationService
             return $byName['suspicious'] ?? ClientClassification::where('name', 'suspicious')->first();
         }
         return $byName['loss'] ?? ClientClassification::where('name', 'loss')->first();
+    }
+    public function getClassificationData(Contract $contract): array
+    {
+        $reserve = 0.0;
+        $riskWeight = 0.0;
+
+        $classificationName = $contract->client->classification->name ?? null;
+
+        if (!$classificationName) {
+            return [
+                'reserve'     => 0.0,
+                'risk_weight' => 0.0,
+            ];
+        }
+
+        $classification = ClientClassification::where('name', $classificationName)->first();
+
+        if ($classification) {
+            $reservePercent = (float)($classification->reserve_percent ?? 0) / 100;
+            $riskWeightPercent     = (float)($classification->risk_weight ?? 0) / 100;
+
+            $baseAmount = (float)($contract->left ?? 0);
+
+            $reserve = $baseAmount * $reservePercent;
+            $riskWeight = $baseAmount * $riskWeightPercent;
+        }
+
+        return [
+            'reserve' => round($reserve, 2),
+            'risk' => round($riskWeight, 2),
+        ];
     }
 }

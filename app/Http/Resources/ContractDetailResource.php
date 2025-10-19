@@ -44,7 +44,15 @@ class ContractDetailResource extends JsonResource
                 'unearned_interest' => $this->unearned_interest,
                 'written_off_amount' => $this->written_off_amount,
                 'written_off_interest' => $this->written_off_interest,
-                'overdue_amount' => $this->overdue_amount,
+                'overdue_amount' => $this->overdue_amount, //ժամկետնանց գումար
+                'overdue_interest' => $this->overdue_interest, //Ժամկետանց տոկոս
+                'overdue_amount_interest' => $this->overdue_amount_interest, //Ժամկետանց գումարի տոկոս
+                'calculatedEffectiveInterest' => $this->calculatedEffectiveInterest,
+                'calculatedInterest' => $this->calculatedInterest,
+                'risk_weight' => $this->risk_weight,
+                'reserve' => $this->reserve,
+
+
             ],
             'client' => [
                 'id'                => $this->client->id,

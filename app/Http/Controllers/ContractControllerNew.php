@@ -16,7 +16,9 @@ use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Services\ClientClassificationService;
 use App\Services\ClientService;
+use App\Services\ContractCalculationService;
 use App\Services\ContractService;
 use App\Services\EffectiveRateService;
 use App\Services\FileService;
@@ -35,12 +37,19 @@ class ContractControllerNew extends Controller
     protected EffectiveRateService $effectiveRateService;
     protected ContractService $contractService;
     protected FileService $fileService;
-    public function __construct(ClientService $clientService, ContractService $contractService,FileService $fileService,EffectiveRateService $effectiveRateService)
+    protected ClientClassificationService $clientClassificationService;
+    protected ContractCalculationService $contractCalculationService;
+    public function __construct(ClientService $clientService, ContractService $contractService,FileService $fileService,
+                                EffectiveRateService $effectiveRateService,
+                                ClientClassificationService $clientClassificationService,ContractCalculationService $contractCalculationService
+    )
     {
         $this->clientService = $clientService;
         $this->contractService = $contractService;
         $this->fileService = $fileService;
         $this->effectiveRateService = $effectiveRateService;
+        $this->clientClassificationService = $clientClassificationService;
+        $this->contractCalculationService = $contractCalculationService;
     }
     public function get(Request $request): JsonResponse
     {
@@ -128,8 +137,196 @@ class ContractControllerNew extends Controller
 //        return new ContractDetailResource($contract);
 //    }
 
-    public function show($id)
+//    public function show1($id,Request $request)
+//    {
+//        $contract = Contract::with([
+//            'client',
+//            'payments' => function ($query) { $query->orderBy('to_date', 'ASC'); },
+//            'history' => function ($query) {
+//                $query->whereDoesntHave('order', function ($q) {
+//                    $q->where('filter', Order::REFUND_LUMP_FILTER);
+//                })
+//                    ->with(['type', 'user', 'order'])
+//                    ->orderBy('id', 'DESC');
+//            },
+//            'items',
+//            'files',
+//            'deals',
+//        ])
+//            ->withMax('payments', 'to_date')
+//            ->withMin('payments', 'to_date')
+//            ->findOrFail($id);
+//
+//        $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+//
+//        $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
+//        $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
+//
+//        //effective-interest amount
+//        $calculationDate = $request->input('calculation_date');
+//
+//        $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
+//
+//        $endDate = $calculationDate
+//            ? Carbon::parse($calculationDate, 'Asia/Yerevan')->startOfDay()
+//            : Carbon::now('Asia/Yerevan')->startOfDay();
+//
+//        $days = $endDate->diffInDays($startDate);
+//
+//        $contract->effectiveRate = 0;
+//        if ($contract->payment_type == 'amortized') {
+//            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract);
+//        }
+//        $calculatedInterest = null;
+//        $calculatedEffectiveInterest = null;
+//        if (!empty($contract->provided_amount) && !empty($contract->interest_rate)) {
+//            $calculatedInterest = $this->contractService->calcAmount(
+//                $contract->provided_amount,
+//                $days,
+//                $contract->interest_rate
+//            );
+//            $calculatedEffectiveInterest = $this->contractService->calcAmount(
+//                $contract->provided_amount,
+//                $days,
+//                $contract->effectiveRate
+//            );
+//        }
+//        $contract->calculatedInterest = $calculatedInterest;
+//        $contract->calculatedEffectiveInterest = $calculatedEffectiveInterest;
+//
+//        $unearnedInterest = 0; //Չվաստակած տոկոս
+//        if ($contract->payment_type === 'amortized') {
+//            $unearnedInterest = $contract->payments
+//                ->where('status', 'initial')
+//                ->sum(fn($p) => max(0, (float)($p->interest_payment ?? 0)));
+//        } else {
+//            $unearnedInterest = $contract->payments
+//                ->sum(fn($p) => max(0, (float)($p->amount ?? 0)));
+//        }
+//        $contract->unearned_interest = round($unearnedInterest, 2);
+//
+//        $writtenOff = null; //Դուրս գրված գումար
+//        if (($contract->client->classification ?? null) === 'loss') {
+//            $writtenOff = max(0, (float)($contract->provided_amount ?? 0));
+//        }
+//        $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
+//
+//        // ԴՈՒՐՍ ԳՐՎԱԾ ՏՈԿՈՍ
+//        $writtenOffInterest = null;
+//        if (!empty($contract->written_off_amount) && !empty($contract->interest_rate)) {
+//
+//            $writeOffDate =Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
+//            $deadline = $contract->deadline ? Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay() : null;
+//            $days = 0;
+//            if ($deadline) {
+//                $days = $writeOffDate->lt($deadline) ? $writeOffDate->diffInDays($deadline) : 0;
+//            }
+//            $writtenOffInterest = $this->calcAmount(
+//                $contract->written_off_amount,
+//                $days,
+//                $contract->interest_rate
+//            );
+//        }
+//        $contract->written_off_interest = $writtenOffInterest;
+//
+//        $overdueAmount = 0.0; //Ժամկետանց գումար;
+//        $today = Carbon::now('Asia/Yerevan')->startOfDay();
+//
+//        if ($contract->payment_type === 'amortized') {
+//            $overdueAmount = $contract->payments
+//                ->where('status', 'initial')
+//                ->filter(fn($p) =>
+//                Carbon::parse($p->to_date)->startOfDay()->lt($today)
+//                )
+//                ->sum(fn($p) => max(0, (float)($p->principal_payment ?? 0)));
+//
+//        } elseif ($contract->payment_type === 'classic') {
+//
+//            $overduePayment = $contract->payments
+//                ->where('status', 'initial')
+//                ->where('last_payment', 1)
+//                ->first();
+//
+//            if ($overduePayment) {
+//                $dueDate = Carbon::parse($overduePayment->to_date)->startOfDay();
+//
+//                if ($dueDate->lt($today)) {
+//                    $overdueAmount = max(0, (float)($overduePayment->mother ?? 0));
+//                }
+//            }
+//        }
+//        $contract->overdue_amount = round($overdueAmount, 2);
+//        $classificationData = $this->clientClassificationService->getClassificationData($contract);
+//
+//        $contract->reserve     = $classificationData['reserve'];
+//        $contract->risk_weight = $classificationData['riskWeight'];
+//
+//        return new ContractDetailResource($contract);
+//        //Ժամկետանց Տոկոս
+//        $overdueInterest = 0;
+//
+//        if ($contract->payment_type === 'amortized') {
+//            $overdueInterest = $contract->payments
+//                ->where('status', 'initial')
+//                ->filter(fn($p) =>
+//                Carbon::parse($p->to_date)->startOfDay()->lt($today)
+//                )
+//                ->sum(fn($p) => max(0, (float)($p->interest_payment ?? 0)));
+//
+//        } elseif ($contract->payment_type === 'classic') {
+//            $overdueInterest = $contract->payments
+//                ->where('status', 'initial')
+//                ->filter(fn($p) =>
+//                Carbon::parse($p->to_date)->startOfDay()->lt($today)
+//                )
+//                ->sum(fn($p) => max(0, (float)($p->amount ?? 0)));
+//        }
+//
+//        $contract->overdue_interest = round($overdueInterest, 2);
+//
+//        // Ժամկետանց Գումարի Տոկոս
+//        $overdueAmountInterest = null;
+//
+//        if (!empty($contract->overdue_amount) && !empty($contract->interest_rate)) {
+//            $today = Carbon::now('Asia/Yerevan')->startOfDay();
+//
+//            $lastDue = null;
+//            if ($contract->payment_type === 'classic') {
+//                $lastRow = $contract->payments->firstWhere('last_payment', 1)
+//                    ?: $contract->payments->sortByDesc('to_date')->first();
+//                $lastDue = $lastRow?->to_date;
+//            } else {
+//                $lastDue = $contract->payments_max_to_date ?: $contract->payments->max('to_date');
+//            }
+//
+//            $days = 0;
+//            if ($lastDue) {
+//                $due = Carbon::parse($lastDue, 'Asia/Yerevan')->startOfDay();
+//
+//                if ($today->gt($due)) {
+//                    $days = $due->diffInDays($today);
+//                }
+//            }
+//
+//            $overdueAmountInterest = $this->calcAmount(
+//                $contract->overdue_amount,
+//                $days,
+//                $contract->interest_rate
+//            );
+//        }
+//
+//        $contract->overdue_amount_interest = $overdueAmountInterest;
+//        return new ContractDetailResource($contract);
+//    }
+
+    public function show($id, Request $request)
     {
+        $calculationDateInput = $request->input('calculation_date');
+        $calcToday = $calculationDateInput
+            ? Carbon::parse($calculationDateInput, 'Asia/Yerevan')->startOfDay()
+            : Carbon::now('Asia/Yerevan')->startOfDay();
+
+
         $contract = Contract::with([
             'client',
             'payments' => function ($query) { $query->orderBy('to_date', 'ASC'); },
@@ -148,79 +345,7 @@ class ContractControllerNew extends Controller
             ->withMin('payments', 'to_date')
             ->findOrFail($id);
 
-        $currentPaymentAmount = $this->calculateCurrentPayment($contract);
-        $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
-        $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
-
-        $contract->effectiveRate = 0;
-        if ($contract->payment_type == 'amortized') {
-            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract);
-        }
-
-        $unearnedInterest = 0;
-        if ($contract->payment_type === 'amortized') {
-            $unearnedInterest = $contract->payments
-                ->where('status', 'initial')
-                ->sum(fn($p) => max(0, (float)($p->interest_payment ?? 0)));
-        } else {
-            $unearnedInterest = $contract->payments
-                ->sum(fn($p) => max(0, (float)($p->amount ?? 0)));
-        }
-        $contract->unearned_interest = round($unearnedInterest, 2);
-
-        $writtenOff = null;
-        if (($contract->client->classification ?? null) === 'loss') {
-            if ($contract->payment_type === 'amortized') {
-                $row = $contract->payments->where('status', 'initial')->sortBy('to_date')->first();
-                if (!$row) { $row = $contract->payments->sortByDesc('to_date')->first(); }
-                $writtenOff = max(0, (float)($row->remaining ?? 0));
-            } else {
-                $row = $contract->payments->firstWhere('last_payment', 1);
-                $writtenOff = max(0, (float)($row->mother ?? 0));
-            }
-        }
-        $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
-
-        $writtenOffInterest = null;
-        if (!empty($contract->written_off_amount) && !empty($contract->interest_rate)) {
-            $today    = Carbon::now('Asia/Yerevan')->startOfDay();
-            $deadline = $contract->deadline ? Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay() : null;
-
-            $days = 0;
-            if ($deadline) {
-                $days = $today->lt($deadline) ? $today->diffInDays($deadline) : 0;
-            }
-
-            $writtenOffInterest = $this->calcAmount(
-                $contract->written_off_amount,
-                $days,
-                $contract->interest_rate
-            );
-        }
-        $contract->written_off_interest = $writtenOffInterest;
-
-        $lastDue = null;
-        if ($contract->payment_type === 'classic') {
-            $lastRow = $contract->payments->firstWhere('last_payment', 1)
-                ?: $contract->payments->sortByDesc('to_date')->first();
-            $lastDue = $lastRow?->to_date;
-        } else {
-            $lastDue = $contract->payments_max_to_date ?: $contract->payments->max('to_date');
-        }
-
-        $overdueAmount = 0.0;
-        if ($lastDue) {
-            $today = Carbon::now('Asia/Yerevan')->startOfDay();
-            $due   = Carbon::parse($lastDue, 'Asia/Yerevan')->startOfDay();
-
-            if ($today->gt($due)) {
-                $principalLeft = (float)$contract->left;
-
-                $overdueAmount = round(max(0, $principalLeft), 2);
-            }
-        }
-
-        $contract->overdue_amount = $overdueAmount;
+        $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 
         return new ContractDetailResource($contract);
     }
