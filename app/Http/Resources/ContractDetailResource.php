@@ -51,6 +51,8 @@ class ContractDetailResource extends JsonResource
                 'calculatedInterest' => $this->calculatedInterest,
                 'risk_weight' => $this->risk_weight,
                 'reserve' => $this->reserve,
+                'days_provided' => $this->days_provided,
+                'remaining_repayment_days' => $this->remaining_repayment_days,
 
 
             ],

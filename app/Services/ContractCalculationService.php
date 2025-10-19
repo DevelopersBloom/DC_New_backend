@@ -212,25 +212,34 @@ class ContractCalculationService
     }
 
     /**
-     * Հաշվարկում է Տրամադրման Օրերը և Մնացորդային Մարման Օրերը
+     * Հաշվարկում է Տրամադրման Օրերը (contract->date-ից մինչև deadline) և
+     * Մնացորդային Մարման Օրերը (contract->date-ից մինչև $calcToday)
      */
     protected function calculateDaysData(Contract $contract, Carbon $calcToday): void
     {
-        // Տրամադրման Օրեր
-        $contract->days_provided = $contract->date
-            ? Carbon::parse($contract->date)->diffInDays($calcToday)
-            : 0;
+        $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
 
-        // Մնացորդային Մարման Օրեր
-        $deadlineDate = $contract->deadline ?: ($contract->payments_max_to_date ?: $contract->payments->max('to_date'));
+        $daysProvided = 0;
 
-        $remainingDays = 0;
-        if ($deadlineDate) {
+        $deadlineDate = $contract->deadline
+            ?: ($contract->payments_max_to_date ?: $contract->payments->max('to_date'));
+
+        if ($startDate && $deadlineDate) {
             $deadline = Carbon::parse($deadlineDate)->startOfDay();
-            if ($calcToday->lt($deadline)) {
-                $remainingDays = $calcToday->diffInDays($deadline);
+
+            if ($deadline->gt($startDate)) {
+                $daysProvided = $startDate->diffInDays($deadline);
             }
         }
-        $contract->remaining_repayment_days = $remainingDays;
+        $contract->days_provided = $daysProvided;
+
+
+        $remainingRepaymentDays = 0;
+        if ($startDate) {
+            if ($calcToday->gt($startDate)) {
+                $remainingRepaymentDays = $startDate->diffInDays($calcToday);
+            }
+        }
+        $contract->remaining_repayment_days = $remainingRepaymentDays;
     }
 }
