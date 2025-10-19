@@ -208,7 +208,7 @@ class ContractCalculationService
         $classificationData = $this->clientClassificationService->getClassificationData($contract);
 
         $contract->reserve     = $classificationData['reserve'];
-        $contract->risk_weight = $classificationData['risk_weight'];
+        $contract->risk_weight = $classificationData['riskWeight'];
     }
 
     /**
@@ -233,6 +233,4 @@ class ContractCalculationService
         }
         $contract->remaining_repayment_days = $remainingDays;
     }
-
-    // Ենթադրում ենք, որ calcAmount ֆունկցիան գտնվում է ContractTrait-ում
 }
