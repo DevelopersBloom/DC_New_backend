@@ -208,7 +208,7 @@ class ContractCalculationService
         $classificationData = $this->clientClassificationService->getClassificationData($contract);
 
         $contract->reserve     = $classificationData['reserve'];
-        $contract->risk_weight = $classificationData['riskWeight'];
+        $contract->risk_weight = $classificationData['risk_weight'];
     }
 
     /**

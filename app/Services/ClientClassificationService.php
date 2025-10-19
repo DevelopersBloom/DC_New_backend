@@ -103,7 +103,7 @@ class ClientClassificationService
 
         return [
             'reserve' => round($reserve, 2),
-            'risk' => round($riskWeight, 2),
+            'risk_weight' => round($riskWeight, 2),
         ];
     }
 }
