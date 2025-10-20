@@ -2,10 +2,15 @@
 
 namespace App\Services;
 
+use App\Models\ChartOfAccount;
+use App\Models\Client;
+use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\DealAction;
+use App\Models\DocumentJournal;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Traits\ContractTrait;
 use Illuminate\Support\Carbon;
@@ -366,6 +371,105 @@ class PaymentService {
 //        if ($isActionable) {
 //            return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history, $deal_id);
 //        }
+        $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
+        $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
+        $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
+        $acc63015 = ChartOfAccount::idByCode('63015') ?? 1;
+
+        $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+        $creditPartnerId = $contract->client_id;
+
+//        if (!$acc16201 || !$acc10210) return 'One of 16201, 10210 not exist';
+
+        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+
+        $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
+        $date = Carbon::now()->format('Y-m-d');
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->get();
+        $journalDoc = DocumentJournal::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type,
+            'amount_amd'         => $partialAmount,
+            'partner_id'         => $debetPartnerId,
+            'credit_partner_id'  => $creditPartnerId,
+            'comment'            => 'mother_amount_payment',
+            'debit_account_id'   => $acc10210,
+            'credit_account_id'  => $acc16200NV,
+            'user_id'            => auth()->id(),
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => $journal->id,
+        ]);
+        Transaction::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type,
+
+            'debit_account_id'   => $acc10210,
+            'debit_partner_id'   => $debetPartnerId,
+            'debit_currency_id'  => 1,
+
+            'credit_account_id'  => $acc16200NV,
+            'credit_currency_id' => 1,
+            'credit_partner_id'  => $creditPartnerId,
+
+            'amount_amd'         => $partialAmount,
+
+            'comment'            => 'mother_amount_payment',
+            'user_id'            => auth()->id(),
+            'is_system'          => false,
+
+            'disbursement_date'    =>  $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $journal->id,
+        ]);
+
+        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+        $document_type_provided = DocumentJournal::PROVIDED_AMOUNT_CHANGE;
+        $reservePercent = $contract->client->classification->reserve_percent ?? 0;
+        $reserveAmount = $partialAmount * $reservePercent / 100;
+
+        $journalDoc = DocumentJournal::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type_provided,
+            'amount_amd'         => $reserveAmount,
+            'partner_id'         => $debetPartnerId,
+            'credit_partner_id'  => $creditPartnerId,
+            'comment'            => 'reserve_payment',
+            'debit_account_id'   => $acc16605PC,
+            'credit_account_id'  => $acc63015,
+            'user_id'            => auth()->id(),
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => $journal->id,
+        ]);
+
+        Transaction::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type_provided,
+
+            'debit_account_id'   => $acc16605PC,
+            'debit_partner_id'   => $debetPartnerId,
+            'debit_currency_id'  => 1,
+
+            'credit_account_id'  => $acc63015,
+            'credit_currency_id' => 1,
+            'credit_partner_id'  => $creditPartnerId,
+
+            'amount_amd'         => $reserveAmount,
+
+            'comment'            => 'reserve_amount',
+            'user_id'            => auth()->id(),
+            'is_system'          => false,
+
+            'disbursement_date'    =>  $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $journal->id,
+        ]);
+
         return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history,$deal_id,$date);
 
     }
@@ -442,6 +546,59 @@ class PaymentService {
         $contract->provided_amount = 0;
 //        $contract->estimated_amount = 0;
         $contract->save();
+
+        $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
+        $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
+
+        $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+        $creditPartnerId = $contract->client_id;
+
+//        if (!$acc16201 || !$acc10210) return 'One of 16201, 10210 not exist';
+
+        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+
+        $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
+        $date = Carbon::now()->format('Y-m-d');
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->get();
+        $journalDoc = DocumentJournal::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type,
+            'amount_amd'         => $amount,
+            'partner_id'         => $debetPartnerId,
+            'credit_partner_id'  => $creditPartnerId,
+            'comment'            => 'mother_amount_payment',
+            'debit_account_id'   => $acc10210,
+            'credit_account_id'  => $acc16200NV,
+            'user_id'            => auth()->id(),
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => $journal->id,
+        ]);
+        Transaction::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type,
+
+            'debit_account_id'   => $acc10210,
+            'debit_partner_id'   => $debetPartnerId,
+            'debit_currency_id'  => 1,
+
+            'credit_account_id'  => $acc16200NV,
+            'credit_currency_id' => 1,
+            'credit_partner_id'  => $creditPartnerId,
+
+            'amount_amd'         => $amount,
+
+            'comment'            => 'mother_amount_payment',
+            'user_id'            => auth()->id(),
+            'is_system'          => false,
+
+            'disbursement_date'    =>  $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $journal->id,
+        ]);
 
         return [
             'payment_id' => $payment,

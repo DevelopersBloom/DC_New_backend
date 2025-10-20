@@ -25,7 +25,10 @@ class DocumentJournal extends Model
     const INTEREST_REPAYMENT = 'Տոկոսի մարում';
     const LOAN_REPAYMENT = 'Վարկի մարում';
     const TAX_REPAYMENT = 'Հարկի գանձում տոկոսի մարումից';
-
+    const PAY_INTEREST_AMOUNT = 'Տոկոսի մարում';
+    const PROVIDE_CONTRACT_AMOUNT = 'Վարկի Տրամադրում-անվանական գումար';
+    const PAY_MOTHER_AMOUNT = 'Վարկերի մարում անվանական արժեքով';
+    const PROVIDED_AMOUNT_CHANGE = 'Վերականգնումներ ընդհանուր պահուստին իրականացված հատկացումների մասով';
 
     protected $fillable = [
         'date',

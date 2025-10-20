@@ -9,9 +9,11 @@ use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
 use App\Models\ChartOfAccount;
+use App\Models\Client;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\Deal;
+use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
@@ -507,7 +509,6 @@ class ContractControllerNew extends Controller
                 'transactionable_id' => $deal_id,
                 'transactionable_type' => Deal::class,
             ]);
-
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
                 'amount' => $contract->provided_amount,
@@ -517,6 +518,56 @@ class ContractControllerNew extends Controller
                 'deal_id' => $deal_id,
                 'category_id' => $category_id,
                 'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+            ]);
+
+            $acc16200NV = ChartOfAccount::idByCode('16200NV');
+            $acc10210 = ChartOfAccount::idByCode('10210');
+
+            $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+            $debetPartnerId = $contract->client_id;
+
+            if (!$acc16200NV || !$acc10210) return 'One of 16200NV, 10210 not exist';
+
+            $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+            $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
+
+            $journalDoc = DocumentJournal::create([
+                'date'               => $contract->date,
+                'document_number'    => $nextDocNum,
+                'document_type'      => $document_type,
+                'amount_amd'         => $contract->provided_amount,
+                'partner_id'         => $debetPartnerId,
+                'credit_partner_id'  => $creditPartnerId,
+                'comment'            => 'contract_payment',
+                'debit_account_id'   => $acc16200NV,
+                'credit_account_id'  => $acc10210,
+                'user_id'            => auth()->id(),
+                'journalable_type'   => Contract::class,
+                'journalable_id'     => $contract->id,
+            ]);
+
+            Transaction::create([
+                'date'               => $contract->date,
+                'document_number'    => $nextDocNum,
+                'document_type'      => $document_type,
+
+                'debit_account_id'   => $acc16200NV,
+                'debit_partner_id'   => $debetPartnerId,
+                'debit_currency_id'  => 1,
+
+                'credit_account_id'  => $acc10210,
+                'credit_currency_id' => 1,
+                'credit_partner_id'  => $creditPartnerId,
+
+                'amount_amd'         => $contract->provided_amount,
+
+                'comment'            => 'contract_payment',
+                'user_id'            => auth()->id(),
+                'is_system'          => false,
+
+                'disbursement_date'    =>  $contract->date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $journalDoc->id,
             ]);
 
             auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;

@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ExecuteItemRequest;
 use App\Models\ChartOfAccount;
+use App\Models\Client;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\DealAction;
+use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
@@ -62,34 +64,76 @@ class PaymentControllerNew extends Controller
         $deal->discount = $result['discount'];
         $deal->delay_days = $result['delay_days'];
         $deal->save();
-        $acc1100 = ChartOfAccount::idByCode('1100');
-        $acc2220 = ChartOfAccount::idByCode('2220');
-        $deal->transactions()->create([
-            'date'              => $deal->date,
-            'document_type'     => Transaction::REGULAR_PAYMENT,
-            'document_number'   => Transaction::getNextDocumentNumber(),
-            'debit_account_id'  => $acc1100,
-            'credit_account_id' => $acc2220,
-            'currency_id'       => 1, //testing
-            'amount_amd'        => $result['interest_amount'],
-            'comment'           => 'regular_payment',
-            'debit_partner_id' => 2,//testing
-            'credit_partner_id' => $contract->client_id,
+
+        $acc16201 = ChartOfAccount::idByCode('16201') ?? 1;
+        $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
+
+        $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+        $creditPartnerId = $contract->client_id;
+
+//        if (!$acc16201 || !$acc10210) return 'One of 16201, 10210 not exist';
+
+        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+
+        $document_type = DocumentJournal::PAY_INTEREST_AMOUNT;
+        $date = Carbon::now()->format('Y-m-d');
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->get();
+        $journalDoc = DocumentJournal::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type,
+            'amount_amd'         => $result['interest_amount'],
+            'partner_id'         => $debetPartnerId,
+            'credit_partner_id'  => $creditPartnerId,
+            'comment'            => 'interest_amount_payment',
+            'debit_account_id'   => $acc10210,
+            'credit_account_id'  => $acc16201,
+            'user_id'            => auth()->id(),
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => $journal->id,
         ]);
-        if ($result['penalty'] > 0) {
-            $deal->transactions()->create([
-                'date'              => $deal->date,
-                'document_type'     => Transaction::PENALTY_PAYMENT,
-                'document_number'   => Transaction::getNextDocumentNumber(),
-                'debit_account_id'  => $acc1100,
-                'credit_account_id' => $acc2220,
-                'currency_id'       => 1, //testing
-                'amount_amd'        => $result['penalty'],
-                'comment'           => 'penalty_payment',
-                'debit_partner_id' => 2,//testing
-                'credit_partner_id' => $contract->client_id,
-            ]);
-        }
+
+
+        Transaction::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type,
+
+            'debit_account_id'   => $acc10210,
+            'debit_partner_id'   => $debetPartnerId,
+            'debit_currency_id'  => 1,
+
+            'credit_account_id'  => $acc10210,
+            'credit_currency_id' => 1,
+            'credit_partner_id'  => $creditPartnerId,
+
+            'amount_amd'         => $result['interest_amount'],
+
+            'comment'            => 'interest_amount_payment',
+            'user_id'            => auth()->id(),
+            'is_system'          => false,
+
+            'disbursement_date'    =>  $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $journal->id,
+        ]);
+
+//        if ($result['penalty'] > 0) {
+//            $deal->transactions()->create([
+//                'date'              => $deal->date,
+//                'document_type'     => Transaction::PENALTY_PAYMENT,
+//                'document_number'   => Transaction::getNextDocumentNumber(),
+//                'debit_account_id'  => $acc1100,
+//                'credit_account_id' => $acc2220,
+//                'currency_id'       => 1, //testing
+//                'amount_amd'        => $result['penalty'],
+//                'comment'           => 'penalty_payment',
+//                'debit_partner_id' => 2,//testing
+//                'credit_partner_id' => $contract->client_id,
+//            ]);
+//        }
 
        return response()->json([
            'success' => 'success',
