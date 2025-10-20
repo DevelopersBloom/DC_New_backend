@@ -387,7 +387,7 @@ class PaymentService {
         $date = Carbon::now()->format('Y-m-d');
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
-            ->get();
+            ->first();
         $journalDoc = DocumentJournal::create([
             'date'               => $date,
             'document_number'    => $nextDocNum,
@@ -561,7 +561,7 @@ class PaymentService {
         $date = Carbon::now()->format('Y-m-d');
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
-            ->get();
+            ->first();
         $journalDoc = DocumentJournal::create([
             'date'               => $date,
             'document_number'    => $nextDocNum,
