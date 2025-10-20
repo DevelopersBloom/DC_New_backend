@@ -29,6 +29,7 @@ class DocumentJournal extends Model
     const PROVIDE_CONTRACT_AMOUNT = 'Վարկի Տրամադրում-անվանական գումար';
     const PAY_MOTHER_AMOUNT = 'Վարկերի մարում անվանական արժեքով';
     const PROVIDED_AMOUNT_CHANGE = 'Վերականգնումներ ընդհանուր պահուստին իրականացված հատկացումների մասով';
+    const RESERVE_AMOUNT = 'Հատկացումներ հատուկ պահուստին';
 
     protected $fillable = [
         'date',

@@ -24,15 +24,61 @@ class UpdateClientClassifications implements ShouldQueue
 
     public function __construct() {}
 
+//    public function handle(ClientClassificationService $service): void
+//    {
+//        Log::info('Client classification job started...');
+//
+//        Client::whereHas('contracts', function (Builder $q) {
+//            $q->where('status', 'initial');
+//        })
+//            ->with('contracts.payments')
+//            ->chunkById(200, function ($clients) use ($service) {
+//                foreach ($clients as $client) {
+//
+//                    try {
+//                        Log::info('Processing client', ['id' => $client->id]);
+//
+//                        $maxOverdue = $service->maxOverdueDaysForClient($client);
+//                        $classification = $service->classificationByOverdue($maxOverdue);
+//
+//                        if ($client->classification_id !== $classification->id) {
+//                            $client->classification_id = $classification->id;
+//                            $client->save();
+//
+//                            Log::info("Client #{$client->id} updated to classification {$classification->name} ({$maxOverdue} days overdue)");
+//                        }
+//
+//                    } catch (\Throwable $e) {
+//                        Log::error("Failed to update client #{$client->id}: " . $e->getMessage());
+//                    }
+//                }
+//            });
+//
+//        Log::info('Client classification job finished.');
+//    }
+// ... (մնացած մասը մնում է նույնը)
+
     public function handle(ClientClassificationService $service): void
     {
         Log::info('Client classification job started...');
 
         Client::whereHas('contracts', function (Builder $q) {
             $q->where('status', 'initial');
-        })
-            ->with('contracts.payments')
+        })->with(['contracts' => function ($q) {
+                $q->where('status', 'initial');
+            }, 'classification'])
             ->chunkById(200, function ($clients) use ($service) {
+
+                $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
+                $acc116605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
+                $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
+
+                $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+
+
+                $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+                $document_type = DocumentJournal::RESERVE_AMOUNT;
+
                 foreach ($clients as $client) {
 
                     try {
@@ -42,62 +88,71 @@ class UpdateClientClassifications implements ShouldQueue
                         $classification = $service->classificationByOverdue($maxOverdue);
 
                         if ($client->classification_id !== $classification->id) {
+
+                            $oldClassificationId = $client->classification_id;
                             $client->classification_id = $classification->id;
                             $client->save();
-//                            $reserverPercent = $client->classification->reserve_percent ?? 0;
-//                            $acc16200NV = ChartOfAccount::idByCode('16200NV');
-//                            $acc10210 = ChartOfAccount::idByCode('10210');
-//                            $amount = $contract->provided_amount * $reserverPercent / 100;
-//
-//                            $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
-//                            $debetPartnerId = $contract->client_id;
-//
-//                            if (!$acc16200NV || !$acc10210) return 'One of 16200NV, 10210 not exist';
-//
-//                            $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
-//                            $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
-//
-//                            $journalDoc = DocumentJournal::create([
-//                                'date'               => $contract->date,
-//                                'document_number'    => $nextDocNum,
-//                                'document_type'      => $document_type,
-//                                'amount_amd'         => $contract->provided_amount,
-//                                'partner_id'         => $debetPartnerId,
-//                                'credit_partner_id'  => $creditPartnerId,
-//                                'comment'            => 'contract_payment',
-//                                'debit_account_id'   => $acc16200NV,
-//                                'credit_account_id'  => $acc10210,
-//                                'user_id'            => auth()->id(),
-//                                'journalable_type'   => Contract::class,
-//                                'journalable_id'     => $contract->id,
-//                            ]);
-//
-//                            Transaction::create([
-//                                'date'               => $contract->date,
-//                                'document_number'    => $nextDocNum,
-//                                'document_type'      => $document_type,
-//
-//                                'debit_account_id'   => $acc16200NV,
-//                                'debit_partner_id'   => $debetPartnerId,
-//                                'debit_currency_id'  => 1,
-//
-//                                'credit_account_id'  => $acc10210,
-//                                'credit_currency_id' => 1,
-//                                'credit_partner_id'  => $creditPartnerId,
-//
-//                                'amount_amd'         => $contract->provided_amount,
-//
-//                                'comment'            => 'contract_payment',
-//                                'user_id'            => auth()->id(),
-//                                'is_system'          => false,
-//
-//                                'disbursement_date'    =>  $contract->date,
-//                                'transactionable_type' => DocumentJournal::class,
-//                                'transactionable_id'   => $journalDoc->id,
-//                            ]);
+
+                            $reserverPercent = $client->classification->reserve_percent ?? 0;
+                            $debetPartnerId = $client->id;
+
+                            Log::info("Client #{$client->id} classification updated from {$oldClassificationId} to {$classification->id} ({$classification->name}) with reserve percent {$reserverPercent}%");
+
+                            /** @var Contract $contract */
+                            foreach ($client->contracts as $contract) {
+
+                                $reserveAmount = $contract->provided_amount * $reserverPercent / 100;
+
+                                if ($reserveAmount <= 0) {
+                                    continue;
+                                }
+                                $creditAccountId = $client->classification->name == 'standart' ? $acc116605PC : $acc16605PS;
+                                $journal = DocumentJournal::where('journalable_type', Contract::class)
+                                    ->where('journalable_id', $contract->id)
+                                    ->first();
+                                $journalDoc = DocumentJournal::create([
+                                    'date'               => now()->toDateString(),
+                                    'document_number'    => $nextDocNum,
+                                    'document_type'      => $document_type,
+                                    'amount_amd'         => $reserveAmount,
+                                    'partner_id'         => $debetPartnerId,
+                                    'credit_partner_id'  => $creditPartnerId,
+                                    'comment'            => "Reserve for contract #{$contract->id} due to classification change",
+                                    'debit_account_id'   => $acc73015,
+                                    'credit_account_id'  => $creditAccountId,
+                                    'user_id'            => auth()->check() ? auth()->id() : 1,
+                                    'journalable_type'   => DocumentJournal::class,
+                                    'journalable_id'     => $journal->id,
+                                ]);
 
 
-                            Log::info("Client #{$client->id} updated to classification {$classification->name} ({$maxOverdue} days overdue)");
+                                Transaction::create([
+                                    'date'               => now()->toDateString(),
+                                    'document_number'    => $nextDocNum,
+                                    'document_type'      => $document_type,
+
+                                    'debit_account_id'   => $acc73015,
+                                    'debit_partner_id'   => $debetPartnerId,
+                                    'debit_currency_id'  => 1,
+
+                                    'credit_account_id'  => $creditAccountId,
+                                    'credit_currency_id' => 1,
+                                    'credit_partner_id'  => $creditPartnerId,
+
+                                    'amount_amd'         => $reserveAmount,
+
+                                    'comment'            => "Reserve for contract #{$contract->id}",
+                                    'user_id'            => auth()->check() ? auth()->id() : 1,
+                                    'is_system'          => true,
+
+                                    'disbursement_date'    => now()->toDateString(),
+                                    'transactionable_type' => DocumentJournal::class,
+                                    'transactionable_id'   => $journal->id,
+                                ]);
+
+                                Log::info("Created reserve transaction for contract #{$contract->id} with amount {$reserveAmount} AMD.");
+                            }
+                            $nextDocNum++;
                         }
 
                     } catch (\Throwable $e) {
