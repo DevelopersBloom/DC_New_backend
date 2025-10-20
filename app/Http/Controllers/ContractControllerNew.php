@@ -493,22 +493,6 @@ class ContractControllerNew extends Controller
 
             $this->contractService->createPayment($contract);
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-            $acc1100 = ChartOfAccount::idByCode('1100');
-            $acc2220 = ChartOfAccount::idByCode('2220');
-            Transaction::create([
-                'date'              => $contract->date,
-                'document_type'     => Transaction::CONTRACT_PAYMENT,
-                'document_number'   => $transactionDocumentNumber,
-                'debit_account_id'  => $acc1100,
-                'credit_account_id' => $acc2220,
-                'currency_id'       => 1, //testing
-                'amount_amd'        => $contract->provided_amount,
-                'comment'           => 'contract_payment',
-                'debit_partner_id' => 2,//testing
-                'credit_partner_id' => $contract->client_id,
-                'transactionable_id' => $deal_id,
-                'transactionable_type' => Deal::class,
-            ]);
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
                 'amount' => $contract->provided_amount,
@@ -520,13 +504,11 @@ class ContractControllerNew extends Controller
                 'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
             ]);
 
-            $acc16200NV = ChartOfAccount::idByCode('16200NV');
-            $acc10210 = ChartOfAccount::idByCode('10210');
+            $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
+            $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
 
             $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
             $debetPartnerId = $contract->client_id;
-
-            if (!$acc16200NV || !$acc10210) return 'One of 16200NV, 10210 not exist';
 
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
             $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
