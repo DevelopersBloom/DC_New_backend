@@ -71,15 +71,14 @@ class PaymentControllerNew extends Controller
         $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
         $creditPartnerId = $contract->client_id;
 
-//        if (!$acc16201 || !$acc10210) return 'One of 16201, 10210 not exist';
-
         $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
 
         $document_type = DocumentJournal::PAY_INTEREST_AMOUNT;
         $date = Carbon::now()->format('Y-m-d');
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
-            ->get();
+            ->first();
+
         $journalDoc = DocumentJournal::create([
             'date'               => $date,
             'document_number'    => $nextDocNum,
