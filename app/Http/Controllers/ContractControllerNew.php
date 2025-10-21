@@ -254,6 +254,7 @@ class ContractControllerNew extends Controller
 //            if (!is_null($effectiveRates['daily'])) {
             $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
 //            }
+            $contract->save();
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
                 'amount' => $contract->provided_amount,
