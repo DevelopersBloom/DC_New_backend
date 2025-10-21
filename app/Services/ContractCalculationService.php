@@ -80,7 +80,7 @@ class ContractCalculationService
                 $contract->interest_rate
             );
 
-            if ($contract->effectiveRate > 0) {
+//            if ($contract->effectiveRate > 0) {
                 $calculatedEffectiveInterest = $this->calcAmount(
                     $contract->provided_amount,
                     $days,
@@ -88,7 +88,7 @@ class ContractCalculationService
                 );
 //                $calculatedEffectiveInterest = intval(ceil($contract->provided_amount *  $contract->effectiveRate / 100 * 0.01 / 10) * 10);
 
-            }
+//            }
         }
         $contract->effectiveRate = $contract->effective_daily_rate;
         $contract->calculatedInterest = $calculatedInterest;
