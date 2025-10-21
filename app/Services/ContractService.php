@@ -354,8 +354,7 @@ class   ContractService
     protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
     {
         $principal = $contract->provided_amount;
-//        $months = $contract->deadline_days;
-        $months = 24;
+        $months = $contract->deadline_days;
         $annualRate = 22;
 //        $annualRate = $contract->interest_rate;
         $monthlyRate = $annualRate / 100 / 12;
