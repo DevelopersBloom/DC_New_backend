@@ -320,6 +320,7 @@ class ContractControllerNew extends Controller
             return response()->json([
                 'message' => 'Contract amount paid successfully',
                 'contract_id' => $contract->id,
+                'eff daily' => $effectiveRates
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
