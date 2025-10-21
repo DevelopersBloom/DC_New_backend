@@ -182,12 +182,12 @@ class ContractControllerNew extends Controller
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
             $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
 
-            if (!is_null($effectiveRates['annual'])) {
+//            if (!is_null($effectiveRates['annual'])) {
                 $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
-            }
-            if (!is_null($effectiveRates['daily'])) {
+//            }
+//            if (!is_null($effectiveRates['daily'])) {
                 $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
-            }
+//            }
             $category_id = null;
             $items = $itemRequest->validated()['items'];
             foreach ($items as $item_data) {
