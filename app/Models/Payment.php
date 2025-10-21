@@ -36,7 +36,8 @@ class Payment extends Model
         'principal_payment',
         'interest_payment',
         'remaining',
-        'to_date'
+        'to_date',
+        'effective_payment',
     ];
 
     public function contract(){

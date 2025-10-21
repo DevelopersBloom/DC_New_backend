@@ -358,6 +358,9 @@ class   ContractService
         $annualRate = 22;
 //        $annualRate = $contract->interest_rate;
         $monthlyRate = $annualRate / 100 / 12;
+        $effectiveAnnualRate = $contract->effective_annual_rate;
+
+        $effectiveMonthlyRate = pow(1 + $effectiveAnnualRate, 1/12) - 1;
 
         $annuityPayment = ($principal * $monthlyRate) / (1 - pow(1 + $monthlyRate, -$months));
 
@@ -370,6 +373,7 @@ class   ContractService
 
         for ($i = 1; $i <= $months; $i++) {
             $interest = $remaining * $monthlyRate;
+            $effective = $remaining * $effectiveMonthlyRate;
             $principalPayment = $annuityPayment - $interest;
             $remaining -= $principalPayment;
 
@@ -382,6 +386,7 @@ class   ContractService
                 'amount' => round($annuityPayment, 2),
                 'principal_payment' => round($principalPayment, 2),
                 'interest_payment' => round($interest, 2),
+                'effective_payment' => round($effective,2),
                 'remaining' => round(max($remaining, 0), 2),
                 'pawnshop_id' => $pawnshop_id,
                 'PGI_ID' => $pgi_id,

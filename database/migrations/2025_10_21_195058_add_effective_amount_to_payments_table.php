@@ -13,9 +13,9 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('contracts', function (Blueprint $table) {
-            $table->decimal('effective_annual_rate', 8, 2)->nullable()->after('interest_rate');
-            $table->decimal('effective_daily_rate', 10, 6)->nullable()->after('effective_annual_rate');
+        Schema::table('payments', function (Blueprint $table) {
+            $table->decimal('effective_payment', 15, 2)->default(0)->after('interest_payment');
+
         });
     }
 
@@ -26,7 +26,7 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('contracts', function (Blueprint $table) {
+        Schema::table('payments', function (Blueprint $table) {
             //
         });
     }
