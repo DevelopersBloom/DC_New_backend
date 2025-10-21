@@ -53,6 +53,7 @@ class ContractDetailResource extends JsonResource
                 'reserve' => $this->reserve,
                 'days_provided' => $this->days_provided,
                 'remaining_repayment_days' => $this->remaining_repayment_days,
+                'deadline' => $this->deadline,
 
 
             ],
