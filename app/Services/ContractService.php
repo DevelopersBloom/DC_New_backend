@@ -260,6 +260,14 @@ class   ContractService
     {
         $maxNum = Contract::max('num') ?? 0;
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
+        $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
+
+        if (!is_null($effectiveRates['annual'])) {
+            $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
+        }
+        if (!is_null($effectiveRates['daily'])) {
+            $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
+        }
         $values = [
             'date' => $data['date'] ?? now()->toDateString(),
             'client_id' => $client_id,

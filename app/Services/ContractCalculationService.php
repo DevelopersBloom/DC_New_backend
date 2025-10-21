@@ -65,10 +65,10 @@ class ContractCalculationService
         $days = $calcToday->diffInDays($startDate);
 
         // Արդյունավետ Տոկոսադրույք
-        $contract->effectiveRate = 0;
-        if ($contract->payment_type == 'amortized') {
-            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract, $calcToday);
-        }
+//        $effectiveRate = $contract->effective_daily_rate ?? 0;
+//        if ($contract->payment_type == 'amortized') {
+//            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract, $calcToday);
+//        }
 
         $calculatedInterest = null;
         $calculatedEffectiveInterest = null;
@@ -81,12 +81,12 @@ class ContractCalculationService
             );
 
             if ($contract->effectiveRate > 0) {
-//                $calculatedEffectiveInterest = $this->calcAmount(
-//                    $contract->provided_amount,
-//                    $days,
-//                    $contract->effectiveRate
-//                );
-                $calculatedEffectiveInterest = intval(ceil($contract->provided_amount *  $contract->effectiveRate / 100 * 0.01 / 10) * 10);
+                $calculatedEffectiveInterest = $this->calcAmount(
+                    $contract->provided_amount,
+                    $days,
+                    $contract->effective_daily_rate
+                );
+//                $calculatedEffectiveInterest = intval(ceil($contract->provided_amount *  $contract->effectiveRate / 100 * 0.01 / 10) * 10);
 
             }
         }

@@ -67,7 +67,9 @@ class Contract extends Model
         'left',
         'description',
         'payment_schedule',
-        'payment_type'
+        'payment_type',
+        'effective_annual_rate',
+        'effective_daily_rate',
     ];
     protected $casts = [
         'payment_schedule' => 'array',
