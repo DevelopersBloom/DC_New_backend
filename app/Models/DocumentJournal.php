@@ -30,6 +30,9 @@ class DocumentJournal extends Model
     const PAY_MOTHER_AMOUNT = 'Վարկերի մարում անվանական արժեքով';
     const PROVIDED_AMOUNT_CHANGE = 'Վերականգնումներ ընդհանուր պահուստին իրականացված հատկացումների մասով';
     const RESERVE_AMOUNT = 'Հատկացումներ հատուկ պահուստին';
+    const EFFECTIVE_RATE_AMOUNT = 'Տոկոսային եկամուտ արդյունավետ';
+    const INTEREST_RATE_AMOUNT = 'Տոկոսային եկամուտ անվանական';
+
 
     protected $fillable = [
         'date',
