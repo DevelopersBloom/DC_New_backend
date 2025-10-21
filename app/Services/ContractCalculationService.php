@@ -90,6 +90,7 @@ class ContractCalculationService
 
             }
         }
+        $contract->effectiveRate = $contract->effective_daily_rate;
         $contract->calculatedInterest = $calculatedInterest;
         $contract->calculatedEffectiveInterest = $calculatedEffectiveInterest;
     }
