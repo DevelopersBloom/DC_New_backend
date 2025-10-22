@@ -209,12 +209,14 @@ class ProcessContractDailyRate implements ShouldQueue
 
                 $openingAmount = $this->calculateCurrentAmortizedBalance($contract);
                 $dailyEffectiveRate =$contract->effective_daily_rate ?? 0;
+                Log::info('openingAmount: {$openingAmount}, dailyEffectiveRate:{$dailyEffectiveRate}');
 
                 $days = 1;
                 if ($openingAmount > 0 && $dailyEffectiveRate > 0) {
 
                     $effectiveAmount = $openingAmount * (pow((1 + $dailyEffectiveRate), $days) - 1);
 //                    $calculatedEffectiveAmount = intval(ceil($effectiveAmount / 10) * 10);
+                    Log::info('effectiveAmount: {$effectiveAmount}');
 
                     if ($effectiveAmount > 0) {
                         $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
