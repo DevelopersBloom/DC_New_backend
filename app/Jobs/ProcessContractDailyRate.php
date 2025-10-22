@@ -167,6 +167,8 @@ class ProcessContractDailyRate implements ShouldQueue
             ->sum('amount_amd');
 
         $amortizedBalance = $initialProvided + $effectiveAccrualsSum - $motherPaymentsSum - $interestPaymentsSum;
+        Log::info("initialProvided: {$initialProvided}, motherPaymentsSum:{$motherPaymentsSum}");
+        Log::info("interestPaymentsSum: {$interestPaymentsSum}, effectiveAccrualsSum:{$effectiveAccrualsSum}");
 
         return $amortizedBalance;
     }
