@@ -20,6 +20,7 @@ class PaymentService {
     public function processPayments($contract, $amount, $payer, $cash, $payments,$deal_id) {
         $payments_sum = 0;
         $interest_amount = 0;
+        $effective_amount = 0;
         $initial_amount = $amount;
         foreach ($payments as $item) {
             $payments_sum += $item['amount'] + $item['mother'];
@@ -41,7 +42,7 @@ class PaymentService {
                 $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash,$deal_id);
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
-
+                $effective_amount += $result['effective_amount'];
             }
             // Handle any remaining amount
             if ($amount> 0 ) {

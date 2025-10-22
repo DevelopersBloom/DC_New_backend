@@ -27,7 +27,7 @@ return new class extends Migration
     public function down()
     {
         Schema::table('contracts', function (Blueprint $table) {
-            //
+            $table->dropColumn(['effective_annual_rate', 'effective_daily_rate']);
         });
     }
 };

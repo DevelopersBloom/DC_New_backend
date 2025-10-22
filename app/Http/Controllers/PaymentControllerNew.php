@@ -119,20 +119,6 @@ class PaymentControllerNew extends Controller
             'transactionable_id'   => $journal->id,
         ]);
 
-//        if ($result['penalty'] > 0) {
-//            $deal->transactions()->create([
-//                'date'              => $deal->date,
-//                'document_type'     => Transaction::PENALTY_PAYMENT,
-//                'document_number'   => Transaction::getNextDocumentNumber(),
-//                'debit_account_id'  => $acc1100,
-//                'credit_account_id' => $acc2220,
-//                'currency_id'       => 1, //testing
-//                'amount_amd'        => $result['penalty'],
-//                'comment'           => 'penalty_payment',
-//                'debit_partner_id' => 2,//testing
-//                'credit_partner_id' => $contract->client_id,
-//            ]);
-//        }
 
        return response()->json([
            'success' => 'success',
