@@ -42,7 +42,7 @@ class PaymentService {
                 $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash,$deal_id);
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
-                $effective_amount += $result['effective_amount'];
+                //$effective_amount += $result['effective_amount'];
             }
             // Handle any remaining amount
             if ($amount> 0 ) {
