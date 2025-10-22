@@ -239,7 +239,10 @@ class ContractControllerNew extends Controller
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000;
             $category_id = $contract->category_id;
-            $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
+          //  $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
+            $contract->deadline = Carbon::now('Asia/Yerevan')
+                ->addMonths((int) $contract->deadline)
+                ->format('Y-m-d');
             $contract->date = Carbon::now();
             $contract->save();
             $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
