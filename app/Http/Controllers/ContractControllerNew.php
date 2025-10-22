@@ -241,7 +241,7 @@ class ContractControllerNew extends Controller
             $category_id = $contract->category_id;
           //  $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
             $contract->deadline = Carbon::now('Asia/Yerevan')
-                ->addMonths((int) $contract->deadline)
+                ->addMonths((int) $contract->deadline_days)
                 ->format('Y-m-d');
             $contract->date = Carbon::now();
             $contract->save();
