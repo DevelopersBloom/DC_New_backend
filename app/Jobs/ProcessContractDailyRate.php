@@ -146,8 +146,8 @@ class ProcessContractDailyRate implements ShouldQueue
         $journalId = $journal->id;
 
 
-        $initialProvided = (float) DocumentJournal::where('journalable_type', DocumentJournal::class)
-            ->where('journalable_id', $journalId)
+        $initialProvided = (float) DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->value('amount_amd') ?? (float) $contract->provided_amount;
 
