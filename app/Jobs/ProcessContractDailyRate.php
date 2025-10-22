@@ -215,7 +215,7 @@ class ProcessContractDailyRate implements ShouldQueue
                 $days = 1;
                 if ($openingAmount > 0 && $dailyEffectiveRate > 0) {
 
-                    $effectiveAmount = $openingAmount * (pow((1 + $dailyEffectiveRate), $days) - 1);
+                    $effectiveAmount = $openingAmount * (pow((1 + $dailyEffectiveRate/100), $days) - 1);
 //                    $calculatedEffectiveAmount = intval(ceil($effectiveAmount / 10) * 10);
                     Log::info("effectiveAmount: {$effectiveAmount}");
 
