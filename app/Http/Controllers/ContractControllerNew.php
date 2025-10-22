@@ -243,13 +243,14 @@ class ContractControllerNew extends Controller
             $contract->date = Carbon::now();
             $contract->save();
             $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
+
+            $this->contractService->createPayment($contract);
+
+            $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
             $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
             $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
             $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
             $contract->save();
-            $this->contractService->createPayment($contract);
-            $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
                 'amount' => $contract->provided_amount,
