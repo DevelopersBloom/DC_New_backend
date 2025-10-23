@@ -76,8 +76,8 @@ class ContractDetailResource extends JsonResource
                 'is_linked_to_company' => (bool)$this->client->is_linked_to_company,
                 'is_company_employee' => (bool)$this->client->is_company_employee,
                 'classification' => $this->client->classification?->title,
-                'reserve_percent' => $this->client->classification->reserve_percent,
-                'risk_weight_percent' => $this->client->classification->risk_weight,
+                'reserve_percent' => $this->client->classification?->reserve_percent,
+                'risk_weight_percent' => $this->client->classification?->risk_weight,
             ],
             'payments' => $this->payments->map(function ($payment) {
                 return [
