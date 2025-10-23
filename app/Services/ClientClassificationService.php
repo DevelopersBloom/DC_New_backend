@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\ClientClassification;
 use App\Models\Contract;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class ClientClassificationService
 {
@@ -28,6 +29,10 @@ class ClientClassificationService
                 $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
 
                 //if ($isPaid) continue;
+                Log::info("is Paid is {$isPaid} ");
+                Log::info("due is {$due} ");
+                Log::info("today {$today} ");
+
 
                 if (!$isPaid && $due->lt($today)) {
                     $overdueDays = $due->diffInDays($today);
