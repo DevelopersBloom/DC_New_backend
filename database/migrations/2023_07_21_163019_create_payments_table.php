@@ -16,9 +16,9 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->string('PGI_ID')->nullable();
-            $table->integer('amount')->nullable();
-            $table->integer('paid')->nullable();
-            $table->integer('mother')->default(0);
+            $table->decimal('amount')->nullable();
+            $table->decimal('paid')->nullable();
+            $table->decimal('mother')->default(0);
             $table->integer('days')->nullable();
             $table->boolean('last_payment')->default(false);
             $table->string('type')->default('regular');
