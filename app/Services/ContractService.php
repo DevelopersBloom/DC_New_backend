@@ -329,7 +329,7 @@ class   ContractService
                 $payment['last_payment'] = true;
             }
 
-            $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate);
+            $amount = $this->calcAmount($contract->provided_amount, 30, $contract->interest_rate);
             $payment['date'] = $paymentDate->format('Y-m-d');
             $payment['to_date'] = $paymentDate->format('Y-m-d');
             $payment['days'] = $diffDays;
