@@ -52,7 +52,9 @@ class UpdateClientClassifications implements ShouldQueue
 
                         $maxOverdue = $service->maxOverdueDaysForClient($client);
                         $classification = $service->classificationByOverdue($maxOverdue);
+                        Log::info("calculated classification is {$classification} ");
 
+                        Log::info("calculated maxOverdue is {$maxOverdue} ");
 
                         if ($client->classification_id !== $classification->id) {
 
