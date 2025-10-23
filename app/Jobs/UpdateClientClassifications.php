@@ -58,13 +58,13 @@ class UpdateClientClassifications implements ShouldQueue
 
                         if ($client->classification_id !== $classification->id) {
 
-                            $oldReservePercent = $client->classification->reserve_percent ?? 0;
+                            $oldReservePercent = $client?->classification?->reserve_percent ?? 0;
 
                             $oldClassificationId = $client->classification_id;
                             $client->classification_id = $classification->id;
                             $client->save();
 
-                            $reserverPercent = $client->classification->reserve_percent ?? 0;
+                            $reserverPercent = $client?->classification?->reserve_percent ?? 0;
                             $debetPartnerId = $client->id;
                             $document_type = $client->classification->name == 'standard' ?
                                 DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
