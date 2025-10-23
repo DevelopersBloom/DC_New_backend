@@ -157,7 +157,7 @@ class ClientService
                     fn($q) => $q->where('status', 'initial')
                 )
                     ->select('id','num','client_id','estimated_amount','provided_amount','interest_rate',
-                        'penalty','category_id','deadline','status','is_linked_to_company','is_company_employee')
+                        'penalty','category_id','deadline','status')
                     ->with('category:id,name');
             }
         ])->findOrFail($clientId);
