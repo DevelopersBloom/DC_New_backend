@@ -64,6 +64,7 @@ class UpdateClientClassifications implements ShouldQueue
 //                            $oldClassificationId = $client->classification_id;
                             $client->classification_id = $classification->id;
                             $client->save();
+                            $client->load('classification');
 
                             $reserverPercent = $client->classification?->reserve_percent ?? 0;
                             $debetPartnerId = $client->id;
