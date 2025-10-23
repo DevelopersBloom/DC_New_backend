@@ -156,7 +156,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     Transaction::create([
                                         'date'               => now()->toDateString(),
                                         'document_number'    => $nextDocNum,
-                                        'document_type'      => $document_type,
+                                        'document_type'      => $classificationType,
 
                                         'debit_account_id'   => $debetClassification,
                                         'debit_partner_id'   => $debetPartnerId,
