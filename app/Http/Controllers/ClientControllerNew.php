@@ -113,9 +113,9 @@ class ClientControllerNew extends Controller
     public function show(Request $request, int $clientId)
     {
 
-        $contractStatus = $request->query('status', 'initial');
+        $status = $request->query('status', 'initial');
 
-        $clientInfo = $this->clientService->getClientInfo($clientId, $contractStatus);
+        $clientInfo = $this->clientService->getClientInfo($clientId, $status);
         return response()->json($clientInfo);
 
     }
@@ -123,6 +123,7 @@ class ClientControllerNew extends Controller
     {
         $pawnshopId = auth()->user()->pawnshop_id;
         $startOfMonth = now()->startOfMonth();
+        $status = $request->query('status');
 
         $clients = Client::select([
             'id',  DB::raw("DATE_FORMAT(date, '%d-%m-%Y') as registration_date"), 'name', 'surname', 'middle_name', DB::raw("DATE_FORMAT(date_of_birth, '%d-%m-%Y') as date_of_birth"), 'country',
@@ -131,6 +132,10 @@ class ClientControllerNew extends Controller
         ])
         ->whereHas('pawnshopClients', function ($query) use ($pawnshopId) {
             $query->where('pawnshop_id', $pawnshopId);
+        })->when($status, function ($query, $statusValue) {
+            return $query->whereHas('classification', function ($q) use ($statusValue) {
+                $q->where('name', $statusValue);
+            });
         })
         ->filterByClient($request->only(['id','name', 'surname', 'patronymic', 'passport_series', 'phone', 'start_date', 'end_date','is_linked_to_company','is_company_employee']))
         ->orderByDesc('date')
