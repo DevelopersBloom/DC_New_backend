@@ -39,11 +39,9 @@ class UpdateClientClassifications implements ShouldQueue
                 $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
                 $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
                 $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
-                $acc63015 = ChartOfAccount::idByCode('63015') ??
+                $acc63015 = ChartOfAccount::idByCode('63015') ?? 1;
 
-
-                $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
-
+               $creditPartnerId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
                 $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
 
