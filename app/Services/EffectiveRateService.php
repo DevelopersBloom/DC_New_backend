@@ -38,8 +38,8 @@ class EffectiveRateService
         $effectiveAnnualDecimal = pow(1 + $monthlyRate, 12) - 1;
         $effectiveDailyDecimal = pow(1 + $effectiveAnnualDecimal, 1 / 365) - 1;
 
-        $annualPercent = round($effectiveAnnualDecimal * 100, 2);
-        $dailyPercent = round($effectiveDailyDecimal * 100, 6);
+        $annualPercent = round($effectiveAnnualDecimal * 100, 10);
+        $dailyPercent = round($effectiveDailyDecimal * 100, 10);
 
         return [
             'annual' => $annualPercent,
