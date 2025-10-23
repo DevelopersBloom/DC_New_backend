@@ -90,8 +90,8 @@ class UpdateClientClassifications implements ShouldQueue
                                 $debetAllocation = $acc73015;
                                 $creditAllocation = $client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
 
-                                $debetClassification = $client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
-                                $creditClassification = $client->classification->name == 'standard' ? $acc16605PS : $acc16605PC;
+                                $debetClassification = $client->classification->name == 'standard' ? $acc16605PS : $acc16605PC;
+                                $creditClassification = $client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
 
                                 $journal = DocumentJournal::where('journalable_type', Contract::class)
                                     ->where('journalable_id', $contract->id)
