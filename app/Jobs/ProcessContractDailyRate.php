@@ -113,6 +113,7 @@ namespace App\Jobs;
 
 use App\Models\Contract;
 use App\Models\DocumentJournal;
+use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\ChartOfAccount;
 use App\Services\EffectiveRateService;
@@ -145,11 +146,18 @@ class ProcessContractDailyRate implements ShouldQueue
 
         $journalId = $journal->id;
 
+        $lumpAmount = Order::where('contract_id', $contract->id)
+            ->where('filter', Order::REFUND_LUMP_FILTER)
+            ->select('amount')
+            ->first();
+        $fees = $lumpAmount?->amount ?? $contract->provided_amount * ($contract->lump_rate / 100);
+
 
         $initialProvided = (float) DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->value('amount_amd') ?? (float) $contract->provided_amount;
+        $netAmount = $initialProvided - $fees;
 
         $motherPaymentsSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
             ->where('journalable_id', $journalId)
@@ -166,7 +174,7 @@ class ProcessContractDailyRate implements ShouldQueue
             ->where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
             ->sum('amount_amd');
 
-        $amortizedBalance = $initialProvided + $effectiveAccrualsSum - $motherPaymentsSum - $interestPaymentsSum;
+        $amortizedBalance = $netAmount + $effectiveAccrualsSum - $motherPaymentsSum - $interestPaymentsSum;
         Log::info("initialProvided: {$initialProvided}, motherPaymentsSum:{$motherPaymentsSum}");
         Log::info("interestPaymentsSum: {$interestPaymentsSum}, effectiveAccrualsSum:{$effectiveAccrualsSum}");
 
