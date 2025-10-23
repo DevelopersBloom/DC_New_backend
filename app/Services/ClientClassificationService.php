@@ -29,9 +29,6 @@ class ClientClassificationService
                 $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
 
                 //if ($isPaid) continue;
-                Log::info("is Paid is {$isPaid} ");
-                Log::info("due is {$due} ");
-                Log::info("today {$today} ");
 
 
                 if (!$isPaid && $due->lt($today)) {
