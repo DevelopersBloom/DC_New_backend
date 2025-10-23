@@ -271,10 +271,9 @@ class ProcessContractDailyRate implements ShouldQueue
                     }
                 }
 
-                // Օրիգինալ կոդից՝
                 $amount = $contract->provided_amount;
                 $interestRate = $contract->interest_rate;
-                $calculatedInterest = intval(ceil($interestRate * $amount * 0.01 / 10) * 10);
+                $calculatedInterest = $interestRate / 100 * $amount;
 
                 $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
                 $journal = DocumentJournal::where('journalable_type', Contract::class)
