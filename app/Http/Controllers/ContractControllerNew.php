@@ -178,7 +178,7 @@ class ContractControllerNew extends Controller
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
             $pawnshop_id = \auth()->user()->pawnshop_id;
             $date = Carbon::now();
-            $deadline = Carbon::now('Asia/Yerevan')->addDays($contractRequest->validated()['deadline'])->format('Y-m-d H:i:s');
+            $deadline = Carbon::now('Asia/Yerevan')->addMonths($contractRequest->validated()['deadline'])->format('Y-m-d');
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
             $category_id = null;
             $items = $itemRequest->validated()['items'];
