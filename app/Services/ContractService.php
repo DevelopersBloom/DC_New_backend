@@ -407,7 +407,7 @@ class   ContractService
 
     public function calcAmount($amount,$days,$rate): int
     {
-//        return $days * $rate * $amount;
-        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
+        return intval($days * $rate * $amount);
+//        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
     }
 }
