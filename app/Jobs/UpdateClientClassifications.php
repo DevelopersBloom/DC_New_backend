@@ -65,10 +65,13 @@ class UpdateClientClassifications implements ShouldQueue
                             $client->classification_id = $classification->id;
                             $client->save();
 
-                            $reserverPercent = $client?->classification?->reserve_percent ?? 0;
+                            $reserverPercent = $client->classification?->reserve_percent ?? 0;
                             $debetPartnerId = $client->id;
-                            $document_type = $client->classification->name == 'standard' ?
+                            Log::info("classification is { $client->classification?->name} ");
+
+                            $document_type = $client->classification?->name == 'standard' ?
                                 DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+                            Log::info("doc type is { $document_type} ");
 
 //                            Log::info("Client #{$client->id} classification updated from {$oldClassificationId} to {$classification->id} ({$classification->name}) with reserve percent {$reserverPercent}%");
 
@@ -87,7 +90,7 @@ class UpdateClientClassifications implements ShouldQueue
                                 $creditAllocation = $client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
 
                                 $debetClassification = $client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
-                                $creditClassification = $client->classification->name == 'standard' ? $acc16605PS : $acc16605PS;
+                                $creditClassification = $client->classification->name == 'standard' ? $acc16605PS : $acc16605PC;
 
                                 $journal = DocumentJournal::where('journalable_type', Contract::class)
                                     ->where('journalable_id', $contract->id)
