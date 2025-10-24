@@ -68,7 +68,6 @@ class UpdateClientClassifications implements ShouldQueue
 
                             $reserverPercent = $client->classification?->reserve_percent ?? 0;
                             $debetPartnerId = $client->id;
-                            Log::info("classification is { $client->classification?->name} ");
 
                             $document_type = $client->classification?->name == 'standard' ?
                                 DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
@@ -83,6 +82,7 @@ class UpdateClientClassifications implements ShouldQueue
                                 $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
 
                                 $amount = $reserveAmount - $oldReserveAmount;
+                                Log::info("amount is { $amount} ");
 
                                 if ($amount <= 0) {
                                     continue;
