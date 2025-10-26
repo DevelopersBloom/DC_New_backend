@@ -41,8 +41,8 @@ class ContractDetailResource extends JsonResource
                 'effectiveRate'    => $this->effectiveRate,
                 'interest_end'=> $maturityDate,
                 'interest_start'    => $interestStartDate,
-                'unearned_interest' => $this->unearned_interest,
-                'written_off_amount' => $this->written_off_amount,
+                'unearned_interest' => $this->unearned_interest, //չվաստակած
+                'written_off_amount' => $this->overdue_amount_interest + $this->unearned_interest,//դուրս գրված
                 'written_off_interest' => $this->written_off_interest,
                 'overdue_amount' => $this->overdue_amount, //ժամկետնանց գումար
                 'overdue_interest' => $this->overdue_interest, //Ժամկետանց տոկոս
