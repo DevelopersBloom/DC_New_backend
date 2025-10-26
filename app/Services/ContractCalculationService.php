@@ -125,7 +125,7 @@ class ContractCalculationService
     {
         $writtenOff = null;
 
-        if (($contract->client->classification ?? null) === 'loss') {
+        if (($contract->client->classification->name) === 'loss') {
             $writtenOff = max(0, (float)($contract->provided_amount ?? 0));
         }
         $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
