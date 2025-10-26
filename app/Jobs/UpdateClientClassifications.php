@@ -178,6 +178,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     ]);
                                 }
 
+
                                 Log::info("Created reserve transaction for contract #{$contract->id} with amount {$reserveAmount} AMD.");
                             }
                             $nextDocNum++;

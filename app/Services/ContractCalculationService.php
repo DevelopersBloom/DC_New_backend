@@ -219,6 +219,7 @@ class ContractCalculationService
      */
     protected function calculateDaysData(Contract $contract, Carbon $calcToday): void
     {
+        $toDay = Carbon::now()->startOfDay();
         $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
 
         $daysProvided = 0;
@@ -226,18 +227,18 @@ class ContractCalculationService
         $deadlineDate = $contract->deadline
             ?: ($contract->payments_max_to_date ?: $contract->payments->max('to_date'));
 
-        if ($startDate && $deadlineDate) {
+        if ($deadlineDate) {
             $deadline = Carbon::parse($deadlineDate)->startOfDay();
 
-            if ($deadline->gt($startDate)) {
-                $daysProvided = $startDate->diffInDays($deadline);
+            if ($toDay->gt($deadline)) {
+                $daysProvided = $deadline->diffInDays($toDay);
             }
         }
         $contract->days_provided = $daysProvided;
 
 
         $remainingRepaymentDays = 0;
-        if ($startDate) {
+        if ($calcToday) {
             if ($calcToday->gt($startDate)) {
                 $remainingRepaymentDays = $startDate->diffInDays($calcToday);
             }
