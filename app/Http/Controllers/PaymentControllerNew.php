@@ -302,20 +302,20 @@ class PaymentControllerNew extends Controller
 
         $deal->payment_id = $payment_id;
         $deal->save();
-        $acc1100 = ChartOfAccount::idByCode('1100');
-        $acc2220 = ChartOfAccount::idByCode('2220');
-        $deal->transactions()->create([
-            'date'              => $deal->date,
-            'document_type'     => Transaction::PARTIAL_PAYMENT,
-            'document_number'   => Transaction::getNextDocumentNumber(),
-            'debit_account_id'  => $acc1100,
-            'credit_account_id' => $acc2220,
-            'currency_id'       => 1, //testing
-            'amount_amd'        => $partialAmount,
-            'comment'           => 'partial_payment',
-            'debit_partner_id' => 2,//testing
-            'credit_partner_id' => $contract->client_id,
-        ]);
+//        $acc10210 = ChartOfAccount::idByCode('10210');
+//        $acc16200NV = ChartOfAccount::idByCode('16200NV');
+//        $deal->transactions()->create([
+//            'date'              => $deal->date,
+//            'document_type'     => Transaction::PARTIAL_PAYMENT,
+//            'document_number'   => Transaction::getNextDocumentNumber(),
+//            'debit_account_id'  => $acc10210,
+//            'credit_account_id' => $acc16200NV,
+//            'currency_id'       => 1, //testing
+//            'amount_amd'        => $partialAmount,
+//            'comment'           => 'partial_payment',
+//            'debit_partner_id' => 2,//testing
+//            'credit_partner_id' => $contract->client_id,
+//        ]);
         $this->updateContractStatus($contract);
 
         return response()->json([

@@ -206,6 +206,7 @@ class ProcessContractDailyRate implements ShouldQueue
 
         $documentTypeEffective = DocumentJournal::EFFECTIVE_RATE_AMOUNT;
         $documentTypeInterest = DocumentJournal::INTEREST_RATE_AMOUNT;
+
         $date = Carbon::now()->format('Y-m-d');
         $systemUserId = auth()->check() ? auth()->id() : 1;
 
