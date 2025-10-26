@@ -355,7 +355,7 @@ class   ContractService
     {
         $principal = $contract->provided_amount;
         $months = $contract->deadline_days;
-        $annualRate = 22;
+        $annualRate = $contract->interest_rate * 365;
 //        $annualRate = $contract->interest_rate;
         $monthlyRate = $annualRate / 100 / 12;
         $effectiveAnnualRate = $contract->effective_annual_rate;
