@@ -65,7 +65,7 @@ class PaymentControllerNew extends Controller
         $deal->delay_days = $result['delay_days'];
         $deal->save();
 
-        $acc16201 = ChartOfAccount::idByCode('16201') ?? 1;
+        $acc16200 = ChartOfAccount::idByCode('16200') ?? 1;
         $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
 
         $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
@@ -88,7 +88,7 @@ class PaymentControllerNew extends Controller
             'credit_partner_id'  => $creditPartnerId,
             'comment'            => 'interest_amount_payment',
             'debit_account_id'   => $acc10210,
-            'credit_account_id'  => $acc16201,
+            'credit_account_id'  => $acc16200,
             'user_id'            => auth()->id(),
             'journalable_type'   => DocumentJournal::class,
             'journalable_id'     => $journal->id,
@@ -104,7 +104,7 @@ class PaymentControllerNew extends Controller
             'debit_partner_id'   => $debetPartnerId,
             'debit_currency_id'  => 1,
 
-            'credit_account_id'  => $acc10210,
+            'credit_account_id'  => $acc16200,
             'credit_currency_id' => 1,
             'credit_partner_id'  => $creditPartnerId,
 
