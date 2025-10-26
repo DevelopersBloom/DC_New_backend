@@ -31,14 +31,13 @@ class ContractCalculationService
      * @param Carbon $calcToday Ընտրված հաշվարկային օրը
      * @return Contract
      */
-    public function calculateAllMetrics(Contract $contract, Carbon $calcToday): Contract
+    public function  calculateAllMetrics(Contract $contract, Carbon $calcToday): Contract
     {
         // 2. Տոկոսի և Արդյունավետ Տոկոսադրույքի Հաշվարկ (Մինչև $calcToday)
         $this->calculateInterestRates($contract, $calcToday);
 
         // 3. Չվաստակած Տոկոս
         $this->calculateUnearnedInterest($contract, $calcToday);
-
         // 4. Դուրս Գրված Գումար/Տոկոս
         $this->calculateWrittenOffData($contract, $calcToday);
 
