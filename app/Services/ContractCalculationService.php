@@ -58,35 +58,30 @@ class ContractCalculationService
     /**
      * Հաշվարկում է Տոկոսը, Արդյունավետ Տոկոսը և Արդյունավետ Տոկոսադրույքը
      */
-    protected function calculateInterestRates(Contract $contract, Carbon $calcToday): void
+    public function calculateInterestRates(Contract $contract, Carbon $calcToday): void
     {
         $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
         $days = $calcToday->diffInDays($startDate);
 
-        // Արդյունավետ Տոկոսադրույք
-//        $effectiveRate = $contract->effective_daily_rate ?? 0;
-//        if ($contract->payment_type == 'amortized') {
-//            $contract->effectiveRate = $this->effectiveRateService->calculateEffectiveRate($contract, $calcToday);
-//        }
-
         $calculatedInterest = null;
         $calculatedEffectiveInterest = null;
+        $providedAmount = $contract->provided_amount;
         if (!empty($contract->provided_amount) && !empty($contract->interest_rate)) {
 
-            $calculatedInterest = $this->calcAmount(
-                $contract->provided_amount,
-                $days,
-                $contract->interest_rate
-            );
+//            $calculatedInterest = $this->calcAmount(
+//                $contract->provided_amount,
+//                $days,
+//                $contract->interest_rate
+//            );
+            $calculatedInterest = $providedAmount * $contract->interest_rate/100 * $days;
 
 //            if ($contract->effectiveRate > 0) {
-                $calculatedEffectiveInterest = $this->calcAmount(
-                    $contract->provided_amount,
-                    $days,
-                    $contract->effective_daily_rate
-                );
-//                $calculatedEffectiveInterest = intval(ceil($contract->provided_amount *  $contract->effectiveRate / 100 * 0.01 / 10) * 10);
-
+//                $calculatedEffectiveInterest = $this->calcAmount(
+//                    $contract->provided_amount,
+//                    $days,
+//                    $contract->effective_daily_rate
+//                );
+                $calculatedEffectiveInterest = $providedAmount * $contract->effective_daily_rate / 100 * $days;
 //            }
         }
         $contract->effectiveRate = $contract->effective_daily_rate;

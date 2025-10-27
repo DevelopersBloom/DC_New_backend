@@ -390,5 +390,21 @@ class ContractControllerNew extends Controller
         return Excel::download(new ContractsExport(), 'contracts_export.xlsx');
     }
 
+    public function calculateContractInterest(Request $request)
+    {
+        $request->validate([
+            'contract_id' => 'required|integer|exists:contracts,id',
+            'calc_date' => 'required|date',
+        ]);
 
+        $contract = Contract::findOrFail($request->contract_id);
+        $calcToday = Carbon::parse($request->calc_date, 'Asia/Yerevan')->startOfDay();
+
+        $this->contractCalculationService->calculateInterestRates($contract, $calcToday);
+
+        return response()->json([
+            'calculated_interest' => $contract->calculatedInterest,
+            'calculated_effective_interest' => $contract->calculatedEffectiveInterest,
+        ]);
+    }
 }
