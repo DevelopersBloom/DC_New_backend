@@ -6,9 +6,11 @@ use App\Http\Resources\ContractDetailResource;
 use App\Models\Contract;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ContractsCalcExport implements FromCollection
-{
+class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
     protected Collection $contracts;
 
     protected array $fieldMapping = [
@@ -107,5 +109,14 @@ class ContractsCalcExport implements FromCollection
         }
 
         return $data;
+    }
+    public function styles(Worksheet $sheet)
+    {
+        $sheet->getStyle('A')->applyFromArray([
+            'font' => [
+                'bold' => true,
+            ],
+        ]);
+
     }
 }
