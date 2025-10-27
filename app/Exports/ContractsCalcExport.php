@@ -3,13 +3,12 @@
 namespace App\Exports;
 
 use App\Http\Resources\ContractDetailResource;
-use App\Models\Contract;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
     protected Collection $contracts;
 
@@ -115,6 +114,11 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         $sheet->getStyle('A')->applyFromArray([
             'font' => [
                 'bold' => true,
+            ],
+        ]);
+        $sheet->getStyle('B')->applyFromArray([
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_LEFT,
             ],
         ]);
 
