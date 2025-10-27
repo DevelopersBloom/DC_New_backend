@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ContractsCalcExport;
 use App\Exports\ContractsExport;
 use App\Exports\DailyExport;
 use App\Http\Requests\ClientRequest;
@@ -545,6 +546,6 @@ class ContractControllerNew extends Controller
 
         $fileName = 'Contracts_Export_' . Carbon::now()->format('Ymd_His') . '.xlsx';
 
-        return Excel::download(new ContractsExport($contracts), $fileName);
+        return Excel::download(new ContractsCalcExport($contracts), $fileName);
     }
 }
