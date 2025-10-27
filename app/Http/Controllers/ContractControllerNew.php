@@ -392,6 +392,7 @@ class ContractControllerNew extends Controller
 
     public function calculateContractInterest(Request $request)
     {
+        dd(2);
         $request->validate([
             'contract_id' => 'required|integer|exists:contracts,id',
             'calc_date' => 'required|date',
