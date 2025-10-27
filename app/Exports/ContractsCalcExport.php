@@ -52,15 +52,41 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         $this->contracts = $contracts;
     }
 
+//    public function collection(): Collection
+//    {
+//        $transformedContracts = $this->contracts->map(function ($contract) {
+//            return (new ContractDetailResource($contract))->toArray(request());
+//        });
+//
+//        $excelRows = collect();
+//
+//        foreach ($transformedContracts as $contractData) {
+//            $contractRows = $this->transformContractData($contractData);
+//            $excelRows = $excelRows->merge($contractRows);
+//
+//            $excelRows->push(['', '']);
+//        }
+//
+//        return $excelRows;
+//    }
     public function collection(): Collection
     {
-        $transformedContracts = $this->contracts->map(function ($contract) {
-            return (new ContractDetailResource($contract))->toArray(request());
-        });
-
         $excelRows = collect();
 
-        foreach ($transformedContracts as $contractData) {
+        foreach ($this->contracts as $contract) {
+
+            $contractData = (new ContractDetailResource($contract))->toArray(request());
+
+
+            $contractData['total_days_provided'] = $contract->total_days_provided ?? '-';
+
+            if (!isset($contractData['contract'])) {
+                $contractData['contract'] = [];
+            }
+            $contractData['contract']['calc_date'] = $contract->calc_date
+                ? $contract->calc_date->format('d-m-Y')
+                : '-';
+
             $contractRows = $this->transformContractData($contractData);
             $excelRows = $excelRows->merge($contractRows);
 
@@ -69,7 +95,6 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
 
         return $excelRows;
     }
-
 
     protected function transformContractData(array $contractData): Collection
     {
