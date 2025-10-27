@@ -13,13 +13,13 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
     protected Collection $contracts;
 
     protected array $fieldMapping = [
-        'Պայմանագրի մնացորդ առ'                  => 'current_payment_amount',
+        'Պայմանագրի մնացորդ առ'                  => 'contract.calc_date',
         'Պայմանագրի N'                           => 'contract.num',
         'Հաճախորդի կոդ'                          => 'client.id',
         'Անվանում'                              => 'client_full_name',
         'Կապակցված է ընկերությանը'             => 'client.is_linked_to_company',
         'Ընկերության աշխատակից է'               => 'client.is_company_employee',
-        'Արժ․'                                 => 'contract.currency',
+        'Արժ․'                                 => 'դրամ',
         'Կնքման ամսաթիվ'                        => 'contract.date',
         'Հստակեցման ամսաթիվ'                    => 'contract.date',
         'Մայր գումարի մարման ժամկեը'             => 'contract.deadline',

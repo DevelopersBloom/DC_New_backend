@@ -547,11 +547,12 @@ class ContractControllerNew extends Controller
             $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
             $deadlineDate = $contract->deadline ? Carbon::parse($contract->deadline)->startOfDay() : null;
 
-            $totalDays = null;
+            $totalDays = 0;
             if ($startDate && $deadlineDate && $deadlineDate->greaterThanOrEqualTo($startDate)) {
                 $totalDays = $deadlineDate->diffInDays($startDate) + 1;
             }
             $contract->setAttribute('total_days_provided', $totalDays);
+            $contract->setAttribute('calc_date',$calcToday);
 
         });
 
