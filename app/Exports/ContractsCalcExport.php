@@ -13,7 +13,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
     protected Collection $contracts;
 
     protected array $fieldMapping = [
-        'Պայմանագրի մնացորդ առ'                  => 'contract.calc_date',
+        'Պայմանագրի մնացորդ առ'                  => 'contract.date',
         'Պայմանագրի N'                           => 'contract.num',
         'Հաճախորդի կոդ'                          => 'client.id',
         'Անվանում'                              => 'client_full_name',
