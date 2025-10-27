@@ -135,6 +135,50 @@ class UpdateClientClassifications implements ShouldQueue
                                     'transactionable_id'   => $journal->id,
                                 ]);
                                 $nextDocNum++;
+                                if ($client->classification->name == 'loss')
+                                {
+                                    $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
+                                    $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
+
+                                    $journalDocoss = DocumentJournal::create([
+                                        'date'               => now()->toDateString(),
+                                        'document_number'    => $nextDocNum,
+                                        'document_type'      => $lossType,
+                                        'amount_amd'         => $contract->provided_amount,
+                                        'partner_id'         => $debetPartnerId,
+                                        'credit_partner_id'  => $creditPartnerId,
+                                        'comment'            => "Loss client, reserve for contract #{$contract->id} due to classification change",
+                                        'debit_account_id'   => $acc16605PS,
+                                        'credit_account_id'  => $acc16200NV,
+                                        'user_id'            => auth()->check() ? auth()->id() : 1,
+                                        'journalable_type'   => DocumentJournal::class,
+                                        'journalable_id'     => $journal->id,
+                                    ]);
+                                    Transaction::create([
+                                        'date'               => now()->toDateString(),
+                                        'document_number'    => $nextDocNum,
+                                        'document_type'      => $lossType,
+
+                                        'debit_account_id'   => $acc16605PS,
+                                        'debit_partner_id'   => $debetPartnerId,
+                                        'debit_currency_id'  => 1,
+
+                                        'credit_account_id'  => $acc16200NV,
+                                        'credit_currency_id' => 1,
+                                        'credit_partner_id'  => $creditPartnerId,
+
+                                        'amount_amd'         => $contract->provided_amount,
+
+                                        'comment'            => "Loss client,reserve for contract #{$contract->id}",
+                                        'user_id'            => auth()->check() ? auth()->id() : 1,
+                                        'is_system'          => true,
+
+                                        'disbursement_date'    => now()->toDateString(),
+                                        'transactionable_type' => DocumentJournal::class,
+                                        'transactionable_id'   => $journal->id,
+                                    ]);
+                                    $nextDocNum++;
+                                }
 
                                 if ($oldReserveAmount > 0) {
                                     $classificationType = DocumentJournal::CLASSIFICATION;
