@@ -39,6 +39,7 @@ class ContractDetailResource extends JsonResource
                 'description'      => $this->description,
                 'status'           => $this->status,
                 'effectiveRate'    => $this->effectiveRate,
+                'date' => $this->date,
                 'interest_end'=> $maturityDate,
                 'interest_start'    => $interestStartDate,
                 'unearned_interest' => $this->unearned_interest, //չվաստակած
@@ -78,6 +79,10 @@ class ContractDetailResource extends JsonResource
                 'classification' => $this->client->classification?->title,
                 'reserve_percent' => $this->client->classification?->reserve_percent,
                 'risk_weight_percent' => $this->client->classification?->risk_weight,
+                'bank_client_id' => $this->client->bank_client_id,
+                'social_card_number' => $this->client->social_card_number,
+                'tax_number' => $this->client->tax_number,
+                'residency_status' => $this->client->residency_status,
             ],
             'payments' => $this->payments->map(function ($payment) {
                 return [

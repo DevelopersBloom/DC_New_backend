@@ -528,6 +528,15 @@ class ContractControllerNew extends Controller
             ], 500);
         }
     }
+    // App\Http\Controllers\ContractController.php
+
+    use App\Models\Contract;
+    use Carbon\Carbon;
+    use Illuminate\Http\Request;
+    use Maatwebsite\Excel\Facades\Excel;
+
+// ...
+
     public function exportContractsCalc(Request $request)
     {
         $calculationDateInput = $request->input('calculation_date');
@@ -542,6 +551,16 @@ class ContractControllerNew extends Controller
 
         $contracts->each(function (Contract $contract) use ($calcToday) {
             $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
+
+            $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
+            $deadlineDate = $contract->deadline ? Carbon::parse($contract->deadline)->startOfDay() : null;
+
+            $totalDays = null;
+            if ($startDate && $deadlineDate && $deadlineDate->greaterThanOrEqualTo($startDate)) {
+                $totalDays = $deadlineDate->diffInDays($startDate) + 1;
+            }
+            $contract->setAttribute('total_days_provided', $totalDays);
+
         });
 
         $fileName = 'Contracts_Export_' . Carbon::now()->format('Ymd_His') . '.xlsx';
