@@ -528,14 +528,6 @@ class ContractControllerNew extends Controller
             ], 500);
         }
     }
-    // App\Http\Controllers\ContractController.php
-
-    use App\Models\Contract;
-    use Carbon\Carbon;
-    use Illuminate\Http\Request;
-    use Maatwebsite\Excel\Facades\Excel;
-
-// ...
 
     public function exportContractsCalc(Request $request)
     {
