@@ -527,5 +527,24 @@ class ContractControllerNew extends Controller
             ], 500);
         }
     }
+    public function exportContractsCalc(Request $request)
+    {
+        $calculationDateInput = $request->input('calculation_date');
+        $calcToday = $calculationDateInput
+            ? Carbon::parse($calculationDateInput, 'Asia/Yerevan')->startOfDay()
+            : Carbon::now('Asia/Yerevan')->startOfDay();
 
+        $contracts = Contract::with([
+            'client.classification',
+            'payments',
+        ])->get();
+
+        $contracts->each(function (Contract $contract) use ($calcToday) {
+            $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
+        });
+
+        $fileName = 'Contracts_Export_' . Carbon::now()->format('Ymd_His') . '.xlsx';
+
+        return Excel::download(new ContractsExport($contracts), $fileName);
+    }
 }
