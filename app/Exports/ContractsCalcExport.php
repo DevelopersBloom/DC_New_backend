@@ -13,13 +13,13 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
     protected Collection $contracts;
 
     protected array $fieldMapping = [
-        'Պայմանագրի մնացորդ առ'                  => 'contract.date',
+        'Պայմանագրի մնացորդ առ'                  => 'contract.calc_date',
         'Պայմանագրի N'                           => 'contract.num',
         'Հաճախորդի կոդ'                          => 'client.id',
         'Անվանում'                              => 'client_full_name',
         'Կապակցված է ընկերությանը'             => 'client.is_linked_to_company',
         'Ընկերության աշխատակից է'               => 'client.is_company_employee',
-        'Արժ․'                                 => 'դրամ',
+        'Արժ․'                                 => 'currency',
         'Կնքման ամսաթիվ'                        => 'contract.date',
         'Հստակեցման ամսաթիվ'                    => 'contract.date',
         'Մայր գումարի մարման ժամկեը'             => 'contract.deadline',
@@ -84,7 +84,9 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         foreach ($this->fieldMapping as $label => $dataKey) {
             $value = $this->getNestedValue($contractData, $dataKey, '-');
 
-            if ($dataKey === 'client.is_linked_to_company' || $dataKey === 'client.is_company_employee') {
+            if ($label === 'Արժ․') {
+                $value = 'դրամ';
+            } elseif ($dataKey === 'client.is_linked_to_company' || $dataKey === 'client.is_company_employee') {
                 $value = (bool)$value ? 'Այո' : 'Ոչ';
             }
             $rows->push([$label, $value]);
