@@ -26,7 +26,7 @@ class ContractsCalcExport implements FromCollection
         'Պայմանագրի գումար'                     => 'contract.contract_amount',
         'Տրամադրված գումար'                      => 'contract.provided_amount',
         'Տոկոսադրույք'                          => 'contract.interest_rate',
-        'Արդ․ տոկոս․'                          => 'contract.effective_daily_rate',
+        'Արդ․ տոկոս․'                          => 'contract.effectiveRate',
         'Ժամկետանց գումար'                      => 'contract.overdue_amount',
         'Դուրս գրված գումար'                     => 'written_off_total',
         'Ժամկետանց գումարի տոկոս'               => 'contract.overdue_amount_interest',
