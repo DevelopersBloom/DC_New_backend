@@ -30,6 +30,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ContractControllerNew extends Controller
@@ -407,4 +408,124 @@ class ContractControllerNew extends Controller
             'calculated_effective_interest' => $contract->calculatedEffectiveInterest,
         ]);
     }
+
+    public function confirmCalculatedInterest(Request $request)
+    {
+        $request->validate([
+            'contract_id' => 'required|integer|exists:contracts,id',
+            'calculated_interest' => 'required|numeric|min:0',
+            'calculated_effective_interest' => 'required|numeric|min:0',
+            'calc_date' => 'required|date',
+        ]);
+
+        $contract = Contract::findOrFail($request->contract_id);
+
+        $creditPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
+        $acc16200 = ChartOfAccount::idByCode('16200') ?? 1;
+        $acc60120 = ChartOfAccount::idByCode('60120') ?? 1;
+        $acc16201NI = ChartOfAccount::idByCode('16201NI') ?? 1;
+
+        $documentTypeInterest = DocumentJournal::INTEREST_RATE_AMOUNT;
+        $documentTypeEffective = DocumentJournal::EFFECTIVE_RATE_AMOUNT;
+
+        $debetPartnerId = $contract->client_id;
+        $date = Carbon::parse($request->calc_date, 'Asia/Yerevan')->startOfDay();;
+        $systemUserId = auth()->check() ? auth()->id() : 1;
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->first();
+        DB::beginTransaction();
+        try {
+            $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+
+            if ($request->calculated_interest > 0) {
+                $journalInterest = DocumentJournal::create([
+                    'date' => $date,
+                    'document_number' => $nextDocNum,
+                    'document_type' => $documentTypeInterest,
+                    'amount_amd' => $request->calculated_interest,
+                    'partner_id' => $debetPartnerId,
+                    'credit_partner_id' => $creditPartnerId,
+                    'comment' => 'Confirmed interest for contract #' . $contract->id,
+                    'debit_account_id' => $acc16201NI,
+                    'credit_account_id' => $acc16200,
+                    'user_id' => $systemUserId,
+                    'journalable_type' => DocumentJournal::class,
+                    'journalable_id' => $journal->id,
+                ]);
+
+                Transaction::create([
+                    'date' => $date,
+                    'document_number' => $nextDocNum,
+                    'document_type' => $documentTypeInterest,
+                    'debit_account_id' => $acc16201NI,
+                    'debit_partner_id' => $debetPartnerId,
+                    'debit_currency_id' => 1,
+                    'credit_account_id' => $acc16200,
+                    'credit_currency_id' => 1,
+                    'credit_partner_id' => $creditPartnerId,
+                    'amount_amd' => $request->calculated_interest,
+                    'comment' => 'Confirmed interest for contract #' . $contract->id,
+                    'user_id' => $systemUserId,
+                    'is_system' => true,
+                    'disbursement_date' => $date,
+                    'transactionable_type' => DocumentJournal::class,
+                    'transactionable_id' => $journalInterest->id,
+                ]);
+
+                $nextDocNum++;
+            }
+
+            if ($request->calculated_effective_interest > 0) {
+                $journalEffective = DocumentJournal::create([
+                    'date' => $date,
+                    'document_number' => $nextDocNum,
+                    'document_type' => $documentTypeEffective,
+                    'amount_amd' => $request->calculated_effective_interest,
+                    'partner_id' => $debetPartnerId,
+                    'credit_partner_id' => $creditPartnerId,
+                    'comment' => 'Confirmed effective interest for contract #' . $contract->id,
+                    'debit_account_id' => $acc16200,
+                    'credit_account_id' => $acc60120,
+                    'user_id' => $systemUserId,
+                    'journalable_type' => DocumentJournal::class,
+                    'journalable_id' => $journal->id,
+                ]);
+
+                Transaction::create([
+                    'date' => $date,
+                    'document_number' => $nextDocNum,
+                    'document_type' => $documentTypeEffective,
+                    'debit_account_id' => $acc16200,
+                    'debit_partner_id' => $debetPartnerId,
+                    'debit_currency_id' => 1,
+                    'credit_account_id' => $acc60120,
+                    'credit_currency_id' => 1,
+                    'credit_partner_id' => $creditPartnerId,
+                    'amount_amd' => $request->calculated_effective_interest,
+                    'comment' => 'Confirmed effective interest for contract #' . $contract->id,
+                    'user_id' => $systemUserId,
+                    'is_system' => true,
+                    'disbursement_date' => $date,
+                    'transactionable_type' => DocumentJournal::class,
+                    'transactionable_id' => $journalEffective->id,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Interest confirmed and saved successfully.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to confirm interest for contract #' . $contract->id . ': ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to confirm interest.'
+            ], 500);
+        }
+    }
+
 }
