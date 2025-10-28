@@ -336,7 +336,7 @@ class ClientControllerNew extends Controller
                         'journalable_type' => DocumentJournal::class,
                         'journalable_id' => $journal->id,
                     ]);
-
+dd(2);
                     // Transaction
                     Transaction::create([
                         'date' => now()->toDateString(),
