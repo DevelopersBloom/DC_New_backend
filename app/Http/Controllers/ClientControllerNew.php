@@ -309,8 +309,8 @@ class ClientControllerNew extends Controller
 
                 $journal = DocumentJournal::where('journalable_type', Contract::class)
                     ->where('journalable_id', $contract->id)
-                    ->first();
-
+                    ->findOrFail();
+dd($contract);
                 if ($amount > 0) {
                     $debetAllocation = $acc73015;
                     $creditAllocation = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
