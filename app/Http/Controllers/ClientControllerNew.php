@@ -310,7 +310,6 @@ class ClientControllerNew extends Controller
                 $journal = DocumentJournal::where('journalable_type', Contract::class)
                     ->where('journalable_id', $contract->id)
                     ->first();
-                dd(22);
 
                 if ($amount > 0) {
                     $debetAllocation = $acc73015;
@@ -321,6 +320,7 @@ class ClientControllerNew extends Controller
                     $documentType = $client->classification->name === 'standard'
                         ? DocumentJournal::RESERVE_GENERAL_AMOUNT
                         : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+                    dd($amount);
 
                     // Journal
                     DocumentJournal::create([
