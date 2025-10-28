@@ -307,13 +307,11 @@ class ClientControllerNew extends Controller
                     continue;
                 }
 
-                $journal = DocumentJournal::firstOrCreate(
-                    ['journalable_type' => 'App\Models\Contract', 'journalable_id' => $contract->id],
-                    ['date' => now()->toDateString()]
-                );
-//                $journal = DocumentJournal::where('journalable_type', Contract::class)
-//                    ->where('journalable_id', $contract->id)
-//                    ->first();
+                $journal = DocumentJournal::where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id)
+                    ->first();
+
+                if (!$journal) continue;
                 if ($amount > 0) {
                     $debetAllocation = $acc73015;
                     $creditAllocation = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
