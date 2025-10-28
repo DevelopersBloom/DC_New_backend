@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\IncomeExpenseMonthlyReport;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -64,8 +65,11 @@ class MonthlyIncomeExpenseController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         // Unmerge (clean any absolute refs in ranges)
+//        foreach ($sheet->getMergeCells() as $range) {
+//            $sheet->unmergeCells(str_replace('$', '', $range));
+//        }
         foreach ($sheet->getMergeCells() as $range) {
-            $sheet->unmergeCells(str_replace('$', '', $range));
+            $sheet->unmergeCells($range);
         }
 
         $mapPath = storage_path('app/templates/v05_map.json');
@@ -112,6 +116,8 @@ class MonthlyIncomeExpenseController extends Controller
         while (ob_get_level() > 0) {
             @ob_end_clean();
         }
+        $formula = $sheet->getCell('D161')->getValue();
+        Log::debug('D161 formula before save: ' . var_export($formula, true));
         $writer->save($path);
 
         return response()->download($path, $filename, [
