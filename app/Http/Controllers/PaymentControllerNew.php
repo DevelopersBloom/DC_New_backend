@@ -187,20 +187,20 @@ class PaymentControllerNew extends Controller
 
         $contract->closed_at = now();
         $contract->save();
-        $acc1100 = ChartOfAccount::idByCode('1100');
-        $acc2220 = ChartOfAccount::idByCode('2220');
-        $deal->transactions()->create([
-            'date'              => $deal->date,
-            'document_type'     => Transaction::FULL_PAYMENT,
-            'document_number'   => Transaction::getNextDocumentNumber(),
-            'debit_account_id'  => $acc1100,
-            'credit_account_id' => $acc2220,
-            'currency_id'       => 1, //testing
-            'amount_amd'        => $amount,
-            'comment'           => 'full_payment',
-            'debit_partner_id' => 2,//testing
-            'credit_partner_id' => $contract->client_id,
-        ]);
+//        $acc1100 = ChartOfAccount::idByCode('1100');
+//        $acc2220 = ChartOfAccount::idByCode('2220');
+//       $deal->transactions()->create([
+//            'date'              => $deal->date,
+//            'document_type'     => Transaction::FULL_PAYMENT,
+//            'document_number'   => Transaction::getNextDocumentNumber(),
+//            'debit_account_id'  => $acc1100,
+//            'credit_account_id' => $acc2220,
+//            'currency_id'       => 1, //testing
+//            'amount_amd'        => $amount,
+//            'comment'           => 'full_payment',
+//            'debit_partner_id' => 2,//testing
+//            'credit_partner_id' => $contract->client_id,
+//        ]);
         // Check if early payment is eligible for a refund
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
             $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
