@@ -65,11 +65,8 @@ class MonthlyIncomeExpenseController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         // Unmerge (clean any absolute refs in ranges)
-//        foreach ($sheet->getMergeCells() as $range) {
-//            $sheet->unmergeCells(str_replace('$', '', $range));
-//        }
         foreach ($sheet->getMergeCells() as $range) {
-            $sheet->unmergeCells($range);
+            $sheet->unmergeCells(str_replace('$', '', $range));
         }
 
         $mapPath = storage_path('app/templates/v05_map.json');
@@ -104,7 +101,7 @@ class MonthlyIncomeExpenseController extends Controller
 
         $writer = new XlsWriter($spreadsheet);
 
-        $writer->setPreCalculateFormulas(true);
+        $writer->setPreCalculateFormulas(false);
 
         $filename = "monthly_income_expense.xls";
         $dir = storage_path('app/reports');
