@@ -309,7 +309,7 @@ class ClientControllerNew extends Controller
 
                 $journal = DocumentJournal::where('journalable_type', Contract::class)
                     ->where('journalable_id', $contract->id)
-                    ->findOrFail();
+                    ->first();
 dd($contract);
                 if ($amount > 0) {
                     $debetAllocation = $acc73015;
