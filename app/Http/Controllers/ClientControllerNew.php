@@ -320,6 +320,7 @@ class ClientControllerNew extends Controller
                     $documentType = $client->classification->name === 'standard'
                         ? DocumentJournal::RESERVE_GENERAL_AMOUNT
                         : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+                    dd($journal);
 
                     // Journal
                     DocumentJournal::create([
@@ -336,7 +337,6 @@ class ClientControllerNew extends Controller
                         'journalable_type' => DocumentJournal::class,
                         'journalable_id' => $journal->id,
                     ]);
-dd(2);
                     // Transaction
                     Transaction::create([
                         'date' => now()->toDateString(),
