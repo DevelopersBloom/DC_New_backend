@@ -298,12 +298,11 @@ class ClientControllerNew extends Controller
             $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
 
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-            dd($client->contracts);
+
             foreach ($client->contracts as $contract) {
                 $reserveAmount = $contract->provided_amount * $newReservePercent / 100;
                 $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
                 $amount = $reserveAmount - $oldReserveAmount;
-dd($amount);
                 if ($amount <= 0 && $client->classification->name !== 'loss') {
                     continue;
                 }
