@@ -272,7 +272,7 @@ class ClientControllerNew extends Controller
         $clientId = $request->client_id;
         $client = Client::with(['contracts', 'classification'])->findOrFail($clientId);
         $classification = ClientClassification::where('name', $request->classification)->firstOrFail();
-dd($classification);
+dd($classification->id);
         $newClassificationId = $classification->id;
         $oldOrder = $client->classification?->order ?? 0;
         $newOrder = $classification->order ?? 0;
