@@ -298,7 +298,6 @@ class ClientControllerNew extends Controller
             $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
 
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-dd(2);
             foreach ($client->contracts as $contract) {
                 $reserveAmount = $contract->provided_amount * $newReservePercent / 100;
                 $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
@@ -311,6 +310,7 @@ dd(2);
                 $journal = DocumentJournal::where('journalable_type', Contract::class)
                     ->where('journalable_id', $contract->id)
                     ->first();
+                dd(22);
 
                 if ($amount > 0) {
                     $debetAllocation = $acc73015;
