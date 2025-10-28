@@ -356,6 +356,7 @@ class ClientControllerNew extends Controller
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id' => $journal->id,
                     ]);
+                    dd($oldReserveAmount);
 
                     $nextDocNum++;
                 }
@@ -399,7 +400,6 @@ class ClientControllerNew extends Controller
 
                     $nextDocNum++;
                 }
-dd($oldReserveAmount);
                 if ($oldReserveAmount > 0) {
                     $classificationType = DocumentJournal::CLASSIFICATION;
 
