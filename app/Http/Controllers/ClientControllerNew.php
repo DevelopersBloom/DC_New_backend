@@ -117,15 +117,33 @@ class ClientControllerNew extends Controller
             ], 500);
         }
     }
+//    public function show(Request $request, int $clientId)
+//    {
+//
+//        $status = $request->query('status', 'initial');
+//
+//        $clientInfo = $this->clientService->getClientInfo($clientId, $status);
+//        return response()->json($clientInfo);
+//
+//    }
     public function show(Request $request, int $clientId)
     {
-
         $status = $request->query('status', 'initial');
 
-        $clientInfo = $this->clientService->getClientInfo($clientId, $status);
-        return response()->json($clientInfo);
+        $client = Client::with(['contracts' => function ($query) use ($status) {
+            $query->where('status', $status);
+        }])->find($clientId);
 
+        if (!$client) {
+            return response()->json(['error' => 'Client not found'], 404);
+        }
+
+        return response()->json([
+            'client' => $client,
+            'contracts' => $client->contracts
+        ]);
     }
+
     public function index(Request $request): JsonResponse
     {
         $pawnshopId = auth()->user()->pawnshop_id;
