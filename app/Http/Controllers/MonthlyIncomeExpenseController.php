@@ -80,7 +80,6 @@ class MonthlyIncomeExpenseController extends Controller
 
         $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
-        $sheet->setCellValue('D161', '=D136-D160');
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
             if (!isset($rowCodeMap[$row])) {
@@ -101,7 +100,7 @@ class MonthlyIncomeExpenseController extends Controller
 
         $writer = new XlsWriter($spreadsheet);
 
-        $writer->setPreCalculateFormulas(false);
+        $writer->setPreCalculateFormulas(true);
 
         $filename = "monthly_income_expense.xls";
         $dir = storage_path('app/reports');
