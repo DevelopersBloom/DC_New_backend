@@ -182,6 +182,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/{id}',[ClientControllerNew::class,'show']);
         Route::post('/store-client', [ClientControllerNew::class, 'storeClient']);
         Route::post('/store-non-client', [ClientControllerNew::class, 'storeNonClient']);
+        Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification']);
+
     });
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients']);
 
