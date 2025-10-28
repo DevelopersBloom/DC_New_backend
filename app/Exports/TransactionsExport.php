@@ -314,7 +314,7 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function collection(): Collection
     {
-        $accounts = ChartOfAccount::query()->select('id', 'code', 'name', 'account_type')->get();
+        $accounts = ChartOfAccount::query()->select('id', 'code', 'name', 'type')->get();
 
         $accById = $accounts->keyBy('id');
 
@@ -354,7 +354,7 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, W
             $d = (float)($debits[$id] ?? 0);
             $c = (float)($credits[$id] ?? 0);
 
-            if ($isDebitPositive($acc->account_type)) {
+            if ($isDebitPositive($acc->type)) {
                 $bal = $d - $c; // Active/Expense/Off-balance
             } else {
                 $bal = $c - $d; // Passive/Equity/Income

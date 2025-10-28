@@ -216,7 +216,7 @@ trait CalculatesAccountBalancesTrait
                 'u.account_id',
                 'ca.code as account_code',
                 'ca.name as account_name',
-                'ca.type as account_type',
+                'ca.type as type',
 
                 DB::raw("MAX(c.type) as partner_type"),
                 DB::raw("MAX(CASE WHEN c.type = 'individual' THEN c.social_card_number ELSE c.tax_number END) as partner_code"),
@@ -240,7 +240,7 @@ trait CalculatesAccountBalancesTrait
                 'b.account_id',
                 'b.account_code',
                 'b.account_name',
-                'b.account_type',
+                'b.type',
                 'b.balance',
             ])
             ->orderBy('b.partner_name')
