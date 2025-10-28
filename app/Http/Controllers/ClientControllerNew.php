@@ -272,7 +272,6 @@ class ClientControllerNew extends Controller
         $clientId = $request->client_id;
         $client = Client::with(['contracts', 'classification'])->findOrFail($clientId);
         $classification = ClientClassification::where('name', $request->classification)->firstOrFail();
-dd($classification->id);
         $newClassificationId = $classification->id;
         $oldOrder = $client->classification?->order ?? 0;
         $newOrder = $classification->order ?? 0;
@@ -299,7 +298,7 @@ dd($classification->id);
             $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
 
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-
+dd(2);
             foreach ($client->contracts as $contract) {
                 $reserveAmount = $contract->provided_amount * $newReservePercent / 100;
                 $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
