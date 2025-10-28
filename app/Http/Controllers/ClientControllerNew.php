@@ -302,7 +302,7 @@ class ClientControllerNew extends Controller
                 $reserveAmount = $contract->provided_amount * $newReservePercent / 100;
                 $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
                 $amount = $reserveAmount - $oldReserveAmount;
-
+dd($amount);
                 if ($amount <= 0 && $client->classification->name !== 'loss') {
                     continue;
                 }
