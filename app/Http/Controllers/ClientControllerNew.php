@@ -323,7 +323,6 @@ class ClientControllerNew extends Controller
                     $documentType = $client->classification->name === 'standard'
                         ? DocumentJournal::RESERVE_GENERAL_AMOUNT
                         : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
-                    dd($journal);
 
                     // Journal
                     DocumentJournal::create([
@@ -359,7 +358,6 @@ class ClientControllerNew extends Controller
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id' => $journal->id,
                     ]);
-                    dd($oldReserveAmount);
 
                     $nextDocNum++;
                 }
