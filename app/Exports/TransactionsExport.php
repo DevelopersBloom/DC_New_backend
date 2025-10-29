@@ -8,8 +8,10 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class TransactionsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize
+class TransactionsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
 {
     protected $from;
     protected $to;
@@ -100,5 +102,15 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             optional($t->debitPartner)->company_name ?? optional($t->debitPartner)->name . ' ' . optional($t->debitPartner)->surname,
             optional($t->creditPartner)->company_name ?? optional($t->creditPartner)->name . ' ' .optional($t->creditPartner)->surname,
         ];
+    }
+    public function styles(Worksheet $sheet)
+    {
+        $sheet->getStyle($sheet->calculateWorksheetDimension())
+            ->getAlignment()
+            ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+
+        $sheet->getStyle('A1:O1')->getFont()->setBold(true);
+
+        return [];
     }
 }
