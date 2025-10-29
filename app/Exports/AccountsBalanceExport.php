@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 
-class TransactionsExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting
+class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting
 {
     public function __construct(
         protected ?string $from = null,

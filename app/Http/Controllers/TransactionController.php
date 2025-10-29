@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\TransactionsExport;
+use App\Exports\AccountsBalanceExport;
 use App\Models\Transaction;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
@@ -64,8 +64,8 @@ class TransactionController
         $to   = $request->query('to_date');
 
         return Excel::download(
-            new TransactionsExport($from, $to),
-            'ԳործառնություններիՄատյան.xlsx'
+            new AccountsBalanceExport($from, $to),
+            'ՀաշիվներիՄնացորդ.xlsx'
         );
     }
 
