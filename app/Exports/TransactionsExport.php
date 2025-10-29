@@ -91,14 +91,14 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             $t->amount_amd,
             $t->amount_currency,
             optional($t->amountCurrencyRelation)->code,
-            optional($t->debitAccount)->name,
-            optional($t->creditAccount)->name,
+            optional($t->debitAccount)->code,
+            optional($t->creditAccount)->code,
             optional($t->user)->name . ' ' . optional($t->user)->surname,
             optional($t->debitCurrency)->code,
             optional($t->creditCurrency)->code,
             $t->is_system ? 'Այո' : 'Ոչ',
-            optional($t->debitPartner)->company_name ?? optional($t->debitPartner)->name,
-            optional($t->creditPartner)->company_name ?? optional($t->creditPartner)->name,
+            optional($t->debitPartner)->company_name ?? optional($t->debitPartner)->name . ' ' . optional($t->debitPartner)->surname,
+            optional($t->creditPartner)->company_name ?? optional($t->creditPartner)->name . ' ' .optional($t->creditPartner)->surname,
         ];
     }
 }
