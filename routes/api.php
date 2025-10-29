@@ -141,7 +141,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/loan-ndm/by-journal/{journal}', [LoanNdmController::class, 'get']);
         Route::get('/transactions', [TransactionController::class, 'index']);
         Route::get('/transactions/export', [TransactionController::class, 'export']);
-        Route::get('/transactions/account-balance/export', [TransactionController::class, 'export']);
+        Route::get('/transactions/account-balance/export', [TransactionController::class, 'exportAccountBalance']);
 
         Route::get('/transactions/loan-ndms', [DocumentJournalController::class, 'index']);
         Route::get('/documents-journal/trashed', [DocumentJournalController::class, 'trashed']);
