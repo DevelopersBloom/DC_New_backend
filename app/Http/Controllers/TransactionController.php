@@ -58,7 +58,7 @@ class TransactionController
         return response()->json($transactions);
     }
 
-    public function export(Request $request)
+    public function exportAccountBalance(Request $request)
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
@@ -67,6 +67,13 @@ class TransactionController
             new AccountsBalanceExport($from, $to),
             'ՀաշիվներիՄնացորդ.xlsx'
         );
+    }
+    public function export(Request $request)
+    {
+        $from = $request->query('from_date');
+        $to = $request->query('to_date');
+
+        return Excel::download(new TransactionsExport($from, $to), 'transactions.xlsx');
     }
 
     public function loanNdmJournal1(Request $request): JsonResponse
