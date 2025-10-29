@@ -109,6 +109,12 @@ class ContractControllerNew extends Controller
 
         $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 
+        $contract->written_off_amount = null;
+
+        if (($contract->client?->classification?->name) === 'loss') {
+            $contract->written_off_amount = $contract->overdue_interest + $contract->unearned_interest;
+        }
+
         return new ContractDetailResource($contract);
     }
     public function getHistoryDetails(int $id)
@@ -543,6 +549,20 @@ class ContractControllerNew extends Controller
 
         $contracts->each(function (Contract $contract) use ($calcToday) {
             $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
+
+            $providedAmountSum = Deal::where('contract_id', $contract->id)
+                ->where('purpose', 'ՄԳ տրամադրում')
+                ->whereDate('date', '<=', $calcToday)
+                ->sum('amount');
+
+            $paymentAmountSum = Deal::where('contract_id', $contract->id)
+                ->whereIn('purpose', ['Մասնակի վճարում', 'Ամբողջական վճարում'])
+                ->whereDate('date', '<=', $calcToday)
+                ->sum('amount');
+
+            $dynamicProvidedAmount = $providedAmountSum - $paymentAmountSum;
+
+            $contract->setAttribute('provided_amount', $dynamicProvidedAmount);
 
             $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
             $deadlineDate = $contract->deadline ? Carbon::parse($contract->deadline)->startOfDay() : null;

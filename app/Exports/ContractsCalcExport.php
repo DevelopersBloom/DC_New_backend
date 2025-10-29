@@ -25,7 +25,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         'Մայր գումարի մարման ժամկեը'             => 'contract.deadline',
         'Տոկ․ մարման ժամկ․'                     => 'contract.deadline',
         'Պայմանագրի գումար'                     => 'contract.contract_amount',
-        'Տրամադրված գումար'                      => 'contract.provided_amount',
+        'Տրամադրված գումար'                      => 'provided_amount',
         'Տոկոսադրույք'                          => 'contract.interest_rate',
         'Արդ․ տոկոս․'                          => 'contract.effectiveRate',
         'Ժամկետանց գումար'                      => 'contract.overdue_amount',
@@ -52,23 +52,6 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         $this->contracts = $contracts;
     }
 
-//    public function collection(): Collection
-//    {
-//        $transformedContracts = $this->contracts->map(function ($contract) {
-//            return (new ContractDetailResource($contract))->toArray(request());
-//        });
-//
-//        $excelRows = collect();
-//
-//        foreach ($transformedContracts as $contractData) {
-//            $contractRows = $this->transformContractData($contractData);
-//            $excelRows = $excelRows->merge($contractRows);
-//
-//            $excelRows->push(['', '']);
-//        }
-//
-//        return $excelRows;
-//    }
     public function collection(): Collection
     {
         $excelRows = collect();
@@ -77,6 +60,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
 
             $contractData = (new ContractDetailResource($contract))->toArray(request());
 
+            $contractData['provided_amount'] = $contract->provided_amount ?? 0;
 
             $contractData['total_days_provided'] = $contract->total_days_provided ?? '-';
 
