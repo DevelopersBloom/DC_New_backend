@@ -27,36 +27,26 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
     public function headings(): array
     {
         return [
-            'partner_id',
-            'partner_code',
-            'partner_name',
-            'partner_type',
-            'account_id',
-            'account_code',
-            'account_name',
-            'type',
-            'balance',
+            'Գործընկեր',
+            'Անվանում',
+            'Հաշիվ',
+            'Արժույթ',
+            'Հաշվի մնացորդ',
         ];
     }
 
     public function map($row): array
     {
         return [
-            $row->partner_id,
             $row->partner_code,
             $row->partner_name,
-            $row->partner_type,
-            $row->account_id,
             $row->account_code,
-            $row->account_name,
-            $row->type,
+            $row->currency->code,
             $row->balance,
         ];
     }
 
-    /**
-     * Բոլոր բջիջները ձախ-հավասարեցնելու համար
-     */
+
     public function styles(Worksheet $sheet)
     {
         $dimension = $sheet->calculateWorksheetDimension();
