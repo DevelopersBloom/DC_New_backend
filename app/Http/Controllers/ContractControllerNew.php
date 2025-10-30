@@ -619,8 +619,10 @@ class ContractControllerNew extends Controller
             $contract->setAttribute('calc_date', $calcToday);
 
             $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
-                ->orderByRaw("ABS(DATEDIFF(date, '{$calcToday->toDateString()}')) ASC")
+                ->where('date', '<=', $calcToday)
+                ->orderBy('date', 'desc')
                 ->first();
+
 
             if ($closestReserve) {
                 $contract->setAttribute('reserve', $closestReserve->reserve_amount);
