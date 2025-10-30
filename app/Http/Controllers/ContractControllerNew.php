@@ -619,7 +619,7 @@ class ContractControllerNew extends Controller
             $contract->setAttribute('calc_date', $calcToday);
 
             $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
-                ->where('date', '<=', $calcToday->format('Y-m-d'))
+                ->whereDate('date', '<=', $calcToday->format('Y-m-d'))
                 ->orderBy('date', 'desc')
                 ->first();
 
