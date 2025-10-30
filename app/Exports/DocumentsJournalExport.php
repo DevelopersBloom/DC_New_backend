@@ -494,7 +494,7 @@ class DocumentsJournalExport implements
             optional($j->date)->format('Y-m-d'),                    // Ամսաթիվ
             $j->document_number,                                    // Փաստաթղթի N
             $j->document_type,                                      // Փաստաթղթի տեսակ
-            $j->currency?->code,                                    // Արժույթ
+            'AMD',// $j->currency?->code,                                    // Արժույթ
             $j->amount_amd,                                         // Գումար
             $partnerCode,                                           // Գործընկեր կոդ
             $partnerName,                                           // Գործընկեր անվանում

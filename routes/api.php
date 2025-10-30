@@ -150,7 +150,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/documents-journal/{id}/restore', [DocumentJournalController::class, 'restore']);
         Route::delete('/documents-journal/{id}/force', [DocumentJournalController::class, 'forceDestroy']);
 
-        Route::get('/transactions/loan-ndms/export', [DocumentJournalController::class, 'export']);
+        Route::get('/document-journals/export', [DocumentJournalController::class, 'export']);
         Route::delete('/journal/{journal}', [DocumentJournalController::class, 'destroy']);
         Route::put('/journal/{journal}', [DocumentJournalController::class, 'update']);
 
