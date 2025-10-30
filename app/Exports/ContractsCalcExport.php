@@ -33,9 +33,9 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         'Դուրս գրված գումար'                     => 'written_off_total',
         'Ժամկետանց գումարի տոկոս'               => 'contract.overdue_amount_interest',
         'Դուրս գրված ժամկետանց գումարի տոկոս'    => 'contract.written_off_interest',
-        'Պահուստ'                               => 'contract.reserve',
-        'Ռիսկի կշիռ'                            => 'client.risk_weight_percent',
-        'Պահուստավորման տոկոս'                   => 'client.reserve_percent',
+        'Պահուստ'                               => 'reserve',
+        'Ռիսկի կշիռ'                            => 'risk_weight_percent',
+        'Պահուստավորման տոկոս'                   => 'reserve_percent',
         'Ժամկետանց դառնալու ամսաթիվ'             => 'overdue_date_principal',
         'Տոկ․ ժամկ․ դառնալու ամսաթիվ'           => 'overdue_date_interest',
         'Փակման ամսաթիվ'                        => 'contract.closed_at',
@@ -77,13 +77,13 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
                 ->first();
 
             if ($closestReserve) {
-                $contractData['contract']['reserve'] = $closestReserve->reserve_amount;
-                $contractData['client']['risk_weight_percent'] = $closestReserve->risk_weight ?? 0;
-                $contractData['client']['reserve_percent'] = $closestReserve->reserve_percent ?? 0;
+                $contractData['reserve'] = $closestReserve->reserve_amount;
+                $contractData['risk_weight_percent'] = $closestReserve->risk_weight ?? 0;
+                $contractData['reserve_percent'] = $closestReserve->reserve_percent ?? 0;
             } else {
-                $contractData['contract']['reserve'] = 0;
-                $contractData['client']['risk_weight_percent'] = 0;
-                $contractData['client']['reserve_percent'] = 0;
+                $contractData['reserve'] = 0;
+                $contractData['risk_weight_percent'] = 0;
+                $contractData['reserve_percent'] = 0;
             }
 
             $contractRows = $this->transformContractData($contractData);
