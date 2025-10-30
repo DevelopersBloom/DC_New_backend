@@ -133,7 +133,7 @@ class ClientControllerNew extends Controller
 
         $client = Client::with(['contracts' => function ($query) use ($status) {
             $query->where('status', $status);
-        }])->find($clientId);
+        },  'classification' ])->find($clientId);
 
         if (!$client) {
             return response()->json(['error' => 'Client not found'], 404);
@@ -141,7 +141,8 @@ class ClientControllerNew extends Controller
 
         return response()->json([
             'client' => $client,
-            'contracts' => $client->contracts
+            'contracts' => $client->contracts,
+            'classification_title' => $client->classification?->title,
         ]);
     }
 
