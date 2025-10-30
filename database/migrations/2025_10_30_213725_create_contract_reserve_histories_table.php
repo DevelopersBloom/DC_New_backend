@@ -26,8 +26,8 @@ return new class extends Migration
                 ->constrained('contracts')
                 ->onDelete('cascade');
 
-            $table->decimal('risk_weight', 18, 10)->nullable();
-            $table->decimal('reserve_percent', 18, 10)->nullable();
+            $table->decimal('risk_weight', 10, 2)->nullable();
+            $table->decimal('reserve_percent', 10, 2)->nullable();
             $table->decimal('reserve_amount', 18, 10)->nullable();
             $table->decimal('total_reserve_amount', 18, 10)->nullable();
             $table->decimal('provided_amount', 18, 10)->nullable();
