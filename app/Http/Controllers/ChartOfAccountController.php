@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\PartnerAccountBalancesExport;
 use App\Http\Requests\StoreChartOfAccountRequest;
 use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
@@ -9,6 +10,7 @@ use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Excel;
 
 class ChartOfAccountController
 {
@@ -180,4 +182,27 @@ class ChartOfAccountController
         ]);
     }
 
+    public function exportPartnerAccountBalances(Request $request)
+    {
+        $dateTo    = $request->query('to');
+        $partnerId = $request->query('partner_id');
+        $accountId = $request->query('account_id');
+        $search    = $request->query('search');
+
+        $q = $this->partnerAccountBalancesRowsQuery($dateTo)
+            ->when($partnerId, fn($qq) => $qq->where('b.partner_id', $partnerId))
+            ->when($accountId, fn($qq) => $qq->where('b.account_id', $accountId))
+            ->when($search, function ($qq) use ($search) {
+                $qq->where(function($q2) use ($search) {
+                    $q2->where('b.partner_name', 'like', "%{$search}%")
+                        ->orWhere('b.partner_code', 'like', "%{$search}%")
+                        ->orWhere('b.account_code', 'like', "%{$search}%")
+                        ->orWhere('b.account_name', 'like', "%{$search}%");
+                });
+            });
+
+        $rows = $q->get();
+
+        return Excel::download(new PartnerAccountBalancesExport($rows), 'partner_account_balances.xlsx');
+    }
 }

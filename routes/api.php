@@ -124,7 +124,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::delete('/{id}', [ChartOfAccountController::class, 'destroy']);
         });
         Route::get('/accounts/balances', [ChartOfAccountController::class, 'accountBalances']);
+        Route::get('/transactions/account-balance/export', [TransactionController::class, 'exportAccountBalance']);
         Route::get('/accounts/partner-balances',[ChartOfAccountController::class,'partnerAccountBalances']);
+        Route::get('/transactions/partner-balances/export', [ChartOfAccountController::class, 'exportPartnerAccountBalances']);
+
 
         Route::apiResource('posting-rules', PostingRuleController::class);
         Route::apiResource('business-events', BusinessEventController::class);
@@ -141,7 +144,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/loan-ndm/by-journal/{journal}', [LoanNdmController::class, 'get']);
         Route::get('/transactions', [TransactionController::class, 'index']);
         Route::get('/transactions/export', [TransactionController::class, 'export']);
-        Route::get('/transactions/account-balance/export', [TransactionController::class, 'exportAccountBalance']);
 
         Route::get('/transactions/loan-ndms', [DocumentJournalController::class, 'index']);
         Route::get('/documents-journal/trashed', [DocumentJournalController::class, 'trashed']);
