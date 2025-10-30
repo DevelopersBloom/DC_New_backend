@@ -603,7 +603,7 @@ class ContractControllerNew extends Controller
 
             $paymentAmountSum = Deal::where('contract_id', $contract->id)
                 ->whereIn('purpose', ['Մասնակի վճարում', 'Ամբողջական վճարում'])
-                ->whereDate('date', '<=', $calcToday)
+                ->whereDate('date', '<=', $calcToday->format('Y-m-d'))
                 ->sum('amount');
 
             $dynamicProvidedAmount = $providedAmountSum - $paymentAmountSum;
