@@ -603,7 +603,7 @@ class ContractControllerNew extends Controller
 
             $paymentAmountSum = Deal::where('contract_id', $contract->id)
                 ->whereIn('purpose', ['Մասնակի վճարում', 'Ամբողջական վճարում'])
-                ->whereDate('date', '<=', $calcToday->format('Y-m-d'))
+                ->whereDate('date', '<=', $calcToday)
                 ->sum('amount');
 
             $dynamicProvidedAmount = $providedAmountSum - $paymentAmountSum;
@@ -619,7 +619,7 @@ class ContractControllerNew extends Controller
             $contract->setAttribute('calc_date', $calcToday);
 
             $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
-                ->where('date', '<=', $calcToday)
+                ->where('date', '<=', $calcToday->format('Y-m-d'))
                 ->orderBy('date', 'desc')
                 ->first();
 
