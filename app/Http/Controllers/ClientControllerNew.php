@@ -12,6 +12,7 @@ use App\Models\Client;
 use App\Models\ClientClassification;
 use App\Models\ClientPawnshop;
 use App\Models\Contract;
+use App\Models\ContractReserveHistory;
 use App\Models\DocumentJournal;
 use App\Models\Transaction;
 use App\Services\ClientClassificationService;
@@ -324,6 +325,23 @@ class ClientControllerNew extends Controller
                 if ($amount <= 0 && $client->classification->name !== 'loss') {
                     continue;
                 }
+                ContractReserveHistory::create([
+                    'client_id' => $client->id,
+                    'classification_id' => $classification->id,
+                    'contract_id' => $contract->id,
+                    'risk_weight' => $client->classification?->risk_weight ?? 0,
+                    'reserve_percent' => $client->classification?->reserve_percent ?? 0,
+                    'reserve_amount' => $reserveAmount,
+                    'total_reserve_amount' => $amount,
+                    'provided_amount' => $contract->provided_amount,
+                    'date' => now()->toDateString(),
+                    'user_id' => auth()->check() ? auth()->id() : 1,
+                    'meta' => [
+                        'old_reserve_percent' => $oldReservePercent,
+                        'old_reserve_amount' => $oldReserveAmount,
+                    ],
+                ]);
+
 
                 $journal = DocumentJournal::where('journalable_type', Contract::class)
                     ->where('journalable_id', $contract->id)
@@ -341,7 +359,7 @@ class ClientControllerNew extends Controller
                         : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
 
                     // Journal
-                    DocumentJournal::create([
+                    $docJournal = DocumentJournal::create([
                         'date' => now()->toDateString(),
                         'document_number' => $nextDocNum,
                         'document_type' => $documentType,
@@ -372,7 +390,7 @@ class ClientControllerNew extends Controller
                         'is_system' => true,
                         'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id' => $journal->id,
+                        'transactionable_id' => $docJournal->id,
                     ]);
 
                     $nextDocNum++;
@@ -381,7 +399,7 @@ class ClientControllerNew extends Controller
                 if ($client->classification->name === 'loss') {
                     $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
 
-                    DocumentJournal::create([
+                    $lossDoc = DocumentJournal::create([
                         'date' => now()->toDateString(),
                         'document_number' => $nextDocNum,
                         'document_type' => $lossType,
@@ -393,7 +411,7 @@ class ClientControllerNew extends Controller
                         'credit_account_id' => $acc16200NV,
                         'user_id' => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
-                        'journalable_id' => $journal->id,
+                        'journalable_id' => $lossDoc->id,
                     ]);
 
                     Transaction::create([
@@ -420,7 +438,7 @@ class ClientControllerNew extends Controller
                 if ($oldReserveAmount > 0) {
                     $classificationType = DocumentJournal::CLASSIFICATION;
 
-                    DocumentJournal::create([
+                    $classificationDoc = DocumentJournal::create([
                         'date' => now()->toDateString(),
                         'document_number' => $nextDocNum,
                         'document_type' => $classificationType,
@@ -451,7 +469,7 @@ class ClientControllerNew extends Controller
                         'is_system' => true,
                         'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id' => $journal->id,
+                        'transactionable_id' => $classificationDoc->id,
                     ]);
 
                     $nextDocNum++;

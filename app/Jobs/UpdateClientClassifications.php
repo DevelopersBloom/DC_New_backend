@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\Contract;
+use App\Models\ContractReserveHistory;
 use App\Models\DocumentJournal;
 use App\Models\Transaction;
 use App\Services\ClientClassificationService;
@@ -82,6 +83,23 @@ class UpdateClientClassifications implements ShouldQueue
                                 $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
 
                                 $amount = $reserveAmount - $oldReserveAmount;
+
+                                ContractReserveHistory::create([
+                                    'client_id' => $client->id,
+                                    'classification_id' => $classification->id,
+                                    'contract_id' => $contract->id,
+                                    'risk_weight' => $client->classification?->risk_weight ?? 0,
+                                    'reserve_percent' => $reserverPercent,
+                                    'reserve_amount' => $reserveAmount,
+                                    'total_reserve_amount' => $amount,
+                                    'provided_amount' => $contract->provided_amount,
+                                    'date' => now()->toDateString(),
+                                    'user_id' => auth()->check() ? auth()->id() : 1,
+                                    'meta' => [
+                                        'old_reserve_percent' => $oldReservePercent,
+                                        'old_reserve_amount' => $oldReserveAmount,
+                                    ],
+                                ]);
                                 Log::info("amount is { $amount} ");
 
                                 if ($amount <= 0) {
