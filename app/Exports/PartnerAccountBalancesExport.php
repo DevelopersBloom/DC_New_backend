@@ -41,7 +41,7 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
             $row->partner_code,
             $row->partner_name,
             $row->account_code,
-            $row->currency->code,
+            'AMD',
             $row->balance,
         ];
     }
