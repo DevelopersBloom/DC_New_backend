@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Http\Resources\ContractDetailResource;
+use App\Models\ContractReserveHistory;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -70,6 +71,20 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
             $contractData['contract']['calc_date'] = $contract->calc_date
                 ? $contract->calc_date->format('d-m-Y')
                 : '-';
+
+            $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
+                ->orderByRaw("ABS(DATEDIFF(date, '{$contract->calc_date->toDateString()}')) ASC")
+                ->first();
+
+            if ($closestReserve) {
+                $contractData['contract']['reserve'] = $closestReserve->reserve_amount;
+                $contractData['client']['risk_weight_percent'] = $closestReserve->risk_weight ?? 0;
+                $contractData['client']['reserve_percent'] = $closestReserve->reserve_percent ?? 0;
+            } else {
+                $contractData['contract']['reserve'] = 0;
+                $contractData['client']['risk_weight_percent'] = 0;
+                $contractData['client']['reserve_percent'] = 0;
+            }
 
             $contractRows = $this->transformContractData($contractData);
             $excelRows = $excelRows->merge($contractRows);
