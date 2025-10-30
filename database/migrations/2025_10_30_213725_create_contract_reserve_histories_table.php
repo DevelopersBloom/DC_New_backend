@@ -18,7 +18,7 @@ return new class extends Migration
 
             $table->foreignId('classification_id')
                 ->nullable()
-                ->constrained('client_classifications')
+                ->constrained('clients_classification')
                 ->onDelete('set null');
 
             $table->foreignId('contract_id')
