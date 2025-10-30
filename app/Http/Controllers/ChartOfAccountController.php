@@ -10,7 +10,7 @@ use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Excel;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ChartOfAccountController
 {
