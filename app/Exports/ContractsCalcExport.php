@@ -72,8 +72,10 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
                 ? $contract->calc_date->format('d-m-Y')
                 : '-';
 
+
             $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
-                ->orderByRaw("ABS(DATEDIFF(date, '{$contract->calc_date->toDateString()}')) ASC")
+                ->where('date', '<=', $contract->calc_date)
+                ->orderBy('date', 'desc')
                 ->first();
 
             if ($closestReserve) {

@@ -617,22 +617,6 @@ class ContractControllerNew extends Controller
             }
             $contract->setAttribute('total_days_provided', $totalDays);
             $contract->setAttribute('calc_date', $calcToday);
-
-            $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
-                ->whereDate('date', '<=', $calcToday->format('Y-m-d'))
-                ->orderBy('date', 'desc')
-                ->first();
-
-
-            if ($closestReserve) {
-                $contract->setAttribute('reserve', $closestReserve->reserve_amount);
-                $contract->setAttribute('risk_weight_percent', $closestReserve->risk_weight ?? 0);
-                $contract->setAttribute('reserve_percent', $closestReserve->reserve_percent ?? 0);
-            } else {
-                $contract->setAttribute('reserve', 0);
-                $contract->setAttribute('risk_weight_percent', 0);
-                $contract->setAttribute('reserve_percent', 0);
-            }
         });
 
         $fileName = 'Contracts_Export_' . Carbon::now()->format('Ymd_His') . '.xlsx';
