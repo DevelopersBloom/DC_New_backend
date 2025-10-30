@@ -593,7 +593,7 @@ class ContractControllerNew extends Controller
             'payments',
         ])->get();
 
-        $contracts->each(function (Contract $contract) use ($calculationDateInput, $calcToday) {
+        $contracts->each(function (Contract $contract) use ($calcToday) {
             $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 
             $providedAmountSum = Deal::where('contract_id', $contract->id)
@@ -619,7 +619,7 @@ class ContractControllerNew extends Controller
             $contract->setAttribute('calc_date', $calcToday);
 
             $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
-                ->where('date', '<=', $calculationDateInput)
+                ->where('date', '<=', $calcToday->format('Y-m-d'))
                 ->orderBy('date', 'desc')
                 ->first();
 
