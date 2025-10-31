@@ -536,51 +536,6 @@ class ContractControllerNew extends Controller
         }
     }
 
-//    public function exportContractsCalc(Request $request)
-//    {
-//        $calculationDateInput = $request->input('calculation_date');
-//        $calcToday = $calculationDateInput
-//            ? Carbon::parse($calculationDateInput, 'Asia/Yerevan')->startOfDay()
-//            : Carbon::now('Asia/Yerevan')->startOfDay();
-//
-//        $contracts = Contract::with([
-//            'client.classification',
-//            'payments',
-//        ])->get();
-//
-//        $contracts->each(function (Contract $contract) use ($calcToday) {
-//            $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
-//
-//            $providedAmountSum = Deal::where('contract_id', $contract->id)
-//                ->where('purpose', 'ՄԳ տրամադրում')
-//                ->whereDate('date', '<=', $calcToday)
-//                ->sum('amount');
-//
-//            $paymentAmountSum = Deal::where('contract_id', $contract->id)
-//                ->whereIn('purpose', ['Մասնակի վճարում', 'Ամբողջական վճարում'])
-//                ->whereDate('date', '<=', $calcToday)
-//                ->sum('amount');
-//
-//            $dynamicProvidedAmount = $providedAmountSum - $paymentAmountSum;
-//
-//            $contract->setAttribute('provided_amount', $dynamicProvidedAmount);
-//
-//            $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
-//            $deadlineDate = $contract->deadline ? Carbon::parse($contract->deadline)->startOfDay() : null;
-//
-//            $totalDays = 0;
-//            if ($startDate && $deadlineDate && $deadlineDate->greaterThanOrEqualTo($startDate)) {
-//                $totalDays = $deadlineDate->diffInDays($startDate) + 1;
-//            }
-//            $contract->setAttribute('total_days_provided', $totalDays);
-//            $contract->setAttribute('calc_date',$calcToday);
-//
-//        });
-//
-//        $fileName = 'Contracts_Export_' . Carbon::now()->format('Ymd_His') . '.xlsx';
-//
-//        return Excel::download(new ContractsCalcExport($contracts), $fileName);
-//    }
     public function exportContractsCalc(Request $request)
     {
         $calculationDateInput = $request->input('calculation_date');

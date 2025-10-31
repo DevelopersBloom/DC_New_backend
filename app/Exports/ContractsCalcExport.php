@@ -30,7 +30,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         'Տոկոսադրույք'                          => 'contract.interest_rate',
         'Արդ․ տոկոս․'                          => 'contract.effectiveRate',
         'Ժամկետանց գումար'                      => 'contract.overdue_amount',
-        'Դուրս գրված գումար'                     => 'written_off_total',
+        'Դուրս գրված գումար'                     => 'written_off_amount',
         'Ժամկետանց գումարի տոկոս'               => 'contract.overdue_amount_interest',
         'Դուրս գրված ժամկետանց գումարի տոկոս'    => 'contract.written_off_interest',
         'Պահուստ'                               => 'reserve',
@@ -59,11 +59,20 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
 
         foreach ($this->contracts as $contract) {
 
+            $contract->written_off_amount = null;
+
+            if (($contract->client?->classification?->name) === 'loss') {
+                $contract->written_off_amount =
+                    (float)($contract->overdue_interest ?? 0)
+                    + (float)($contract->unearned_interest ?? 0);
+            }
+
             $contractData = (new ContractDetailResource($contract))->toArray(request());
 
             $contractData['provided_amount'] = $contract->provided_amount ?? 0;
 
             $contractData['total_days_provided'] = $contract->total_days_provided ?? '-';
+            $contractData['written_off_amount'] = $contract->written_off_amount ?? 0;
 
             if (!isset($contractData['contract'])) {
                 $contractData['contract'] = [];
@@ -105,7 +114,6 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
         $clientSurname = $contractData['client']['surname'] ?? '';
         $contractData['client_full_name'] = trim($clientName . ' ' . $clientSurname);
 
-        $contractData['written_off_total'] = ($contractData['contract']['overdue_interest'] ?? 0) + ($contractData['contract']['unearned_interest'] ?? 0);
 
         foreach ($this->fieldMapping as $label => $dataKey) {
             $value = $this->getNestedValue($contractData, $dataKey, '-');
