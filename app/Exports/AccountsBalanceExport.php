@@ -11,6 +11,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting
 {
@@ -179,6 +180,16 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
             $row['amount'],
             ''
         ];
+    }
+    public function styles(Worksheet $sheet)
+    {
+        $sheet->getStyle($sheet->calculateWorksheetDimension())
+            ->getAlignment()
+            ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+
+        $sheet->getStyle('A1:O1')->getFont()->setBold(true);
+
+        return [];
     }
 }
 
