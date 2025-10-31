@@ -168,7 +168,6 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
                 'amount' => round($r['amount'], 6),
             ]);
         }
-
         return $rows;
     }
 
