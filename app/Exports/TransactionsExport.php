@@ -86,17 +86,17 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
     public function map($t): array
     {
         return [
-            $t->date,
+            $t->date->format('Y-m-d'),
             $t->document_number,
             $t->document_type,
             optional($t->debitAccount)->code,
             $t->debit_partner_code,
             $t->debit_partner_name,
-            optional($t->debit_currency)->code,
+            optional($t->debitCurrency)->code,
             optional($t->creditAccount)->code,
             $t->credit_partner_code,
             $t->credit_partner_name,
-            optional($t->credit_currency)->code,
+            optional($t->creditCurrency)->code,
             $t->amount_amd,
             '',
             optional($t->user)->name . ' ' . optional($t->user)->surname,
