@@ -174,14 +174,36 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
 
     public function map($row): array
     {
+        $acc = ChartOfAccount::where('code', $row['code'])->first();
+        $type = $acc?->type ?? 'active';
+
+        $amount = $row['amount'];
+
+        $debitAmd = '';
+        $creditAmd = '';
+
+        if ($type === 'active') {
+            if ($amount >= 0) {
+                $debitAmd = $amount;
+            } else {
+                $creditAmd = abs($amount);
+            }
+        } elseif ($type === 'passive') {
+            if ($amount >= 0) {
+                $creditAmd = $amount;
+            } else {
+                $debitAmd = abs($amount);
+            }
+        }
+
         return [
             $row['code'],
             'AMD',
             $row['name'],
             '',
             '',
-            $row['amount'],
-            ''
+            $debitAmd,
+            $creditAmd,
         ];
     }
     public function registerEvents(): array
