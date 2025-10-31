@@ -165,7 +165,7 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
             $rows->push([
                 'code' => $r['code'],
                 'name' => $r['name'],
-                'amount' => round($r['amount'], 0),
+                'amount' => round($r['amount'], 6),
             ]);
         }
 
