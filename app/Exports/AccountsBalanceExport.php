@@ -25,8 +25,12 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             'Հաշիվ',
+            'Արժույթ',
             'Անվանում',
-            'Մնացորդ (դրամ)',
+            'Դեբետ արժ․',
+            'Կրեդիտ արժ․',
+            'Դեբետ Դրամով',
+            'Կրեդիտ Դրամով',
         ];
     }
 
@@ -168,8 +172,12 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             $row['code'],
+            'AMD',
             $row['name'],
+            '',
+            '',
             $row['amount'],
+            ''
         ];
     }
 }
