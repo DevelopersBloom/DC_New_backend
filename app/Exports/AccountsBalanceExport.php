@@ -155,7 +155,7 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
             $rows->push([
                 'code' => $code5,
                 'name' => (string)($base5Names[$code5] ?? ''),
-                'amount' => round($amount, 0),
+                'amount' => round($amount, 6),
             ]);
         }
 
