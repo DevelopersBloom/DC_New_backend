@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -35,12 +37,12 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
         ];
     }
 
-    public function columnFormats(): array
-    {
-        return [
-            'C' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-        ];
-    }
+//    public function columnFormats(): array
+//    {
+//        return [
+//            'C' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+//        ];
+//    }
 
     public function collection(): Collection
     {
@@ -181,15 +183,25 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
             ''
         ];
     }
-    public function styles(Worksheet $sheet)
+    public function registerEvents(): array
     {
-        $sheet->getStyle($sheet->calculateWorksheetDimension())
-            ->getAlignment()
-            ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $sheet = $event->sheet->getDelegate();
 
-        $sheet->getStyle('A1:O1')->getFont()->setBold(true);
+                foreach (range('A', 'G') as $col) {
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                }
+                $highestRow = $sheet->getHighestRow();
+                foreach (range('A', 'G') as $col) {
+                    $sheet->getStyle("{$col}1:{$col}{$highestRow}")
+                        ->getAlignment()
+                        ->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                }
 
-        return [];
+                $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+            },
+        ];
     }
 }
 
