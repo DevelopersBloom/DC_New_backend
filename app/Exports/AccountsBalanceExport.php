@@ -182,17 +182,24 @@ class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping
         $debitAmd = '';
         $creditAmd = '';
 
-        if ($type === 'active') {
-            if ($amount >= 0) {
-                $debitAmd = $amount;
-            } else {
-                $creditAmd = abs($amount);
-            }
-        } elseif ($type === 'passive') {
+//        if ($type === 'active') {
+//            if ($amount >= 0) {
+//                $debitAmd = $amount;
+//            } else {
+//                $creditAmd = abs($amount);
+//            }
+//        }
+        if ($type === 'passive') {
             if ($amount >= 0) {
                 $creditAmd = $amount;
             } else {
                 $debitAmd = abs($amount);
+            }
+        } else {
+            if ($amount >= 0) {
+                $debitAmd = $amount;
+            } else {
+                $creditAmd = abs($amount);
             }
         }
 
