@@ -45,7 +45,7 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
         $acc = ChartOfAccount::where('code', $row->account_code)->first();
         $type = $acc?->type ?? 'active';
 
-        $amount = $row['amount'];
+        $amount = $row->balance;
 
         $debitAmd = '';
         $creditAmd = '';
