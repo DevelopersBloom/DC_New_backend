@@ -65,42 +65,42 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
     public function headings(): array
     {
         return [
-            'ID',
             'Ամսաթիվ',
             'Փաստաթղթի համար',
             'Փաստաթղթի տեսակ',
-            'Գումար (AMD)',
-            'Գումար (արտարժույթ)',
-            'Արտարժույթի կոդ',
-            'Դեբետ հաշիվ',
-            'Կրեդիտ հաշիվ',
-            'Օգտատեր',
-            'Դեբետ արժույթ',
-            'Կրեդիտ արժույթ',
-            'Համակարգային',
-            'Դեբետ գործընկեր',
-            'Կրեդիտ գործընկեր',
+            'Դեբետ Հաշիվ',
+            'Դեբետ գործ․ կոդ',
+            'Դեբետ գործ․ անվանում',
+            'Դեբետ արժ․',
+            'Կրեդիտ Հաշիվ',
+            'Կրեդիտ Գործ․ կոդ',
+            'Կրեդիտ Գործ․ անվանում',
+            'Կրեդիտ արժ․',
+            'Գումար դրամով',
+            'Գումար արժ․Մեկնաբանություն',
+            'Օգտագործող',
+            'Համակարգչային',
         ];
     }
 
     public function map($t): array
     {
         return [
-            $t->id,
             $t->date,
             $t->document_number,
             $t->document_type,
-            $t->amount_amd,
-            $t->amount_currency,
-            optional($t->amountCurrencyRelation)->code,
             optional($t->debitAccount)->code,
+            $t->debit_partner_code,
+            $t->debit_partner_name,
+            optional($t->debit_currency)->code,
             optional($t->creditAccount)->code,
+            $t->credit_partner_code,
+            $t->credit_partner_name,
+            optional($t->credit_currency)->code,
+            $t->amount_amd,
+            '',
             optional($t->user)->name . ' ' . optional($t->user)->surname,
-            optional($t->debitCurrency)->code,
-            optional($t->creditCurrency)->code,
             $t->is_system ? 'Այո' : 'Ոչ',
-            optional($t->debitPartner)->company_name ?? optional($t->debitPartner)->name . ' ' . optional($t->debitPartner)->surname,
-            optional($t->creditPartner)->company_name ?? optional($t->creditPartner)->name . ' ' .optional($t->creditPartner)->surname,
         ];
     }
     public function styles(Worksheet $sheet)

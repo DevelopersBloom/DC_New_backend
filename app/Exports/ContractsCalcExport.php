@@ -76,7 +76,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
 
             $contractData['provided_amount'] = $contract->provided_amount ?? 0;
 
-            $contractData['total_days_provided'] = $contract->total_days_provided ?? '-';
+            $contractData['total_days_provided'] = $contract->total_days_provided ?? '';
             $contractData['written_off_amount'] = $contract->written_off_amount ?? 0;
 
             if (!isset($contractData['contract'])) {
@@ -84,7 +84,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
             }
             $contractData['contract']['calc_date'] = $contract->calc_date
                 ? $contract->calc_date->format('d-m-Y')
-                : '-';
+                : '';
 
 
             $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
@@ -121,7 +121,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize{
 
 
         foreach ($this->fieldMapping as $label => $dataKey) {
-            $value = $this->getNestedValue($contractData, $dataKey, '-');
+            $value = $this->getNestedValue($contractData, $dataKey, '');
 
             if ($label === 'Արժ․') {
                 $value = 'դրամ';
