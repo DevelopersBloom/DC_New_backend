@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\AccountsBalanceExport;
+use App\Exports\AccountsBalanceReportExport;
+use App\Exports\AccountsBalancesExport;
 use App\Exports\TransactionsExport;
 use App\Models\Transaction;
 use App\Traits\CalculatesAccountBalancesTrait;
@@ -59,15 +60,20 @@ class TransactionController
         return response()->json($transactions);
     }
 
-    public function exportAccountBalance(Request $request)
+    public function exportAccountBalanceReport(Request $request)
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
 
         return Excel::download(
-            new AccountsBalanceExport($from, $to),
+            new AccountsBalanceReportExport($from, $to),
             'ՀաշիվներիՄնացորդ.xlsx'
         );
+    }
+    public function exportAccountBalances(Request $request)
+    {
+        $to = $request->query('to');
+        return Excel::download(new AccountsBalancesExport($to), 'account_balances.xlsx');
     }
     public function export(Request $request)
     {

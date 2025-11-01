@@ -16,7 +16,7 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AccountsBalanceExport implements FromCollection, WithHeadings, WithMapping,WithEvents
+class AccountsBalanceReportExport implements FromCollection, WithHeadings, WithMapping,WithEvents
 {
     public function __construct(
         protected ?string $from = null,
