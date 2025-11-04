@@ -416,7 +416,7 @@ class ClientControllerNew extends Controller
                         'credit_account_id' => $acc16200NV,
                         'user_id' => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
-                        'journalable_id' => $lossDoc->id,
+                        'journalable_id' => $journal->id,
                     ]);
 
                     Transaction::create([
@@ -435,7 +435,7 @@ class ClientControllerNew extends Controller
                         'is_system' => true,
                         'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id' => $journal->id,
+                        'transactionable_id' => $lossDoc->id,
                     ]);
 
                     $nextDocNum++;
