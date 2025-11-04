@@ -277,6 +277,9 @@ class ContractControllerNew extends Controller
             $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
             $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
 
+            $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
+            $reserveCreditAccount = $client?->classification->name == 'standart' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
+
             $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
             $debetPartnerId = $contract->client_id;
 
@@ -321,6 +324,56 @@ class ContractControllerNew extends Controller
                 'transactionable_type' => DocumentJournal::class,
                 'transactionable_id'   => $journalDoc->id,
             ]);
+            $reservePercent = $client?->classification->reserve_percent ?? 0;
+            $reserveAmount = $reservePercent/100 * $contract->provided_amount;
+            if ($reserveAmount > 0)
+            {
+                $nextDocNum++;
+
+                $reserveDocumentType = $client->classification->name == 'standart' ?
+                    DocumentJournal::RESERVE_GENERAL_AMOUNT: DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+
+                $reserveJournal = DocumentJournal::create([
+                        'date'               => $contract->date,
+                        'document_number'    => $nextDocNum,
+                        'document_type'      => $reserveDocumentType,
+                        'amount_amd'         => $reserveAmount,
+                        'partner_id'         => $debetPartnerId,
+                        'credit_partner_id'  => $creditPartnerId,
+                        'comment'            => "General reserve for contract #{$contract->id} on disbursement",
+                        'debit_account_id'   => $acc73015,
+                        'credit_account_id'  => $reserveCreditAccount,
+                        'user_id'            => auth()->id(),
+                        'journalable_type'   => Contract::class,
+                        'journalable_id'     => $contract->id,
+                    ]);
+
+                Transaction::create([
+                    'date'               => $contract->date,
+                    'document_number'    => $nextDocNum,
+                    'document_type'      => $reserveDocumentType,
+
+                    'debit_account_id'   => $acc73015,
+                    'debit_partner_id'   => $debetPartnerId,
+                    'debit_currency_id'  => 1,
+
+                    'credit_account_id'  => $reserveCreditAccount,
+                    'credit_currency_id' => 1,
+                    'credit_partner_id'  => $creditPartnerId,
+
+                    'amount_amd'         => $reserveAmount,
+
+                    'comment'            => "General reserve for contract #{$contract->id}",
+                    'user_id'            => auth()->id(),
+                    'is_system'          => true,
+
+                    'disbursement_date'    => $contract->date->toDateString(),
+                    'transactionable_type' => DocumentJournal::class,
+                    'transactionable_id'   => $reserveJournal->id,
+                ]);
+
+            }
+
 
             auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;
             auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;
