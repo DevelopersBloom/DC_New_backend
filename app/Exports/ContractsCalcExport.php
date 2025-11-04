@@ -179,48 +179,47 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-class ContractsCalcExport implements FromCollection, WithHeadings, WithStyles, ShouldAutoSize
+class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
 {
     protected Collection $contracts;
 
     protected array $fieldMapping = [
-        'Պայմանագրի մնացորդ առ'                  => 'contract.calc_date',
-        'Պայմանագրի N'                           => 'contract.num',
-        'Հաճախորդի կոդ'                          => 'client.id',
-        'Անվանում'                              => 'client_full_name',
-        'Կապակցված է ընկերությանը'             => 'client.is_linked_to_company',
-        'Ընկերության աշխատակից է'               => 'client.is_company_employee',
-        'Արժ․'                                 => 'currency',
-        'Կնքման ամսաթիվ'                        => 'contract.date',
-        'Հստակեցման ամսաթիվ'                    => 'contract.date',
-        'Մայր գումարի մարման ժամկեը'             => 'contract.deadline',
-        'Տոկ․ մարման ժամկ․'                     => 'contract.deadline',
-        'Պայմանագրի գումար'                     => 'contract.contract_amount',
-        'Տրամադրված գումար'                      => 'provided_amount',
-        'Տոկոսադրույք'                          => 'contract.interest_rate',
-        'Արդ․ տոկոս․'                          => 'contract.effectiveRate',
-        'Ժամկետանց գումար'                      => 'contract.overdue_amount',
-        'Դուրս գրված գումար'                     => 'written_off_amount',
+        'Պայմանագրի N' => 'contract.num',
+        'Հաճախորդի կոդ' => 'client.id',
+        'Անվանում' => 'client_full_name',
+        'Կապակցված է ընկերությանը' => 'client.is_linked_to_company',
+        'Ընկերության աշխատակից է' => 'client.is_company_employee',
+        'Արժ․' => 'currency',
+        'Կնքման ամսաթիվ' => 'contract.date',
+        'Հստակեցման ամսաթիվ' => 'contract.date',
+        'Մայր գումարի մարման ժամկեը' => 'contract.deadline',
+        'Տոկ․ մարման ժամկ․' => 'contract.deadline',
+        'Պայմանագրի գումար' => 'contract.contract_amount',
+        'Տրամադրված գումար' => 'provided_amount',
+        'Տոկոսադրույք' => 'contract.interest_rate',
+        'Արդ․ տոկոս․' => 'contract.effectiveRate',
+        'Ժամկետանց գումար' => 'contract.overdue_amount',
+        'Դուրս գրված գումար' => 'written_off_amount',
         'Տոկոս' => 'contract.calculatedInterest',
         'Արդյունավետ տոկոս' => 'contract.calculatedEffectiveInterest',
         'Չվաստակած տոկոս' => 'contract.unearned_interest',
         'Ժամկետանց տոկոս' => 'contract.overdue_interest',
         'Դուրս գրված տոկոս' => 'contract.written_off_interest',
-        'Ժամկետանց գումարի տոկոս'               => 'contract.overdue_amount_interest',
-        'Դուրս գրված ժամկետանց գումարի տոկոս'    => 'contract.written_off_interest',
-        'Պահուստ'                               => 'reserve',
-        'Ռիսկի կշիռ'                            => 'risk_weight_percent',
-        'Պահուստավորման տոկոս'                   => 'reserve_percent',
-        'Ժամկետանց դառնալու ամսաթիվ'             => 'overdue_date_principal',
-        'Տոկ․ ժամկ․ դառնալու ամսաթիվ'           => 'overdue_date_interest',
-        'Փակման ամսաթիվ'                        => 'contract.closed_at',
-        'Տրամադրման օրերի քանակ'                 => 'total_days_provided',
-        'Մնացորդային մարման օրերի քանակ'         => 'contract.remaining_repayment_days',
-        'Գրավի գումար'                         => 'contract.contract_amount',
-        'Ռեզ․'                                 => 'client.residency_status',
-        'ՀՎՀՀ'                                 => 'client.tax_number',
-        'ՀԾՀ'                                  => 'client.social_card_number',
-        'Նույնականացուցիչ(BankID)'              => 'client.bank_client_id',
+        'Ժամկետանց գումարի տոկոս' => 'contract.overdue_amount_interest',
+        'Դուրս գրված ժամկետանց գումարի տոկոս' => 'contract.written_off_interest',
+        'Պահուստ' => 'reserve',
+        'Ռիսկի կշիռ' => 'risk_weight_percent',
+        'Պահուստավորման տոկոս' => 'reserve_percent',
+        'Ժամկետանց դառնալու ամսաթիվ' => 'overdue_date_principal',
+        'Տոկ․ ժամկ․ դառնալու ամսաթիվ' => 'overdue_date_interest',
+        'Փակման ամսաթիվ' => 'contract.closed_at',
+        'Տրամադրման օրերի քանակ' => 'total_days_provided',
+        'Մնացորդային մարման օրերի քանակ' => 'contract.remaining_repayment_days',
+        'Գրավի գումար' => 'contract.contract_amount',
+        'Ռեզ․' => 'client.residency_status',
+        'ՀՎՀՀ' => 'client.tax_number',
+        'ՀԾՀ' => 'client.social_card_number',
+        'Նույնականացուցիչ(BankID)' => 'client.bank_client_id',
     ];
 
     public function __construct(Collection $contracts)
@@ -228,23 +227,23 @@ class ContractsCalcExport implements FromCollection, WithHeadings, WithStyles, S
         $this->contracts = $contracts;
     }
 
-    /**
-     * Headings: վերցնում ենք fieldMapping-ի բանալիները
-     */
-    public function headings(): array
-    {
-        return array_keys($this->fieldMapping);
-    }
-
-    /**
-     * Collection՝ յուրաքանչյուր պայմանագրի համար մեկ հորիզոնական row
-     */
     public function collection(): Collection
     {
         $rows = collect();
 
+        // Առաջին երկու տող՝ "Պայմանագրի մնացորդ առ" և դրա արժեքը
+        $firstContract = $this->contracts->first();
+        $balance = $firstContract ? $firstContract->calc_date?->format('d-m-Y') : '';
+
+        $rows->push(['Պայմանագրի մնացորդ առ']);  // 1-ին տող՝ header
+        $rows->push([$balance]);                    // 2-րդ տող՝ արժեք
+
+        // 3-րդ տողից սկսած՝ մյուս սյուների header
+        $headers = array_keys($this->fieldMapping);
+        $rows->push($headers);
+
+        // Այստեղից ավելացնենք contracts-ի տվյալները
         foreach ($this->contracts as $contract) {
-            // հաշվենք կամ խմբագրենք տեղերում պահանջվող գնահատականները
             $contract->written_off_amount = null;
             if (($contract->client?->classification?->name) === 'loss') {
                 $contract->written_off_amount =
@@ -253,7 +252,6 @@ class ContractsCalcExport implements FromCollection, WithHeadings, WithStyles, S
             }
 
             $contractData = (new ContractDetailResource($contract))->toArray(request());
-
             $contractData['provided_amount'] = $contract->provided_amount ?? 0;
             $contractData['total_days_provided'] = $contract->total_days_provided ?? '';
             $contractData['written_off_amount'] = $contract->written_off_amount ?? 0;
@@ -280,35 +278,27 @@ class ContractsCalcExport implements FromCollection, WithHeadings, WithStyles, S
                 $contractData['reserve_percent'] = 0;
             }
 
-            // Ստեղծել մեկ հորիզոնական շարք՝ ըստ fieldMapping հաջորդականության
-            $row = [];
-            // լրացնենք client_full_name առանց transform ֆունկցիայի
+            // client_full_name
             $clientName = $contractData['client']['name'] ?? '';
             $clientSurname = $contractData['client']['surname'] ?? '';
             $contractData['client_full_name'] = trim($clientName . ' ' . $clientSurname);
 
+            $row = [];
             foreach ($this->fieldMapping as $label => $dataKey) {
                 $value = $this->getNestedValue($contractData, $dataKey, '');
-
-                // պարզ հարաբերածություններ (դեմո՝ արժույթը, boolean)
                 if ($label === 'Արժ․') {
                     $value = 'դրամ';
                 } elseif ($dataKey === 'client.is_linked_to_company' || $dataKey === 'client.is_company_employee') {
                     $value = (bool)$value ? 'Այո' : 'Ոչ';
                 }
-
                 $row[] = $value;
             }
-
             $rows->push($row);
         }
 
         return $rows;
     }
 
-    /**
-     * Dotted-key accessor
-     */
     protected function getNestedValue(array $data, string $key, $default = null)
     {
         if (array_key_exists($key, $data)) {
@@ -325,15 +315,14 @@ class ContractsCalcExport implements FromCollection, WithHeadings, WithStyles, S
         return $data;
     }
 
-    /**
-     * Styles: header boldy, տվյալները ձախ տված
-     */
     public function styles(Worksheet $sheet)
     {
         $highestColumn = $sheet->getHighestColumn();
-        $headerRange = 'A1:' . $highestColumn . '1';
+        $maxRow = $sheet->getHighestRow();
 
-        $sheet->getStyle($headerRange)->applyFromArray([
+        $sheet->getStyle('A1')->applyFromArray(['font' => ['bold' => true]]);
+
+        $sheet->getStyle('A3:' . $highestColumn . '3')->applyFromArray([
             'font' => ['bold' => true],
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
@@ -341,14 +330,9 @@ class ContractsCalcExport implements FromCollection, WithHeadings, WithStyles, S
             ],
         ]);
 
-        $maxRow = $sheet->getHighestRow();
-        if ($maxRow >= 2) {
-            $dataRange = 'A2:' . $highestColumn . $maxRow;
-            $sheet->getStyle($dataRange)->applyFromArray([
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_LEFT,
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                ],
+        if ($maxRow > 3) {
+            $sheet->getStyle('A4:' . $highestColumn . $maxRow)->applyFromArray([
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
             ]);
         }
     }
