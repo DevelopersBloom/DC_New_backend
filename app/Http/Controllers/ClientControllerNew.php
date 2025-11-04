@@ -302,13 +302,16 @@ class ClientControllerNew extends Controller
 
         DB::beginTransaction();
         try {
+            $oldClassificationName = $client->classification?->name;
+            $oldClassificationOrder = $client->classification?->order;
+
             $oldReservePercent = $client->classification?->reserve_percent ?? 0;
 
             $client->classification_id = $newClassificationId;
             $client->save();
             $client->load('classification');
             $newReservePercent = $client->classification?->reserve_percent ?? 0;
-
+            $newClassificationOrder =  $client->classification?->order;
             $debetPartnerId = $client->id;
             $creditPartnerId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
@@ -352,6 +355,7 @@ class ClientControllerNew extends Controller
                 if ($amount > 0) {
                     $debetAllocation = $acc73015;
                     $creditAllocation = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
+
                     $debetClassification = $client->classification->name === 'standard' ? $acc16605PS : $acc16605PC;
                     $creditClassification = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
 
@@ -436,7 +440,8 @@ class ClientControllerNew extends Controller
 
                     $nextDocNum++;
                 }
-                if ($oldReserveAmount > 0) {
+
+                if ($oldReserveAmount > 0 && $oldClassificationName == 'standard') {
                     $classificationType = DocumentJournal::CLASSIFICATION;
 
                     $classificationDoc = DocumentJournal::create([
