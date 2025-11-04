@@ -344,8 +344,8 @@ class ContractControllerNew extends Controller
                         'debit_account_id'   => $acc73015,
                         'credit_account_id'  => $reserveCreditAccount,
                         'user_id'            => auth()->id(),
-                        'journalable_type'   => Contract::class,
-                        'journalable_id'     => $contract->id,
+                        'journalable_type'   => DocumentJournal::class,
+                        'journalable_id'     => $journalDoc->id,
                     ]);
 
                 Transaction::create([
