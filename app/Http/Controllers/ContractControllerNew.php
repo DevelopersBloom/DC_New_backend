@@ -278,7 +278,7 @@ class ContractControllerNew extends Controller
             $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
 
             $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
-            $reserveCreditAccount = $client?->classification->name == 'standart' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
+            $reserveCreditAccount = $client?->classification->name == 'standard' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
 
             $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
             $debetPartnerId = $contract->client_id;
@@ -330,7 +330,7 @@ class ContractControllerNew extends Controller
             {
                 $nextDocNum++;
 
-                $reserveDocumentType = $client->classification->name == 'standart' ?
+                $reserveDocumentType = $client->classification->name == 'standard' ?
                     DocumentJournal::RESERVE_GENERAL_AMOUNT: DocumentJournal::RESERVE_SPECIAL_AMOUNT;
 
                 $reserveJournal = DocumentJournal::create([
