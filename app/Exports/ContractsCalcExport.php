@@ -173,7 +173,6 @@ use App\Http\Resources\ContractDetailResource;
 use App\Models\ContractReserveHistory;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -231,18 +230,15 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
     {
         $rows = collect();
 
-        // Առաջին երկու տող՝ "Պայմանագրի մնացորդ առ" և դրա արժեքը
         $firstContract = $this->contracts->first();
         $balance = $firstContract ? $firstContract->calc_date?->format('d-m-Y') : '';
 
-        $rows->push(['Պայմանագրի մնացորդ առ']);  // 1-ին տող՝ header
-        $rows->push([$balance]);                    // 2-րդ տող՝ արժեք
+        $rows->push(['Պայմանագրի մնացորդ առ']);
+        $rows->push([$balance]);
 
-        // 3-րդ տողից սկսած՝ մյուս սյուների header
         $headers = array_keys($this->fieldMapping);
         $rows->push($headers);
 
-        // Այստեղից ավելացնենք contracts-ի տվյալները
         foreach ($this->contracts as $contract) {
             $contract->written_off_amount = null;
             if (($contract->client?->classification?->name) === 'loss') {

@@ -58,6 +58,7 @@ class UpdateClientClassifications implements ShouldQueue
                         Log::info("calculated maxOverdue is {$maxOverdue} ");
 
                         if ($client->classification_id !== $classification->id) {
+                            $oldClassificationName = $client->classification?->name;
 
                             $oldReservePercent = $client->classification?->reserve_percent ?? 0;
                             Log::info("old reserve percent is {$oldReservePercent} ");
@@ -150,7 +151,7 @@ class UpdateClientClassifications implements ShouldQueue
 
                                     'disbursement_date'    => now()->toDateString(),
                                     'transactionable_type' => DocumentJournal::class,
-                                    'transactionable_id'   => $journal->id,
+                                    'transactionable_id'   => $journalDoc->id,
                                 ]);
                                 $nextDocNum++;
                                 if ($client->classification->name == 'loss')
@@ -158,7 +159,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
                                     $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
 
-                                    $journalDocoss = DocumentJournal::create([
+                                    $journaLoss = DocumentJournal::create([
                                         'date'               => now()->toDateString(),
                                         'document_number'    => $nextDocNum,
                                         'document_type'      => $lossType,
@@ -193,12 +194,12 @@ class UpdateClientClassifications implements ShouldQueue
 
                                         'disbursement_date'    => now()->toDateString(),
                                         'transactionable_type' => DocumentJournal::class,
-                                        'transactionable_id'   => $journal->id,
+                                        'transactionable_id'   => $journaLoss->id,
                                     ]);
                                     $nextDocNum++;
                                 }
 
-                                if ($oldReserveAmount > 0) {
+                                if ($oldReserveAmount > 0 && $oldClassificationName == 'standard') {
                                     $classificationType = DocumentJournal::CLASSIFICATION;
 
                                     $journalDoc = DocumentJournal::create([
@@ -236,7 +237,7 @@ class UpdateClientClassifications implements ShouldQueue
 
                                         'disbursement_date'    => now()->toDateString(),
                                         'transactionable_type' => DocumentJournal::class,
-                                        'transactionable_id'   => $journal->id,
+                                        'transactionable_id'   => $journalDoc->id,
                                     ]);
                                 }
 

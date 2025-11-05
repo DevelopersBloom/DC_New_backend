@@ -240,14 +240,16 @@ class ReportV01Controller extends Controller
 
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
-        $toStr = "2035-12-10"; //for test
+        $toStr = $request->query('to') ?? now()->format('Y-m-d');
+        $from = $request->query('from');
+
         if (!$toStr) {
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
 
-        $rawRows = $this->balancesRowsQuery($toStr)->get();
+        $rawRows = $this->balancesRowsQuery($from,$toStr)->get();
         $rows = $this->transformToReport1($rawRows)->values();
-        $this->summary = $this->balancesSummary($toStr) ?? [];
+        $this->summary = $this->balancesSummary($from,$toStr) ?? [];
 
         $templatePath = base_path('v01.xlsm');
 
