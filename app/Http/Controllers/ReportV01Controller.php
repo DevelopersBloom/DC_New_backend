@@ -247,9 +247,9 @@ class ReportV01Controller extends Controller
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
 
-        $rawRows = $this->balancesRowsQuery($from,$toStr)->get();
+        $rawRows = $this->balancesRowsQuery($toStr)->get();
         $rows = $this->transformToReport1($rawRows)->values();
-        $this->summary = $this->balancesSummary($from,$toStr) ?? [];
+        $this->summary = $this->balancesSummary($toStr) ?? [];
 
         $templatePath = base_path('v01.xlsm');
 
