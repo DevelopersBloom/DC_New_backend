@@ -118,11 +118,16 @@ class DocumentJournal extends Model
                         LoanNdm::query()->whereKey($ndmId)->update(['calc_date' => $calcDate]);
                     }
 
-                } elseif (in_array($journal->document_type, [
-                    self::INTEREST_REPAYMENT,
-                    self::LOAN_REPAYMENT,
-                    self::TAX_REPAYMENT,
-                ], true)) {
+                }
+//                elseif (in_array($journal->document_type, [
+//                    self::INTEREST_REPAYMENT,
+//                    self::LOAN_REPAYMENT,
+//                    self::TAX_REPAYMENT,
+//                ], true)) {
+//                    $journal->transactions()->delete();
+//                    $journal->journals()->delete();
+//                }
+                else {
                     $journal->transactions()->delete();
                     $journal->journals()->delete();
                 }
