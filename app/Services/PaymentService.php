@@ -424,7 +424,7 @@ class PaymentService {
 
             'disbursement_date'    =>  $date,
             'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journal->id,
+            'transactionable_id'   => $journalDoc->id,
         ]);
 
         $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
@@ -468,7 +468,7 @@ class PaymentService {
 
             'disbursement_date'    =>  $date,
             'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journal->id,
+            'transactionable_id'   => $journalDoc->id,
         ]);
 
         return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history,$deal_id,$date);
@@ -598,7 +598,7 @@ class PaymentService {
 
             'disbursement_date'    =>  $date,
             'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journal->id,
+            'transactionable_id'   => $journalDoc->id,
         ]);
 
         return [
