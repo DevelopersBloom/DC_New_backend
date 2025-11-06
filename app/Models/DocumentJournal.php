@@ -130,6 +130,7 @@ class DocumentJournal extends Model
                 else {
                     $journal->transactions()->delete();
                     $journal->journals()->delete();
+                    $journal->contracts()->delete();
                 }
             });
         });
@@ -253,6 +254,9 @@ class DocumentJournal extends Model
     }
     public function journals() {
         return $this->morphMany(self::class, 'journalable');
+    }
+    public function contracts() {
+        return $this->morphMany(Contract::class, 'contractable');
     }
 
     public function currency(): BelongsTo
