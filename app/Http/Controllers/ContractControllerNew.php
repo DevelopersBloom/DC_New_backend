@@ -256,7 +256,18 @@ class ContractControllerNew extends Controller
             $contract->date = Carbon::now();
             $contract->save();
             $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
-
+            $classification = $client->classification;
+            if (!$classification) {
+                $defaultClassification = ClientClassification::where('name', 'standard')->first();
+                if ($defaultClassification) {
+                    $client->classification_id = $defaultClassification->id;
+                    $client->save();
+                    $client->load('classification');
+                    $classification = $client->classification;
+                } else {
+                    throw new \Exception("Default classification 'standard' not found!");
+                }
+            }
             $this->contractService->createPayment($contract);
 
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
@@ -286,18 +297,7 @@ class ContractControllerNew extends Controller
 
             $client->loadMissing('classification');
 
-            $classification = $client->classification;
-            if (!$classification) {
-                $defaultClassification = ClientClassification::where('name', 'standard')->first();
-                if ($defaultClassification) {
-                    $client->classification_id = $defaultClassification->id;
-                    $client->save();
-                    $client->load('classification'); // reload relation
-                    $classification = $client->classification;
-                } else {
-                    throw new \Exception("Default classification 'standard' not found!");
-                }
-            }
+
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
             $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
 
