@@ -284,19 +284,18 @@ class ContractControllerNew extends Controller
             $clientId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
             $diamondId = $contract->client_id;
 
-            $classification = $client->classification;
-dd($classification);
-            if (!$classification) {
-                dd(1);
-                $defaultClassification = ClientClassification::where('name', 'standard')->first();
+            $client->loadMissing('classification');
 
+            $classification = $client->classification;
+            if (!$classification) {
+                $defaultClassification = ClientClassification::where('name', 'standard')->first();
                 if ($defaultClassification) {
                     $client->classification_id = $defaultClassification->id;
                     $client->save();
-                    $client->load('classification');
-
+                    $client->load('classification'); // reload relation
+                    $classification = $client->classification;
                 } else {
-                    Log::warning("Default classification 'standart' not found for client #{$client->id}");
+                    throw new \Exception("Default classification 'standard' not found!");
                 }
             }
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
