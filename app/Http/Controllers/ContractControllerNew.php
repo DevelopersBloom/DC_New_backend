@@ -339,13 +339,13 @@ class ContractControllerNew extends Controller
                 'transactionable_type' => DocumentJournal::class,
                 'transactionable_id'   => $journalDoc->id,
             ]);
-            $reservePercent = $client?->classification->reserve_percent ?? 0;
+            $reservePercent = $classification->reserve_percent ?? 0;
             $reserveAmount = $reservePercent/100 * $contract->provided_amount;
             if ($reserveAmount > 0)
             {
                 $nextDocNum++;
 
-                $reserveDocumentType = $client->classification->name == 'standard' ?
+                $reserveDocumentType = $classification->name == 'standard' ?
                     DocumentJournal::RESERVE_GENERAL_AMOUNT: DocumentJournal::RESERVE_SPECIAL_AMOUNT;
 
                 $reserveJournal = DocumentJournal::create([
