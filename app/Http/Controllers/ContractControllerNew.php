@@ -11,6 +11,7 @@ use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
+use App\Models\ClientClassification;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\ContractReserveHistory;
@@ -283,6 +284,18 @@ class ContractControllerNew extends Controller
             $clientId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
             $diamondId = $contract->client_id;
 
+            $classification = $client->classification;
+
+            if (!$classification) {
+                $defaultClassification = ClientClassification::where('name', 'standard')->first();
+
+                if ($defaultClassification) {
+                    $client->classification_id = $defaultClassification->id;
+                    $client->save();
+                } else {
+                    Log::warning("Default classification 'standart' not found for client #{$client->id}");
+                }
+            }
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
             $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
 
