@@ -287,6 +287,7 @@ class ContractControllerNew extends Controller
             $classification = $client->classification;
 
             if (!$classification) {
+                dd(1);
                 $defaultClassification = ClientClassification::where('name', 'standard')->first();
 
                 if ($defaultClassification) {
