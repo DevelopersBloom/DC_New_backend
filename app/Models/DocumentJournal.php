@@ -130,10 +130,10 @@ class DocumentJournal extends Model
                 else {
                     $journal->transactions()->delete();
                     $journal->journals()->delete();
-                    $related = $journal->journalable;
-                    if ($related) {
-                        $related->delete();
-                    }
+//                    $related = $journal->journalable;
+//                    if ($related) {
+//                        $related->delete();
+//                    }
                 }
             });
         });
