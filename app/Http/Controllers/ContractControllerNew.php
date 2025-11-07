@@ -241,8 +241,8 @@ class ContractControllerNew extends Controller
             'contract_id' => 'required|integer|exists:contracts,id',
         ]);
 
-        DB::beginTransaction();
-        try {
+//        DB::beginTransaction();
+//        try {
             $contract = Contract::findOrFail($validatedData['contract_id']);
             $contract->payments()->forcedelete();
             $client = $contract->client;
@@ -279,7 +279,7 @@ class ContractControllerNew extends Controller
             $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
 
             $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
-            $reserveCreditAccount = $client?->classification->name == 'standard' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
+            $reserveCreditAccount = $client->classification->name == 'standard' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
 
             $clientId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
             $diamondId = $contract->client_id;
@@ -398,13 +398,13 @@ class ContractControllerNew extends Controller
                 'message' => 'Contract amount paid successfully',
                 'contract_id' => $contract->id,
             ], 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'message' => 'Error processing payment',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+//        } catch (\Exception $e) {
+//            DB::rollBack();
+//            return response()->json([
+//                'message' => 'Error processing payment',
+//                'error' => $e->getMessage(),
+//            ], 500);
+//        }
     }
     public function updateContractNumber(Request $request, $id): JsonResponse
     {
