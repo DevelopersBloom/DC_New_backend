@@ -292,6 +292,8 @@ class ContractControllerNew extends Controller
                 if ($defaultClassification) {
                     $client->classification_id = $defaultClassification->id;
                     $client->save();
+                    $client->load('classification');
+
                 } else {
                     Log::warning("Default classification 'standart' not found for client #{$client->id}");
                 }
