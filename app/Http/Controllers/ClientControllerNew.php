@@ -312,8 +312,8 @@ class ClientControllerNew extends Controller
             $client->load('classification');
             $newReservePercent = $client->classification?->reserve_percent ?? 0;
             $newClassificationOrder =  $client->classification?->order;
-            $debetPartnerId = $client->id;
-            $creditPartnerId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
+            $cientId = $client->id;
+            $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
             $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
             $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
@@ -369,8 +369,8 @@ class ClientControllerNew extends Controller
                         'document_number' => $nextDocNum,
                         'document_type' => $documentType,
                         'amount_amd' => $amount,
-                        'partner_id' => $debetPartnerId,
-                        'credit_partner_id' => $creditPartnerId,
+                        'partner_id' => $diamondId,
+                        'credit_partner_id' => $clientId,
                         'comment' => "Reserve for contract #{$contract->id} due to classification change",
                         'debit_account_id' => $debetAllocation,
                         'credit_account_id' => $creditAllocation,
@@ -384,11 +384,11 @@ class ClientControllerNew extends Controller
                         'document_number' => $nextDocNum,
                         'document_type' => $documentType,
                         'debit_account_id' => $debetAllocation,
-                        'debit_partner_id' => $debetPartnerId,
+                        'debit_partner_id' => $diamondId,
                         'debit_currency_id' => 1,
                         'credit_account_id' => $creditAllocation,
                         'credit_currency_id' => 1,
-                        'credit_partner_id' => $creditPartnerId,
+                        'credit_partner_id' => $clientId,
                         'amount_amd' => $amount,
                         'comment' => "Reserve for contract #{$contract->id}",
                         'user_id' => auth()->id() ?? 1,
@@ -409,8 +409,8 @@ class ClientControllerNew extends Controller
                         'document_number' => $nextDocNum,
                         'document_type' => $lossType,
                         'amount_amd' => $contract->provided_amount,
-                        'partner_id' => $debetPartnerId,
-                        'credit_partner_id' => $creditPartnerId,
+                        'partner_id' => $clientId,
+                        'credit_partner_id' => $clientId,
                         'comment' => "Loss client, reserve for contract #{$contract->id}",
                         'debit_account_id' => $acc16605PS,
                         'credit_account_id' => $acc16200NV,
@@ -424,11 +424,11 @@ class ClientControllerNew extends Controller
                         'document_number' => $nextDocNum,
                         'document_type' => $lossType,
                         'debit_account_id' => $acc16605PS,
-                        'debit_partner_id' => $debetPartnerId,
+                        'debit_partner_id' => $clientId,
                         'debit_currency_id' => 1,
                         'credit_account_id' => $acc16200NV,
                         'credit_currency_id' => 1,
-                        'credit_partner_id' => $creditPartnerId,
+                        'credit_partner_id' => $clientId,
                         'amount_amd' => $contract->provided_amount,
                         'comment' => "Loss client, reserve for contract #{$contract->id}",
                         'user_id' => auth()->id() ?? 1,
@@ -449,8 +449,8 @@ class ClientControllerNew extends Controller
                         'document_number' => $nextDocNum,
                         'document_type' => $classificationType,
                         'amount_amd' => $oldReserveAmount,
-                        'partner_id' => $debetPartnerId,
-                        'credit_partner_id' => $creditPartnerId,
+                        'partner_id' => $clientId,
+                        'credit_partner_id' => $clientId,
                         'comment' => "Old reserve for contract #{$contract->id} due to classification change",
                         'debit_account_id' => $debetClassification,
                         'credit_account_id' => $creditClassification,
@@ -464,11 +464,11 @@ class ClientControllerNew extends Controller
                         'document_number' => $nextDocNum,
                         'document_type' => $classificationType,
                         'debit_account_id' => $debetClassification,
-                        'debit_partner_id' => $debetPartnerId,
+                        'debit_partner_id' => $clientId,
                         'debit_currency_id' => 1,
                         'credit_account_id' => $creditClassification,
                         'credit_currency_id' => 1,
-                        'credit_partner_id' => $creditPartnerId,
+                        'credit_partner_id' => $clientId,
                         'amount_amd' => $oldReserveAmount,
                         'comment' => "Old reserve for contract #{$contract->id}",
                         'user_id' => auth()->id() ?? 1,

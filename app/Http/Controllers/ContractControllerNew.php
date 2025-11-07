@@ -280,8 +280,8 @@ class ContractControllerNew extends Controller
             $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
             $reserveCreditAccount = $client?->classification->name == 'standard' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
 
-            $creditPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
-            $debetPartnerId = $contract->client_id;
+            $clientId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+            $diamondId = $contract->client_id;
 
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
             $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
@@ -291,8 +291,8 @@ class ContractControllerNew extends Controller
                 'document_number'    => $nextDocNum,
                 'document_type'      => $document_type,
                 'amount_amd'         => $contract->provided_amount,
-                'partner_id'         => $debetPartnerId,
-                'credit_partner_id'  => $creditPartnerId,
+                'partner_id'         => $clientId,
+                'credit_partner_id'  => $diamondId,
                 'comment'            => 'contract_payment',
                 'debit_account_id'   => $acc16200NV,
                 'credit_account_id'  => $acc10210,
@@ -307,12 +307,12 @@ class ContractControllerNew extends Controller
                 'document_type'      => $document_type,
 
                 'debit_account_id'   => $acc16200NV,
-                'debit_partner_id'   => $debetPartnerId,
+                'debit_partner_id'   => $clientId,
                 'debit_currency_id'  => 1,
 
                 'credit_account_id'  => $acc10210,
                 'credit_currency_id' => 1,
-                'credit_partner_id'  => $creditPartnerId,
+                'credit_partner_id'  => $diamondId,
 
                 'amount_amd'         => $contract->provided_amount,
 
@@ -338,8 +338,8 @@ class ContractControllerNew extends Controller
                         'document_number'    => $nextDocNum,
                         'document_type'      => $reserveDocumentType,
                         'amount_amd'         => $reserveAmount,
-                        'partner_id'         => $debetPartnerId,
-                        'credit_partner_id'  => $creditPartnerId,
+                        'partner_id'         => $diamondId,
+                        'credit_partner_id'  => $clientId,
                         'comment'            => "General reserve for contract #{$contract->id} on disbursement",
                         'debit_account_id'   => $acc73015,
                         'credit_account_id'  => $reserveCreditAccount,
@@ -354,12 +354,12 @@ class ContractControllerNew extends Controller
                     'document_type'      => $reserveDocumentType,
 
                     'debit_account_id'   => $acc73015,
-                    'debit_partner_id'   => $debetPartnerId,
+                    'debit_partner_id'   => $diamondId,
                     'debit_currency_id'  => 1,
 
                     'credit_account_id'  => $reserveCreditAccount,
                     'credit_currency_id' => 1,
-                    'credit_partner_id'  => $creditPartnerId,
+                    'credit_partner_id'  => $clientId,
 
                     'amount_amd'         => $reserveAmount,
 
@@ -506,7 +506,7 @@ class ContractControllerNew extends Controller
                     'document_type' => $documentTypeInterest,
                     'amount_amd' => $request->calculated_interest,
                     'partner_id' => $debetPartnerId,
-                    'credit_partner_id' => $creditPartnerId,
+                    'credit_partner_id' => $debetPartnerId,
                     'comment' => 'Confirmed interest for contract #' . $contract->id,
                     'debit_account_id' => $acc16201NI,
                     'credit_account_id' => $acc16200,
@@ -524,7 +524,7 @@ class ContractControllerNew extends Controller
                     'debit_currency_id' => 1,
                     'credit_account_id' => $acc16200,
                     'credit_currency_id' => 1,
-                    'credit_partner_id' => $creditPartnerId,
+                    'credit_partner_id' => $debetPartnerId,
                     'amount_amd' => $request->calculated_interest,
                     'comment' => 'Confirmed interest for contract #' . $contract->id,
                     'user_id' => $systemUserId,

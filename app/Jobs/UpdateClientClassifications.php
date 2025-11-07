@@ -42,7 +42,7 @@ class UpdateClientClassifications implements ShouldQueue
                 $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
                 $acc63015 = ChartOfAccount::idByCode('63015') ?? 1;
 
-               $creditPartnerId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
+               $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
                 $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
 
@@ -69,7 +69,7 @@ class UpdateClientClassifications implements ShouldQueue
                             $client->load('classification');
 
                             $reserverPercent = $client->classification?->reserve_percent ?? 0;
-                            $debetPartnerId = $client->id;
+                            $clientId = $client->id;
 
                             $document_type = $client->classification?->name == 'standard' ?
                                 DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
@@ -121,8 +121,8 @@ class UpdateClientClassifications implements ShouldQueue
                                     'document_number'    => $nextDocNum,
                                     'document_type'      => $document_type,
                                     'amount_amd'         => $amount,
-                                    'partner_id'         => $debetPartnerId,
-                                    'credit_partner_id'  => $creditPartnerId,
+                                    'partner_id'         => $diamondId,
+                                    'credit_partner_id'  => $clientId,
                                     'comment'            => "Reserve for contract #{$contract->id} due to classification change",
                                     'debit_account_id'   => $debetAllocation,
                                     'credit_account_id'  => $creditAllocation,
@@ -136,12 +136,12 @@ class UpdateClientClassifications implements ShouldQueue
                                     'document_type'      => $document_type,
 
                                     'debit_account_id'   => $debetAllocation,
-                                    'debit_partner_id'   => $debetPartnerId,
+                                    'debit_partner_id'   => $diamondId,
                                     'debit_currency_id'  => 1,
 
                                     'credit_account_id'  => $creditAllocation,
                                     'credit_currency_id' => 1,
-                                    'credit_partner_id'  => $creditPartnerId,
+                                    'credit_partner_id'  => $clientId,
 
                                     'amount_amd'         => $amount,
 
@@ -164,8 +164,8 @@ class UpdateClientClassifications implements ShouldQueue
                                         'document_number'    => $nextDocNum,
                                         'document_type'      => $lossType,
                                         'amount_amd'         => $contract->provided_amount,
-                                        'partner_id'         => $debetPartnerId,
-                                        'credit_partner_id'  => $creditPartnerId,
+                                        'partner_id'         => $clientId,
+                                        'credit_partner_id'  => $clientId,
                                         'comment'            => "Loss client, reserve for contract #{$contract->id} due to classification change",
                                         'debit_account_id'   => $acc16605PS,
                                         'credit_account_id'  => $acc16200NV,
@@ -179,12 +179,12 @@ class UpdateClientClassifications implements ShouldQueue
                                         'document_type'      => $lossType,
 
                                         'debit_account_id'   => $acc16605PS,
-                                        'debit_partner_id'   => $debetPartnerId,
+                                        'debit_partner_id'   => $clientId,
                                         'debit_currency_id'  => 1,
 
                                         'credit_account_id'  => $acc16200NV,
                                         'credit_currency_id' => 1,
-                                        'credit_partner_id'  => $creditPartnerId,
+                                        'credit_partner_id'  => $clientId,
 
                                         'amount_amd'         => $contract->provided_amount,
 
@@ -207,8 +207,8 @@ class UpdateClientClassifications implements ShouldQueue
                                         'document_number'    => $nextDocNum,
                                         'document_type'      => $classificationType,
                                         'amount_amd'         => $oldReserveAmount,
-                                        'partner_id'         => $debetPartnerId,
-                                        'credit_partner_id'  => $creditPartnerId,
+                                        'partner_id'         => $clientId,
+                                        'credit_partner_id'  => $clientId,
                                         'comment'            => "Reserve for contract #{$contract->id} due to classification change",
                                         'debit_account_id'   => $debetClassification,
                                         'credit_account_id'  => $creditClassification,
