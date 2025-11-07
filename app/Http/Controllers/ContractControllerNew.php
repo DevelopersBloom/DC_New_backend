@@ -285,7 +285,7 @@ class ContractControllerNew extends Controller
             $diamondId = $contract->client_id;
 
             $classification = $client->classification;
-
+dd($classification);
             if (!$classification) {
                 dd(1);
                 $defaultClassification = ClientClassification::where('name', 'standard')->first();
