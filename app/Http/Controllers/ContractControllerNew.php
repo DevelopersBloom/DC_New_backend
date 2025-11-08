@@ -241,8 +241,8 @@ class ContractControllerNew extends Controller
             'contract_id' => 'required|integer|exists:contracts,id',
         ]);
 
-//        DB::beginTransaction();
-//        try {
+        DB::beginTransaction();
+        try {
             $contract = Contract::findOrFail($validatedData['contract_id']);
             $contract->payments()->forcedelete();
             $client = $contract->client;
@@ -398,13 +398,13 @@ class ContractControllerNew extends Controller
                 'message' => 'Contract amount paid successfully',
                 'contract_id' => $contract->id,
             ], 200);
-//        } catch (\Exception $e) {
-//            DB::rollBack();
-//            return response()->json([
-//                'message' => 'Error processing payment',
-//                'error' => $e->getMessage(),
-//            ], 500);
-//        }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error processing payment',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
     public function updateContractNumber(Request $request, $id): JsonResponse
     {

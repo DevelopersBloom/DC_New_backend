@@ -21,7 +21,7 @@ class EffectiveRateService
         $cashflows[] = $netAmount;
 
         foreach ($contract->payments as $payment) {
-            if ($contract->payment_type = 'classic') {
+            if ($contract->payment_type == 'classic') {
                 $amount = $payment->amount + $payment->mother;
             } else {
                 $amount = $payment->amount;
