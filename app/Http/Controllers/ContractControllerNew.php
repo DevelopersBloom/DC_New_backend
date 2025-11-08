@@ -342,7 +342,6 @@ class ContractControllerNew extends Controller
             ]);
             $reservePercent = $classification->reserve_percent ?? 0;
             $reserveAmount = $reservePercent/100 * $contract->provided_amount;
-            dd($contract->payment_type);
 
             if ($reserveAmount > 0)
             {
@@ -396,6 +395,8 @@ class ContractControllerNew extends Controller
             auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;
             auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;
             auth()->user()->pawnshop->save();
+            dd($contract->payment_type);
+
             DB::commit();
             return response()->json([
                 'message' => 'Contract amount paid successfully',
