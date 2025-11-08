@@ -39,6 +39,15 @@ class Payment extends Model
         'to_date',
         'effective_payment',
     ];
+    protected $casts = [
+        'mother'             => 'decimal:2',
+        'amount'             => 'decimal:2',
+        'paid'               => 'decimal:2',
+        'effective_payment'  => 'decimal:2',
+        'principal_payment'  => 'decimal:2',
+        'interest_payment'   => 'decimal:2',
+        'remaining'          => 'decimal:2',
+    ];
 
     public function contract(){
         return $this->belongsTo(Contract::class);
