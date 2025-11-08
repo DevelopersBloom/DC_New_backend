@@ -62,7 +62,7 @@ class Client extends Model
 
     protected $casts = [
         'has_contract'      => 'boolean',
-        'date'              => 'date։d-m-Y',
+        'date'              => 'date',
         'passport_validity' => 'date։d-m-Y',
         'date_of_birth'     => 'date։d-m-Y',
         'is_linked_to_company' => 'boolean',
