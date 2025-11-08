@@ -70,7 +70,7 @@ class ContractDetailResource extends JsonResource
                 'phone'             => $this->client->phone,
                 'additional_phone'  => $this->client->additional_phone,
                 'email'             => $this->client->email,
-                'date_of_birth'     => Carbon::parse($this->client->date_of_birth)->format('d-m-Y'),
+                'date_of_birth'     => Carbon::parse($this->client->date_of_birth),
                 'passport_series'   => $this->client->passport_series,
                 'passport_validity' => $this->client->passport_validity,
                 'passport_issued'   => $this->client->passport_issued,
