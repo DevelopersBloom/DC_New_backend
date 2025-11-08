@@ -134,10 +134,10 @@ class DocumentJournal extends Model
                         $child->transactions()->delete();
                         $child->delete();
                     });
-//                    $related = $journal->journalable;
-//                    if ($related) {
-//                        $related->delete();
-//                    }
+                    $related = $journal->journalable;
+                    if ($related instanceof \App\Models\Contract) {
+                        $related->delete();
+                    }
                 }
             });
         });
