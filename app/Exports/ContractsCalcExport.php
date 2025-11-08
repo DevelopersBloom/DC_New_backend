@@ -198,7 +198,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
         'Տոկոսադրույք' => 'contract.interest_rate',
         'Արդ․ տոկոս․' => 'contract.effectiveRate',
         'Ժամկետանց գումար' => 'contract.overdue_amount',
-        'Դուրս գրված գումար' => 'written_off_amount',
+        'Դուրս գրված գումար' => 'contract.written_off_amount',
         'Տոկոս' => 'contract.calculatedInterest',
         'Արդյունավետ տոկոս' => 'contract.calculatedEffectiveInterest',
         'Չվաստակած տոկոս' => 'contract.unearned_interest',
