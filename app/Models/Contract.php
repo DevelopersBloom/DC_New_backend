@@ -71,9 +71,24 @@ class Contract extends Model
         'effective_annual_rate',
         'effective_daily_rate',
     ];
+
     protected $casts = [
         'payment_schedule' => 'array',
+        'estimated_amount'      => 'decimal:2',
+        'provided_amount'       => 'decimal:2',
+        'contract_amount'       => 'decimal:2',
+        'interest_rate'         => 'decimal:2',
+        'effective_rate'        => 'decimal:2',
+        'effective_annual_rate' => 'decimal:2',
+        'effective_daily_rate'  => 'decimal:2',
+        'penalty'               => 'decimal:2',
+        'discount'              => 'decimal:2',
+        'lump_rate'             => 'decimal:2',
+        'mother'                => 'decimal:2',
+        'left'                  => 'decimal:2',
+        'collected'             => 'decimal:2',
     ];
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'contract_id');
