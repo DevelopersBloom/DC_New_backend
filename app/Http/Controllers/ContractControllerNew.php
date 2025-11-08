@@ -395,7 +395,6 @@ class ContractControllerNew extends Controller
             auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;
             auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;
             auth()->user()->pawnshop->save();
-            dd($contract->payment_type);
 
             DB::commit();
             return response()->json([
