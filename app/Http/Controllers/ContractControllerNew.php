@@ -298,7 +298,6 @@ class ContractControllerNew extends Controller
 
             $client->loadMissing('classification');
 
-            dd($contract->payment_type);
 
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
             $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
@@ -343,6 +342,8 @@ class ContractControllerNew extends Controller
             ]);
             $reservePercent = $classification->reserve_percent ?? 0;
             $reserveAmount = $reservePercent/100 * $contract->provided_amount;
+            dd($contract->payment_type);
+
             if ($reserveAmount > 0)
             {
                 $nextDocNum++;
