@@ -240,17 +240,17 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
         $rows->push($headers);
 
         foreach ($this->contracts as $contract) {
-            $contract->written_off_amount = null;
-            if (($contract->client?->classification?->name) === 'loss') {
-                $contract->written_off_amount =
-                    (float)($contract->overdue_interest ?? 0)
-                    + (float)($contract->unearned_interest ?? 0);
-            }
+//            $contract->written_off_amount = null;
+//            if (($contract->client?->classification?->name) === 'loss') {
+//                $contract->written_off_amount =
+//                    (float)($contract->overdue_interest ?? 0)
+//                    + (float)($contract->unearned_interest ?? 0);
+//            }
 
             $contractData = (new ContractDetailResource($contract))->toArray(request());
             $contractData['provided_amount'] = $contract->provided_amount ?? 0;
             $contractData['total_days_provided'] = $contract->total_days_provided ?? '';
-            $contractData['written_off_amount'] = $contract->written_off_amount ?? 0;
+//            $contractData['written_off_amount'] = $contract->written_off_amount ?? 0;
 
             if (!isset($contractData['contract'])) {
                 $contractData['contract'] = [];
