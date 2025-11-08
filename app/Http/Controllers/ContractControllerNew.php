@@ -255,6 +255,7 @@ class ContractControllerNew extends Controller
                 ->format('Y-m-d');
             $contract->date = Carbon::now();
             $contract->save();
+            dd($contract->payment_type);
             $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
             $classification = $client->classification;
             if (!$classification) {
