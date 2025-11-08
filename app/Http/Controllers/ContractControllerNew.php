@@ -269,13 +269,14 @@ class ContractControllerNew extends Controller
                 }
             }
             $this->contractService->createPayment($contract);
-            dd($contract->payment_type);
 
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
             $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
             $contract->effective_annual_rate = round($effectiveRates['annual'],10); // 24.00 (%)
             $contract->effective_daily_rate = round($effectiveRates['daily'],10);   // 0.064321 (%)
             $contract->save();
+            dd($contract->payment_type);
+
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
                 'amount' => $contract->provided_amount,
