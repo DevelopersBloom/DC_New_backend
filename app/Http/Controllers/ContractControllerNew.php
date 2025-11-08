@@ -257,8 +257,6 @@ class ContractControllerNew extends Controller
             $contract->save();
             $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
             $classification = $client->classification;
-            dd($contract->payment_type);
-
             if (!$classification) {
                 $defaultClassification = ClientClassification::where('name', 'standard')->first();
                 if ($defaultClassification) {
@@ -271,6 +269,7 @@ class ContractControllerNew extends Controller
                 }
             }
             $this->contractService->createPayment($contract);
+            dd($contract->payment_type);
 
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
             $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
