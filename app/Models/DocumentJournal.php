@@ -129,7 +129,11 @@ class DocumentJournal extends Model
 //                }
                 else {
                     $journal->transactions()->delete();
-                    $journal->journals()->delete();
+//                    $journal->journals()->delete();
+                    $journal->journals()->get()->each(function (DocumentJournal $child) {
+                        $child->transactions()->delete();
+                        $child->delete();
+                    });
 //                    $related = $journal->journalable;
 //                    if ($related) {
 //                        $related->delete();
