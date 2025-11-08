@@ -59,15 +59,15 @@ class Client extends Model
         'is_linked_to_company',
         'is_company_employee',
     ];
-
     protected $casts = [
         'has_contract'      => 'boolean',
-        'date'              => 'date',
-        'passport_validity' => 'date։d-m-Y',
-        'date_of_birth'     => 'date։d-m-Y',
+        'date'              => 'date:d-m-Y',
+        'passport_validity' => 'date:d-m-Y',
+        'date_of_birth'     => 'date:d-m-Y',
         'is_linked_to_company' => 'boolean',
         'is_company_employee'  => 'boolean',
     ];
+
 
     protected static function boot()
     {
