@@ -83,6 +83,7 @@ class ContractDetailResource extends JsonResource
                 'social_card_number' => $this->client->social_card_number,
                 'tax_number' => $this->client->tax_number,
                 'residency_status' => $this->client->residency_status,
+                'type' => $this->client->type,
             ],
             'payments' => $this->payments->map(function ($payment) {
                 return [
