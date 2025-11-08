@@ -275,7 +275,6 @@ class ContractControllerNew extends Controller
             $contract->effective_annual_rate = round($effectiveRates['annual'],10); // 24.00 (%)
             $contract->effective_daily_rate = round($effectiveRates['daily'],10);   // 0.064321 (%)
             $contract->save();
-            dd($contract->payment_type);
 
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
@@ -299,6 +298,7 @@ class ContractControllerNew extends Controller
 
             $client->loadMissing('classification');
 
+            dd($contract->payment_type);
 
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
             $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
