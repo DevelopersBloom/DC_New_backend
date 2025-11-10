@@ -10,7 +10,7 @@ use App\Http\Resources\PartnerResource;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\ClientClassification;
-use App\Models\ClientClassificationHistory;
+use App\Models\ClassificationHistory;
 use App\Models\ClientPawnshop;
 use App\Models\Contract;
 use App\Models\ContractReserveHistory;
@@ -399,7 +399,7 @@ class ClientControllerNew extends Controller
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id' => $docJournal->id,
                     ]);
-                    ClientClassificationHistory::create([
+                    ClassificationHistory::create([
                         'client_id' => $client->id,
                         'classification_id' => $classification->id,
                         'risk_weight' => $client->classification?->risk_weight ?? 0,

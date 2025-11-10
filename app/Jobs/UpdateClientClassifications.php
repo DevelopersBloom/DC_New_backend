@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ChartOfAccount;
 use App\Models\Client;
-use App\Models\ClientClassificationHistory;
+use App\Models\ClassificationHistory;
 use App\Models\Contract;
 use App\Models\ContractReserveHistory;
 use App\Models\DocumentJournal;
@@ -154,7 +154,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     'transactionable_id'   => $journalDoc->id,
                                 ])
                                 ;
-                                ClientClassificationHistory::create([
+                                ClassificationHistory::create([
                                     'client_id' => $client->id,
                                     'classification_id' => $classification->id,
                                     'risk_weight' => $client->classification?->risk_weight ?? 0,

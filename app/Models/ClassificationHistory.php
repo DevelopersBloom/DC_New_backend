@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ClientClassificationHistory extends Model
+class ClassificationHistory extends Model
 {
     use HasFactory,SoftDeletes;
 
