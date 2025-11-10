@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('client_classification_histories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('client_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('classification_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('classification_id')->nullable()->constrained('client_classification')->nullOnDelete();
 
             $table->decimal('risk_weight',5,2)->nullable();
             $table->decimal('reserve_percent', 5, 2)->nullable();
