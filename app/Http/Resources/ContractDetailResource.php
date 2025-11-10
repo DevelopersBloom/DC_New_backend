@@ -39,7 +39,7 @@ class ContractDetailResource extends JsonResource
                 'description'      => $this->description,
                 'status'           => $this->status,
                 'effectiveRate'    => $this->effectiveRate,
-                'date' => $this->date->format('d-m-Y'),
+                'date' => Carbon::parse($this->date)->format('d-m-Y'),
                 'interest_end'=> $maturityDate,
                 'interest_start'    => $interestStartDate,
                 'unearned_interest' => $this->unearned_interest, //չվաստակած
@@ -54,7 +54,7 @@ class ContractDetailResource extends JsonResource
                 'reserve' => $this->reserve,
                 'days_provided' => $this->days_provided,
                 'remaining_repayment_days' => $this->remaining_repayment_days,
-                'deadline' => $this->deadline->format('d-m-Y'),
+                'deadline' => Carbon::parse($this->deadline)->format('d-m-Y'),
 
 
             ],
