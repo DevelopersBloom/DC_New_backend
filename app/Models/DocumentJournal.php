@@ -128,8 +128,13 @@ class DocumentJournal extends Model
 //                    $journal->journals()->delete();
 //                }
                 else {
+                    $childIds = $journal->journals()->pluck('id')->toArray();
+
                     $histories = ClassificationHistory::where('actionable_type', DocumentJournal::class)
-                        ->where('actionable_id', $journal->id)
+                        ->where(function ($q) use ($journal, $childIds) {
+                            $q->where('actionable_id', $journal->id)
+                                ->orWhereIn('actionable_id', $childIds);
+                        })
                         ->get();
 
                     foreach ($histories as $history) {
