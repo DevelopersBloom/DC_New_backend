@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ChartOfAccount;
 use App\Models\Client;
+use App\Models\ClientClassificationHistory;
 use App\Models\Contract;
 use App\Models\ContractReserveHistory;
 use App\Models\DocumentJournal;
@@ -59,7 +60,7 @@ class UpdateClientClassifications implements ShouldQueue
 
                         if ($client->classification_id !== $classification->id) {
                             $oldClassificationName = $client->classification?->name;
-
+                            $oldClassificationId = $client->classification?->id;
                             $oldReservePercent = $client->classification?->reserve_percent ?? 0;
                             Log::info("old reserve percent is {$oldReservePercent} ");
 
@@ -74,8 +75,6 @@ class UpdateClientClassifications implements ShouldQueue
                             $document_type = $client->classification?->name == 'standard' ?
                                 DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
                             Log::info("doc type is { $document_type} ");
-
-//                            Log::info("Client #{$client->id} classification updated from {$oldClassificationId} to {$classification->id} ({$classification->name}) with reserve percent {$reserverPercent}%");
 
                             /** @var Contract $contract */
                             foreach ($client->contracts as $contract) {
@@ -101,6 +100,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'old_reserve_amount' => $oldReserveAmount,
                                     ],
                                 ]);
+
                                 Log::info("amount is { $amount} ");
 
                                 if ($amount <= 0) {
@@ -152,7 +152,26 @@ class UpdateClientClassifications implements ShouldQueue
                                     'disbursement_date'    => now()->toDateString(),
                                     'transactionable_type' => DocumentJournal::class,
                                     'transactionable_id'   => $journalDoc->id,
+                                ])
+                                ;
+                                ClientClassificationHistory::create([
+                                    'client_id' => $client->id,
+                                    'classification_id' => $classification->id,
+                                    'risk_weight' => $client->classification?->risk_weight ?? 0,
+                                    'reserve_percent' => $client->classification?->reserve_percent ?? 0,
+                                    'comment' => 'Automatic client classification update based on overdue days',
+                                    'actionable_type' => DocumentJournal::class,
+                                    'actionable_id' => $journalDoc->id,
+                                    'user_id' => auth()->id() ?? 1,
+                                    'meta' => [
+                                        'old_classification_id' => $oldClassificationId,
+                                        'old_classification_name' => $oldClassificationName,
+                                        'old_reserve_percent' => $oldReservePercent,
+                                        'old_reserve_amount' => $oldReserveAmount,
+                                    ],
+                                    'date' => now(),
                                 ]);
+
                                 $nextDocNum++;
                                 if ($client->classification->name == 'loss')
                                 {
@@ -222,12 +241,12 @@ class UpdateClientClassifications implements ShouldQueue
                                         'document_type'      => $classificationType,
 
                                         'debit_account_id'   => $debetClassification,
-                                        'debit_partner_id'   => $debetPartnerId,
+                                        'debit_partner_id'   => $clientId,
                                         'debit_currency_id'  => 1,
 
                                         'credit_account_id'  => $creditClassification,
                                         'credit_currency_id' => 1,
-                                        'credit_partner_id'  => $creditPartnerId,
+                                        'credit_partner_id'  => $clientId,
 
                                         'amount_amd'         => $oldReserveAmount,
 

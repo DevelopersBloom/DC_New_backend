@@ -39,7 +39,7 @@ class ContractDetailResource extends JsonResource
                 'description'      => $this->description,
                 'status'           => $this->status,
                 'effectiveRate'    => $this->effectiveRate,
-                'date' => $this->date,
+                'date' => $this->date->format('d-m-Y'),
                 'interest_end'=> $maturityDate,
                 'interest_start'    => $interestStartDate,
                 'unearned_interest' => $this->unearned_interest, //չվաստակած
@@ -54,7 +54,7 @@ class ContractDetailResource extends JsonResource
                 'reserve' => $this->reserve,
                 'days_provided' => $this->days_provided,
                 'remaining_repayment_days' => $this->remaining_repayment_days,
-                'deadline' => $this->deadline,
+                'deadline' => $this->deadline->format('d-m-Y'),
 
 
             ],
@@ -70,9 +70,9 @@ class ContractDetailResource extends JsonResource
                 'phone'             => $this->client->phone,
                 'additional_phone'  => $this->client->additional_phone,
                 'email'             => $this->client->email,
-                'date_of_birth'     => Carbon::parse($this->client->date_of_birth),
+                'date_of_birth'     => Carbon::parse($this->client->date_of_birth)->format('d-m-Y'),
                 'passport_series'   => $this->client->passport_series,
-                'passport_validity' => $this->client->passport_validity,
+                'passport_validity' => Carbon::parse($this->client->passport_validity)->format('d-m-Y'),
                 'passport_issued'   => $this->client->passport_issued,
                 'is_linked_to_company' => (bool)$this->client->is_linked_to_company,
                 'is_company_employee' => (bool)$this->client->is_company_employee,

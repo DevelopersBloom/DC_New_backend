@@ -35,7 +35,6 @@ class ClientClassificationService
                     $overdueDays = $due->diffInDays($today);
                 }
                 elseif ($isPaid && $paidAt->gt($due)) {
-                    // վճարվել է ուշ — հաշվում ենք ուշացման օրերը
                     $overdueDays = $due->diffInDays($paidAt);
                 }
                 else {

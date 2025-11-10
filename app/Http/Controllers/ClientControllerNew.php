@@ -10,6 +10,7 @@ use App\Http\Resources\PartnerResource;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\ClientClassification;
+use App\Models\ClientClassificationHistory;
 use App\Models\ClientPawnshop;
 use App\Models\Contract;
 use App\Models\ContractReserveHistory;
@@ -303,6 +304,7 @@ class ClientControllerNew extends Controller
         DB::beginTransaction();
         try {
             $oldClassificationName = $client->classification?->name;
+            $oldClassificationId = $client->classification?->id;
             $oldClassificationOrder = $client->classification?->order;
 
             $oldReservePercent = $client->classification?->reserve_percent ?? 0;
@@ -396,6 +398,23 @@ class ClientControllerNew extends Controller
                         'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id' => $docJournal->id,
+                    ]);
+                    ClientClassificationHistory::create([
+                        'client_id' => $client->id,
+                        'classification_id' => $classification->id,
+                        'risk_weight' => $client->classification?->risk_weight ?? 0,
+                        'reserve_percent' => $client->classification?->reserve_percent ?? 0,
+                        'comment' => 'Client classification update manually',
+                        'actionable_type' => DocumentJournal::class,
+                        'actionable_id' => $docJournal->id,
+                        'user_id' => auth()->id() ?? 1,
+                        'meta' => [
+                            'old_classification_id' => $oldClassificationId,
+                            'old_classification_name' => $oldClassificationName,
+                            'old_reserve_percent' => $oldReservePercent,
+                            'old_reserve_amount' => $oldReserveAmount,
+                        ],
+                        'date' => now(),
                     ]);
 
                     $nextDocNum++;
