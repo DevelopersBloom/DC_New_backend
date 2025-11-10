@@ -19,6 +19,7 @@ return new class extends Migration
             $table->morphs('actionable');
             $table->json('meta')->nullable();
             $table->timestamp('date')->default(now());
+            $table->index(['actionable_type', 'actionable_id'], 'client_class_hist_action_idx');
 
             $table->timestamps();
         });
