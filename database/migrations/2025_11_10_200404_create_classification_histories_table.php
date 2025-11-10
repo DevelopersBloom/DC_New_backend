@@ -21,6 +21,7 @@ return new class extends Migration
             $table->timestamp('date')->default(now());
             $table->index(['actionable_type', 'actionable_id'], 'class_hist_action_idx');
 
+            $table->softDeletes();
             $table->timestamps();
         });
     }

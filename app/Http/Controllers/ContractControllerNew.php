@@ -10,6 +10,7 @@ use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
 use App\Models\ChartOfAccount;
+use App\Models\ClassificationHistory;
 use App\Models\Client;
 use App\Models\ClientClassification;
 use App\Models\Contract;
@@ -256,8 +257,8 @@ class ContractControllerNew extends Controller
             $contract->date = Carbon::now();
             $contract->save();
             $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
-            $classification = $client->classification;
-            if (!$classification) {
+            $oldClassification = $client->classification;
+            if (!$oldClassification) {
                 $defaultClassification = ClientClassification::where('name', 'standard')->first();
                 if ($defaultClassification) {
                     $client->classification_id = $defaultClassification->id;
@@ -388,6 +389,20 @@ class ContractControllerNew extends Controller
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id'   => $reserveJournal->id,
                 ]);
+                if (!$oldClassification) {
+                    ClassificationHistory::create([
+                        'client_id' => $client->id,
+                        'classification_id' => $classification->id,
+                        'risk_weight' => $client->classification?->risk_weight ?? 0,
+                        'reserve_percent' => $client->classification?->reserve_percent ?? 0,
+                        'comment' => 'Client classification update when contract is created',
+                        'actionable_type' => DocumentJournal::class,
+                        'actionable_id' => $reserveJournal->id,
+                        'user_id' => auth()->id() ?? 1,
+                        'date' => now(),
+                    ]);
+
+                }
 
             }
 
