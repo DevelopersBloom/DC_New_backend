@@ -128,6 +128,20 @@ class DocumentJournal extends Model
 //                    $journal->journals()->delete();
 //                }
                 else {
+                    $histories = ClassificationHistory::where('actionable_type', DocumentJournal::class)
+                        ->where('actionable_id', $journal->id)
+                        ->get();
+
+                    foreach ($histories as $history) {
+                        $client = $history->client;
+                        if ($client) {
+                            $oldClassificationId = $history->meta['old_classification_id'] ?? null;
+                            $client->classification_id = $oldClassificationId;
+                            $client->save();
+                        }
+                        $history->delete();
+                    }
+
                     $journal->transactions()->delete();
 //                    $journal->journals()->delete();
                     $journal->journals()->get()->each(function (DocumentJournal $child) {
@@ -135,7 +149,7 @@ class DocumentJournal extends Model
                         $child->delete();
                     });
                     $related = $journal->journalable;
-                    if ($related instanceof \App\Models\Contract) {
+                    if ($related instanceof Contract) {
                         $related->delete();
                     }
                 }
@@ -199,11 +213,11 @@ class DocumentJournal extends Model
                 } else {
 
                         $ndmId   = $journal->journalable_id;
-                        $ndmType = $journal->journalable_type ?: \App\Models\LoanNdm::class;
+                        $ndmType = $journal->journalable_type ?: LoanNdm::class;
                         if (class_exists($ndmType)) {
                             $ndmType::withTrashed()->whereKey($ndmId)->restore();
                         } else {
-                            \App\Models\LoanNdm::withTrashed()->whereKey($ndmId)->restore();
+                            LoanNdm::withTrashed()->whereKey($ndmId)->restore();
                         }
 
                         $journal->journals()
@@ -230,14 +244,14 @@ class DocumentJournal extends Model
                             ->whereIn('document_type', $calcTypes)
                             ->max('date');
 
-                        $contractDate = \App\Models\LoanNdm::query()
+                        $contractDate = LoanNdm::query()
                             ->whereKey($ndmId)
                             ->value('contract_date');
 
                         $calcDate = $lastCalcDate ?? $contractDate;
 
                         if ($calcDate) {
-                            \App\Models\LoanNdm::query()
+                            LoanNdm::query()
                                 ->whereKey($ndmId)
                                 ->update(['calc_date' => $calcDate]);
                         }
