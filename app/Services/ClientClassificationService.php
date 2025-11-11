@@ -80,14 +80,15 @@ class ClientClassificationService
     }
     public function getClassificationData(Contract $contract, $date = null): array
     {
-        $date = $date ? Carbon::parse($date) : now();
+        $dateTime = $date ? Carbon::parse($date)->endOfDay() : now()->endOfDay();
 
         $history = ClassificationHistory::where('client_id', $contract->client->id)
-            ->where('date', '<=', $date)
+            ->where('date', '<=', $dateTime)
             ->orderBy('date', 'desc')
             ->first();
 
-dd($history,$date,$contract->client->id);
+
+        dd($history,$date,$contract->client->id);
         if (!$history) {
             return [
                 'reserve'     => 0.0,
