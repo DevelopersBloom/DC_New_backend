@@ -114,7 +114,7 @@ class ClientClassificationService
         $reserveBase = $principal + $effectiveInterest;
         $reserve = $reserveBase * $reservePercent;
         $riskWeight = $reserveBase * $riskWeightPercent;
-dd($reserve,$riskWeight);
+
         return [
             'reserve' => round($reserve, 2),
             'risk_weight' => round($riskWeight, 2),
