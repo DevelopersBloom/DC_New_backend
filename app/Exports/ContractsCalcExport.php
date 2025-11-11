@@ -206,7 +206,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
         'Դուրս գրված տոկոս' => 'contract.written_off_interest',
         'Ժամկետանց գումարի տոկոս' => 'contract.overdue_amount_interest',
         'Դուրս գրված ժամկետանց գումարի տոկոս' => 'contract.written_off_interest',
-        'Պահուստ' => 'reserve',
+        'Պահուստ' => 'contract.reserve',
         'Ռիսկի կշիռ' => 'risk_weight_percent',
         'Պահուստավորման տոկոս' => 'reserve_percent',
         'Ժամկետանց դառնալու ամսաթիվ' => 'overdue_date_principal',
