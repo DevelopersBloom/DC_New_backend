@@ -83,9 +83,10 @@ class ClientClassificationService
         $date = $date ? Carbon::parse($date)->format('Y-m-d') : now()->format('Y-m-d');
 
         $history = ClassificationHistory::where('client_id', $contract->client->id)
-            ->where('date', '<=', $date)
+            ->where('date', $date)
             ->orderBy('date', 'desc')
             ->first();
+
 dd($history,$date,$contract->client->id);
         if (!$history) {
             return [
