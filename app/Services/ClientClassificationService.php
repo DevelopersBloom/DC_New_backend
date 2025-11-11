@@ -80,10 +80,10 @@ class ClientClassificationService
     }
     public function getClassificationData(Contract $contract, $date = null): array
     {
-        $date = $date ? Carbon::parse($date)->format('Y-m-d') : now()->format('Y-m-d');
+        $date = $date ? Carbon::parse($date) : now();
 
         $history = ClassificationHistory::where('client_id', $contract->client->id)
-//            ->where('date', '<=', $date)
+            ->where('date', '<=', $date)
             ->orderBy('date', 'desc')
             ->first();
 
