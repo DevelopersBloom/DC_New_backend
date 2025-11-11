@@ -81,7 +81,7 @@ class ClientClassificationService
     public function getClassificationData(Contract $contract, $date = null): array
     {
         $dateTime = $date ? Carbon::parse($date)->endOfDay() : now()->endOfDay();
-
+        $date = $date ? Carbon::parse($date)->format('Y-m-d') : now()->format('Y-m-d');
         $history = ClassificationHistory::where('client_id', $contract->client->id)
             ->where('date', '<=', $dateTime)
             ->orderBy('date', 'desc')
@@ -108,6 +108,7 @@ class ClientClassificationService
             $effectiveInterest = (float) DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
                 ->where('journalable_type', DocumentJournal::class)
                 ->where('journalable_id', $contractJournal->id)
+                ->where('date','<=',$date)
                 ->sum('amount_amd');
         }
 
