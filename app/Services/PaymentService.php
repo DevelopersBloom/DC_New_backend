@@ -377,8 +377,8 @@ class PaymentService {
         $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
         $acc63015 = ChartOfAccount::idByCode('63015') ?? 1;
 
-        $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
-        $creditPartnerId = $contract->client_id;
+        $diamondId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+        $clientId = $contract->client_id;
 
 //        if (!$acc16201 || !$acc10210) return 'One of 16201, 10210 not exist';
 
@@ -394,8 +394,8 @@ class PaymentService {
             'document_number'    => $nextDocNum,
             'document_type'      => $document_type,
             'amount_amd'         => $partialAmount,
-            'partner_id'         => $debetPartnerId,
-            'credit_partner_id'  => $creditPartnerId,
+            'partner_id'         => $diamondId,
+            'credit_partner_id'  => $clientId,
             'comment'            => 'mother_amount_payment',
             'debit_account_id'   => $acc10210,
             'credit_account_id'  => $acc16200NV,
@@ -437,8 +437,8 @@ class PaymentService {
             'document_number'    => $nextDocNum,
             'document_type'      => $document_type_provided,
             'amount_amd'         => $reserveAmount,
-            'partner_id'         => $debetPartnerId,
-            'credit_partner_id'  => $creditPartnerId,
+            'partner_id'         => $clientId,
+            'credit_partner_id'  => $diamondId,
             'comment'            => 'reserve_payment',
             'debit_account_id'   => $acc16605PC,
             'credit_account_id'  => $acc63015,

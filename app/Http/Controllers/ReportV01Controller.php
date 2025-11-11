@@ -274,7 +274,6 @@ class ReportV01Controller extends Controller
             foreach ($rows as $row) {
                 $code = (string)$row->code;
 
-                // Այս տրամաբանությունը ճիշտ է. տառ պարունակող կոդերը գրանցվում են որպես տեքստ, իսկ 5-անիշ թվային կոդերը՝ որպես թիվ։
                 if (preg_match('/^\d+$/', $code)) {
                     $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (float)$code, DataType::TYPE_NUMERIC);
                 } else {
