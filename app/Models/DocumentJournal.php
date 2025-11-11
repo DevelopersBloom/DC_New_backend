@@ -148,6 +148,7 @@ class DocumentJournal extends Model
                     }
 
                     $journal->transactions()->delete();
+                    $journal->classificationHistories()->delete();
 //                    $journal->journals()->delete();
                     $journal->journals()->get()->each(function (DocumentJournal $child) {
                         $child->transactions()->delete();
@@ -277,6 +278,10 @@ class DocumentJournal extends Model
     public function transactions()
     {
         return $this->morphMany(Transaction::class, 'transactionable');
+    }
+    public function classificationHistories(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(ClassificationHistory::class, 'actionable');
     }
     public function journals() {
         return $this->morphMany(self::class, 'journalable');
