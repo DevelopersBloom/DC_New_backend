@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Client;
 use App\Models\ClientClassification;
 use App\Models\Contract;
+use App\Models\DocumentJournal;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -96,10 +97,26 @@ class ClientClassificationService
             $reservePercent = (float)($classification->reserve_percent ?? 0) / 100;
             $riskWeightPercent     = (float)($classification->risk_weight ?? 0) / 100;
 
-            $baseAmount = (float)($contract->left ?? 0);
+            $principal = (float)($contract->provided_amount ?? 0);
 
-            $reserve = $baseAmount * $reservePercent;
-            $riskWeight = $baseAmount * $riskWeightPercent;
+            $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contract->id)
+                ->where('document_type',DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+                ->first();
+            $effectiveInterest = 0.0;
+
+
+            if ($contractJournal) {
+                $effectiveInterest = (float) DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
+                    ->where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $contractJournal->id)
+                    ->sum('amount_amd');
+            }
+            $reserveBase = $principal + $effectiveInterest;
+            $reserve = $reserveBase * $reservePercent;
+
+//            $reserve = $baseAmount * $reservePercent;
+            $riskWeight = $reserveBase * $riskWeightPercent;
         }
 
         return [

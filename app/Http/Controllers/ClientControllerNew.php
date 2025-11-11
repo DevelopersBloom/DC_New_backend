@@ -314,7 +314,7 @@ class ClientControllerNew extends Controller
             $client->load('classification');
             $newReservePercent = $client->classification?->reserve_percent ?? 0;
             $newClassificationOrder =  $client->classification?->order;
-            $cientId = $client->id;
+            $clientId = $client->id;
             $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
             $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
