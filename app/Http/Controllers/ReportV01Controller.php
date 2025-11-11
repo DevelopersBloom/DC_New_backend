@@ -267,44 +267,93 @@ class ReportV01Controller extends Controller
 
         $startRow = 8;
         $currentRow = $startRow;
-
+//
+//        if ($rows->isEmpty()) {
+//            $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_NUMERIC);
+//        } else {
+//            foreach ($rows as $row) {
+//                $code = (string)$row->code;
+//
+//                // Այս տրամաբանությունը ճիշտ է. տառ պարունակող կոդերը գրանցվում են որպես տեքստ, իսկ 5-անիշ թվային կոդերը՝ որպես թիվ։
+//                if (preg_match('/^\d+$/', $code)) {
+//                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (float)$code, DataType::TYPE_NUMERIC);
+//                } else {
+//                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, $code, DataType::TYPE_STRING);
+//                }
+//
+//
+//                $nums = [
+//                    6 => (float)($row->amd_resident ?? 0),
+//                    7 => (float)($row->amd_non_resident ?? 0),
+//                    8 => (float)($row->fx_group1_resident ?? 0),
+//                    9 => (float)($row->fx_group1_non_resident ?? 0),
+//                    10 => (float)($row->usd_resident ?? 0),
+//                    11 => (float)($row->usd_non_resident ?? 0),
+//                    12 => (float)($row->eur_resident ?? 0),
+//                    13 => (float)($row->eur_non_resident ?? 0),
+//                    14 => (float)($row->fx_group2_resident ?? 0),
+//                    15 => (float)($row->fx_group2_non_resident ?? 0),
+//                    16 => (float)($row->rub_resident ?? 0),
+//                    17 => (float)($row->rub_non_resident ?? 0),
+//                ];
+//
+//                foreach ($nums as $colIndex => $val) {
+//                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val, DataType::TYPE_NUMERIC);
+//                }
+//
+//                $currentRow++;
+//            }
+//        }
         if ($rows->isEmpty()) {
-            $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_NUMERIC);
+            $sheet->setCellValueExplicit("A{$currentRow}", 'NO DATA', DataType::TYPE_STRING);
         } else {
             foreach ($rows as $row) {
-                $code = (string)$row->code;
+                $code = (string)($row->code ?? '');
 
-                // Այս տրամաբանությունը ճիշտ է. տառ պարունակող կոդերը գրանցվում են որպես տեքստ, իսկ 5-անիշ թվային կոդերը՝ որպես թիվ։
-                if (preg_match('/^\d+$/', $code)) {
-                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (float)$code, DataType::TYPE_NUMERIC);
+                if ($code !== '' && ctype_digit($code)) {
+                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (int)$code, DataType::TYPE_NUMERIC);
                 } else {
                     $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, $code, DataType::TYPE_STRING);
                 }
 
-
                 $nums = [
-                    6 => (float)($row->amd_resident ?? 0),
-                    7 => (float)($row->amd_non_resident ?? 0),
-                    8 => (float)($row->fx_group1_resident ?? 0),
-                    9 => (float)($row->fx_group1_non_resident ?? 0),
-                    10 => (float)($row->usd_resident ?? 0),
-                    11 => (float)($row->usd_non_resident ?? 0),
-                    12 => (float)($row->eur_resident ?? 0),
-                    13 => (float)($row->eur_non_resident ?? 0),
-                    14 => (float)($row->fx_group2_resident ?? 0),
-                    15 => (float)($row->fx_group2_non_resident ?? 0),
-                    16 => (float)($row->rub_resident ?? 0),
-                    17 => (float)($row->rub_non_resident ?? 0),
+                    6 => $row->amd_resident ?? 0,
+                    7 => $row->amd_non_resident ?? 0,
+                    8 => $row->fx_group1_resident ?? 0,
+                    9 => $row->fx_group1_non_resident ?? 0,
+                    10 => $row->usd_resident ?? 0,
+                    11 => $row->usd_non_resident ?? 0,
+                    12 => $row->eur_resident ?? 0,
+                    13 => $row->eur_non_resident ?? 0,
+                    14 => $row->fx_group2_resident ?? 0,
+                    15 => $row->fx_group2_non_resident ?? 0,
+                    16 => $row->rub_resident ?? 0,
+                    17 => $row->rub_non_resident ?? 0,
                 ];
 
-                foreach ($nums as $colIndex => $val) {
-                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val, DataType::TYPE_NUMERIC);
+                foreach ($nums as $colIndex => $rawVal) {
+
+                    $valStr = is_string($rawVal) ? trim(str_replace(',', '.', $rawVal)) : $rawVal;
+
+                    if (is_numeric($valStr)) {
+                        $num = (float)$valStr;
+
+                        if (is_finite($num)) {
+                            $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $num, DataType::TYPE_NUMERIC);
+                        } else {
+                            $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, 0, DataType::TYPE_NUMERIC);
+                        }
+                    } else {
+                        $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, 0, DataType::TYPE_NUMERIC);
+
+                        // — եթե ուզում եք տեքստորեն պահպանել հում արժեքը՝
+//                         $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, (string)$rawVal, DataType::TYPE_STRING);
+                    }
                 }
 
                 $currentRow++;
             }
         }
-
         $writer = new XlsxWriter($spreadsheet);
         $writer->setPreCalculateFormulas(false);
 
