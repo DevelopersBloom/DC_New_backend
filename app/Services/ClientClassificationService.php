@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ClassificationHistory;
 use App\Models\Client;
 use App\Models\ClientClassification;
 use App\Models\Contract;
@@ -81,7 +82,7 @@ class ClientClassificationService
     {
         $date = $date ? Carbon::parse($date)->format('Y-m-d') : now()->format('Y-m-d');
 
-        $history = ClientClassification::where('client_id', $contract->client->id)
+        $history = ClassificationHistory::where('client_id', $contract->client->id)
             ->where('date', '<=', $date)
             ->orderBy('date', 'desc')
             ->first();
