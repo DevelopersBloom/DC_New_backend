@@ -86,7 +86,7 @@ class ClientClassificationService
             ->where('date', '<=', $date)
             ->orderBy('date', 'desc')
             ->first();
-dd($history);
+dd($history,$date,$contract->client->id);
         if (!$history) {
             return [
                 'reserve'     => 0.0,
