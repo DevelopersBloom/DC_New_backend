@@ -77,25 +77,30 @@ class ClientClassificationService
         }
         return $byName['loss'] ?? ClientClassification::where('name', 'loss')->first();
     }
-    public function getClassificationData(Contract $contract): array
+    public function getClassificationData(Contract $contract,$date = null): array
     {
-        $reserve = 0.0;
-        $riskWeight = 0.0;
+        $history = ClientClassification::where('client_id',$contract->client->id)
+            ->where('date','<=', Carbon::parse($date)->format('Y-m-d'))
+            ->orderBy('date','desc')
+            ->fisrt();
 
-        $classificationName = $contract->client->classification->name ?? null;
 
-        if (!$classificationName) {
+//        $classificationName = $contract->client->classification->name ?? null;
+
+        if (!$history) {
             return [
                 'reserve'     => 0.0,
                 'risk_weight' => 0.0,
             ];
         }
+        $reservePercent = $history->reserve_percent / 100 ?? 0.0;
+        $riskWeightPercent = $history->risk_weight / 100 ?? 0.0;
 
-        $classification = ClientClassification::where('name', $classificationName)->first();
+        $classification = ClientClassification::where('id', $history->classification_id)->first();
 
         if ($classification) {
-            $reservePercent = (float)($classification->reserve_percent ?? 0) / 100;
-            $riskWeightPercent     = (float)($classification->risk_weight ?? 0) / 100;
+//            $reservePercent = (float)($classification->reserve_percent ?? 0) / 100;
+//            $riskWeightPercent     = (float)($classification->risk_weight ?? 0) / 100;
 
             $principal = (float)($contract->provided_amount ?? 0);
 
@@ -104,7 +109,6 @@ class ClientClassificationService
                 ->where('document_type',DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
                 ->first();
             $effectiveInterest = 0.0;
-
 
             if ($contractJournal) {
                 $effectiveInterest = (float) DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
@@ -124,4 +128,53 @@ class ClientClassificationService
             'risk_weight' => round($riskWeight, 2),
         ];
     }
+
+//    public function getClassificationData(Contract $contract,$date = null): array
+//    {
+//
+//        $reserve = 0.0;
+//        $riskWeight = 0.0;
+//
+//        $classificationName = $contract->client->classification->name ?? null;
+//
+//        if (!$classificationName) {
+//            return [
+//                'reserve'     => 0.0,
+//                'risk_weight' => 0.0,
+//            ];
+//        }
+//
+//        $classification = ClientClassification::where('name', $classificationName)->first();
+//
+//        if ($classification) {
+//            $reservePercent = (float)($classification->reserve_percent ?? 0) / 100;
+//            $riskWeightPercent     = (float)($classification->risk_weight ?? 0) / 100;
+//
+//            $principal = (float)($contract->provided_amount ?? 0);
+//
+//            $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
+//                ->where('journalable_id', $contract->id)
+//                ->where('document_type',DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+//                ->first();
+//            $effectiveInterest = 0.0;
+//
+//
+//            if ($contractJournal) {
+//                $effectiveInterest = (float) DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
+//                    ->where('journalable_type', DocumentJournal::class)
+//                    ->where('journalable_id', $contractJournal->id)
+//                    ->sum('amount_amd');
+//            }
+//            $reserveBase = $principal + $effectiveInterest;
+//            $reserve = $reserveBase * $reservePercent;
+//
+////            $reserve = $baseAmount * $reservePercent;
+//            $riskWeight = $reserveBase * $riskWeightPercent;
+//        }
+//
+//        return [
+//            'reserve' => round($reserve, 2),
+//            'risk_weight' => round($riskWeight, 2),
+//        ];
+//    }
 }

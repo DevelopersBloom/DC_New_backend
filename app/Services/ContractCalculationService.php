@@ -45,7 +45,7 @@ class ContractCalculationService
         $this->calculateOverdueData($contract, $calcToday);
 
         // 6. Պահուստ և Ռիսկի Կշիռ
-        $this->calculateClassificationData($contract);
+        $this->calculateClassificationData($contract,$calcToday);
 
         // 7. Տրամադրման/Մարման Օրեր
         $this->calculateDaysData($contract, $calcToday);
@@ -200,9 +200,9 @@ class ContractCalculationService
     /**
      * Հաշվարկում է Պահուստը և Ռիսկի Կշիռը
      */
-    protected function calculateClassificationData(Contract $contract): void
+    protected function calculateClassificationData(Contract $contract,$date = null): void
     {
-        $classificationData = $this->clientClassificationService->getClassificationData($contract);
+        $classificationData = $this->clientClassificationService->getClassificationData($contract,$date);
 
         $contract->reserve     = $classificationData['reserve'];
         $contract->risk_weight = $classificationData['risk_weight'];
