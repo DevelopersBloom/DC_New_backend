@@ -94,8 +94,8 @@ class ClientClassificationService
             ];
         }
 
-        $reservePercent = ($history->reserve_percent ?? 0) / 100;
-        $riskWeightPercent = ($history->risk_weight ?? 0) / 100;
+        $reservePercent = ($history->reserve_percent ?? $contract->client->classification->reserve_percent ?? 0) / 100;
+        $riskWeightPercent = ($history->risk_weight ?? $contract->client->classification->risk_weight ?? 0) / 100;
         $principal = (float)($contract->provided_amount ?? 0);
 
         $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
@@ -114,7 +114,7 @@ class ClientClassificationService
         $reserveBase = $principal + $effectiveInterest;
         $reserve = $reserveBase * $reservePercent;
         $riskWeight = $reserveBase * $riskWeightPercent;
-dd($reserve,$reservePercent,$history->id);
+
         return [
             'reserve' => round($reserve, 2),
             'risk_weight' => round($riskWeight, 2),
