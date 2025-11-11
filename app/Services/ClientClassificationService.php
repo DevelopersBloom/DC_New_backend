@@ -87,8 +87,6 @@ class ClientClassificationService
             ->orderBy('date', 'desc')
             ->first();
 
-
-        dd($history,$date,$contract->client->id);
         if (!$history) {
             return [
                 'reserve'     => 0.0,
@@ -98,7 +96,6 @@ class ClientClassificationService
 
         $reservePercent = ($history->reserve_percent ?? 0) / 100;
         $riskWeightPercent = ($history->risk_weight ?? 0) / 100;
-dd($history,$reservePercent,$riskWeightPercent);
         $principal = (float)($contract->provided_amount ?? 0);
 
         $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
@@ -117,7 +114,7 @@ dd($history,$reservePercent,$riskWeightPercent);
         $reserveBase = $principal + $effectiveInterest;
         $reserve = $reserveBase * $reservePercent;
         $riskWeight = $reserveBase * $riskWeightPercent;
-
+dd($reserve,$riskWeight);
         return [
             'reserve' => round($reserve, 2),
             'risk_weight' => round($riskWeight, 2),
