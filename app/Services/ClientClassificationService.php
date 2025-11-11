@@ -96,7 +96,7 @@ class ClientClassificationService
 
         $reservePercent = ($history->reserve_percent ?? 0) / 100;
         $riskWeightPercent = ($history->risk_weight ?? 0) / 100;
-
+dd($history,$reservePercent,$riskWeightPercent);
         $principal = (float)($contract->provided_amount ?? 0);
 
         $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
