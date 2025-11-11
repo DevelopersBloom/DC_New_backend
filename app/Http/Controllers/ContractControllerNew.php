@@ -294,8 +294,8 @@ class ContractControllerNew extends Controller
             $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
             $reserveCreditAccount = $client->classification->name == 'standard' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
 
-            $clientId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
-            $diamondId = $contract->client_id;
+            $clientId = $contract->client_id;
+            $diamondId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
 
             $client->loadMissing('classification');
 
