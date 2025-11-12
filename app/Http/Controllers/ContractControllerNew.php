@@ -629,13 +629,15 @@ class ContractControllerNew extends Controller
                 $acc73015 = CHARTOfAccount::idByCode('73015') ?? 1;
                 $debetClassification = $acc73015;
                 $creditClassification = $contract->client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
+                $documentTypeReserve = $contract->client->classification->name == 'standard' ? DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+                $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
                 $journalDoc = DocumentJournal::create([
                     'date' => now()->toDateString(),
                     'document_number' => $nextDocNum,
-                    'document_type' => $classificationType,
+                    'document_type' => $documentTypeReserve,
                     'amount_amd' => $reserveAmount,
-                    'partner_id' => $clientId,
+                    'partner_id' => $diamondId,
                     'credit_partner_id' => $clientId,
                     'comment' => "Old reserve for contract #{$contract->id} due to classification change",
                     'debit_account_id' => $debetClassification,
@@ -648,9 +650,9 @@ class ContractControllerNew extends Controller
                 Transaction::create([
                     'date' => now()->toDateString(),
                     'document_number' => $nextDocNum,
-                    'document_type' => $classificationType,
+                    'document_type' => $documentTypeReserve,
                     'debit_account_id' => $debetClassification,
-                    'debit_partner_id' => $clientId,
+                    'debit_partner_id' => $diamondId,
                     'debit_currency_id' => 1,
                     'credit_account_id' => $creditClassification,
                     'credit_currency_id' => 1,
