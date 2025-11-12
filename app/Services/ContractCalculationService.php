@@ -122,7 +122,7 @@ class ContractCalculationService
         } else {
             $days = $calcToday->diffInDays($startDate);
         }
-        dd($lastEffective,$startDate,$days);
+        dd($calcToday,$startDate,$days);
 
         if ($providedAmount > 0 && !empty($contract->interest_rate) && $days > 0) {
             $calculatedInterest = $providedAmount * ($contract->interest_rate / 100.0) * $days;
