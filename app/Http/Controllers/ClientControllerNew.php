@@ -333,10 +333,10 @@ class ClientControllerNew extends Controller
                     ->where('journalable_id', $contract->id)
                     ->first();
 
-                $amount = 0;
+                $reserveAmount = 0;
 
                 if ($journal) {
-                    $amount = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    $reserveAmount = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
                         ->where(function ($q) {
                             $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
@@ -344,6 +344,9 @@ class ClientControllerNew extends Controller
                         })
                         ->sum('amount_amd');
                 }
+                $amount = ($contract->provided_amount + $reserveAmount) * $newReservePercent / 100;
+                $oldReserveAmount = ($contract->provided_amount+$reserveAmount) * $oldReservePercent / 100;
+
                 if ($amount <= 0 && $client->classification->name !== 'loss') {
                     continue;
                 }
@@ -483,7 +486,7 @@ class ClientControllerNew extends Controller
                         'date' => now()->toDateString(),
                         'document_number' => $nextDocNum,
                         'document_type' => $classificationType,
-                        'amount_amd' => $amount,
+                        'amount_amd' => $oldReserveAmount,
                         'partner_id' => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment' => "Old reserve for contract #{$contract->id} due to classification change",
@@ -504,7 +507,7 @@ class ClientControllerNew extends Controller
                         'credit_account_id' => $creditClassification,
                         'credit_currency_id' => 1,
                         'credit_partner_id' => $clientId,
-                        'amount_amd' => $amount,
+                        'amount_amd' => $oldReserveAmount,
                         'comment' => "Old reserve for contract #{$contract->id}",
                         'user_id' => auth()->id() ?? 1,
                         'is_system' => true,
