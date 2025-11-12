@@ -258,6 +258,7 @@ class ContractControllerNew extends Controller
             $contract->save();
             $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
             $oldClassification = $client->classification;
+
             if (!$oldClassification) {
                 $defaultClassification = ClientClassification::where('name', 'standard')->first();
                 if ($defaultClassification) {
@@ -341,14 +342,14 @@ class ContractControllerNew extends Controller
                 'transactionable_type' => DocumentJournal::class,
                 'transactionable_id'   => $journalDoc->id,
             ]);
-            $reservePercent = $classification->reserve_percent ?? 0;
+            $reservePercent = $client->classification->reserve_percent;
             $reserveAmount = $reservePercent/100 * $contract->provided_amount;
 
             if ($reserveAmount > 0)
             {
                 $nextDocNum++;
 
-                $reserveDocumentType = $classification->name == 'standard' ?
+                $reserveDocumentType = $client->classification->name == 'standard' ?
                     DocumentJournal::RESERVE_GENERAL_AMOUNT: DocumentJournal::RESERVE_SPECIAL_AMOUNT;
 
                 $reserveJournal = DocumentJournal::create([
