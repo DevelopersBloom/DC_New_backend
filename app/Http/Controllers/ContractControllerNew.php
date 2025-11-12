@@ -604,6 +604,7 @@ class ContractControllerNew extends Controller
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id' => $journalEffective->id,
                 ]);
+
                 $nextDocNum++;
                 $effectiveInterest = 0.0;
                 $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
@@ -617,7 +618,9 @@ class ContractControllerNew extends Controller
                         ->sum('amount_amd');
                 }
 
-                $reserveAmount= $contract->provided_amount + $effectiveInterest;
+//                $reserveAmount= $contract->provided_amount + $effectiveInterest;
+
+                $reserveAmount = $request->calculated_effective_interest * $contract->client->classification->reserve_percent / 100;
                 $classificationType = DocumentJournal::CLASSIFICATION;
                 $clientId = $contract->client_id;
                 $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
