@@ -325,9 +325,25 @@ class ClientControllerNew extends Controller
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
             foreach ($client->contracts as $contract) {
-                $reserveAmount = $contract->provided_amount * $newReservePercent / 100;
+//                $reserveAmount = $contract->provided_amount * $newReservePercent / 100;
                 $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
-                $amount = $reserveAmount - $oldReserveAmount;
+//                $amount = $reserveAmount - $oldReserveAmount;
+
+                $journal = DocumentJournal::where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id)
+                    ->first();
+
+                $amount = 0;
+
+                if ($journal) {
+                    $amount = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $journal->id)
+                        ->where(function ($q) {
+                            $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
+                                ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT);
+                        })
+                        ->sum('amount');
+                }
                 if ($amount <= 0 && $client->classification->name !== 'loss') {
                     continue;
                 }
