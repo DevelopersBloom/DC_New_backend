@@ -110,11 +110,13 @@ class ContractCalculationService
                 ->orderBy('date', 'desc')
                 ->first();
         }
+
         if ($lastEffective) {
             $startDate = Carbon::parse($lastEffective->date, 'Asia/Yerevan')->startOfDay()->addDay();
         } else {
             $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
         }
+        dd($lastEffective,$startDate);
 
         if ($startDate->greaterThan($calcToday)) {
             $days = 0;
