@@ -79,10 +79,25 @@ class UpdateClientClassifications implements ShouldQueue
                             /** @var Contract $contract */
                             foreach ($client->contracts as $contract) {
 
-                                $reserveAmount = $contract->provided_amount * $reserverPercent / 100;
-                                $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
+                                  $journal = DocumentJournal::where('journalable_type', Contract::class)
+                                      ->where('journalable_id', $contract->id)
+                                      ->first();
 
-                                $amount = $reserveAmount - $oldReserveAmount;
+                                  $reserveAmount = 0;
+
+                                if ($journal) {
+                                    $reserveAmount = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                                        ->where('journalable_id', $journal->id)
+                                        ->where(function ($q) {
+                                            $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
+                                                ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT);
+                                        })
+                                        ->sum('amount');
+                                }
+//                                $reserveAmount = $contract->provided_amount * $reserverPercent / 100;
+                                $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
+//
+//                                $amount = $reserveAmount - $oldReserveAmount;
 
                                 ContractReserveHistory::create([
                                     'client_id' => $client->id,
@@ -91,19 +106,19 @@ class UpdateClientClassifications implements ShouldQueue
                                     'risk_weight' => $client->classification?->risk_weight ?? 0,
                                     'reserve_percent' => $reserverPercent,
                                     'reserve_amount' => $reserveAmount,
-                                    'total_reserve_amount' => $amount,
+                                    'total_reserve_amount' => $reserveAmount,
                                     'provided_amount' => $contract->provided_amount,
                                     'date' => now()->toDateString(),
                                     'user_id' => auth()->check() ? auth()->id() : 1,
                                     'meta' => [
                                         'old_reserve_percent' => $oldReservePercent,
-                                        'old_reserve_amount' => $oldReserveAmount,
+//                                        'old_reserve_amount' => $oldReserveAmount,
                                     ],
                                 ]);
 
-                                Log::info("amount is { $amount} ");
+                                Log::info("amount is { $reserveAmount} ");
 
-                                if ($amount <= 0) {
+                                if ($reserveAmount <= 0) {
                                     continue;
                                 }
                                 $debetAllocation = $acc73015;
@@ -120,7 +135,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     'date'               => now()->toDateString(),
                                     'document_number'    => $nextDocNum,
                                     'document_type'      => $document_type,
-                                    'amount_amd'         => $amount,
+                                    'amount_amd'         => $reserveAmount,
                                     'partner_id'         => $diamondId,
                                     'credit_partner_id'  => $clientId,
                                     'comment'            => "Reserve for contract #{$contract->id} due to classification change",
@@ -143,7 +158,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     'credit_currency_id' => 1,
                                     'credit_partner_id'  => $clientId,
 
-                                    'amount_amd'         => $amount,
+                                    'amount_amd'         => $reserveAmount,
 
                                     'comment'            => "Reserve for contract #{$contract->id}",
                                     'user_id'            => auth()->check() ? auth()->id() : 1,
@@ -167,7 +182,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'old_classification_id' => $oldClassificationId,
                                         'old_classification_name' => $oldClassificationName,
                                         'old_reserve_percent' => $oldReservePercent,
-                                        'old_reserve_amount' => $oldReserveAmount,
+//                                        'old_reserve_amount' => $oldReserveAmount,
                                     ],
                                     'date' => now(),
                                 ]);

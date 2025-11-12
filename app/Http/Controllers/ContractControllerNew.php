@@ -622,7 +622,6 @@ class ContractControllerNew extends Controller
 //                $reserveAmount= $contract->provided_amount + $effectiveInterest;
 
                 $reserveAmount = $request->calculated_effective_interest * $contract->client->classification->reserve_percent / 100;
-                $classificationType = DocumentJournal::CLASSIFICATION;
                 $clientId = $contract->client_id;
                 $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
                 $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
