@@ -476,45 +476,45 @@ class ClientControllerNew extends Controller
                     $nextDocNum++;
                 }
 
-//                if ($oldReserveAmount > 0 && $oldClassificationName == 'standard') {
-//                    $classificationType = DocumentJournal::CLASSIFICATION;
-//
-//                    $classificationDoc = DocumentJournal::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $classificationType,
-//                        'amount_amd' => $oldReserveAmount,
-//                        'partner_id' => $clientId,
-//                        'credit_partner_id' => $clientId,
-//                        'comment' => "Old reserve for contract #{$contract->id} due to classification change",
-//                        'debit_account_id' => $debetClassification,
-//                        'credit_account_id' => $creditClassification,
-//                        'user_id' => auth()->id() ?? 1,
-//                        'journalable_type' => DocumentJournal::class,
-//                        'journalable_id' => $journal->id,
-//                    ]);
-//
-//                    Transaction::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $classificationType,
-//                        'debit_account_id' => $debetClassification,
-//                        'debit_partner_id' => $clientId,
-//                        'debit_currency_id' => 1,
-//                        'credit_account_id' => $creditClassification,
-//                        'credit_currency_id' => 1,
-//                        'credit_partner_id' => $clientId,
-//                        'amount_amd' => $oldReserveAmount,
-//                        'comment' => "Old reserve for contract #{$contract->id}",
-//                        'user_id' => auth()->id() ?? 1,
-//                        'is_system' => true,
-//                        'disbursement_date' => now()->toDateString(),
-//                        'transactionable_type' => DocumentJournal::class,
-//                        'transactionable_id' => $classificationDoc->id,
-//                    ]);
-//
-//                    $nextDocNum++;
-//                }
+                if ($oldReserveAmount > 0 && $oldClassificationName == 'standard') {
+                    $classificationType = DocumentJournal::CLASSIFICATION;
+
+                    $classificationDoc = DocumentJournal::create([
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => $classificationType,
+                        'amount_amd' => $amount,
+                        'partner_id' => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment' => "Old reserve for contract #{$contract->id} due to classification change",
+                        'debit_account_id' => $debetClassification,
+                        'credit_account_id' => $creditClassification,
+                        'user_id' => auth()->id() ?? 1,
+                        'journalable_type' => DocumentJournal::class,
+                        'journalable_id' => $journal->id,
+                    ]);
+
+                    Transaction::create([
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => $classificationType,
+                        'debit_account_id' => $debetClassification,
+                        'debit_partner_id' => $clientId,
+                        'debit_currency_id' => 1,
+                        'credit_account_id' => $creditClassification,
+                        'credit_currency_id' => 1,
+                        'credit_partner_id' => $clientId,
+                        'amount_amd' => $amount,
+                        'comment' => "Old reserve for contract #{$contract->id}",
+                        'user_id' => auth()->id() ?? 1,
+                        'is_system' => true,
+                        'disbursement_date' => now()->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id' => $classificationDoc->id,
+                    ]);
+
+                    $nextDocNum++;
+                }
             }
 
             DB::commit();
