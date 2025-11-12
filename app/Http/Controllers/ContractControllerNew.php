@@ -625,8 +625,8 @@ class ContractControllerNew extends Controller
                 $clientId = $contract->client_id;
                 $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
                 $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
-
-                $debetClassification = $contract->client->classification->name == 'standard' ? $acc16605PS : $acc16605PC;
+                $acc73015 = CHARTOfAccount::idByCode('73015') ?? 1;
+                $debetClassification = $acc73015;
                 $creditClassification = $contract->client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
 
                 $journalDoc = DocumentJournal::create([
