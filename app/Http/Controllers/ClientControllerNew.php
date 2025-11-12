@@ -353,7 +353,7 @@ class ClientControllerNew extends Controller
                     'contract_id' => $contract->id,
                     'risk_weight' => $client->classification?->risk_weight ?? 0,
                     'reserve_percent' => $client->classification?->reserve_percent ?? 0,
-                    'reserve_amount' => $reserveAmount,
+                    'reserve_amount' => $amount,
                     'total_reserve_amount' => $amount,
                     'provided_amount' => $contract->provided_amount,
                     'date' => now()->toDateString(),
