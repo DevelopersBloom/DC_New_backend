@@ -155,9 +155,9 @@ class DocumentJournal extends Model
                         $child->delete();
                     });
                     $related = $journal->journalable;
-                    if ($related instanceof Contract) {
-                        $related->delete();
-                    }
+//                    if ($related instanceof Contract) {
+//                        $related->delete();
+//                    }
                 }
             });
         });
