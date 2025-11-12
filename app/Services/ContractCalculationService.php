@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contract;
+use App\Models\DocumentJournal;
 use App\Traits\ContractTrait;
 use Illuminate\Support\Carbon;
 
@@ -58,35 +59,81 @@ class ContractCalculationService
     /**
      * Հաշվարկում է Տոկոսը, Արդյունավետ Տոկոսը և Արդյունավետ Տոկոսադրույքը
      */
+//    public function calculateInterestRates(Contract $contract, Carbon $calcToday): void
+//    {
+//        $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
+//        $days = $calcToday->diffInDays($startDate);
+//
+//        $calculatedInterest = null;
+//        $calculatedEffectiveInterest = null;
+//        $providedAmount = $contract->provided_amount;
+//        if (!empty($contract->provided_amount) && !empty($contract->interest_rate)) {
+//
+////            $calculatedInterest = $this->calcAmount(
+////                $contract->provided_amount,
+////                $days,
+////                $contract->interest_rate
+////            );
+//            $calculatedInterest = $providedAmount * $contract->interest_rate/100 * $days;
+//
+////            if ($contract->effectiveRate > 0) {
+////                $calculatedEffectiveInterest = $this->calcAmount(
+////                    $contract->provided_amount,
+////                    $days,
+////                    $contract->effective_daily_rate
+////                );
+//                $calculatedEffectiveInterest = $providedAmount * $contract->effective_daily_rate / 100 * $days;
+////            }
+//        }
+//        $contract->effectiveRate = $contract->effective_daily_rate;
+//        $contract->calculatedInterest = $calculatedInterest;
+//        $contract->calculatedEffectiveInterest = $calculatedEffectiveInterest;
+//    }
     public function calculateInterestRates(Contract $contract, Carbon $calcToday): void
     {
-        $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
-        $days = $calcToday->diffInDays($startDate);
+        $calcToday = $calcToday->copy()->setTimezone('Asia/Yerevan')->startOfDay();
 
-        $calculatedInterest = null;
-        $calculatedEffectiveInterest = null;
-        $providedAmount = $contract->provided_amount;
-        if (!empty($contract->provided_amount) && !empty($contract->interest_rate)) {
+        $providedAmount = (float) ($contract->provided_amount ?? 0);
+        $calculatedInterest = 0.0;
+        $calculatedEffectiveInterest = 0.0;
 
-//            $calculatedInterest = $this->calcAmount(
-//                $contract->provided_amount,
-//                $days,
-//                $contract->interest_rate
-//            );
-            $calculatedInterest = $providedAmount * $contract->interest_rate/100 * $days;
+        $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->first();
 
-//            if ($contract->effectiveRate > 0) {
-//                $calculatedEffectiveInterest = $this->calcAmount(
-//                    $contract->provided_amount,
-//                    $days,
-//                    $contract->effective_daily_rate
-//                );
-                $calculatedEffectiveInterest = $providedAmount * $contract->effective_daily_rate / 100 * $days;
-//            }
+        $lastEffective = null;
+
+        if ($contractJournal) {
+            $lastEffective = DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
+                ->where('journalable_type', DocumentJournal::class)
+                ->where('journalable_id', $contractJournal->id)
+                ->orderBy('date', 'desc')
+                ->first();
         }
+        if ($lastEffective) {
+            $startDate = Carbon::parse($lastEffective->date, 'Asia/Yerevan')->startOfDay()->addDay();
+        } else {
+            $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
+        }
+
+        if ($startDate->greaterThan($calcToday)) {
+            $days = 0;
+        } else {
+            $days = $calcToday->diffInDays($startDate);
+        }
+
+        if ($providedAmount > 0 && !empty($contract->interest_rate) && $days > 0) {
+            $calculatedInterest = $providedAmount * ($contract->interest_rate / 100.0) * $days;
+        }
+
+        if ($providedAmount > 0 && !empty($contract->effective_daily_rate) && $days > 0) {
+            $calculatedEffectiveInterest = $providedAmount * ($contract->effective_daily_rate / 100.0) * $days;
+        }
+
         $contract->effectiveRate = $contract->effective_daily_rate;
-        $contract->calculatedInterest = $calculatedInterest;
-        $contract->calculatedEffectiveInterest = $calculatedEffectiveInterest;
+        $contract->calculatedInterest = round($calculatedInterest, 2);
+        $contract->calculatedEffectiveInterest = round($calculatedEffectiveInterest, 2);
+
     }
 
     /**

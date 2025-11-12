@@ -604,6 +604,63 @@ class ContractControllerNew extends Controller
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id' => $journalEffective->id,
                 ]);
+                $nextDocNum++;
+                $effectiveInterest = 0.0;
+                $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id)
+                    ->first();
+
+                if ($contractJournal) {
+                    $effectiveInterest = (float) DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
+                        ->where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $contractJournal->id)
+                        ->sum('amount_amd');
+                }
+
+                $reserveAmount= $contract->provided_amount + $effectiveInterest;
+                $classificationType = DocumentJournal::CLASSIFICATION;
+                $clientId = $contract->client_id;
+                $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
+                $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
+
+                $debetClassification = $contract->client->classification->name == 'standard' ? $acc16605PS : $acc16605PC;
+                $creditClassification = $contract->client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
+
+                $journalDoc = DocumentJournal::create([
+                    'date' => now()->toDateString(),
+                    'document_number' => $nextDocNum,
+                    'document_type' => $classificationType,
+                    'amount_amd' => $reserveAmount,
+                    'partner_id' => $clientId,
+                    'credit_partner_id' => $clientId,
+                    'comment' => "Old reserve for contract #{$contract->id} due to classification change",
+                    'debit_account_id' => $debetClassification,
+                    'credit_account_id' => $creditClassification,
+                    'user_id' => auth()->check() ? auth()->id() : 1,
+                    'journalable_type' => DocumentJournal::class,
+                    'journalable_id' => $journal?->id,
+                ]);
+
+                Transaction::create([
+                    'date' => now()->toDateString(),
+                    'document_number' => $nextDocNum,
+                    'document_type' => $classificationType,
+                    'debit_account_id' => $debetClassification,
+                    'debit_partner_id' => $clientId,
+                    'debit_currency_id' => 1,
+                    'credit_account_id' => $creditClassification,
+                    'credit_currency_id' => 1,
+                    'credit_partner_id' => $clientId,
+                    'amount_amd' => $reserveAmount,
+                    'comment' => "Old reserve for contract #{$contract->id}",
+                    'user_id' => auth()->check() ? auth()->id() : 1,
+                    'is_system' => true,
+                    'disbursement_date' => now()->toDateString(),
+                    'transactionable_type' => DocumentJournal::class,
+                    'transactionable_id' => $journalDoc->id,
+                ]);
+
+                $nextDocNum++;
             }
 
             DB::commit();
