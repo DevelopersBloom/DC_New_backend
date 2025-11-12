@@ -112,7 +112,7 @@ class ContractCalculationService
         }
 
         if ($lastEffective) {
-            $startDate = Carbon::parse($lastEffective->date, 'Asia/Yerevan')->startOfDay()->addDay();
+            $startDate = Carbon::parse($lastEffective->date, 'Asia/Yerevan')->startOfDay();
         } else {
             $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
         }
@@ -122,7 +122,6 @@ class ContractCalculationService
         } else {
             $days = $calcToday->diffInDays($startDate);
         }
-        dd($calcToday,$startDate,$days);
 
         if ($providedAmount > 0 && !empty($contract->interest_rate) && $days > 0) {
             $calculatedInterest = $providedAmount * ($contract->interest_rate / 100.0) * $days;
