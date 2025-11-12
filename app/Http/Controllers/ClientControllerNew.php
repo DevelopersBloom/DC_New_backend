@@ -342,7 +342,7 @@ class ClientControllerNew extends Controller
                             $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
                                 ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT);
                         })
-                        ->sum('amount');
+                        ->sum('amount_amd');
                 }
                 if ($amount <= 0 && $client->classification->name !== 'loss') {
                     continue;
