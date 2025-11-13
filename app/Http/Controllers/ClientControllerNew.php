@@ -449,12 +449,17 @@ class ClientControllerNew extends Controller
 
                 if ($client->classification->name === 'loss') {
                     $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
+                    $amount16605PS =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $journal->id)
+                        ->where('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT)
+                        ->where('credit_account_id',$acc16605PS)
+                        ->sum('amount_amd');
 
                     $lossDoc = DocumentJournal::create([
                         'date' => now()->toDateString(),
                         'document_number' => $nextDocNum,
                         'document_type' => $lossType,
-                        'amount_amd' => $contract->provided_amount,
+                        'amount_amd' => $contract->provided_amount + $amount16605PS,
                         'partner_id' => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment' => "Loss client, reserve for contract #{$contract->id}",
