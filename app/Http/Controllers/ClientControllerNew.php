@@ -338,11 +338,15 @@ class ClientControllerNew extends Controller
                 if ($journal) {
                     $reserveAmount = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
-                        ->where(function ($q) {
-                            $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
-                                ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT);
-                        })
+                        ->where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
                         ->sum('amount_amd');
+//                    $reserveAmount = DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                        ->where('journalable_id', $journal->id)
+//                        ->where(function ($q) {
+//                            $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
+//                                ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT);
+//                        })
+//                        ->sum('amount_amd');
                 }
                 $amount = ($contract->provided_amount + $reserveAmount) * $newReservePercent / 100;
                 $oldReserveAmount = ($contract->provided_amount+$reserveAmount) * $oldReservePercent / 100;
