@@ -452,7 +452,6 @@ class ClientControllerNew extends Controller
 
                     $amount16605PS =  DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
-                        ->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
                         ->where('credit_account_id',$acc16605PS)
                         ->sum('amount_amd');
 
