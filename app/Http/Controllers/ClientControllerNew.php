@@ -314,6 +314,7 @@ class ClientControllerNew extends Controller
             $client->load('classification');
             $newReservePercent = $client->classification?->reserve_percent ?? 0;
             $newClassificationOrder =  $client->classification?->order;
+            $newClassificationName =  $client->classification?->name;
             $clientId = $client->id;
             $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
@@ -347,13 +348,9 @@ class ClientControllerNew extends Controller
                         ->where('credit_account_id',$acc16605PC)
                         ->sum('amount_amd');
 
-//                    $reserveAmount = DocumentJournal::where('journalable_type', DocumentJournal::class)
-//                        ->where('journalable_id', $journal->id)
-//                        ->where(function ($q) {
-//                            $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
-//                                ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT);
-//                        })
-//                        ->sum('amount_amd');
+                }
+                if ($newClassificationName != 'standard') {
+                    $newReservePercent -= $oldReservePercent;
                 }
                 $amount = ($contract->provided_amount + $reserveAmount) * $newReservePercent / 100;
                 $oldReserveAmount = ($contract->provided_amount+$reserveAmount) * $oldReservePercent / 100;
