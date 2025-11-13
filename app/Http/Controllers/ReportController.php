@@ -35,8 +35,12 @@ class ReportController
 
     public function getV013Report(Request $request)
     {
-        // Ֆայլի անունը “v013.xls” (կամ “v013.xlsx” եթե այդպես ես պահել)
         return $this->downloadTemplate('v013.xls', $request);
+    }
+    public function getV17Report(Request $request)
+    {
+        return $this->downloadTemplate('v17.xls', $request);
+
     }
 
     private function downloadTemplate(string $templateFile, Request $request)
