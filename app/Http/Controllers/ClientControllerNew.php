@@ -446,146 +446,292 @@ class ClientControllerNew extends Controller
 
                     $nextDocNum++;
                 }
+                // --- START replacement for loss handling (inside foreach $contract loop) ---
 
                 if ($client->classification->name === 'loss') {
                     $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
 
-                    $amount16605PS =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    $amount16605PS = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
-                        ->where('credit_account_id',$acc16605PS)
+                        ->where('credit_account_id', $acc16605PS)
                         ->sum('amount_amd');
 
-                    $lossDoc = DocumentJournal::create([
-                        'date' => now()->toDateString(),
-                        'document_number' => $nextDocNum,
-                        'document_type' => $lossType,
-                        'amount_amd' => $amount16605PS,
-                        'partner_id' => $clientId,
-                        'credit_partner_id' => $clientId,
-                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-                        'debit_account_id' => $acc16605PS,
-                        'credit_account_id' => $acc16200NV,
-                        'user_id' => auth()->id() ?? 1,
-                        'journalable_type' => DocumentJournal::class,
-                        'journalable_id' => $journal->id,
-                    ]);
+                    if ($amount16605PS > 0) {
+                        $lossDoc = DocumentJournal::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => $lossType,
+                            'amount_amd' => $amount16605PS,
+                            'partner_id' => $clientId,
+                            'credit_partner_id' => $clientId,
+                            'comment' => "Loss client, reserve for contract #{$contract->id}",
+                            'debit_account_id' => $acc16605PS,
+                            'credit_account_id' => $acc16200NV,
+                            'user_id' => auth()->id() ?? 1,
+                            'journalable_type' => DocumentJournal::class,
+                            'journalable_id' => $journal->id,
+                        ]);
 
-                    Transaction::create([
-                        'date' => now()->toDateString(),
-                        'document_number' => $nextDocNum,
-                        'document_type' => $lossType,
-                        'debit_account_id' => $acc16605PS,
-                        'debit_partner_id' => $clientId,
-                        'debit_currency_id' => 1,
-                        'credit_account_id' => $acc16200NV,
-                        'credit_currency_id' => 1,
-                        'credit_partner_id' => $clientId,
-                        'amount_amd' => $amount16605PS,
-                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-                        'user_id' => auth()->id() ?? 1,
-                        'is_system' => true,
-                        'disbursement_date' => now()->toDateString(),
-                        'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id' => $lossDoc->id,
-                    ]);
+                        Transaction::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => $lossType,
+                            'debit_account_id' => $acc16605PS,
+                            'debit_partner_id' => $clientId,
+                            'debit_currency_id' => 1,
+                            'credit_account_id' => $acc16200NV,
+                            'credit_currency_id' => 1,
+                            'credit_partner_id' => $clientId,
+                            'amount_amd' => $amount16605PS,
+                            'comment' => "Loss client, reserve for contract #{$contract->id}",
+                            'user_id' => auth()->id() ?? 1,
+                            'is_system' => true,
+                            'disbursement_date' => now()->toDateString(),
+                            'transactionable_type' => DocumentJournal::class,
+                            'transactionable_id' => $lossDoc->id,
+                        ]);
 
-                    $nextDocNum++;
-
-                    $acc16200 = ChartOfAccount::idByCode('16200');
-
-                    $lossEffectiveType = DocumentJournal::LOSS_RESERVE_EFFECTIVE;
-
-                    $amount16200Debit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        $nextDocNum++;
+                    }
+                    $acc16200 = ChartOfAccount::idByCode('16200')
+                    $amount16200Debit = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
-                        ->where('debit_account_id',$acc16200)
+                        ->where('debit_account_id', $acc16200)
                         ->sum('amount_amd');
-                    $amount16200Credit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    $amount16200Credit = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
-                        ->where('credit_account_id',$acc16200)
+                        ->where('credit_account_id', $acc16200)
                         ->sum('amount_amd');
-                    $amount16200 = abs($amount16200Debit - $amount16200Credit);
 
-                    $lossEffectiveDoc = DocumentJournal::create([
-                        'date' => now()->toDateString(),
-                        'document_number' => $nextDocNum,
-                        'document_type' => $lossEffectiveType,
-                        'amount_amd' => $amount16200Debit,
-                        'partner_id' => $clientId,
-                        'credit_partner_id' => $clientId,
-                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-                        'debit_account_id' => $acc16605PS,
-                        'credit_account_id' => $acc16200,
-                        'user_id' => auth()->id() ?? 1,
-                        'journalable_type' => DocumentJournal::class,
-                        'journalable_id' => $journal->id,
-                    ]);
-                    Transaction::create([
-                        'date' => now()->toDateString(),
-                        'document_number' => $nextDocNum,
-                        'document_type' => $lossEffectiveType,
-                        'debit_account_id' => $acc16605PS,
-                        'debit_partner_id' => $clientId,
-                        'debit_currency_id' => 1,
-                        'credit_account_id' => $acc16200,
-                        'credit_currency_id' => 1,
-                        'credit_partner_id' => $clientId,
-                        'amount_amd' => $amount16200Debit,
-                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-                        'user_id' => auth()->id() ?? 1,
-                        'is_system' => true,
-                        'disbursement_date' => now()->toDateString(),
-                        'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id' => $lossEffectiveDoc->id,
-                    ]);
-                    $nextDocNum++;
-                    $acc16200NV = ChartOfAccount::idByCode('16200NV');
+                    $net16200 = $amount16200Debit - $amount16200Credit;
 
+                    if ($net16200 > 0) {
+                        $lossEffectiveDoc = DocumentJournal::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                            'amount_amd' => $net16200,
+                            'partner_id' => $clientId,
+                            'credit_partner_id' => $clientId,
+                            'comment' => "Zeroing 16200 for contract #{$contract->id} due to loss classification",
+                            'debit_account_id' => $acc16605PS,
+                            'credit_account_id' => $acc16200,
+                            'user_id' => auth()->id() ?? 1,
+                            'journalable_type' => DocumentJournal::class,
+                            'journalable_id' => $journal->id,
+                        ]);
 
-                    $amount16200NVDebit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        Transaction::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                            'debit_account_id' => $acc16605PS,
+                            'debit_partner_id' => $clientId,
+                            'debit_currency_id' => 1,
+                            'credit_account_id' => $acc16200,
+                            'credit_currency_id' => 1,
+                            'credit_partner_id' => $clientId,
+                            'amount_amd' => $net16200,
+                            'comment' => "Zeroing 16200 for contract #{$contract->id}",
+                            'user_id' => auth()->id() ?? 1,
+                            'is_system' => true,
+                            'disbursement_date' => now()->toDateString(),
+                            'transactionable_type' => DocumentJournal::class,
+                            'transactionable_id' => $lossEffectiveDoc->id,
+                        ]);
+
+                        $nextDocNum++;
+                    }
+
+                    $amount16200NVDebit = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
-                        ->where('debit_account_id',$acc16200NV)
+                        ->where('debit_account_id', $acc16200NV)
                         ->sum('amount_amd');
-                    $amount16200NVCredit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    $amount16200NVCredit = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
-                        ->where('credit_account_id',$acc16200NV)
+                        ->where('credit_account_id', $acc16200NV)
                         ->sum('amount_amd');
-                    $amount16200NV = abs($amount16200NVDebit - $amount16200NVCredit);
 
-                    $lossInterestDoc = DocumentJournal::create([
-                        'date' => now()->toDateString(),
-                        'document_number' => $nextDocNum,
-                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'amount_amd' => $amount16200NVDebit,
-                        'partner_id' => $clientId,
-                        'credit_partner_id' => $clientId,
-                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-                        'debit_account_id' => $acc16605PS,
-                        'credit_account_id' => $acc16200NV,
-                        'user_id' => auth()->id() ?? 1,
-                        'journalable_type' => DocumentJournal::class,
-                        'journalable_id' => $journal->id,
-                    ]);
-                    Transaction::create([
-                        'date' => now()->toDateString(),
-                        'document_number' => $nextDocNum,
-                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'debit_account_id' => $acc16605PS,
-                        'debit_partner_id' => $clientId,
-                        'debit_currency_id' => 1,
-                        'credit_account_id' => $acc16200NV,
-                        'credit_currency_id' => 1,
-                        'credit_partner_id' => $clientId,
-                        'amount_amd' => $amount16200NVDebit,
-                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-                        'user_id' => auth()->id() ?? 1,
-                        'is_system' => true,
-                        'disbursement_date' => now()->toDateString(),
-                        'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id' => $lossInterestDoc->id,
-                    ]);
+                    $net16200NV = $amount16200NVDebit - $amount16200NVCredit;
 
-                    $nextDocNum++;
+                    if ($net16200NV > 0) {
+                        $lossInterestDoc = DocumentJournal::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                            'amount_amd' => $net16200NV,
+                            'partner_id' => $clientId,
+                            'credit_partner_id' => $clientId,
+                            'comment' => "Zeroing 16200NV for contract #{$contract->id} due to loss classification",
+                            'debit_account_id' => $acc16605PS,
+                            'credit_account_id' => $acc16200NV,
+                            'user_id' => auth()->id() ?? 1,
+                            'journalable_type' => DocumentJournal::class,
+                            'journalable_id' => $journal->id,
+                        ]);
+
+                        Transaction::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                            'debit_account_id' => $acc16605PS,
+                            'debit_partner_id' => $clientId,
+                            'debit_currency_id' => 1,
+                            'credit_account_id' => $acc16200NV,
+                            'credit_currency_id' => 1,
+                            'credit_partner_id' => $clientId,
+                            'amount_amd' => $net16200NV,
+                            'comment' => "Zeroing 16200NV for contract #{$contract->id}",
+                            'user_id' => auth()->id() ?? 1,
+                            'is_system' => true,
+                            'disbursement_date' => now()->toDateString(),
+                            'transactionable_type' => DocumentJournal::class,
+                            'transactionable_id' => $lossInterestDoc->id,
+                        ]);
+
+                        $nextDocNum++;
+                    }
                 }
+
+//                if ($client->classification->name === 'loss') {
+//                    $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
+//
+//                    $amount16605PS =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                        ->where('journalable_id', $journal->id)
+//                        ->where('credit_account_id',$acc16605PS)
+//                        ->sum('amount_amd');
+//
+//                    $lossDoc = DocumentJournal::create([
+//                        'date' => now()->toDateString(),
+//                        'document_number' => $nextDocNum,
+//                        'document_type' => $lossType,
+//                        'amount_amd' => $amount16605PS,
+//                        'partner_id' => $clientId,
+//                        'credit_partner_id' => $clientId,
+//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+//                        'debit_account_id' => $acc16605PS,
+//                        'credit_account_id' => $acc16200NV,
+//                        'user_id' => auth()->id() ?? 1,
+//                        'journalable_type' => DocumentJournal::class,
+//                        'journalable_id' => $journal->id,
+//                    ]);
+//
+//                    Transaction::create([
+//                        'date' => now()->toDateString(),
+//                        'document_number' => $nextDocNum,
+//                        'document_type' => $lossType,
+//                        'debit_account_id' => $acc16605PS,
+//                        'debit_partner_id' => $clientId,
+//                        'debit_currency_id' => 1,
+//                        'credit_account_id' => $acc16200NV,
+//                        'credit_currency_id' => 1,
+//                        'credit_partner_id' => $clientId,
+//                        'amount_amd' => $amount16605PS,
+//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+//                        'user_id' => auth()->id() ?? 1,
+//                        'is_system' => true,
+//                        'disbursement_date' => now()->toDateString(),
+//                        'transactionable_type' => DocumentJournal::class,
+//                        'transactionable_id' => $lossDoc->id,
+//                    ]);
+//
+//                    $nextDocNum++;
+//
+//                    $acc16200 = ChartOfAccount::idByCode('16200');
+//
+//                    $lossEffectiveType = DocumentJournal::LOSS_RESERVE_EFFECTIVE;
+//
+//                    $amount16200Debit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                        ->where('journalable_id', $journal->id)
+//                        ->where('debit_account_id',$acc16200)
+//                        ->sum('amount_amd');
+//                    $amount16200Credit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                        ->where('journalable_id', $journal->id)
+//                        ->where('credit_account_id',$acc16200)
+//                        ->sum('amount_amd');
+//                    $amount16200 = abs($amount16200Debit - $amount16200Credit);
+//
+//                    $lossEffectiveDoc = DocumentJournal::create([
+//                        'date' => now()->toDateString(),
+//                        'document_number' => $nextDocNum,
+//                        'document_type' => $lossEffectiveType,
+//                        'amount_amd' => $amount16200Debit,
+//                        'partner_id' => $clientId,
+//                        'credit_partner_id' => $clientId,
+//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+//                        'debit_account_id' => $acc16605PS,
+//                        'credit_account_id' => $acc16200,
+//                        'user_id' => auth()->id() ?? 1,
+//                        'journalable_type' => DocumentJournal::class,
+//                        'journalable_id' => $journal->id,
+//                    ]);
+//                    Transaction::create([
+//                        'date' => now()->toDateString(),
+//                        'document_number' => $nextDocNum,
+//                        'document_type' => $lossEffectiveType,
+//                        'debit_account_id' => $acc16605PS,
+//                        'debit_partner_id' => $clientId,
+//                        'debit_currency_id' => 1,
+//                        'credit_account_id' => $acc16200,
+//                        'credit_currency_id' => 1,
+//                        'credit_partner_id' => $clientId,
+//                        'amount_amd' => $amount16200Debit,
+//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+//                        'user_id' => auth()->id() ?? 1,
+//                        'is_system' => true,
+//                        'disbursement_date' => now()->toDateString(),
+//                        'transactionable_type' => DocumentJournal::class,
+//                        'transactionable_id' => $lossEffectiveDoc->id,
+//                    ]);
+//                    $nextDocNum++;
+//                    $acc16200NV = ChartOfAccount::idByCode('16200NV');
+//
+//
+//                    $amount16200NVDebit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                        ->where('journalable_id', $journal->id)
+//                        ->where('debit_account_id',$acc16200NV)
+//                        ->sum('amount_amd');
+//                    $amount16200NVCredit =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                        ->where('journalable_id', $journal->id)
+//                        ->where('credit_account_id',$acc16200NV)
+//                        ->sum('amount_amd');
+//                    $amount16200NV = abs($amount16200NVDebit - $amount16200NVCredit);
+//
+//                    $lossInterestDoc = DocumentJournal::create([
+//                        'date' => now()->toDateString(),
+//                        'document_number' => $nextDocNum,
+//                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+//                        'amount_amd' => $amount16200NVDebit,
+//                        'partner_id' => $clientId,
+//                        'credit_partner_id' => $clientId,
+//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+//                        'debit_account_id' => $acc16605PS,
+//                        'credit_account_id' => $acc16200NV,
+//                        'user_id' => auth()->id() ?? 1,
+//                        'journalable_type' => DocumentJournal::class,
+//                        'journalable_id' => $journal->id,
+//                    ]);
+//                    Transaction::create([
+//                        'date' => now()->toDateString(),
+//                        'document_number' => $nextDocNum,
+//                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+//                        'debit_account_id' => $acc16605PS,
+//                        'debit_partner_id' => $clientId,
+//                        'debit_currency_id' => 1,
+//                        'credit_account_id' => $acc16200NV,
+//                        'credit_currency_id' => 1,
+//                        'credit_partner_id' => $clientId,
+//                        'amount_amd' => $amount16200NVDebit,
+//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+//                        'user_id' => auth()->id() ?? 1,
+//                        'is_system' => true,
+//                        'disbursement_date' => now()->toDateString(),
+//                        'transactionable_type' => DocumentJournal::class,
+//                        'transactionable_id' => $lossInterestDoc->id,
+//                    ]);
+//
+//                    $nextDocNum++;
+//                }
 
                 if ($amount16605PC > 0 && $oldClassificationName == 'standard') {
                     $classificationType = DocumentJournal::CLASSIFICATION;
@@ -635,253 +781,6 @@ class ClientControllerNew extends Controller
             return response()->json(['error' => 'Failed to update classification', 'details' => $e->getMessage()], 500);
         }
     }
-//    public function updateClientClassification(Request $request)
-//    {
-//        $request->validate([
-//            'client_id' => 'required|exists:clients,id',
-//            'classification' => 'required|string',
-//        ]);
-//
-//        $clientId = $request->client_id;
-//        $client = Client::with(['contracts', 'classification'])->findOrFail($clientId);
-//        $classification = ClientClassification::where('name', $request->classification)->firstOrFail();
-//        $newClassificationId = $classification->id;
-//        $oldOrder = $client->classification?->order ?? 0;
-//        $newOrder = $classification->order ?? 0;
-//
-//        if ($newOrder <= $oldOrder) {
-//            return response()->json(['message' => 'Classification not updated: new order is not higher.'], 200);
-//        }
-//
-//        DB::beginTransaction();
-//        try {
-//            $oldClassificationName = $client->classification?->name;
-//            $oldClassificationId = $client->classification?->id;
-//            $oldClassificationOrder = $client->classification?->order;
-//
-//            $oldReservePercent = $client->classification?->reserve_percent ?? 0;
-//
-//            $client->classification_id = $newClassificationId;
-//            $client->save();
-//            $client->load('classification');
-//
-//            $newReservePercent = $client->classification?->reserve_percent ?? 0;
-//            $newClassificationOrder =  $client->classification?->order;
-//            $clientId = $client->id;
-//            $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-//
-//            $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
-//            $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
-//            $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
-//            $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
-//
-//            $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-//
-//            foreach ($client->contracts as $contract) {
-//                $principal = (float)($contract->provided_amount ?? 0);
-//
-//                $effectiveInterest = 0.0;
-//                $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
-//                    ->where('journalable_id', $contract->id)
-//                    ->first();
-//
-//                if ($contractJournal) {
-//                    $effectiveInterest = (float) DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
-//                        ->where('journalable_type', DocumentJournal::class)
-//                        ->where('journalable_id', $contractJournal->id)
-//                        ->sum('amount_amd');
-//                }
-//                // base ըստ նոր լոգիկայի՝ principal + effectiveInterest
-//                $reserveBaseNew = ($principal + $effectiveInterest);
-//                $reserveBaseOld = ($principal + $effectiveInterest); // effectiveInterest չի փոխվում classification-ով
-//
-//                $reserveAmount = $reserveBaseNew * ($newReservePercent / 100.0);
-//                $oldReserveAmount = $reserveBaseOld * ($oldReservePercent / 100.0);
-//
-//                // round կամ float precision պետք է ըստ ձեր հաշվարկների
-//                $reserveAmount = round($reserveAmount, 2);
-//                $oldReserveAmount = round($oldReserveAmount, 2);
-//
-////                $amount = $reserveAmount - $oldReserveAmount;
-//                $amount = $reserveAmount;
-//                ContractReserveHistory::create([
-//                    'client_id' => $client->id,
-//                    'classification_id' => $classification->id,
-//                    'contract_id' => $contract->id,
-//                    'risk_weight' => $client->classification?->risk_weight ?? 0,
-//                    'reserve_percent' => $client->classification?->reserve_percent ?? 0,
-//                    'reserve_amount' => $reserveAmount,
-//                    'total_reserve_amount' => $amount,
-//                    'provided_amount' => $contract->provided_amount,
-//                    'date' => now()->toDateString(),
-//                    'user_id' => auth()->check() ? auth()->id() : 1,
-//                    'meta' => [
-//                        'old_reserve_percent' => $oldReservePercent,
-//                        'old_reserve_amount' => $oldReserveAmount,
-//                        'effective_interest' => $effectiveInterest,
-//                    ],
-//                ]);
-//
-//                $journal = DocumentJournal::where('journalable_type', Contract::class)
-//                    ->where('journalable_id', $contract->id)
-//                    ->first();
-//
-//                if (!$journal) continue;
-//                $debetAllocation = $acc73015;
-//                $creditAllocation = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
-//
-//                $debetClassification = $client->classification->name === 'standard' ? $acc16605PS : $acc16605PC;
-//                $creditClassification = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
-//
-//                $documentType = $client->classification->name === 'standard'
-//                    ? DocumentJournal::RESERVE_GENERAL_AMOUNT
-//                    : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
-//
-//                if ($amount > 0) {
-//                    $docJournal = DocumentJournal::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $documentType,
-//                        'amount_amd' => $amount,
-//                        'partner_id' => $diamondId,
-//                        'credit_partner_id' => $clientId,
-//                        'comment' => "Reserve for contract #{$contract->id} due to classification change",
-//                        'debit_account_id' => $debetAllocation,
-//                        'credit_account_id' => $creditAllocation,
-//                        'user_id' => auth()->id() ?? 1,
-//                        'journalable_type' => DocumentJournal::class,
-//                        'journalable_id' => $journal->id,
-//                    ]);
-//
-//                    Transaction::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $documentType,
-//                        'debit_account_id' => $debetAllocation,
-//                        'debit_partner_id' => $diamondId,
-//                        'debit_currency_id' => 1,
-//                        'credit_account_id' => $creditAllocation,
-//                        'credit_currency_id' => 1,
-//                        'credit_partner_id' => $clientId,
-//                        'amount_amd' => $amount,
-//                        'comment' => "Reserve for contract #{$contract->id}",
-//                        'user_id' => auth()->id() ?? 1,
-//                        'is_system' => true,
-//                        'disbursement_date' => now()->toDateString(),
-//                        'transactionable_type' => DocumentJournal::class,
-//                        'transactionable_id' => $docJournal->id,
-//                    ]);
-//
-//                    ClassificationHistory::create([
-//                        'client_id' => $client->id,
-//                        'classification_id' => $classification->id,
-//                        'risk_weight' => $client->classification?->risk_weight ?? 0,
-//                        'reserve_percent' => $client->classification?->reserve_percent ?? 0,
-//                        'comment' => 'Client classification update manually',
-//                        'actionable_type' => DocumentJournal::class,
-//                        'actionable_id' => $docJournal->id,
-//                        'user_id' => auth()->id() ?? 1,
-//                        'meta' => [
-//                            'old_classification_id' => $oldClassificationId,
-//                            'old_classification_name' => $oldClassificationName,
-//                            'old_reserve_percent' => $oldReservePercent,
-//                            'old_reserve_amount' => $oldReserveAmount,
-//                            'effective_interest' => $effectiveInterest,
-//                        ],
-//                        'date' => now(),
-//                    ]);
-//
-//                    $nextDocNum++;
-//                }
-//
-//                if ($client->classification->name === 'loss') {
-//                    $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
-//
-//                    $lossDoc = DocumentJournal::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $lossType,
-//                        'amount_amd' => $contract->provided_amount,
-//                        'partner_id' => $clientId,
-//                        'credit_partner_id' => $clientId,
-//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-//                        'debit_account_id' => $acc16605PS,
-//                        'credit_account_id' => $acc16200NV,
-//                        'user_id' => auth()->id() ?? 1,
-//                        'journalable_type' => DocumentJournal::class,
-//                        'journalable_id' => $journal->id,
-//                    ]);
-//
-//                    Transaction::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $lossType,
-//                        'debit_account_id' => $acc16605PS,
-//                        'debit_partner_id' => $clientId,
-//                        'debit_currency_id' => 1,
-//                        'credit_account_id' => $acc16200NV,
-//                        'credit_currency_id' => 1,
-//                        'credit_partner_id' => $clientId,
-//                        'amount_amd' => $contract->provided_amount,
-//                        'comment' => "Loss client, reserve for contract #{$contract->id}",
-//                        'user_id' => auth()->id() ?? 1,
-//                        'is_system' => true,
-//                        'disbursement_date' => now()->toDateString(),
-//                        'transactionable_type' => DocumentJournal::class,
-//                        'transactionable_id' => $lossDoc->id,
-//                    ]);
-//
-//                    $nextDocNum++;
-//                }
-//
-//                if ($oldReserveAmount > 0 && $oldClassificationName == 'standard') {
-//                    $classificationType = DocumentJournal::CLASSIFICATION;
-//
-//                    $classificationDoc = DocumentJournal::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $classificationType,
-//                        'amount_amd' => $oldReserveAmount,
-//                        'partner_id' => $clientId,
-//                        'credit_partner_id' => $clientId,
-//                        'comment' => "Old reserve for contract #{$contract->id} due to classification change",
-//                        'debit_account_id' => $debetClassification,
-//                        'credit_account_id' => $creditClassification,
-//                        'user_id' => auth()->id() ?? 1,
-//                        'journalable_type' => DocumentJournal::class,
-//                        'journalable_id' => $journal->id,
-//                    ]);
-//
-//                    Transaction::create([
-//                        'date' => now()->toDateString(),
-//                        'document_number' => $nextDocNum,
-//                        'document_type' => $classificationType,
-//                        'debit_account_id' => $debetClassification,
-//                        'debit_partner_id' => $clientId,
-//                        'debit_currency_id' => 1,
-//                        'credit_account_id' => $creditClassification,
-//                        'credit_currency_id' => 1,
-//                        'credit_partner_id' => $clientId,
-//                        'amount_amd' => $oldReserveAmount,
-//                        'comment' => "Old reserve for contract #{$contract->id}",
-//                        'user_id' => auth()->id() ?? 1,
-//                        'is_system' => true,
-//                        'disbursement_date' => now()->toDateString(),
-//                        'transactionable_type' => DocumentJournal::class,
-//                        'transactionable_id' => $classificationDoc->id,
-//                    ]);
-//
-//                    $nextDocNum++;
-//                }
-//            }
-//
-//            DB::commit();
-//            return response()->json(['message' => 'Client classification updated successfully.']);
-//        } catch (\Throwable $e) {
-//            DB::rollBack();
-//            return response()->json(['error' => 'Failed to update classification', 'details' => $e->getMessage()], 500);
-//        }
-//    }
 
 
 }
