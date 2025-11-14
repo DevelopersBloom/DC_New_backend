@@ -115,7 +115,7 @@ class ChartOfAccountController
 
     public function accountBalances(Request $request): JsonResponse
     {
-        $dateTo   = $request->query('to');
+        $dateTo   = $request->query('to_date');
         $perPage  = (int) $request->query('per_page', 15);
         $page     = (int) $request->query('page', 1);
 
