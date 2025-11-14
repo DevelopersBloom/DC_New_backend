@@ -493,7 +493,7 @@ class ClientControllerNew extends Controller
 
                         $nextDocNum++;
                     }
-                    $acc16200 = ChartOfAccount::idByCode('16200')
+                    $acc16200 = ChartOfAccount::idByCode('16200');
                     $amount16200Debit = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
                         ->where('debit_account_id', $acc16200)
