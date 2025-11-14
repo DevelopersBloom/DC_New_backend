@@ -503,7 +503,7 @@ class ClientControllerNew extends Controller
                         ->where('credit_account_id', $acc16200)
                         ->sum('amount_amd');
 
-                    $net16200 = $amount16200Debit - $amount16200Credit;
+                    $net16200 = abs($amount16200Debit - $amount16200Credit);
 
                     if ($net16200 > 0) {
                         $lossEffectiveDoc = DocumentJournal::create([
@@ -552,7 +552,7 @@ class ClientControllerNew extends Controller
                         ->where('credit_account_id', $acc16200NV)
                         ->sum('amount_amd');
 
-                    $net16200NV = $amount16200NVDebit - $amount16200NVCredit;
+                    $net16200NV = abs($amount16200NVDebit - $amount16200NVCredit);
 
                     if ($net16200NV > 0) {
                         $lossInterestDoc = DocumentJournal::create([
