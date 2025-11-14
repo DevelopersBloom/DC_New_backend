@@ -54,13 +54,33 @@ trait CalculatesAccountBalancesTrait
     }
 
 
+//    protected function balancesSubquery(?string $dateTo)
+//    {
+//        $union = $this->debitMovements($dateTo)->unionAll(
+//            $this->creditMovements($dateTo)
+//        );
+//
+//        return DB::query()
+//            ->fromSub($union, 'u')
+//            ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
+//            ->whereNull('ca.deleted_at')
+//            ->select([
+//                'u.account_id',
+//                'ca.code',
+//                'ca.name',
+//                'ca.type',
+//                DB::raw('SUM(u.delta) as balance'),
+//            ])
+//            ->groupBy('u.account_id', 'ca.code', 'ca.name', 'ca.type');
+//
+//    }
     protected function balancesSubquery(?string $dateTo)
     {
         $union = $this->debitMovements($dateTo)->unionAll(
             $this->creditMovements($dateTo)
         );
 
-        return DB::query()
+        $query = DB::query()
             ->fromSub($union, 'u')
             ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
             ->whereNull('ca.deleted_at')
@@ -72,24 +92,21 @@ trait CalculatesAccountBalancesTrait
                 DB::raw('SUM(u.delta) as balance'),
             ])
             ->groupBy('u.account_id', 'ca.code', 'ca.name', 'ca.type');
+
+        if ($dateTo) {
+            $query->whereExists(function ($q) use ($dateTo) {
+                $q->select(DB::raw(1))
+                    ->from('transactions as t2')
+                    ->whereRaw('(t2.debit_account_id = ca.id OR t2.credit_account_id = ca.id)')
+                    ->whereNull('t2.deleted_at')
+                    ->whereDate('t2.date', '<=', $dateTo);
+            });
+        }
+
+        return $query;
     }
 
 
-//    protected function balancesRowsQuery(?string $dateTo)
-//    {
-//        return DB::query()
-//            ->fromSub($this->balancesSubquery($dateTo), 'b')
-//            ->selectRaw("
-//                b.account_id,
-//                b.code,
-//                b.name,
-//                b.type,
-//                b.balance as total_resident,
-//                0 as total_non_resident,
-//                (b.balance + 0) as total
-//            ")
-//            ->orderBy('b.code');
-//    }
     protected function balancesRowsQuery(?string $dateTo)
     {
         return DB::query()
