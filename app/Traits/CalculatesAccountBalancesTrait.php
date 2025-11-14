@@ -15,6 +15,7 @@ trait CalculatesAccountBalancesTrait
 
     protected function debitMovements(?string $dateTo)
     {
+        dd($dateTo);
         $q = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
             ->whereNotNull('t.debit_account_id');
