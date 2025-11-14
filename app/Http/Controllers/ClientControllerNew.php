@@ -493,6 +493,7 @@ class ClientControllerNew extends Controller
 
                         $nextDocNum++;
                     }
+
                     $acc16200 = ChartOfAccount::idByCode('16200');
                     $amount16200Debit = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
@@ -505,7 +506,7 @@ class ClientControllerNew extends Controller
 
                     $net16200 = abs($amount16200Debit - $amount16200Credit);
 
-                    if ($net16200 > 0) {
+                    if ($amount16200Debit > 0) {
                         $lossEffectiveDoc = DocumentJournal::create([
                             'date' => now()->toDateString(),
                             'document_number' => $nextDocNum,
@@ -554,7 +555,7 @@ class ClientControllerNew extends Controller
 
                     $net16200NV = abs($amount16200NVDebit - $amount16200NVCredit);
 
-                    if ($net16200NV > 0) {
+                    if ($amount16200NVDebit > 0) {
                         $lossInterestDoc = DocumentJournal::create([
                             'date' => now()->toDateString(),
                             'document_number' => $nextDocNum,
