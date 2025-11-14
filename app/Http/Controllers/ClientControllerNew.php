@@ -446,7 +446,6 @@ class ClientControllerNew extends Controller
 
                     $nextDocNum++;
                 }
-                // --- START replacement for loss handling (inside foreach $contract loop) ---
 
                 if ($client->classification->name === 'loss') {
                     $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
