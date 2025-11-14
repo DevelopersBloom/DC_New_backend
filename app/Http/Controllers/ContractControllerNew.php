@@ -632,7 +632,7 @@ class ContractControllerNew extends Controller
                 $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
                 $journalDoc = DocumentJournal::create([
-                    'date' => now()->toDateString(),
+                    'date' => $date,
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeReserve,
                     'amount_amd' => $reserveAmount,
@@ -647,7 +647,7 @@ class ContractControllerNew extends Controller
                 ]);
 
                 Transaction::create([
-                    'date' => now()->toDateString(),
+                    'date' => $date,
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeReserve,
                     'debit_account_id' => $debetClassification,
