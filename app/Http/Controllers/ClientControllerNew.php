@@ -552,7 +552,7 @@ class ClientControllerNew extends Controller
                         ->where('credit_account_id', $acc16200NV)
                         ->sum('amount_amd');
 
-                    $net16200NV = $amount16200NVDebit - $amount16605PS;
+                    $net16200NV = $amount16200NVDebit - $amount16200NVCredit;
 
                     if ($net16200NV > 0) {
                         $lossInterestDoc = DocumentJournal::create([
@@ -587,6 +587,48 @@ class ClientControllerNew extends Controller
                             'disbursement_date' => now()->toDateString(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id' => $lossInterestDoc->id,
+                        ]);
+
+                        $nextDocNum++;
+                    }
+                    $acc16201NI = ChartOfAccount::idByCode('16201NI');
+                    $amount16201NIDebit = DocumentJournal::where('journalable_type', Contract::class)
+                        ->where('journalable_id', $contract->id)
+                        ->where('debit_account_id', $acc16201NI)
+                        ->sum('amount_amd');
+                    if ($amount16201NIDebit > 0) {
+                        $loss16201NI = DocumentJournal::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => DocumentJournal::LOSS_RESERVE,
+                            'amount_amd' => $amount16201NIDebit,
+                            'partner_id' => $clientId,
+                            'credit_partner_id' => $clientId,
+                            'comment' => "Zeroing 16200NV for contract #{$contract->id} due to loss classification",
+                            'debit_account_id' => $acc16605PS,
+                            'credit_account_id' => $acc16201NI,
+                            'user_id' => auth()->id() ?? 1,
+                            'journalable_type' => DocumentJournal::class,
+                            'journalable_id' => $journal->id,
+                        ]);
+
+                        Transaction::create([
+                            'date' => now()->toDateString(),
+                            'document_number' => $nextDocNum,
+                            'document_type' => DocumentJournal::LOSS_RESERVE,
+                            'debit_account_id' => $acc16605PS,
+                            'debit_partner_id' => $clientId,
+                            'debit_currency_id' => 1,
+                            'credit_account_id' => $acc16201NI,
+                            'credit_currency_id' => 1,
+                            'credit_partner_id' => $clientId,
+                            'amount_amd' => $amount16201NIDebit,
+                            'comment' => "Zeroing 16200NV for contract #{$contract->id}",
+                            'user_id' => auth()->id() ?? 1,
+                            'is_system' => true,
+                            'disbursement_date' => now()->toDateString(),
+                            'transactionable_type' => DocumentJournal::class,
+                            'transactionable_id' => $loss16201NI->id,
                         ]);
 
                         $nextDocNum++;
