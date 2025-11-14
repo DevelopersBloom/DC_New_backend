@@ -592,8 +592,8 @@ class ClientControllerNew extends Controller
                         $nextDocNum++;
                     }
                     $acc16201NI = ChartOfAccount::idByCode('16201NI');
-                    $amount16201NIDebit = DocumentJournal::where('journalable_type', Contract::class)
-                        ->where('journalable_id', $contract->id)
+                    $amount16201NIDebit = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $journal->id)
                         ->where('debit_account_id', $acc16201NI)
                         ->sum('amount_amd');
                     if ($amount16201NIDebit > 0) {
