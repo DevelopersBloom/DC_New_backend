@@ -552,14 +552,14 @@ class ClientControllerNew extends Controller
                         ->where('credit_account_id', $acc16200NV)
                         ->sum('amount_amd');
 
-                    $net16200NV = abs($amount16200NVDebit - $amount16200NVCredit);
+                    $net16200NV = $amount16200NVDebit - $amount16605PS;
 
-                    if ($amount16200NVDebit > 0) {
+                    if ($net16200NV > 0) {
                         $lossInterestDoc = DocumentJournal::create([
                             'date' => now()->toDateString(),
                             'document_number' => $nextDocNum,
                             'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                            'amount_amd' => $amount16200NVDebit,
+                            'amount_amd' => $net16200NV,
                             'partner_id' => $clientId,
                             'credit_partner_id' => $clientId,
                             'comment' => "Zeroing 16200NV for contract #{$contract->id} due to loss classification",
@@ -580,7 +580,7 @@ class ClientControllerNew extends Controller
                             'credit_account_id' => $acc16200NV,
                             'credit_currency_id' => 1,
                             'credit_partner_id' => $clientId,
-                            'amount_amd' => $amount16200NVDebit,
+                            'amount_amd' => $net16200NV,
                             'comment' => "Zeroing 16200NV for contract #{$contract->id}",
                             'user_id' => auth()->id() ?? 1,
                             'is_system' => true,
