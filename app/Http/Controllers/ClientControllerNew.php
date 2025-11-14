@@ -550,7 +550,7 @@ class ClientControllerNew extends Controller
                     $amount16200NVCredit = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $journal->id)
                         ->where('credit_account_id', $acc16200NV)
-                        ->sum('amount_amd');
+                        ->sum('amount_amd') ?? 0;
 
                     $net16200NV = $amount16200NVDebit - $amount16200NVCredit;
 
