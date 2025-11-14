@@ -490,6 +490,50 @@ class ClientControllerNew extends Controller
                     ]);
 
                     $nextDocNum++;
+
+                    $acc16200 = ChartOfAccount::idByCode('16200');
+
+                    $lossEffectiveType = DocumentJournal::LOSS_RESERVE_EFFECTIVE;
+
+                    $amount16200 =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $journal->id)
+                        ->where('debit_account_id',$acc16200)
+                        ->sum('amount_amd');
+
+                    $lossEffectiveDoc = DocumentJournal::create([
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => $lossEffectiveType,
+                        'amount_amd' => $amount16200,
+                        'partner_id' => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+                        'debit_account_id' => $acc16605PS,
+                        'credit_account_id' => $acc16200,
+                        'user_id' => auth()->id() ?? 1,
+                        'journalable_type' => DocumentJournal::class,
+                        'journalable_id' => $journal->id,
+                    ]);
+                    Transaction::create([
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => $lossEffectiveType,
+                        'debit_account_id' => $acc16605PS,
+                        'debit_partner_id' => $clientId,
+                        'debit_currency_id' => 1,
+                        'credit_account_id' => $acc16200,
+                        'credit_currency_id' => 1,
+                        'credit_partner_id' => $clientId,
+                        'amount_amd' => $amount16200,
+                        'comment' => "Loss client, reserve for contract #{$contract->id}",
+                        'user_id' => auth()->id() ?? 1,
+                        'is_system' => true,
+                        'disbursement_date' => now()->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id' => $lossEffectiveDoc->id,
+                    ]);
+
+                    $nextDocNum++;
                 }
 
                 if ($amount16605PC > 0 && $oldClassificationName == 'standard') {

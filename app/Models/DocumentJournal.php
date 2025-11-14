@@ -36,7 +36,7 @@ class DocumentJournal extends Model
     const INTEREST_RATE_AMOUNT = 'Տոկոսային եկամուտ անվանական';
     const CLASSIFICATION = 'Պահուստների միջև վերադասակարգում';
     const LOSS_RESERVE_AMOUNT = 'Վարկերի դուրս գրում-անվանական արժեքով';
-
+    const LOSS_RESERVE_EFFECTIVE = 'Վարկերի դուրս գրում-անվանական արժեքով';
     protected $fillable = [
         'date',
         'operation_number',
