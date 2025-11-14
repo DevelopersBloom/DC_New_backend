@@ -543,8 +543,8 @@ class ClientControllerNew extends Controller
                         $nextDocNum++;
                     }
 
-                    $amount16200NVDebit = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                        ->where('journalable_id', $journal->id)
+                    $amount16200NVDebit = DocumentJournal::where('journalable_type', Contract::class)
+                        ->where('journalable_id', $contract->id)
                         ->where('debit_account_id', $acc16200NV)
                         ->sum('amount_amd');
                     $amount16200NVCredit = DocumentJournal::where('journalable_type', DocumentJournal::class)
