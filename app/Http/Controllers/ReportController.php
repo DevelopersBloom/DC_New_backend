@@ -38,7 +38,7 @@ class ReportController
     {
         return $this->downloadTemplate('v013.XLS', $request);
     }
-    public function exportV17(Request $request)
+    public function getV17Report(Request $request)
     {
         $request->validate([
             'from' => 'nullable|date',
