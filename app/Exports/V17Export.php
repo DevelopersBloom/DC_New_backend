@@ -34,9 +34,37 @@ class V17Export
             ? round(($weighted / $totalAmount) * 100, 2)
             : 0;
 
-        $sheet->setCellValue('C23', $totalAmount);
-        $sheet->setCellValue('D23', $middleRate);
+        $days = Carbon::parse($ndms->first()->repayment_end_date)
+            ->diffInDays(Carbon::parse($ndms->first()->disbursement_date));
 
+        if ($days <= 0) {
+            $colAmount = 'C';
+            $colRate   = 'D';
+        } elseif ($days <= 15) {
+            $colAmount = 'E';
+            $colRate   = 'F';
+        } elseif ($days <= 30) {
+            $colAmount = 'G';
+            $colRate   = 'H';
+        } elseif ($days <= 60) {
+            $colAmount = 'I';
+            $colRate   = 'J';
+        } elseif ($days <= 90) {
+            $colAmount = 'K';
+            $colRate   = 'L';
+        } elseif ($days <= 180) {
+            $colAmount = 'M';
+            $colRate   = 'N';
+        } elseif ($days <= 365) {
+            $colAmount = 'O';
+            $colRate   = 'P';
+        } else {
+            $colAmount = 'Q';
+            $colRate   = 'R';
+        }
+
+        $sheet->setCellValue($colAmount . '23', $totalAmount);
+        $sheet->setCellValue($colRate   . '23', $middleRate);
         $fileName = 'v17_export_' . now()->format('Ymd_His') . '.xls';
         $path = storage_path('app/public/' . $fileName);
 
