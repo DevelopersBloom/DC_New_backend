@@ -13,7 +13,10 @@ class V17Export
     public function export($from, $to)
     {
         $path = base_path('v17.XLS');
-        $spreadsheet = IOFactory::load($path);
+
+        $reader = IOFactory::createReader('Xls');
+        $spreadsheet = $reader->load($path);
+
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
         $start = Carbon::parse($from)->startOfDay();
