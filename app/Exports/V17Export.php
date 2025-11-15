@@ -225,8 +225,8 @@ class V17Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getColumnByDays($days);
-            $amount = $doc->amount_amd;
-            $rate = $contract->interest_rate ?? 0;
+            $amount = $contract->provided_amount;
+            $rate = $contract->interest_rate * 365 ?? 0;
 
             $groups2[$col]['amount'] += $amount;
             $groups2[$col]['weighted'] += $amount * ($rate / 100);
