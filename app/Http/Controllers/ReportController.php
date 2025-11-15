@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\ReportsJournalExport;
 use App\Exports\V17Export;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -45,8 +46,20 @@ class ReportController
             'to'   => 'nullable|date'
         ]);
 
-        $from = now()->subDays(7)->startOfDay();
-        $to   = now()->endOfDay();
+//        $from = now()->subDays(7)->startOfDay();
+//        $to   = now()->endOfDay();
+        $request->validate([
+            'from' => 'nullable|date',
+            'to'   => 'nullable|date'
+        ]);
+
+        $from = $request->from
+            ? Carbon::parse($request->from)->startOfDay()
+            : now()->subDays(7)->startOfDay();
+
+        $to = $request->to
+            ? Carbon::parse($request->to)->endOfDay()
+            : now()->endOfDay();
 
         $export = new V17Export();
         $file = $export->export($from, $to);
