@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ReportsJournalExport;
+use App\Exports\V17Export;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -37,11 +38,22 @@ class ReportController
     {
         return $this->downloadTemplate('v013.XLS', $request);
     }
-    public function getV17Report(Request $request)
+    public function exportV17(Request $request)
     {
-        return $this->downloadTemplate('v17.XLS', $request);
+        $request->validate([
+            'from' => 'nullable|date',
+            'to'   => 'nullable|date'
+        ]);
 
+        $from = now()->subDays(7)->startOfDay();
+        $to   = now()->endOfDay();
+
+        $export = new V17Export();
+        $file = $export->export($from, $to);
+
+        return response()->download($file)->deleteFileAfterSend(true);
     }
+
 
     private function downloadTemplate(string $templateFile, Request $request)
     {
