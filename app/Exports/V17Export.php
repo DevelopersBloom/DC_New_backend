@@ -147,8 +147,8 @@ class V17Export
         }
 
         foreach ($groups4 as $col => $data) {
-            $sheet4->setCellValue($col . '9', $data['amount']);
-            $sheet4->setCellValue(chr(ord($col) + 1) . '9', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
+            $sheet4->setCellValue($col . '15', $data['amount']);
+            $sheet4->setCellValue(chr(ord($col) + 1) . '15', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
         }
         $fileName = 'v17_export_' . now()->format('Ymd_His') . '.xls';
         $path = storage_path('app/public/' . $fileName);
