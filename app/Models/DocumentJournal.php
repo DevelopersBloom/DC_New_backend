@@ -326,6 +326,11 @@ class DocumentJournal extends Model
     {
         return $this->belongsTo(NdmRepaymentDetail::class, 'ndm_repayment_id');
     }
+    public function parentDoc()
+    {
+        return $this->morphTo(__FUNCTION__, 'journalable_type', 'journalable_id');
+    }
+
     public function scopeBetweenDates($query, $from = null, $to = null)
     {
         if ($from && $to) {
