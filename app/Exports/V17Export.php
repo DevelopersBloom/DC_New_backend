@@ -174,7 +174,9 @@ class V17Export
         // ---------- sheet 1 ----------
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
 //        $ndms = LoanNdm::whereBetween('disbursement_date', [$start, $end])->get();
-        $docs = DocumentJournal::with(['parentDoc.journalable'])::where('document_type',DocumentJournal::LOAN_ATTRACTION)->get();
+        $docs = DocumentJournal::with(['parentDoc.journalable'])
+            ->where('document_type', DocumentJournal::LOAN_ATTRACTION)
+            ->get();
         $groups1 = [
             'C' => ['amount' => 0, 'weighted' => 0],
             'E' => ['amount' => 0, 'weighted' => 0],
@@ -187,9 +189,9 @@ class V17Export
         ];
 
         foreach ($docs as $doc) {
-//            $parentDoc = $doc->journalable;
-//            $ndm = $doc->parentDoc->journalable;;
-            $parentDoc = $doc->journalable; $ndm = $doc->parentDoc->journalable;;
+            $parentDoc = $doc->journalable;
+            $ndm = $doc->parentDoc->journalable;;
+//            $parentDoc = $doc->journalable; $ndm = $doc->parentDoc->journalable;;
             $days = Carbon::parse($ndm->repayment_end_date)
                 ->diffInDays(Carbon::parse($ndm->disbursement_date));
 
