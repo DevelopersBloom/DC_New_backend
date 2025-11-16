@@ -118,7 +118,6 @@ class V17Export
         }
 
         // ---------- sheet 4 ----------
-        $sheet4 = $spreadsheet->getSheetByName('Sheet4');
         $groups4 = [
             'C' => ['amount' => 0, 'weighted' => 0],
             'E' => ['amount' => 0, 'weighted' => 0],
@@ -137,7 +136,7 @@ class V17Export
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($contract->date));
 
-            $col = $this->getSecondSheetColumnByDays($days);
+            $col = $this->getColumnByDays($days);
             $amount = $contract->provided_amount;
             $rate = $contract->effective_daily_rate ? $contract->effective_daily_rate * 365 : 0;
 
