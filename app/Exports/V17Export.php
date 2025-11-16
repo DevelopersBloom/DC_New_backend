@@ -212,14 +212,14 @@ class V17Export
 
         $groups2 = [
             'B' => ['amount' => 0, 'weighted' => 0],
-            'C' => ['amount' => 0, 'weighted' => 0],
-            'E' => ['amount' => 0, 'weighted' => 0],
-            'G' => ['amount' => 0, 'weighted' => 0],
-            'I' => ['amount' => 0, 'weighted' => 0],
-            'K' => ['amount' => 0, 'weighted' => 0],
-            'M' => ['amount' => 0, 'weighted' => 0],
-            'O' => ['amount' => 0, 'weighted' => 0],
-            'Q' => ['amount' => 0, 'weighted' => 0],
+            'D' => ['amount' => 0, 'weighted' => 0],
+            'F' => ['amount' => 0, 'weighted' => 0],
+            'H' => ['amount' => 0, 'weighted' => 0],
+            'J' => ['amount' => 0, 'weighted' => 0],
+            'L' => ['amount' => 0, 'weighted' => 0],
+            'N' => ['amount' => 0, 'weighted' => 0],
+            'P' => ['amount' => 0, 'weighted' => 0],
+            'R' => ['amount' => 0, 'weighted' => 0],
         ];
 
         foreach ($docs as $doc) {
