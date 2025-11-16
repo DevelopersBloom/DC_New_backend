@@ -58,15 +58,16 @@ class V17Export
             ->get();
 
         $groups2 = [
-            'C' => ['amount' => 0, 'weighted' => 0],
-            'E' => ['amount' => 0, 'weighted' => 0],
-            'G' => ['amount' => 0, 'weighted' => 0],
-            'I' => ['amount' => 0, 'weighted' => 0],
-            'K' => ['amount' => 0, 'weighted' => 0],
-            'M' => ['amount' => 0, 'weighted' => 0],
-            'O' => ['amount' => 0, 'weighted' => 0],
-            'Q' => ['amount' => 0, 'weighted' => 0],
+            'B' => ['amount' => 0, 'weighted' => 0],
+            'D' => ['amount' => 0, 'weighted' => 0],
+            'F' => ['amount' => 0, 'weighted' => 0],
+            'H' => ['amount' => 0, 'weighted' => 0],
+            'J' => ['amount' => 0, 'weighted' => 0],
+            'L' => ['amount' => 0, 'weighted' => 0],
+            'N' => ['amount' => 0, 'weighted' => 0],
+            'P' => ['amount' => 0, 'weighted' => 0],
         ];
+
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
@@ -89,15 +90,15 @@ class V17Export
         }
         // ---------- sheet 3 ----------
         $sheet3 = $spreadsheet->getSheetByName('Sheet3');
-        $groups3 = [
-            'B' => ['amount' => 0, 'weighted' => 0],
-            'D' => ['amount' => 0, 'weighted' => 0],
-            'F' => ['amount' => 0, 'weighted' => 0],
-            'H' => ['amount' => 0, 'weighted' => 0],
-            'J' => ['amount' => 0, 'weighted' => 0],
-            'L' => ['amount' => 0, 'weighted' => 0],
-            'N' => ['amount' => 0, 'weighted' => 0],
-            'P' => ['amount' => 0, 'weighted' => 0],
+        $groups3= [
+            'C' => ['amount' => 0, 'weighted' => 0],
+            'E' => ['amount' => 0, 'weighted' => 0],
+            'G' => ['amount' => 0, 'weighted' => 0],
+            'I' => ['amount' => 0, 'weighted' => 0],
+            'K' => ['amount' => 0, 'weighted' => 0],
+            'M' => ['amount' => 0, 'weighted' => 0],
+            'O' => ['amount' => 0, 'weighted' => 0],
+            'Q' => ['amount' => 0, 'weighted' => 0],
         ];
 
         foreach ($docs as $doc) {
