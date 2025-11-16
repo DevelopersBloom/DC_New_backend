@@ -243,14 +243,14 @@ class V17Export
         // ---------- sheet 3 ----------
         $sheet3 = $spreadsheet->getSheetByName('Sheet3');
         $groups3 = [
-            'C' => ['amount' => 0, 'weighted' => 0],
-            'E' => ['amount' => 0, 'weighted' => 0],
-            'G' => ['amount' => 0, 'weighted' => 0],
-            'I' => ['amount' => 0, 'weighted' => 0],
-            'K' => ['amount' => 0, 'weighted' => 0],
-            'M' => ['amount' => 0, 'weighted' => 0],
-            'O' => ['amount' => 0, 'weighted' => 0],
-            'Q' => ['amount' => 0, 'weighted' => 0],
+            'B' => ['amount' => 0, 'weighted' => 0],
+            'D' => ['amount' => 0, 'weighted' => 0],
+            'F' => ['amount' => 0, 'weighted' => 0],
+            'H' => ['amount' => 0, 'weighted' => 0],
+            'J' => ['amount' => 0, 'weighted' => 0],
+            'L' => ['amount' => 0, 'weighted' => 0],
+            'N' => ['amount' => 0, 'weighted' => 0],
+            'P' => ['amount' => 0, 'weighted' => 0],
         ];
 
         foreach ($docs as $doc) {
@@ -289,15 +289,16 @@ class V17Export
         return $path;
     }
 
-    private function getColumnByDays($days)
+
+    private function getSecondSheetColumnByDays($days)
     {
-        if ($days <= 0) return 'C';
-        if ($days <= 15) return 'E';
-        if ($days <= 30) return 'G';
-        if ($days <= 60) return 'I';
-        if ($days <= 90) return 'K';
-        if ($days <= 180) return 'M';
-        if ($days <= 365) return 'O';
-        return 'Q';
+        if ($days <= 0) return 'B';
+        if ($days <= 15) return 'D';
+        if ($days <= 30) return 'F';
+        if ($days <= 60) return 'H';
+        if ($days <= 90) return 'J';
+        if ($days <= 180) return 'L';
+        if ($days <= 365) return 'N';
+        return 'P';
     }
 }
