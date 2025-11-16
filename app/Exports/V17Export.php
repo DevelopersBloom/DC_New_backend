@@ -53,7 +53,7 @@ class V17Export
 
         // ---------- sheet 2 ----------
         $sheet2 = $spreadsheet->getSheetByName('Sheet2');
-        $docs = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+        $docsContract = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereBetween('date', [$start, $end])
             ->get();
 
@@ -69,7 +69,7 @@ class V17Export
         ];
 
 
-        foreach ($docs as $doc) {
+        foreach ($docsContract as $doc) {
             $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
             if (!$contract) continue;
 
@@ -102,22 +102,19 @@ class V17Export
         ];
 
         foreach ($docs as $doc) {
-            $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
-            if (!$contract) continue;
-
-            $days = Carbon::parse($contract->deadline)
-                ->diffInDays(Carbon::parse($contract->date));
+            $parentDoc = $doc->journalable;
+            $ndm = $doc->parentDoc->journalable;;
+            $days = Carbon::parse($ndm->repayment_end_date)
+                ->diffInDays(Carbon::parse($ndm->disbursement_date));
 
             $col = $this->getColumnByDays($days);
-            $amount = $contract->provided_amount;
-            $rate = $contract->effective_annual_rate ?? 0;
-            $groups3[$col]['amount'] += $amount;
-            $groups3[$col]['weighted'] += $amount * ($rate / 100);
+            $groups3[$col]['amount'] += $doc->amount_amd;
+            $groups3[$col]['weighted'] += $doc->amount_amd * ($ndm->effective_interest_rate / 100);
         }
 
         foreach ($groups3 as $col => $data) {
-            $sheet3->setCellValue($col . '8', $data['amount']);
-            $sheet3->setCellValue(chr(ord($col) + 1) . '8', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
+            $sheet3->setCellValue($col . '9', $data['amount']);
+            $sheet3->setCellValue(chr(ord($col) + 1) . '9', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
         }
 
         // ---------- sheet 4 ----------
