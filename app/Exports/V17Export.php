@@ -75,7 +75,7 @@ class V17Export
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($contract->date));
 
-            $col = $this->getColumnByDays($days);
+            $col = $this->getSecondSheetColumnByDays($days);
             $amount = $contract->provided_amount;
             $rate = $contract->interest_rate ? $contract->interest_rate * 365 : 0;
 
@@ -107,7 +107,7 @@ class V17Export
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($contract->date));
 
-            $col = $this->getSecondSheetColumnByDays($days);
+            $col = $this->getColumnByDays($days);
             $amount = $contract->provided_amount;
             $rate = $contract->effective_annual_rate ?? 0;
             $groups3[$col]['amount'] += $amount;
