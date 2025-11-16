@@ -191,7 +191,6 @@ class V17Export
         foreach ($docs as $doc) {
             $parentDoc = $doc->journalable;
             $ndm = $doc->parentDoc->journalable;;
-//            $parentDoc = $doc->journalable; $ndm = $doc->parentDoc->journalable;;
             $days = Carbon::parse($ndm->repayment_end_date)
                 ->diffInDays(Carbon::parse($ndm->disbursement_date));
 
@@ -212,6 +211,7 @@ class V17Export
             ->get();
 
         $groups2 = [
+            'B' => ['amount' => 0, 'weighted' => 0],
             'C' => ['amount' => 0, 'weighted' => 0],
             'E' => ['amount' => 0, 'weighted' => 0],
             'G' => ['amount' => 0, 'weighted' => 0],
