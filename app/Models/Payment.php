@@ -38,6 +38,8 @@ class Payment extends Model
         'remaining',
         'to_date',
         'effective_payment',
+        'kasko_amount',
+        'kasko_paid'
     ];
     protected $casts = [
         'mother'             => 'decimal:2',
@@ -47,6 +49,8 @@ class Payment extends Model
         'principal_payment'  => 'decimal:2',
         'interest_payment'   => 'decimal:2',
         'remaining'          => 'decimal:2',
+        'kasko_amount'       => 'decimal:2',
+        'kasko_paid'         => 'boolean'
     ];
 
     public function contract(){

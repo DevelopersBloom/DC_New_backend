@@ -33,7 +33,8 @@ class ContractRequest extends FormRequest
             'effective_rate' => 'nullable|numeric',
             'penalty' => 'required|numeric',
             'lump_rate' => 'required|numeric',
-            'payment_type' => 'required|string'
+            'payment_type' => 'required|string',
+            'kasko_amount' => 'nullable|numeric',
 //            'files' => 'nullable|array',
 //            'files.*.file' => 'required|file',
 //            'files.*.file_type' => 'required|string',

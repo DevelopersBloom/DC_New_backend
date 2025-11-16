@@ -283,6 +283,7 @@ class   ContractService
             'user_id' => auth()->user()->id ?? 1,
             'category_id' => $data['category_id'] ?? null,
             'payment_type' => $data['payment_type'],
+            'kasko_amount' => $data['kasko_amount'] ?? 4000,
         ];
 
         // Create and return the contract
@@ -329,13 +330,18 @@ class   ContractService
                 $payment['last_payment'] = true;
             }
 
-            $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate/100);
+             $kaskoAmount = 0;
+             if ($contract->kasko_amount && $paymentDate->month == $fromDate->month) {
+                 $kaskoAmount = $contract->kasko_amount;
+             }
+             $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate/100);
             $payment['date'] = $paymentDate->format('Y-m-d');
             $payment['to_date'] = $paymentDate->format('Y-m-d');
             $payment['days'] = $diffDays;
             $payment['amount'] = $amount;
             $payment['pawnshop_id'] = $pawnshop_id;
             $payment['PGI_ID'] = $pgi_id;
+            $payment['kasko_amount'] = $kaskoAmount;
 
             Payment::create($payment);
             $pgi_id++;
@@ -378,7 +384,10 @@ class   ContractService
             $remaining -= $principalPayment;
 
             $paymentDate = (clone $currentDate)->addMonths($i);
-
+            $kaskoAmount = 0;
+            if ($contract->kasko_amount && $paymentDate->month == $currentDate->month) {
+                $kaskoAmount = $contract->kasko_amount;
+            }
             $payment = [
                 'contract_id' => $contract->id,
                 'date' => $paymentDate->format('Y-m-d'),
@@ -388,6 +397,7 @@ class   ContractService
                 'interest_payment' => round($interest, 2),
                 'effective_payment' => round($effective,2),
                 'remaining' => round(max($remaining, 0), 2),
+                'kasko_amount' => $kaskoAmount,
                 'pawnshop_id' => $pawnshop_id,
                 'PGI_ID' => $pgi_id,
             ];
