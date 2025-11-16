@@ -220,17 +220,6 @@ class V17Export
             'O' => ['amount' => 0, 'weighted' => 0],
             'Q' => ['amount' => 0, 'weighted' => 0],
         ];
-        $secondColumns = [
-            'B' => 'C',
-            'C' => 'D',
-            'E' => 'F',
-            'G' => 'H',
-            'I' => 'J',
-            'K' => 'L',
-            'M' => 'N',
-            'O' => 'P',
-            'Q' => 'R',
-        ];
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
@@ -246,16 +235,11 @@ class V17Export
             $groups2[$col]['amount'] += $amount;
             $groups2[$col]['weighted'] += $amount * ($rate / 100);
         }
+
         foreach ($groups2 as $col => $data) {
             $sheet2->setCellValue($col . '19', $data['amount']);
-
-            $rateColumn = $secondColumns[$col];
-            $sheet2->setCellValue(
-                $rateColumn . '19',
-                $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0
-            );
+            $sheet2->setCellValue(chr(ord($col)-1) . '19', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
         }
-
         // ---------- sheet 3 ----------
         $sheet3 = $spreadsheet->getSheetByName('Sheet3');
         $groups3 = [
