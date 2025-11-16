@@ -119,17 +119,18 @@ class V17Export
 
         // ---------- sheet 4 ----------
         $sheet4 = $spreadsheet->getSheetByName('Sheet4');
-        $groups4 = [
-            'B' => ['amount' => 0, 'weighted' => 0],
-            'D' => ['amount' => 0, 'weighted' => 0],
-            'F' => ['amount' => 0, 'weighted' => 0],
-            'H' => ['amount' => 0, 'weighted' => 0],
-            'J' => ['amount' => 0, 'weighted' => 0],
-            'L' => ['amount' => 0, 'weighted' => 0],
-            'N' => ['amount' => 0, 'weighted' => 0],
-            'P' => ['amount' => 0, 'weighted' => 0],
-        ];
 
+        $groups4= [
+            'C' => ['amount' => 0, 'weighted' => 0],
+            'E' => ['amount' => 0, 'weighted' => 0],
+            'G' => ['amount' => 0, 'weighted' => 0],
+            'I' => ['amount' => 0, 'weighted' => 0],
+            'K' => ['amount' => 0, 'weighted' => 0],
+            'M' => ['amount' => 0, 'weighted' => 0],
+            'O' => ['amount' => 0, 'weighted' => 0],
+            'Q' => ['amount' => 0, 'weighted' => 0],
+            'S' => ['amount' => 0, 'weighted' => 0],
+        ];
         foreach ($docsContract as $doc) {
             $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
             if (!$contract) continue;
@@ -137,7 +138,7 @@ class V17Export
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($contract->date));
 
-            $col = $this->getSecondSheetColumnByDays($days);
+            $col = $this->getForthSheetColumnByDays($days);
             $amount = $contract->provided_amount;
             $rate = $contract->effective_daily_rate ? $contract->effective_daily_rate * 365 : 0;
 
@@ -178,5 +179,17 @@ class V17Export
         if ($days <= 180) return 'L';
         if ($days <= 365) return 'N';
         return 'P';
+    }
+    private function getForthSheetColumnByDays($days)
+    {
+        if ($days <= 0) return 'C';
+        if ($days <= 15) return 'E';
+        if ($days <= 30) return 'G';
+        if ($days <= 60) return 'I';
+        if ($days <= 90) return 'K';
+        if ($days <= 180) return 'M';
+        if ($days <= 365) return 'O';
+        if ($days <= 1805) return 'Q';
+        return 'S';
     }
 }
