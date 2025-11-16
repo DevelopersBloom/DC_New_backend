@@ -276,6 +276,7 @@ class ContractControllerNew extends Controller
             $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
             $contract->effective_annual_rate = round($effectiveRates['annual'],10); // 24.00 (%)
             $contract->effective_daily_rate = round($effectiveRates['daily'],10);   // 0.064321 (%)
+            $contract->effective_rate_kasko = round($effectiveRates['kasko_daily'],10);
             $contract->save();
 
             ContractAmountHistory::create([

@@ -6,19 +6,73 @@ use App\Models\Order;
 
 class EffectiveRateService
 {
+//    public function calculateEffectiveRate(Contract $contract): array
+//    {
+//        $lumpAmount = Order::where('contract_id', $contract->id)
+//            ->where('filter', Order::REFUND_LUMP_FILTER)
+//            ->select('amount')
+//            ->first();
+//        $kaskoAmount = $contract->kasko_amount ?? 0;
+//        $fees = $lumpAmount?->amount ?? $contract->provided_amount * ($contract->lump_rate / 100);
+//        $principal = $contract->mother;
+//
+//        $netAmount = $principal - $fees;
+//        $netAmountKasko = $principal - $fees - $kaskoAmount;
+//
+//        $cashflows = [];
+//        $cashflows[] = $netAmount;
+//        $cashflowsKasko[] = $netAmountKasko;
+//
+//        foreach ($contract->payments as $payment) {
+//            $paymentKasko = $payment->kasko_amount ?? 0;
+//            if ($contract->payment_type == 'classic') {
+//                $amount = $payment->amount + $payment->mother;
+//                $amountKasko = $amount + $paymentKasko;
+//
+//            } else {
+//                $amount = $payment->amount;
+//                $amountKasko = $payment->amount + $paymentKasko;
+//            }
+//            $cashflows[] = -$amount;
+//            $cashflowsKasko[] = -$amountKasko;
+//        }
+//
+//        $monthlyRate = $this->irr($cashflows);
+//        $monthlyRateKasko = $this->irr($cashflowsKasko);
+//
+//        if ($monthlyRate === null) {
+//            return ['annual' => null, 'daily' => null];
+//        }
+//
+//        $effectiveAnnualDecimal = pow(1 + $monthlyRate, 12) - 1;
+//        $effectiveDailyDecimal = pow(1 + $effectiveAnnualDecimal, 1 / 365) - 1;
+//
+//        $effectiveKaskoAnnualDecimal = pow(1 + $monthlyRateKasko, 12) - 1;
+//        $effectiveKaskoDailyDecimal = pow(1 + $effectiveKaskoAnnualDecimal, 1 / 365) - 1;
+//
+//        $annualPercent = round($effectiveAnnualDecimal * 100, 10);
+//        $dailyPercent = round($effectiveDailyDecimal * 100, 10);
+//        $dailyKaskoPercent = round($effectiveKaskoDailyDecimal * 100,10);
+//
+//        return [
+//            'annual' => $annualPercent,
+//            'daily' => $dailyPercent,
+//            'kasko_daily' => $dailyKaskoPercent,
+//        ];
+//    }
     public function calculateEffectiveRate(Contract $contract): array
     {
         $lumpAmount = Order::where('contract_id', $contract->id)
             ->where('filter', Order::REFUND_LUMP_FILTER)
             ->select('amount')
             ->first();
+
+        $kaskoAmount = $contract->kasko_amount;
         $fees = $lumpAmount?->amount ?? $contract->provided_amount * ($contract->lump_rate / 100);
         $principal = $contract->mother;
 
         $netAmount = $principal - $fees;
-
-        $cashflows = [];
-        $cashflows[] = $netAmount;
+        $cashflows = [$netAmount];
 
         foreach ($contract->payments as $payment) {
             if ($contract->payment_type == 'classic') {
@@ -32,18 +86,49 @@ class EffectiveRateService
         $monthlyRate = $this->irr($cashflows);
 
         if ($monthlyRate === null) {
-            return ['annual' => null, 'daily' => null];
+            return [
+                'annual' => null,
+                'daily' => null,
+                'kasko_daily' => null
+            ];
         }
 
         $effectiveAnnualDecimal = pow(1 + $monthlyRate, 12) - 1;
         $effectiveDailyDecimal = pow(1 + $effectiveAnnualDecimal, 1 / 365) - 1;
 
-        $annualPercent = round($effectiveAnnualDecimal * 100, 10);
-        $dailyPercent = round($effectiveDailyDecimal * 100, 10);
+        $kaskoDaily = null;
+
+        if (!empty($kaskoAmount)) {
+
+            $netAmountKasko = $principal - $fees - $kaskoAmount;
+            $cashflowsKasko = [$netAmountKasko];
+
+            foreach ($contract->payments as $payment) {
+                $paymentKasko = $payment->kasko_amount ?? 0;
+
+                if ($contract->payment_type == 'classic') {
+                    $amountKasko = $payment->amount + $payment->mother + $paymentKasko;
+                } else {
+                    $amountKasko = $payment->amount + $paymentKasko;
+                }
+
+                $cashflowsKasko[] = -$amountKasko;
+            }
+
+            $monthlyRateKasko = $this->irr($cashflowsKasko);
+
+            if ($monthlyRateKasko !== null) {
+                $effectiveKaskoAnnual = pow(1 + $monthlyRateKasko, 12) - 1;
+                $effectiveKaskoDaily = pow(1 + $effectiveKaskoAnnual, 1 / 365) - 1;
+
+                $kaskoDaily = round($effectiveKaskoDaily * 100, 10);
+            }
+        }
 
         return [
-            'annual' => $annualPercent,
-            'daily' => $dailyPercent,
+            'annual'      => round($effectiveAnnualDecimal * 100, 10),
+            'daily'       => round($effectiveDailyDecimal * 100, 10),
+            'kasko_daily' => $kaskoDaily,
         ];
     }
 
