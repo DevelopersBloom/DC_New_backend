@@ -119,11 +119,30 @@ class V17Export
 
         // ---------- sheet 4 ----------
         $sheet4 = $spreadsheet->getSheetByName('Sheet4');
-        $groups4 = $groups3;
+        $groups4 = [
+            'C' => ['amount' => 0, 'weighted' => 0],
+            'E' => ['amount' => 0, 'weighted' => 0],
+            'G' => ['amount' => 0, 'weighted' => 0],
+            'I' => ['amount' => 0, 'weighted' => 0],
+            'K' => ['amount' => 0, 'weighted' => 0],
+            'M' => ['amount' => 0, 'weighted' => 0],
+            'O' => ['amount' => 0, 'weighted' => 0],
+            'Q' => ['amount' => 0, 'weighted' => 0],
+        ];
 
-        foreach ($groups4 as $col => $data) {
-            $sheet4->setCellValue($col . '14', $data['amount']);
-            $sheet4->setCellValue(chr(ord($col) + 1) . '14', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
+        foreach ($docsContract as $doc) {
+            $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
+            if (!$contract) continue;
+
+            $days = Carbon::parse($contract->deadline)
+                ->diffInDays(Carbon::parse($contract->date));
+
+            $col = $this->getSecondSheetColumnByDays($days);
+            $amount = $contract->provided_amount;
+            $rate = $contract->effective_daily_rate ? $contract->effective_daily_rate * 365 : 0;
+
+            $groups4[$col]['amount'] += $amount;
+            $groups4[$col]['weighted'] += $amount * ($rate / 100);
         }
 
         $fileName = 'v17_export_' . now()->format('Ymd_His') . '.xls';
