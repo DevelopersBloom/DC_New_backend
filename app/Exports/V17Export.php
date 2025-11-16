@@ -239,7 +239,7 @@ class V17Export
 
         foreach ($groups2 as $col => $data) {
             $sheet2->setCellValue($col . '19', $data['amount']);
-            $sheet2->setCellValue(chr(ord($col) + 1) . '19', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
+            $sheet2->setCellValue(chr(ord($col)) . '19', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
         }
         // ---------- sheet 3 ----------
         $sheet3 = $spreadsheet->getSheetByName('Sheet3');
