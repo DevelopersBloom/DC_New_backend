@@ -173,8 +173,8 @@ class V17Export
 
         // ---------- sheet 1 ----------
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
-        $ndms = LoanNdm::whereBetween('disbursement_date', [$start, $end])->get();
-
+//        $ndms = LoanNdm::whereBetween('disbursement_date', [$start, $end])->get();
+        $docs = DocumentJournal::where('document_type',DocumentJournal::LOAN_ATTRACTION)->get();
         $groups1 = [
             'C' => ['amount' => 0, 'weighted' => 0],
             'E' => ['amount' => 0, 'weighted' => 0],
@@ -186,13 +186,15 @@ class V17Export
             'Q' => ['amount' => 0, 'weighted' => 0],
         ];
 
-        foreach ($ndms as $n) {
-            $days = Carbon::parse($n->repayment_end_date)
-                ->diffInDays(Carbon::parse($n->disbursement_date));
+        foreach ($docs as $doc) {
+            $parentDoc = $doc->journalable;
+            $ndm = $doc->parentDoc->journalable;;
+            $days = Carbon::parse($ndm->repayment_end_date)
+                ->diffInDays(Carbon::parse($ndm->disbursement_date));
 
             $col = $this->getColumnByDays($days);
-            $groups1[$col]['amount'] += $n->amount;
-            $groups1[$col]['weighted'] += $n->amount * ($n->interest_rate / 100);
+            $groups1[$col]['amount'] += $doc->amount_amd;
+            $groups1[$col]['weighted'] += $doc->amount_amd * ($ndm->interest_rate / 100);
         }
 
         foreach ($groups1 as $col => $data) {
@@ -226,7 +228,7 @@ class V17Export
 
             $col = $this->getColumnByDays($days);
             $amount = $contract->provided_amount;
-            $rate = $contract->interest_rate * 365 ?? 0;
+            $rate = $contract->interest_rate ? $contract->interest_rate * 365 : 0;
 
             $groups2[$col]['amount'] += $amount;
             $groups2[$col]['weighted'] += $amount * ($rate / 100);
