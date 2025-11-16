@@ -118,15 +118,16 @@ class V17Export
         }
 
         // ---------- sheet 4 ----------
+        $sheet4 = $spreadsheet->getSheetByName('Sheet4');
         $groups4 = [
-            'C' => ['amount' => 0, 'weighted' => 0],
-            'E' => ['amount' => 0, 'weighted' => 0],
-            'G' => ['amount' => 0, 'weighted' => 0],
-            'I' => ['amount' => 0, 'weighted' => 0],
-            'K' => ['amount' => 0, 'weighted' => 0],
-            'M' => ['amount' => 0, 'weighted' => 0],
-            'O' => ['amount' => 0, 'weighted' => 0],
-            'Q' => ['amount' => 0, 'weighted' => 0],
+            'B' => ['amount' => 0, 'weighted' => 0],
+            'D' => ['amount' => 0, 'weighted' => 0],
+            'F' => ['amount' => 0, 'weighted' => 0],
+            'H' => ['amount' => 0, 'weighted' => 0],
+            'J' => ['amount' => 0, 'weighted' => 0],
+            'L' => ['amount' => 0, 'weighted' => 0],
+            'N' => ['amount' => 0, 'weighted' => 0],
+            'P' => ['amount' => 0, 'weighted' => 0],
         ];
 
         foreach ($docsContract as $doc) {
@@ -136,7 +137,7 @@ class V17Export
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($contract->date));
 
-            $col = $this->getColumnByDays($days);
+            $col = $this->getSecondSheetColumnByDays($days);
             $amount = $contract->provided_amount;
             $rate = $contract->effective_daily_rate ? $contract->effective_daily_rate * 365 : 0;
 
@@ -144,6 +145,10 @@ class V17Export
             $groups4[$col]['weighted'] += $amount * ($rate / 100);
         }
 
+        foreach ($groups4 as $col => $data) {
+            $sheet4->setCellValue($col . '9', $data['amount']);
+            $sheet4->setCellValue(chr(ord($col) + 1) . '9', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
+        }
         $fileName = 'v17_export_' . now()->format('Ymd_His') . '.xls';
         $path = storage_path('app/public/' . $fileName);
         $writer = new Xls($spreadsheet);
