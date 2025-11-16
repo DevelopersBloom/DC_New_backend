@@ -77,7 +77,7 @@ class V17Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getSecondSheetColumnByDays($days);
-            $amount = $contract->provided_amount;
+            $amount = $docsContract->amount_amd;
             $rate = $contract->interest_rate ? $contract->interest_rate * 365 : 0;
 
             $groups2[$col]['amount'] += $amount;
@@ -139,7 +139,7 @@ class V17Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getForthSheetColumnByDays($days);
-            $amount = $contract->provided_amount;
+            $amount = $docsContract->amount_amd;
             $rate = $contract->effective_daily_rate ? $contract->effective_daily_rate * 365 : 0;
 
             $groups4[$col]['amount'] += $amount;
