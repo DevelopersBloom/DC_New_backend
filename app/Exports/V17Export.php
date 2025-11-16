@@ -211,15 +211,25 @@ class V17Export
             ->get();
 
         $groups2 = [
-            'B' => ['amount' => 0, 'weighted' => 0],
-            'D' => ['amount' => 0, 'weighted' => 0],
-            'F' => ['amount' => 0, 'weighted' => 0],
-            'H' => ['amount' => 0, 'weighted' => 0],
-            'J' => ['amount' => 0, 'weighted' => 0],
-            'L' => ['amount' => 0, 'weighted' => 0],
-            'N' => ['amount' => 0, 'weighted' => 0],
-            'P' => ['amount' => 0, 'weighted' => 0],
-            'R' => ['amount' => 0, 'weighted' => 0],
+            'C' => ['amount' => 0, 'weighted' => 0],
+            'E' => ['amount' => 0, 'weighted' => 0],
+            'G' => ['amount' => 0, 'weighted' => 0],
+            'I' => ['amount' => 0, 'weighted' => 0],
+            'K' => ['amount' => 0, 'weighted' => 0],
+            'M' => ['amount' => 0, 'weighted' => 0],
+            'O' => ['amount' => 0, 'weighted' => 0],
+            'Q' => ['amount' => 0, 'weighted' => 0],
+        ];
+        $secondColumns = [
+            'B' => 'C',
+            'C' => 'D',
+            'E' => 'F',
+            'G' => 'H',
+            'I' => 'J',
+            'K' => 'L',
+            'M' => 'N',
+            'O' => 'P',
+            'Q' => 'R',
         ];
 
         foreach ($docs as $doc) {
@@ -236,11 +246,16 @@ class V17Export
             $groups2[$col]['amount'] += $amount;
             $groups2[$col]['weighted'] += $amount * ($rate / 100);
         }
-
         foreach ($groups2 as $col => $data) {
             $sheet2->setCellValue($col . '19', $data['amount']);
-            $sheet2->setCellValue(chr(ord($col) + 1) . '19', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
+
+            $rateColumn = $secondColumns[$col];
+            $sheet2->setCellValue(
+                $rateColumn . '19',
+                $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0
+            );
         }
+
         // ---------- sheet 3 ----------
         $sheet3 = $spreadsheet->getSheetByName('Sheet3');
         $groups3 = [
