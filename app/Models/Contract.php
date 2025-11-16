@@ -70,6 +70,8 @@ class Contract extends Model
         'payment_type',
         'effective_annual_rate',
         'effective_daily_rate',
+        'kasko_amount',
+        'effective_rate_kasko'
     ];
 
     protected $casts = [

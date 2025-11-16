@@ -283,7 +283,7 @@ class   ContractService
             'user_id' => auth()->user()->id ?? 1,
             'category_id' => $data['category_id'] ?? null,
             'payment_type' => $data['payment_type'],
-            'kasko_amount' =>  4000,
+            'kasko_amount' => $data['kasko_amount'] ?? 4000,
         ];
 
         // Create and return the contract
