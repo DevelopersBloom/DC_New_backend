@@ -99,6 +99,7 @@
                 'M' => ['amount' => 0, 'weighted' => 0],
                 'O' => ['amount' => 0, 'weighted' => 0],
                 'Q' => ['amount' => 0, 'weighted' => 0],
+                'S' => ['amount' => 0, 'weighted' => 0],
             ];
 
             foreach ($docs as $doc) {
@@ -107,7 +108,7 @@
                 $days = Carbon::parse($ndm->repayment_end_date)
                     ->diffInDays(Carbon::parse($ndm->disbursement_date));
 
-                $col = $this->getColumnByDays($days);
+                $col = $this->getForthSheetColumnByDays($days);
                 $groups3[$col]['amount'] += $doc->amount_amd / 1000;
                 $groups3[$col]['weighted'] += $doc->amount_amd * ($ndm->effective_interest_rate / 100);
             }
