@@ -152,6 +152,8 @@
                 $sheet4->setCellValue($col . '15', $data['amount']);
                 $sheet4->setCellValue(chr(ord($col) + 1) . '15', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
             }
+            $sheet3->setCellValue('C87', '=SUM(C15:T15)');
+
             $fileName = 'v17_export_' . now()->format('Ymd_His') . '.xls';
             $path = storage_path('app/public/' . $fileName);
             $writer = new Xls($spreadsheet);
