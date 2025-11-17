@@ -212,6 +212,17 @@ class MonthlyIncomeExpenseController extends Controller
         foreach ($sheet->getMergeCells() as $range) {
             $sheet->unmergeCells($range);
         }
+        foreach ($sheet->getCoordinates() as $coord) {
+            $cell = $sheet->getCell($coord);
+            if ($cell === null) continue;
+
+            $value = $cell->getValue();
+
+            if (is_string($value) && str_contains($value, '$')) {
+                $clean = str_replace('$', '', $value);
+                $cell->setValue($clean);
+            }
+        }
 
         $protection = $sheet->getProtection();
         $protection->setSheet(true);        // lock sheet
