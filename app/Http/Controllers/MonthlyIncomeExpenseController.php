@@ -148,12 +148,11 @@ namespace App\Http\Controllers;
 use App\Services\IncomeExpenseMonthlyReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\Exception;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
 use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Carbon\Carbon;
 
 class MonthlyIncomeExpenseController extends Controller
@@ -165,7 +164,7 @@ class MonthlyIncomeExpenseController extends Controller
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
         $fromStr = $request->query('from');
-        $toStr = $request->query('to');
+        $toStr   = $request->query('to');
 
         if (!$fromStr || !$toStr) {
             return response()->json(['message' => 'Provide ?from=YYYY-MM-DD&to=YYYY-MM-DD'], 422);
@@ -173,7 +172,7 @@ class MonthlyIncomeExpenseController extends Controller
 
         try {
             $from = Carbon::createFromFormat('Y-m-d', $fromStr)->startOfDay();
-            $to = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
+            $to   = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Invalid date format. Use YYYY-MM-DD'], 422);
         }
@@ -183,16 +182,17 @@ class MonthlyIncomeExpenseController extends Controller
         }
 
         $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
-        $prevTo = $from->copy()->subDay()->endOfDay();
+        $prevTo   = $from->copy()->subDay()->endOfDay();
         $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
-        $current = $this->svc->build($from, $to);
+        $current  = $this->svc->build($from, $to);
         $previous = $this->svc->build($prevFrom, $prevTo);
 
         $currBy = [];
         foreach ($current as $r) {
             $currBy[(string)$r['code']] = $r;
         }
+
         $prevBy = [];
         foreach ($previous as $r) {
             $prevBy[(string)$r['code']] = $r;
@@ -208,50 +208,42 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // ---- Unmerge correct ----
+        // --- Unmerge ---
         foreach ($sheet->getMergeCells() as $range) {
             $sheet->unmergeCells($range);
         }
+
+        // --- Remove $ from formulas ---
         foreach ($sheet->getCoordinates() as $coord) {
             $cell = $sheet->getCell($coord);
-            if ($cell === null) continue;
-
+            if (!$cell) continue;
             $value = $cell->getValue();
 
             if (is_string($value) && str_contains($value, '$')) {
-                $clean = str_replace('$', '', $value);
-                $cell->setValue($clean);
+                $value = str_replace('$', '', $value);
+                $cell->setValue($value);
             }
         }
 
-        $protection = $sheet->getProtection();
-        $protection->setSheet(true);        // lock sheet
-        $protection->setSort(false);
-        $protection->setInsertRows(false);
-        $protection->setFormatCells(false);
-        // Optional password:
-        // $protection->setPassword('secret123');
-
+        // Load map
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
+
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 
-        $sheet->setCellValue(
-            'C9',
-            \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay())
-        );
+        // Fill dates
+        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
         $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
-        $sheet->setCellValue(
-            'C10',
-            \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay())
-        );
+        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
         $maxRow = $sheet->getHighestRow();
+
         for ($row = 1; $row <= $maxRow; $row++) {
+
             if (!isset($rowCodeMap[$row])) {
                 continue;
             }
@@ -260,40 +252,35 @@ class MonthlyIncomeExpenseController extends Controller
 
             if (isset($prevBy[$code]['net'])) {
                 $sheet->setCellValueExplicitByColumnAndRow(
-                    3,
-                    $row,
-                    (float)$prevBy[$code]['net'],
-                    DataType::TYPE_NUMERIC
+                    3, $row, (float)$prevBy[$code]['net'], DataType::TYPE_NUMERIC
                 );
             }
 
             if (isset($currBy[$code]['net'])) {
                 $sheet->setCellValueExplicitByColumnAndRow(
-                    4,
-                    $row,
-                    (float)$currBy[$code]['net'],
-                    DataType::TYPE_NUMERIC
+                    4, $row, (float)$currBy[$code]['net'], DataType::TYPE_NUMERIC
                 );
             }
         }
 
+        // Log formula before save
+        Log::debug('D161 before save = ' . var_export($sheet->getCell('D161')->getValue(), true));
+
         $writer = new XlsWriter($spreadsheet);
-
         $writer->setPreCalculateFormulas(false);
-
 
         $filename = "monthly_income_expense.xls";
         $dir = storage_path('app/reports');
+
         if (!is_dir($dir)) {
             @mkdir($dir, 0777, true);
         }
-        $path = $dir . DIRECTORY_SEPARATOR . $filename;
+
+        $path = $dir . '/' . $filename;
 
         while (ob_get_level() > 0) {
             @ob_end_clean();
         }
-
-        Log::debug('D161 formula before save: ' . var_export($sheet->getCell('D161')->getValue(), true));
 
         $writer->save($path);
 
