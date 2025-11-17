@@ -1,6 +1,7 @@
 <?php
     namespace App\Exports;
 
+    use App\Models\Category;
     use App\Models\LoanNdm;
     use App\Models\DocumentJournal;
     use Carbon\Carbon;
@@ -164,6 +165,39 @@
 
             $sheet4->setCellValue('C87', $totalAmount4);
             $sheet4->getStyle('C87')->getNumberFormat()->setFormatCode('#,##0');
+
+            $sheet5 = $spreadsheet->getSheetByName('Sheet5');
+
+            $groups5= [
+                'C' => ['amount' => 0, 'weighted' => 0],
+                'E' => ['amount' => 0, 'weighted' => 0],
+                'G' => ['amount' => 0, 'weighted' => 0],
+                'I' => ['amount' => 0, 'weighted' => 0],
+                'K' => ['amount' => 0, 'weighted' => 0],
+                'M' => ['amount' => 0, 'weighted' => 0],
+                'O' => ['amount' => 0, 'weighted' => 0],
+                'Q' => ['amount' => 0, 'weighted' => 0],
+            ];
+            foreach ($docsContract as $doc) {
+                $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
+                $carCategory = Category::where('name','car')->first();
+                if (!$contract || ($contract->category_id && $contract->category_id !== $carCategory->id)) continue;
+
+                $days = Carbon::parse($contract->deadline)
+                    ->diffInDays(Carbon::parse($contract->date));
+
+                $col = $this->getColumnByDays($days);
+                $amount = $doc->amount_amd;
+                $rate = $contract->effective_rate_kasko ? $contract->effective_rate_kasko * 365 : 0;
+
+                $groups5[$col]['amount'] += $amount;
+                $groups5[$col]['weighted'] += $amount * ($rate / 100);
+            }
+
+            foreach ($groups5 as $col => $data) {
+                $sheet5->setCellValue($col . '15', $data['amount']/ 1000);
+                $sheet5->setCellValue(chr(ord($col) + 1) . '15', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
+            }
 
             $fileName = 'v17_export_' . now()->format('Ymd_His') . '.xls';
             $path = storage_path('app/public/' . $fileName);
