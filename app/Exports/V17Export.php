@@ -42,7 +42,7 @@ class V17Export
                 ->diffInDays(Carbon::parse($ndm->disbursement_date));
 
             $col = $this->getColumnByDays($days);
-            $groups1[$col]['amount'] += $doc->amount_amd;
+            $groups1[$col]['amount'] += $doc->amount_amd / 1000;
             $groups1[$col]['weighted'] += $doc->amount_amd * ($ndm->interest_rate / 100);
         }
 
@@ -77,7 +77,7 @@ class V17Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getSecondSheetColumnByDays($days);
-            $amount = $doc->amount_amd;
+            $amount = $doc->amount_amd / 1000;
             $rate = $contract->interest_rate ? $contract->interest_rate * 365 : 0;
 
             $groups2[$col]['amount'] += $amount;
@@ -108,7 +108,7 @@ class V17Export
                 ->diffInDays(Carbon::parse($ndm->disbursement_date));
 
             $col = $this->getColumnByDays($days);
-            $groups3[$col]['amount'] += $doc->amount_amd;
+            $groups3[$col]['amount'] += $doc->amount_amd / 1000;
             $groups3[$col]['weighted'] += $doc->amount_amd * ($ndm->effective_interest_rate / 100);
         }
 
@@ -139,7 +139,7 @@ class V17Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getForthSheetColumnByDays($days);
-            $amount = $doc->amount_amd;
+            $amount = $doc->amount_amd / 1000;
             $rate = $contract->effective_daily_rate ? $contract->effective_daily_rate * 365 : 0;
 
             $groups4[$col]['amount'] += $amount;
