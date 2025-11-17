@@ -119,7 +119,7 @@
             }
             $totalAmount = 0;
             foreach ($groups3 as $col => $data) {
-                $totalAmount += $data['amount'];
+                $totalAmount += $data['amount']/1000;
             }
             $sheet3->setCellValue('C46', $totalAmount);
             $sheet3->getStyle('C46')->getNumberFormat()->setFormatCode('#,##0');
@@ -159,7 +159,7 @@
             }
             $totalAmount4 = 0;
             foreach ($groups4 as $col => $data) {
-                $totalAmount4 += $data['amount'];
+                $totalAmount4 += $data['amount']/1000;
             }
 
             $sheet4->setCellValue('C87', $totalAmount4);
