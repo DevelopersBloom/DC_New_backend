@@ -1,4 +1,147 @@
 <?php
+//
+//namespace App\Http\Controllers;
+//
+//use App\Services\IncomeExpenseMonthlyReport;
+//use Illuminate\Http\Request;
+//use Illuminate\Support\Facades\Log;
+//use Symfony\Component\HttpFoundation\Response;
+//use Symfony\Component\HttpFoundation\BinaryFileResponse;
+//use PhpOffice\PhpSpreadsheet\Cell\DataType;
+//use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
+//use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
+//use Carbon\Carbon;
+//
+//class MonthlyIncomeExpenseController extends Controller
+//{
+//    public function __construct(private IncomeExpenseMonthlyReport $svc)
+//    {
+//    }
+//
+//    public function __invoke(Request $request): Response|BinaryFileResponse
+//    {
+//        $fromStr = $request->query('from');
+//        $toStr   = $request->query('to');
+//
+//        if (!$fromStr || !$toStr) {
+//            return response()->json(['message' => 'Provide ?from=YYYY-MM-DD&to=YYYY-MM-DD'], 422);
+//        }
+//
+//        try {
+//            $from = Carbon::createFromFormat('Y-m-d', $fromStr)->startOfDay();
+//            $to   = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
+//        } catch (\Throwable $e) {
+//            return response()->json(['message' => 'Invalid date format. Use YYYY-MM-DD'], 422);
+//        }
+//
+//        if ($from->gt($to)) {
+//            return response()->json(['message' => '`from` must be <= `to`'], 422);
+//        }
+//
+//        $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
+//        $prevTo   = $from->copy()->subDay()->endOfDay();
+//        $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
+//
+//        $current  = $this->svc->build($from, $to);
+//        $previous = $this->svc->build($prevFrom, $prevTo);
+//
+//        $currBy = [];
+//        foreach ($current as $r) {
+//            $currBy[(string) $r['code']] = $r;
+//        }
+//        $prevBy = [];
+//        foreach ($previous as $r) {
+//            $prevBy[(string) $r['code']] = $r;
+//        }
+//
+//        $templatePath = base_path('v05.xls');
+//        if (!is_file($templatePath)) {
+//            return response()->json(['message' => "Template not found at {$templatePath}"], 404);
+//        }
+//
+//        $reader = new XlsReader();
+//        $reader->setReadDataOnly(false);
+//        $spreadsheet = $reader->load($templatePath);
+//        $sheet = $spreadsheet->getActiveSheet();
+//
+//        // Unmerge (clean any absolute refs in ranges)
+//        foreach ($sheet->getMergeCells() as $range) {
+//            $sheet->unmergeCells(str_replace('$', '', $range));
+//        }
+//
+//        $mapPath = storage_path('app/templates/v05_map.json');
+//        if (!is_file($mapPath)) {
+//            return response()->json(['message' => "Map not found at {$mapPath}"], 404);
+//        }
+//        $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
+//
+//        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
+//        $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
+//
+//        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
+//        $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
+//        $maxRow = $sheet->getHighestRow();
+//        for ($row = 1; $row <= $maxRow; $row++) {
+//            if (!isset($rowCodeMap[$row])) {
+//                continue;
+//            }
+//
+//            $code = (string) $rowCodeMap[$row];
+//
+//            if (isset($prevBy[$code]['net'])) {                   // true for 0, false for null
+//                $prevNet = (float) $prevBy[$code]['net'];
+//                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
+//            }
+//            if (isset($currBy[$code]['net'])) {
+//                $currNet = (float) $currBy[$code]['net'];
+//                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
+//            }
+//        }
+//
+//        $writer = new XlsWriter($spreadsheet);
+//
+//        $writer->setPreCalculateFormulas(false);
+//
+//        $filename = "monthly_income_expense.xls";
+//        $dir = storage_path('app/reports');
+//        if (!is_dir($dir)) {
+//            @mkdir($dir, 0777, true);
+//        }
+//        $path = $dir . DIRECTORY_SEPARATOR . $filename;
+//
+//        while (ob_get_level() > 0) {
+//            @ob_end_clean();
+//        }
+//        $formula = $sheet->getCell('D161')->getValue();
+//        Log::debug('D161 formula before save: ' . var_export($formula, true));
+//        $writer->save($path);
+//
+//        return response()->download($path, $filename, [
+//            'Content-Type' => 'application/vnd.ms-excel',
+//            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+//            'Pragma' => 'public',
+//        ])->deleteFileAfterSend(true);
+//    }
+//
+//    /** helpers **/
+//    protected function monthRange(string $yyyyMm): array
+//    {
+//        $start = Carbon::createFromFormat('Y-m', $yyyyMm)->startOfMonth()->toDateString();
+//        $end   = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
+//        return [$start, $end];
+//    }
+//
+//    protected function previousMonthRangeFrom(string $from): array
+//    {
+//        $c = Carbon::createFromFormat('Y-m-d', $from)->subMonthNoOverflow();
+//        return [$c->startOfMonth()->toDateString(), $c->endOfMonth()->toDateString()];
+//    }
+//}
+//
+//
+//
+//
+
 
 namespace App\Http\Controllers;
 
@@ -19,14 +162,10 @@ class MonthlyIncomeExpenseController extends Controller
     {
     }
 
-    /**
-     * @throws Exception
-     * @throws \PhpOffice\PhpSpreadsheet\Reader\Exception
-     */
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
         $fromStr = $request->query('from');
-        $toStr   = $request->query('to');
+        $toStr = $request->query('to');
 
         if (!$fromStr || !$toStr) {
             return response()->json(['message' => 'Provide ?from=YYYY-MM-DD&to=YYYY-MM-DD'], 422);
@@ -34,7 +173,7 @@ class MonthlyIncomeExpenseController extends Controller
 
         try {
             $from = Carbon::createFromFormat('Y-m-d', $fromStr)->startOfDay();
-            $to   = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
+            $to = Carbon::createFromFormat('Y-m-d', $toStr)->endOfDay();
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Invalid date format. Use YYYY-MM-DD'], 422);
         }
@@ -44,19 +183,19 @@ class MonthlyIncomeExpenseController extends Controller
         }
 
         $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
-        $prevTo   = $from->copy()->subDay()->endOfDay();
+        $prevTo = $from->copy()->subDay()->endOfDay();
         $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
-        $current  = $this->svc->build($from, $to);
+        $current = $this->svc->build($from, $to);
         $previous = $this->svc->build($prevFrom, $prevTo);
 
         $currBy = [];
         foreach ($current as $r) {
-            $currBy[(string) $r['code']] = $r;
+            $currBy[(string)$r['code']] = $r;
         }
         $prevBy = [];
         foreach ($previous as $r) {
-            $prevBy[(string) $r['code']] = $r;
+            $prevBy[(string)$r['code']] = $r;
         }
 
         $templatePath = base_path('v05.xls');
@@ -69,12 +208,18 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Unmerge (clean any absolute refs in ranges)
+        // ---- Unmerge correct ----
         foreach ($sheet->getMergeCells() as $range) {
-//            $sheet->unmergeCells(str_replace('$', '', $range));
             $sheet->unmergeCells($range);
-
         }
+
+        $protection = $sheet->getProtection();
+        $protection->setSheet(true);        // lock sheet
+        $protection->setSort(false);
+        $protection->setInsertRows(false);
+        $protection->setFormatCells(false);
+        // Optional password:
+        // $protection->setPassword('secret123');
 
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
@@ -82,32 +227,48 @@ class MonthlyIncomeExpenseController extends Controller
         }
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 
-        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
+        $sheet->setCellValue(
+            'C9',
+            \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay())
+        );
         $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 
-        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
+        $sheet->setCellValue(
+            'C10',
+            \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay())
+        );
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
+
         $maxRow = $sheet->getHighestRow();
         for ($row = 1; $row <= $maxRow; $row++) {
             if (!isset($rowCodeMap[$row])) {
                 continue;
             }
 
-            $code = (string) $rowCodeMap[$row];
+            $code = (string)$rowCodeMap[$row];
 
-            if (isset($prevBy[$code]['net'])) {                   // true for 0, false for null
-                $prevNet = (float) $prevBy[$code]['net'];
-                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
+            if (isset($prevBy[$code]['net'])) {
+                $sheet->setCellValueExplicitByColumnAndRow(
+                    3,
+                    $row,
+                    (float)$prevBy[$code]['net'],
+                    DataType::TYPE_NUMERIC
+                );
             }
+
             if (isset($currBy[$code]['net'])) {
-                $currNet = (float) $currBy[$code]['net'];
-                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
+                $sheet->setCellValueExplicitByColumnAndRow(
+                    4,
+                    $row,
+                    (float)$currBy[$code]['net'],
+                    DataType::TYPE_NUMERIC
+                );
             }
         }
 
         $writer = new XlsWriter($spreadsheet);
 
-//        $writer->setPreCalculateFormulas(false);
+        $writer->setPreCalculateFormulas(false);
 
 
         $filename = "monthly_income_expense.xls";
@@ -120,8 +281,9 @@ class MonthlyIncomeExpenseController extends Controller
         while (ob_get_level() > 0) {
             @ob_end_clean();
         }
-        $formula = $sheet->getCell('D161')->getValue();
-        Log::debug('D161 formula before save: ' . var_export($formula, true));
+
+        Log::debug('D161 formula before save: ' . var_export($sheet->getCell('D161')->getValue(), true));
+
         $writer->save($path);
 
         return response()->download($path, $filename, [
@@ -130,22 +292,4 @@ class MonthlyIncomeExpenseController extends Controller
             'Pragma' => 'public',
         ])->deleteFileAfterSend(true);
     }
-
-    /** helpers **/
-    protected function monthRange(string $yyyyMm): array
-    {
-        $start = Carbon::createFromFormat('Y-m', $yyyyMm)->startOfMonth()->toDateString();
-        $end   = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
-        return [$start, $end];
-    }
-
-    protected function previousMonthRangeFrom(string $from): array
-    {
-        $c = Carbon::createFromFormat('Y-m-d', $from)->subMonthNoOverflow();
-        return [$c->startOfMonth()->toDateString(), $c->endOfMonth()->toDateString()];
-    }
 }
-
-
-
-
