@@ -1,4 +1,4 @@
-    <?php
+<?php
     namespace App\Exports;
 
     use App\Models\LoanNdm;
