@@ -117,7 +117,12 @@
                 $sheet3->setCellValue($col . '9', $data['amount']);
                 $sheet3->setCellValue(chr(ord($col) + 1) . '9', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
             }
-            $sheet3->setCellValue('C46', '=SUM(C9:T9)');
+            $totalAmount = 0;
+            foreach ($groups3 as $col => $data) {
+                $totalAmount += $data['amount'];
+            }
+            $sheet3->setCellValue('C46', $totalAmount);
+            $sheet3->getStyle('C46')->getNumberFormat()->setFormatCode('#,##0');
 
             // ---------- sheet 4 ----------
             $sheet4 = $spreadsheet->getSheetByName('Sheet4');
@@ -152,7 +157,13 @@
                 $sheet4->setCellValue($col . '15', $data['amount']);
                 $sheet4->setCellValue(chr(ord($col) + 1) . '15', $data['amount'] > 0 ? round(($data['weighted'] / $data['amount']) * 100, 2) : 0);
             }
-            $sheet4->setCellValue('C87', '=SUM(C15:T15)');
+            $totalAmount4 = 0;
+            foreach ($groups4 as $col => $data) {
+                $totalAmount4 += $data['amount'];
+            }
+
+            $sheet4->setCellValue('C87', $totalAmount4);
+            $sheet4->getStyle('C87')->getNumberFormat()->setFormatCode('#,##0');
 
             $fileName = 'v17_export_' . now()->format('Ymd_His') . '.xls';
             $path = storage_path('app/public/' . $fileName);
