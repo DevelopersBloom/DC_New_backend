@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\IncomeExpenseMonthlyReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Exception;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -18,6 +19,10 @@ class MonthlyIncomeExpenseController extends Controller
     {
     }
 
+    /**
+     * @throws Exception
+     * @throws \PhpOffice\PhpSpreadsheet\Reader\Exception
+     */
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
         $fromStr = $request->query('from');
@@ -66,7 +71,9 @@ class MonthlyIncomeExpenseController extends Controller
 
         // Unmerge (clean any absolute refs in ranges)
         foreach ($sheet->getMergeCells() as $range) {
-            $sheet->unmergeCells(str_replace('$', '', $range));
+//            $sheet->unmergeCells(str_replace('$', '', $range));
+            $sheet->unmergeCells($range);
+
         }
 
         $mapPath = storage_path('app/templates/v05_map.json');
