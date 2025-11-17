@@ -100,7 +100,8 @@ class MonthlyIncomeExpenseController extends Controller
 
         $writer = new XlsWriter($spreadsheet);
 
-        $writer->setPreCalculateFormulas(false);
+//        $writer->setPreCalculateFormulas(false);
+
 
         $filename = "monthly_income_expense.xls";
         $dir = storage_path('app/reports');
