@@ -42,13 +42,13 @@ class ReminderOrderController
 
         $reminderOrder = ReminderOrder::create([
             'order_date'        => $validated['order_date'] ?? null,
-            'amount'            => $validated['amount'] ?? null,
+            'amount'            => $validated['amount'],
             'currency_id'       => $validated['currency_id'] ?? 1,
             'comment'           => $validated['comment'] ?? null,
-            'debit_account_id'  => $validated['debit_account_id'] ?? null,
-            'debit_partner_id'  => $validated['debit_partner_id'] ?? null,
-            'credit_account_id' => $validated['credit_account_id'] ?? null,
-            'credit_partner_id' => $validated['credit_partner_id'] ?? null,
+            'debit_account_id'  => $validated['debit_account_id'],
+            'debit_partner_id'  => $validated['debit_partner_id'],
+            'credit_account_id' => $validated['credit_account_id'],
+            'credit_partner_id' => $validated['credit_partner_id'],
             'is_draft'          => $validated['is_draft'] ?? false,
             'num'               => $nextNum,
         ]);
