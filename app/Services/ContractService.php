@@ -397,6 +397,7 @@ class   ContractService
                 $currentPaymentMonth = $paymentDate->format('Y-m');
 
                 $isLastMonth = $currentPaymentMonth == $lastPaymentMonth;
+                dd($lastPaymentMonth,$currentPaymentMonth,$isLastMonth);
             }
             if ($contract->kasko_amount &&
                 $paymentDate->month == $currentDate->month &&
