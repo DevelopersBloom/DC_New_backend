@@ -16,14 +16,14 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->string('PGI_ID')->nullable();
-            $table->decimal('mother', 15, 2)->default(0);
-            $table->decimal('amount', 15, 2)->nullable();
-            $table->decimal('paid', 15, 2)->nullable();
+            $table->decimal('mother', 25, 10)->default(0);
+            $table->decimal('amount', 25, 10)->nullable();
+            $table->decimal('paid', 25, 10)->nullable();
             $table->integer('discount_amount')->default(0);
-            $table->decimal('effective_payment', 15, 2)->default(0);
-            $table->decimal('principal_payment', 15, 2)->default(0);
-            $table->decimal('interest_payment', 15, 2)->default(0);
-            $table->decimal('remaining', 15, 2)->default(0);
+            $table->decimal('effective_payment', 25, 10)->default(0);
+            $table->decimal('principal_payment', 25, 10)->default(0);
+            $table->decimal('interest_payment', 25, 10)->default(0);
+            $table->decimal('remaining', 25, 10)->default(0);
             $table->boolean('last_payment')->default(false);
             $table->boolean('is_completed')->default(false);
             $table->unsignedBigInteger('parent_id')->nullable();

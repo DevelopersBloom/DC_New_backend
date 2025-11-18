@@ -331,8 +331,12 @@ class   ContractService
             }
 
              $kaskoAmount = 0;
-             if ($contract->kasko_amount && $paymentDate->month == $fromDate->month) {
-                 $kaskoAmount = $contract->kasko_amount;
+             $isLastPayment = $paymentDate->eq($toDate);
+
+             if ($contract->kasko_amount &&
+                 $paymentDate->month == $currentDate->month &&
+                 !$isLastPayment) {
+                    $kaskoAmount = $contract->kasko_amount;
              }
              $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate/100);
             $payment['date'] = $paymentDate->format('Y-m-d');
