@@ -90,7 +90,7 @@ class Contract extends Model
         'mother'                => 'decimal:2',
         'left'                  => 'decimal:2',
         'collected'             => 'decimal:2',
-        'effective_rate_kasko'  => 'decimal:2',
+        'effective_rate_kasko'  => 'decimal:4',
         'kasko_amount'          => 'decimal:2',
 
     ];
