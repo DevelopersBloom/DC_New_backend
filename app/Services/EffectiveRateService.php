@@ -89,7 +89,8 @@ class EffectiveRateService
             return [
                 'annual' => null,
                 'daily' => null,
-                'kasko_daily' => null
+                'kasko_daily' => null,
+                'kasko_annual' => null,
             ];
         }
 
@@ -121,14 +122,15 @@ class EffectiveRateService
                 $effectiveKaskoAnnual = pow(1 + $monthlyRateKasko, 12) - 1;
                 $effectiveKaskoDaily = pow(1 + $effectiveKaskoAnnual, 1 / 365) - 1;
 
-                $kaskoDaily = round($effectiveKaskoDaily * 100, 10);
+
             }
         }
 
         return [
             'annual'      => round($effectiveAnnualDecimal * 100, 10),
             'daily'       => round($effectiveDailyDecimal * 100, 10),
-            'kasko_daily' => $kaskoDaily,
+            'kasko_annual' => round($effectiveKaskoAnnual * 100, 10),
+            'kasko_daily' => round($effectiveKaskoDaily * 100, 10),
         ];
     }
 

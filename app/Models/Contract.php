@@ -71,7 +71,8 @@ class Contract extends Model
         'effective_annual_rate',
         'effective_daily_rate',
         'kasko_amount',
-        'effective_rate_kasko'
+        'effective_rate_kasko',
+        'effective_rate_annual_kasko'
     ];
 
     protected $casts = [
