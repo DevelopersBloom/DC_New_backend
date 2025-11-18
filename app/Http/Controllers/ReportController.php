@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\ReportsJournalExport;
+use App\Exports\V07Export;
 use App\Exports\V17Export;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -32,7 +33,15 @@ class ReportController
 
     public function getV07Report(Request $request)
     {
-        return $this->downloadTemplate('v07.XLS', $request);
+        $request->validate([
+            'from' => 'required|date',
+            'to'   => 'required|date',
+        ]);
+
+        $export = new V07Export();
+        $path = $export->export($request->from, $request->to);
+
+        return response()->download($path)->deleteFileAfterSend();
     }
 
     public function getV013Report(Request $request)
