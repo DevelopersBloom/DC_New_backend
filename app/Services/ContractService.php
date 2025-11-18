@@ -385,6 +385,7 @@ class   ContractService
 
             $paymentDate = (clone $currentDate)->addMonths($i);
             $kaskoAmount = 0;
+
             $lastPayment = Payment::where('contract_id', $contract->id)
                 ->orderBy('date', 'desc')
                 ->first();
@@ -395,10 +396,12 @@ class   ContractService
                 $lastPaymentMonth = Carbon::parse($lastPayment->date)->format('Y-m');
                 $currentPaymentMonth = $paymentDate->format('Y-m');
 
-                $isLastMonth = $currentPaymentMonth === $lastPaymentMonth;
+                $isLastMonth = $currentPaymentMonth == $lastPaymentMonth;
             }
-            if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastMonth) {
-                $kaskoAmount = $contract->kasko_amount;
+            if ($contract->kasko_amount &&
+                $paymentDate->month == $currentDate->month &&
+                !$isLastMonth) {
+                    $kaskoAmount = $contract->kasko_amount;
             }
             $payment = [
                 'contract_id' => $contract->id,
