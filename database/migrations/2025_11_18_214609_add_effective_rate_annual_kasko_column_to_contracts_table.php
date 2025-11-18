@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('contract', function (Blueprint $table) {
+        Schema::table('contracts', function (Blueprint $table) {
             $table->decimal('effective_rate_annual_kasko',12, 6)->nullable()->after('effective_rate_kasko');
         });
     }
