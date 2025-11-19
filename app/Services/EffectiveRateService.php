@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\Contract;
 use App\Models\Order;
+use Illuminate\Support\Facades\Log;
 
 class EffectiveRateService
 {
@@ -96,6 +97,8 @@ class EffectiveRateService
 
         $effectiveAnnualDecimal = pow(1 + $monthlyRate, 12) - 1;
         $effectiveDailyDecimal = pow(1 + $effectiveAnnualDecimal, 1 / 365) - 1;
+        Log::info("amount: {$amount}, monthlyRate:{$monthlyRate},
+            effectiveAnnual: {$effectiveAnnualDecimal}, effectiveDaily:{$effectiveDailyDecimal}");
 
         $kaskoDaily = null;
 
@@ -122,8 +125,9 @@ class EffectiveRateService
                 $effectiveKaskoAnnual = pow(1 + $monthlyRateKasko, 12) - 1;
                 $effectiveKaskoDaily = pow(1 + $effectiveKaskoAnnual, 1 / 365) - 1;
 
-
             }
+            Log::info("amountKasko: {$amountKasko}, monthlyRateKasko:{$monthlyRateKasko},
+            effectiveKaskoAnnual: {$effectiveKaskoAnnual}, effectiveKaskoDaily:{$effectiveKaskoDaily}");
         }
 
         return [
