@@ -19,9 +19,9 @@ class EffectiveRateService
         $principal = $contract->mother;
 
         $netAmount = $principal - $fees;
-        $cashflows = [$netAmount];
+        $cashflows = [-$netAmount];
         $netAmountKasko = $principal - $fees - $kaskoAmount;
-        $cashflowsKasko = [$netAmountKasko];
+        $cashflowsKasko = [-$netAmountKasko];
 
         Log::info('EffectiveRate values', [
             'principal'   => $principal,
