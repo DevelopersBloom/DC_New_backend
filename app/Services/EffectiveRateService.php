@@ -126,8 +126,6 @@ class EffectiveRateService
 
             }
         }
-        Log::info("amountKasko: {$cashflows}");
-
         return [
             'annual'      => round($effectiveAnnualDecimal * 100, 10),
             'daily'       => round($effectiveDailyDecimal * 100, 10),
