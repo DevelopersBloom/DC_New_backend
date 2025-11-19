@@ -84,9 +84,9 @@ class EffectiveRateService
         ]);
         foreach ($contract->payments as $payment) {
             if ($contract->payment_type == 'classic') {
-                $amount = $payment->amount + $payment->mother;
+                $amount =  round($payment->amount,10) + $payment->mother;
             } else {
-                $amount = $payment->amount;
+                $amount = round($payment->amount,10);
             }
             $cashflows[] = -$amount;
         }
@@ -115,9 +115,9 @@ class EffectiveRateService
                 $paymentKasko = $payment->kasko_amount ?? 0;
 
                 if ($contract->payment_type == 'classic') {
-                    $amountKasko = $payment->amount + $payment->mother + $paymentKasko;
+                    $amountKasko = round($payment->amount,10) + $payment->mother + $paymentKasko;
                 } else {
-                    $amountKasko = $payment->amount + $paymentKasko;
+                    $amountKasko =  round($payment->amount,10) + $paymentKasko;
                 }
 
                 $cashflowsKasko[] = -$amountKasko;
