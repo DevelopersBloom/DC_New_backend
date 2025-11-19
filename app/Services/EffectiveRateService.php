@@ -209,9 +209,15 @@ class EffectiveRateService
             $newRate = bcsub($guess, bcdiv($npv, $derivative, $scale), $scale);
 
             // Stop condition
-            if (bccomp(bcabs(bcsub($newRate, $guess, $scale)), "0.000000000001", $scale) === 0) {
-                return $newRate; // STRING, full precision, NO ROUNDING
+            $diff = bcsub($newRate, $guess, $scale);
+            if ($diff[0] === '-') {
+                $diff = substr($diff, 1);
             }
+
+            if (bccomp($diff, "0.000000000001", $scale) === 0) {
+                return $newRate;
+            }
+
 
             $guess = $newRate;
         }
