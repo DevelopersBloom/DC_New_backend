@@ -68,13 +68,15 @@ class EffectiveRateService
             ->select('amount')
             ->first();
 
-        $kaskoAmount = $contract->kasko_amount;
+        $kaskoAmount = $contract->kasko_amount ?? 0;
         $fees = $lumpAmount?->amount ?? $contract->provided_amount * ($contract->lump_rate / 100);
         $principal = $contract->mother;
 
         $netAmount = $principal - $fees;
         $cashflows = [$netAmount];
-
+        $netAmountKasko = $principal - $fees - $kaskoAmount;
+        $cashflowsKasko = [$netAmountKasko];
+        Log::info($principal,$fees,$kaskoAmount);
         foreach ($contract->payments as $payment) {
             if ($contract->payment_type == 'classic') {
                 $amount = $payment->amount + $payment->mother;
@@ -104,9 +106,6 @@ class EffectiveRateService
 
         if (!empty($kaskoAmount)) {
 
-            $netAmountKasko = $principal - $fees - $kaskoAmount;
-            $cashflowsKasko = [$netAmountKasko];
-
             foreach ($contract->payments as $payment) {
                 $paymentKasko = $payment->kasko_amount ?? 0;
 
@@ -126,9 +125,8 @@ class EffectiveRateService
                 $effectiveKaskoDaily = pow(1 + $effectiveKaskoAnnual, 1 / 365) - 1;
 
             }
-            Log::info("amountKasko: {$amountKasko}, monthlyRateKasko:{$monthlyRateKasko},
-            effectiveKaskoAnnual: {$effectiveKaskoAnnual}, effectiveKaskoDaily:{$effectiveKaskoDaily}");
         }
+        Log::info("amountKasko: {$cashflows}");
 
         return [
             'annual'      => round($effectiveAnnualDecimal * 100, 10),
