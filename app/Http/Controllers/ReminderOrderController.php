@@ -99,7 +99,6 @@ class ReminderOrderController
             'journalable_id'      => $reminderOrder->id,
         ]);
 
-        // 3. Ստեղծում ենք Transaction և կապում DocumentJournal-ի հետ
         $documentJournal->transactions()->create([
             'date'                => $reminderOrder->order_date,
             'document_number'     => $reminderOrder->num,

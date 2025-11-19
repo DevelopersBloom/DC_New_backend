@@ -1,15 +1,14 @@
 <?php
-//
 //namespace App\Http\Controllers;
 //
 //use App\Services\IncomeExpenseMonthlyReport;
 //use Illuminate\Http\Request;
 //use Illuminate\Support\Facades\Log;
-//use Symfony\Component\HttpFoundation\Response;
-//use Symfony\Component\HttpFoundation\BinaryFileResponse;
 //use PhpOffice\PhpSpreadsheet\Cell\DataType;
 //use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
 //use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
+//use Symfony\Component\HttpFoundation\BinaryFileResponse;
+//use Symfony\Component\HttpFoundation\Response;
 //use Carbon\Carbon;
 //
 //class MonthlyIncomeExpenseController extends Controller
@@ -47,11 +46,12 @@
 //
 //        $currBy = [];
 //        foreach ($current as $r) {
-//            $currBy[(string) $r['code']] = $r;
+//            $currBy[(string)$r['code']] = $r;
 //        }
+//
 //        $prevBy = [];
 //        foreach ($previous as $r) {
-//            $prevBy[(string) $r['code']] = $r;
+//            $prevBy[(string)$r['code']] = $r;
 //        }
 //
 //        $templatePath = base_path('v05.xls');
@@ -64,56 +64,80 @@
 //        $spreadsheet = $reader->load($templatePath);
 //        $sheet = $spreadsheet->getActiveSheet();
 //
-//        // Unmerge (clean any absolute refs in ranges)
+//        // --- Unmerge ---
 //        foreach ($sheet->getMergeCells() as $range) {
-//            $sheet->unmergeCells(str_replace('$', '', $range));
+//            $sheet->unmergeCells($range);
 //        }
 //
+//        // --- Remove $ from formulas ---
+//        foreach ($sheet->getCoordinates() as $coord) {
+//            $cell = $sheet->getCell($coord);
+//            if (!$cell) continue;
+//            $value = $cell->getValue();
+//
+//            if (is_string($value) && str_contains($value, '$')) {
+//                $value = str_replace('$', '', $value);
+//                $cell->setValue($value);
+//            }
+//        }
+//
+//        // Load map
 //        $mapPath = storage_path('app/templates/v05_map.json');
 //        if (!is_file($mapPath)) {
 //            return response()->json(['message' => "Map not found at {$mapPath}"], 404);
 //        }
+//
 //        $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
 //
-//        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->copy()->startOfDay()));
+//        // Fill dates
+//        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
 //        $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
 //
-//        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->copy()->startOfDay()));
+//        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to));
 //        $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd-mm-yyyy');
+//
 //        $maxRow = $sheet->getHighestRow();
+//
 //        for ($row = 1; $row <= $maxRow; $row++) {
+//
 //            if (!isset($rowCodeMap[$row])) {
 //                continue;
 //            }
 //
-//            $code = (string) $rowCodeMap[$row];
+//            $code = (string)$rowCodeMap[$row];
 //
-//            if (isset($prevBy[$code]['net'])) {                   // true for 0, false for null
-//                $prevNet = (float) $prevBy[$code]['net'];
-//                $sheet->setCellValueExplicitByColumnAndRow(3, $row, $prevNet, DataType::TYPE_NUMERIC);
+//            if (isset($prevBy[$code]['net'])) {
+//                $sheet->setCellValueExplicitByColumnAndRow(
+//                    3, $row, (float)$prevBy[$code]['net'], DataType::TYPE_NUMERIC
+//                );
 //            }
+//
 //            if (isset($currBy[$code]['net'])) {
-//                $currNet = (float) $currBy[$code]['net'];
-//                $sheet->setCellValueExplicitByColumnAndRow(4, $row, $currNet, DataType::TYPE_NUMERIC);
+//                $sheet->setCellValueExplicitByColumnAndRow(
+//                    4, $row, (float)$currBy[$code]['net'], DataType::TYPE_NUMERIC
+//                );
 //            }
 //        }
 //
-//        $writer = new XlsWriter($spreadsheet);
+//        // Log formula before save
+//        Log::debug('D161 before save = ' . var_export($sheet->getCell('D161')->getValue(), true));
 //
+//        $writer = new XlsWriter($spreadsheet);
 //        $writer->setPreCalculateFormulas(false);
 //
 //        $filename = "monthly_income_expense.xls";
 //        $dir = storage_path('app/reports');
+//
 //        if (!is_dir($dir)) {
 //            @mkdir($dir, 0777, true);
 //        }
-//        $path = $dir . DIRECTORY_SEPARATOR . $filename;
+//
+//        $path = $dir . '/' . $filename;
 //
 //        while (ob_get_level() > 0) {
 //            @ob_end_clean();
 //        }
-//        $formula = $sheet->getCell('D161')->getValue();
-//        Log::debug('D161 formula before save: ' . var_export($formula, true));
+//
 //        $writer->save($path);
 //
 //        return response()->download($path, $filename, [
@@ -122,26 +146,7 @@
 //            'Pragma' => 'public',
 //        ])->deleteFileAfterSend(true);
 //    }
-//
-//    /** helpers **/
-//    protected function monthRange(string $yyyyMm): array
-//    {
-//        $start = Carbon::createFromFormat('Y-m', $yyyyMm)->startOfMonth()->toDateString();
-//        $end   = Carbon::createFromFormat('Y-m', $yyyyMm)->endOfMonth()->toDateString();
-//        return [$start, $end];
-//    }
-//
-//    protected function previousMonthRangeFrom(string $from): array
-//    {
-//        $c = Carbon::createFromFormat('Y-m-d', $from)->subMonthNoOverflow();
-//        return [$c->startOfMonth()->toDateString(), $c->endOfMonth()->toDateString()];
-//    }
 //}
-//
-//
-//
-//
-
 
 namespace App\Http\Controllers;
 
@@ -149,7 +154,7 @@ use App\Services\IncomeExpenseMonthlyReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -198,32 +203,32 @@ class MonthlyIncomeExpenseController extends Controller
             $prevBy[(string)$r['code']] = $r;
         }
 
-        $templatePath = base_path('v05.xls');
+        $templatePath = base_path('v05.xlsx');
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
         }
 
-        $reader = new XlsReader();
+        $reader = new XlsxReader();
         $reader->setReadDataOnly(false);
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
         // --- Unmerge ---
-        foreach ($sheet->getMergeCells() as $range) {
-            $sheet->unmergeCells($range);
-        }
+//        foreach ($sheet->getMergeCells() as $range) {
+        //          $sheet->unmergeCells($range);
+        //    }
 
         // --- Remove $ from formulas ---
-        foreach ($sheet->getCoordinates() as $coord) {
-            $cell = $sheet->getCell($coord);
-            if (!$cell) continue;
-            $value = $cell->getValue();
+//        foreach ($sheet->getCoordinates() as $coord) {
+        //          $cell = $sheet->getCell($coord);
+        //        if (!$cell) continue;
+        //      $value = $cell->getValue();
 
-            if (is_string($value) && str_contains($value, '$')) {
-                $value = str_replace('$', '', $value);
-                $cell->setValue($value);
-            }
-        }
+        //    if (is_string($value) && str_contains($value, '$')) {
+        //      $value = str_replace('$', '', $value);
+        //    $cell->setValue($value);
+        // }
+        // }
 
         // Load map
         $mapPath = storage_path('app/templates/v05_map.json');
@@ -281,6 +286,16 @@ class MonthlyIncomeExpenseController extends Controller
         while (ob_get_level() > 0) {
             @ob_end_clean();
         }
+
+        Log::debug('D161 just after load = ' . var_export($sheet->getCell('D161')->getValue(), true));
+        //$d136 = $sheet->getCell('D136')->getCalculatedValue();
+        //$d160 = $sheet->getCell('D160')->getCalculatedValue();
+
+        //$sheet->setCellValueExplicit(
+                //  'D161',
+                // $d136 - $d160,
+                // DataType::TYPE_NUMERIC
+        //);
 
         $writer->save($path);
 
