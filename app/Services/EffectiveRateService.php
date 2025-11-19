@@ -91,7 +91,7 @@ class EffectiveRateService
             $cashflows[] = -$amount;
         }
 
-        $monthlyRate = $this->irr($cashflows);
+        $monthlyRate = $this->irrHighPrecision($cashflows);
 
         if ($monthlyRate === null) {
             return [
@@ -123,7 +123,7 @@ class EffectiveRateService
                 $cashflowsKasko[] = -$amountKasko;
             }
 
-            $monthlyRateKasko = $this->irr($cashflowsKasko);
+            $monthlyRateKasko = $this->irrHighPrecision($cashflowsKasko);
 
             if ($monthlyRateKasko !== null) {
                 $effectiveKaskoAnnual = pow(1 + $monthlyRateKasko, 12) - 1;
