@@ -76,7 +76,12 @@ class EffectiveRateService
         $cashflows = [$netAmount];
         $netAmountKasko = $principal - $fees - $kaskoAmount;
         $cashflowsKasko = [$netAmountKasko];
-        Log::info($principal,$fees,$kaskoAmount);
+
+        Log::info('EffectiveRate values', [
+            'principal'   => $principal,
+            'fees'        => $fees,
+            'kaskoAmount' => $kaskoAmount
+        ]);
         foreach ($contract->payments as $payment) {
             if ($contract->payment_type == 'classic') {
                 $amount = $payment->amount + $payment->mother;
