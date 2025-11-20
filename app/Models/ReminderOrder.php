@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReminderOrder extends Model
 {
-    use HasFactory,Journalable;
+    use HasFactory;
+//Journalable;
 
     protected $fillable = [
         'order_date',
