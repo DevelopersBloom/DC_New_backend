@@ -48,7 +48,7 @@ class V07Export
 
             $balance50000 = $debit50000 - $credit50000;
 
-            $final = ($balance52000 + $balance50000) * 0.05;
+            $final = ($balance52000 + $balance50000) * 0.05 / 1000;
 
             $sheet->setCellValue('D' . $row, $final);
 
