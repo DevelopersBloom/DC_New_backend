@@ -35,7 +35,7 @@ class V07Export
                 ->whereDate('date', $date)
                 ->sum('amount_amd');
 
-            $balance52000 = $debit52000 - $credit52000;
+            $balance52000 =$credit52000 - $debit52000;
 
             // 50000 balance
             $debit50000 = DocumentJournal::where('debit_account_id', $account50000)
@@ -46,7 +46,7 @@ class V07Export
                 ->whereDate('date', $date)
                 ->sum('amount_amd');
 
-            $balance50000 = $debit50000 - $credit50000;
+            $balance50000 = $credit50000 - $debit50000;
 
             $final = ($balance52000 + $balance50000) * 0.05 / 1000;
 
