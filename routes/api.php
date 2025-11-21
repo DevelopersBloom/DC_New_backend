@@ -118,6 +118,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::prefix('chart-of-accounts')->group(function () {
 
             Route::get('/search-account', [ChartOfAccountController::class, 'searchAccount']);
+            Route::get('/children',[ChartOfAccountController::class,'getChildren']);
             Route::get('/', [ChartOfAccountController::class, 'index']);
             Route::post('/', [ChartOfAccountController::class, 'store']);
             Route::get('/{id}', [ChartOfAccountController::class, 'show']);

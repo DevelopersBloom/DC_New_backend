@@ -15,11 +15,13 @@ use Maatwebsite\Excel\Facades\Excel;
 class ChartOfAccountController
 {
     use CalculatesAccountBalancesTrait;
-//    public function index()
+
+//    public function index(): JsonResponse
 //    {
-//        $accounts = ChartOfAccount::whereNull('parent_id')
-//            ->where('is_accumulative', true)
-//            ->with('children')
+//        $accounts = ChartOfAccount::query()
+//            ->select('id','parent_id','name','code','type','income_expense')
+//            ->whereNull('parent_id')
+//            ->with('childrenRecursive')
 //            ->get();
 //
 //        return response()->json($accounts);
@@ -29,10 +31,22 @@ class ChartOfAccountController
         $accounts = ChartOfAccount::query()
             ->select('id','parent_id','name','code','type','income_expense')
             ->whereNull('parent_id')
-            ->with('childrenRecursive')
             ->get();
 
         return response()->json($accounts);
+    }
+
+    public function getChildren($id): JsonResponse
+    {
+        $account = ChartOfAccount::query()
+            ->select('id','parent_id','name','code','type','income_expense')
+            ->where('id', $id)
+            ->with(['children' => function($q) {
+                $q->select('id','parent_id','name','code','type','income_expense');
+            }])
+            ->firstOrFail();
+
+        return response()->json($account);
     }
 
     public function show($id)
