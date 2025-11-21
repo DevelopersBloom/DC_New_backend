@@ -36,19 +36,20 @@ class ChartOfAccountController
         return response()->json($accounts);
     }
 
-    public function getChildren($id): JsonResponse
+    public function getChildren(Request $request): JsonResponse
     {
+        $parentId = $request->query('id');
+
         $account = ChartOfAccount::query()
             ->select('id','parent_id','name','code','type','income_expense')
-            ->where('id', $id)
+            ->where('id', $parentId)
             ->with(['children' => function($q) {
                 $q->select('id','parent_id','name','code','type','income_expense');
             }])
             ->firstOrFail();
 
-        return response()->json($account);
+        return response()->json($account->children);
     }
-
     public function show($id)
     {
         return ChartOfAccount::with('children')->findOrFail($id);
