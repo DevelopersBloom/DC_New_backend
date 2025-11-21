@@ -16,7 +16,7 @@ class ChartOfAccountController
 {
     use CalculatesAccountBalancesTrait;
 
-    public function index(): JsonResponse
+    public function index1(): JsonResponse
     {
         $accounts = ChartOfAccount::query()
             ->select('id','parent_id','name','code','type','income_expense')
@@ -26,7 +26,7 @@ class ChartOfAccountController
 
         return response()->json($accounts);
     }
-    public function index1(): JsonResponse
+    public function index(): JsonResponse
     {
         $accounts = ChartOfAccount::query()
             ->select('id','parent_id','name','code','type','income_expense')
