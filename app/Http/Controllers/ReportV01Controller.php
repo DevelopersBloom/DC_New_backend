@@ -297,7 +297,7 @@ class ReportV01Controller extends Controller
                 ];
 
                 foreach ($nums as $colIndex => $val) {
-                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val, DataType::TYPE_NUMERIC);
+                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val/1000, DataType::TYPE_NUMERIC);
                 }
 
                 $currentRow++;
