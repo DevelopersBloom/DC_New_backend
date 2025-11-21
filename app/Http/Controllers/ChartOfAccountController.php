@@ -16,17 +16,17 @@ class ChartOfAccountController
 {
     use CalculatesAccountBalancesTrait;
 
-//    public function index(): JsonResponse
-//    {
-//        $accounts = ChartOfAccount::query()
-//            ->select('id','parent_id','name','code','type','income_expense')
-//            ->whereNull('parent_id')
-//            ->with('childrenRecursive')
-//            ->get();
-//
-//        return response()->json($accounts);
-//    }
     public function index(): JsonResponse
+    {
+        $accounts = ChartOfAccount::query()
+            ->select('id','parent_id','name','code','type','income_expense')
+            ->whereNull('parent_id')
+            ->with('childrenRecursive')
+            ->get();
+
+        return response()->json($accounts);
+    }
+    public function index1(): JsonResponse
     {
         $accounts = ChartOfAccount::query()
             ->select('id','parent_id','name','code','type','income_expense')
