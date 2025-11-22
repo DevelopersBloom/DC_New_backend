@@ -45,7 +45,6 @@ return new class extends Migration
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->foreign('assigned_to')->references('id')->on('users')->onDelete('set null');
             $table->foreign('pawnshop_id')->references('id')->on('pawnshops')->onDelete('cascade');
-            $table->timestamps();
         });
     }
 
