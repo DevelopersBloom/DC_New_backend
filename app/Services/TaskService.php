@@ -29,7 +29,7 @@ class TaskService
     {
         return Task::select('id', 'title', 'description', 'status', 'deadline', 'start_date', 'priority')
             ->with([
-                'attachments:id,task_id,original_name,file_path,mime_type,size',
+                'attachments:id,task_id,original_name,mime_type,size',
                 'comments:id,task_id,comment',
                 'assignedTo:id,name,surname',
                 'creator:id,name,surname',
