@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('create_task_attachments', function (Blueprint $table) {
+        Schema::create('task_attachments', function (Blueprint $table) {
             $table->id();
 
             $table->unsignedBigInteger('task_id');
