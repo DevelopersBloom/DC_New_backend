@@ -27,7 +27,7 @@ class TaskService
     }
     public function show(int $id)
     {
-        return Task::select('id', 'title', 'description', 'status', 'deadline', 'start_date', 'priority')
+        return Task::select('id', 'title', 'description', 'status', 'deadline', 'start_date', 'priority', 'created_by', 'assigned_to')
             ->with([
                 'attachments:id,task_id,original_name,mime_type,size',
                 'comments:id,task_id,comment',
