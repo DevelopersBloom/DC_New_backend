@@ -37,6 +37,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('create_task_attachments');
+        Schema::dropIfExists('task_attachments');
     }
 };
