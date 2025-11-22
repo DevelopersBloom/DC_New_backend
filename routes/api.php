@@ -7,6 +7,7 @@ use App\Http\Controllers\DocumentJournalController;
 use App\Http\Controllers\LoanNdmController;
 use App\Http\Controllers\MonthlyIncomeExpenseController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TransactionsExport;
 use App\Http\Controllers\PostingRuleController;
 use App\Http\Controllers\RateController;
@@ -157,24 +158,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::put('/journal/{journal}', [DocumentJournalController::class, 'update']);
 
         Route::get('/transactions/reports', [\App\Http\Controllers\ReportV01Controller::class]);
-
-        // Pawnshop Management
-//        Route::get('/get-pawnshops', [AdminController::class, 'getPawnshops']);
-//        Route::post('/create-pawnshop', [AdminController::class, 'createPawnshop']);
-//        Route::post('/update-pawnshop', [AdminController::class, 'updatePawnshop']);
-//        Route::get('/edit-pawnshop/{id}', [AdminController::class, 'editPawnshop']);
-//        Route::post('/update-cashbox', [AdminController::class, 'updateCashbox']);
-//
-//        // Categories
-//        Route::get('/get-categories', [AdminController::class, 'getCategories']);
-//        Route::post('/create-category', [AdminController::class, 'createCategory']);
-//        Route::post('/update-category', [AdminController::class, 'updateCategory']);
-//        Route::get('/edit-category/{id}', [AdminController::class, 'editCategory']);
-//
-//        // Discounts and Configuration
-//        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
-//        Route::get('/get-user-config', [AdminController::class, 'getUserConfig']);
-//        Route::post('/check-authority', [AdminController::class, 'checkAuthority']);
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search-partner', [ClientControllerNew::class, 'searchPartner']);
@@ -219,6 +202,13 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
     });
 
+    Route::prefix('tasks')->group(function () {
+        Route::get('/', [TaskController::class, 'index']);
+        Route::get('{id}', [TaskController::class, 'show']);
+        Route::post('/', [TaskController::class, 'store']);
+        Route::put('{id}', [TaskController::class, 'update']);
+        Route::delete('{id}', [TaskController::class, 'destroy']);
+    });
     Route::get('/get-discount-requests', [DiscountController::class, 'getDiscountRequests']);
 
     Route::group(['prefix' => 'notes'], function () {
@@ -232,9 +222,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/', [CategoryController::class, 'index']);
         Route::get('/{id}', [CategoryController::class, 'show']);
     });
-    Route::group(['prefix' => 'payments'], function () {
-        Route::get('/{id}', [PaymentController::class, 'getPayments']);
-    });
+
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
     Route::get('/get-cashBox-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox']);
     Route::get('/get-deals', [DealController::class, 'index']);
