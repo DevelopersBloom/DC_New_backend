@@ -46,7 +46,11 @@ class ChartOfAccountController
             ->with(['children' => function($q) {
                 $q->select('id','parent_id','name','code','type','income_expense');
             }])
-            ->firstOrFail();
+            ->first();
+
+        if (!$account) {
+            return response()->json([]);
+        }
 
         return response()->json($account->children);
     }
