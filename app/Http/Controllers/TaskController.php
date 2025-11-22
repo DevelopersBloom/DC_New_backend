@@ -52,7 +52,6 @@ class TaskController
 
         return response()->json([
             'message' => 'Task updated successfully',
-            'task' => $task,
         ]);
     }
     public function destroy(int $id): JsonResponse

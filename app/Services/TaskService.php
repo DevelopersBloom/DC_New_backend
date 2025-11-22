@@ -10,7 +10,7 @@ class TaskService
 {
     public function getGroupedTasks()
     {
-        $tasks = Task::select('id', 'title', 'status', 'deadline')
+        $tasks = Task::select('id', 'title', 'status', 'deadline', 'created_by', 'assigned_to')
             ->withCount(['attachments', 'comments'])
             ->with([
                 'assignedTo:id,name,surname',
