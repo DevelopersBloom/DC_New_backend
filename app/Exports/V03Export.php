@@ -42,7 +42,7 @@ class V03Export
 
         $row = 9;
         $current = Carbon::parse($from);
-
+dd($current,$to,$startDay,$endDay);
         while ($current->lte(Carbon::parse($to))) {
             $balance50000 = DocumentJournal::where('debit_account_id', $acc50000)
                     ->whereDate('date', $current)
