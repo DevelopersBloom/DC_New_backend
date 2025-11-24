@@ -7,6 +7,7 @@ use App\Models\DocumentJournal;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class V03Export
 {
@@ -42,7 +43,7 @@ class V03Export
 
         $row = 9;
         $current = Carbon::parse($from);
-dd($current,$to,$startDay,$endDay);
+
         while ($current->lte(Carbon::parse($to))) {
             $balance50000 = DocumentJournal::where('debit_account_id', $acc50000)
                     ->whereDate('date', $current)
@@ -82,12 +83,16 @@ dd($current,$to,$startDay,$endDay);
         // ---------------------------
         // SAVE XLS
         // ---------------------------
-        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xls';
+//        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xls';
+//        $filePath = storage_path('app/public/' . $fileName);
+//
+//        $writer = new Xls($spreadsheet);
+//        $writer->save($filePath);
+        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xlsx';
         $filePath = storage_path('app/public/' . $fileName);
 
-        $writer = new Xls($spreadsheet);
+        $writer = new Xlsx($spreadsheet);
         $writer->save($filePath);
-
         return $filePath;
     }
 }
