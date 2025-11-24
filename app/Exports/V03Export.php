@@ -29,8 +29,8 @@ class V03Export
         // SHEET 2
         // ---------------------------
         $sheet2 = $spreadsheet->getSheetByName('Sheet2');
-        $sheet2->setCellValue('C3', Carbon::parse($from)->format('d.m.Y'));
-        $sheet2->setCellValue('E3', Carbon::parse($to)->format('d.m.Y'));
+        $sheet2->setCellValue('C3', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(Carbon::parse($from)->toDateTime()));
+        $sheet2->setCellValue('E3', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
         $start = Carbon::parse($from)->startOfMonth();
         $end = Carbon::parse($to)->endOfMonth();
