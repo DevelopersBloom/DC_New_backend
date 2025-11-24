@@ -45,10 +45,15 @@ class V03Export
         $acc52000 = ChartOfAccount::idByCode('52000');
         $acc52001 = ChartOfAccount::idByCode('52001');
 
-        $row = 9;
-        $current = Carbon::parse($from);
+//        $row = 9;
+//        $current = Carbon::parse($from);
+        $startDay = Carbon::parse($from)->day;
+        $row = 9 + ($startDay - 1);
 
-        while ($current->lte(Carbon::parse($to))) {
+        $current = Carbon::parse($from);
+        $end = Carbon::parse($to);
+
+        while ($current->lte($end)) {
             $balance50000 = DocumentJournal::where('debit_account_id', $acc50000)
                     ->whereDate('date', $current)
                     ->sum('amount_amd') * -1
