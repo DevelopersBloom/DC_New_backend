@@ -98,16 +98,19 @@ class V03Export
                 }
             }
         }
-
-//        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xls';
         $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xlsx';
         $filePath = storage_path('app/public/' . $fileName);
         $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
         $writer->save($filePath);
 
-        $writer = new Xls($spreadsheet);
-        $writer->save($filePath);
-
         return $filePath;
+
+//        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xls';
+//        $filePath = storage_path('app/public/' . $fileName);
+//
+//        $writer = new Xls($spreadsheet);
+//        $writer->save($filePath);
+//
+//        return $filePath;
     }
 }
