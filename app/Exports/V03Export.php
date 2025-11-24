@@ -69,6 +69,9 @@ class V03Export
             $row++;
         }
 
+        // ---------------------------
+        // SAFE FORMULA HANDLING
+        // ---------------------------
         foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
             foreach ($worksheet->getRowIterator() as $row) {
                 foreach ($row->getCellIterator() as $cell) {
@@ -86,8 +89,6 @@ class V03Export
                 }
             }
         }
-
-
 
         // ---------------------------
         // SAVE XLS
