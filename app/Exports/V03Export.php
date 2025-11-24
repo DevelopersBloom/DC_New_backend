@@ -69,7 +69,28 @@ class V03Export
             $row++;
         }
         $sheet6 = $spreadsheet->getSheetByName('Sheet6');
-        $sheet6->setCellValue('D10', 0);
+        $sheet6->setCellValue('E10', 0);
+
+        $d10 = $sheet6->getCell('D10')->getValue();
+
+        if ($d10 <= 4) {
+            $e10 = 3;
+        } elseif ($d10 == 5) {
+            $e10 = 3.4;
+        } elseif ($d10 == 6) {
+            $e10 = 3.5;
+        } elseif ($d10 == 7) {
+            $e10 = 3.65;
+        } elseif ($d10 == 8) {
+            $e10 = 3.75;
+        } elseif ($d10 == 9) {
+            $e10 = 3.85;
+        } else { // >=10
+            $e10 = 4;
+        }
+
+        $sheet6->setCellValue('E10', $e10);
+
 
         // ---------------------------
         // SAFE FORMULA HANDLING
