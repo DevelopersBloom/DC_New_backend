@@ -22,8 +22,10 @@ class V03Export
         // ---------------------------
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
         $sheet1->setCellValue('D10', 'Ակրեդիտ');
-        $sheet1->setCellValue('D11', Carbon::parse($from)->format('d.m.Y'));
-        $sheet1->setCellValue('F11', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(Carbon::parse($to)->toDateTime()));
+//        $sheet1->setCellValue('D11', Carbon::parse($from)->format('d.m.Y'));
+//        $sheet1->setCellValue('F11', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(Carbon::parse($to)->toDateTime()));
+        $sheet1->setCellValue('D11', 10);
+        $sheet1->setCellValue('F11', 29);
 
         // ---------------------------
         // SHEET 2
