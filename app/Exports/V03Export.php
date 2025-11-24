@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class V03Export
 {
@@ -24,18 +25,21 @@ class V03Export
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
         $sheet1->setCellValue('D10', 'Ակրեդիտ');
 
-        $startDay = Carbon::parse($from)->day;
-        $endDay = Carbon::parse($to)->day;
-
-        $sheet1->setCellValue('D11', $startDay);
-        $sheet1->setCellValue('F11', $endDay);
+        $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
+        $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
         // ---------------------------
         // SHEET 2
         // ---------------------------
         $sheet2 = $spreadsheet->getSheetByName('Sheet2');
-        $sheet2->setCellValue('C3', $startDay);
-        $sheet2->setCellValue('E3', $endDay);
+        $sheet2->setCellValue('C3', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
+        $sheet2->setCellValue('E3', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
+//        // ---------------------------
+//        // SHEET 2
+//        // ---------------------------
+//        $sheet2 = $spreadsheet->getSheetByName('Sheet2');
+//        $sheet2->setCellValue('C3', $startDay);
+//        $sheet2->setCellValue('E3', $endDay);
 
         $acc50000 = ChartOfAccount::idByCode('50000');
         $acc52000 = ChartOfAccount::idByCode('52000');
