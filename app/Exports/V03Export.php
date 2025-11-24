@@ -185,6 +185,19 @@ class V03Export
             $row++;
         }
 
+        foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
+            foreach ($worksheet->getRowIterator() as $row) {
+                foreach ($row->getCellIterator() as $cell) {
+                    if ($cell->isFormula()) {
+                        try {
+                            $cell->setValue($cell->getCalculatedValue());
+                        } catch (\PhpOffice\PhpSpreadsheet\Calculation\Exception $e) {
+                            $cell->setValue($cell->getValue());
+                        }
+                    }
+                }
+            }
+        }
 
         // ---------------------------
         // SAVE XLS
