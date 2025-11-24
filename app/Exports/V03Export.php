@@ -12,8 +12,8 @@ class V03Export
 {
     public function export($from, $to)
     {
-        $path = base_path('v03.xls');
-        $reader = IOFactory::createReader('Xls');
+        $path = base_path('v03.xlsx');
+        $reader = IOFactory::createReader('Xlsx');
         $spreadsheet = $reader->load($path);
 
         /**
