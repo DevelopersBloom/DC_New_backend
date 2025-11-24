@@ -185,18 +185,6 @@ class V03Export
             $row++;
         }
 
-        // ---------------------------
-        // FIX ALL FORMULAS → REPLACE WITH VALUES
-        // ---------------------------
-        foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
-            foreach ($worksheet->getRowIterator() as $row) {
-                foreach ($row->getCellIterator() as $cell) {
-                    if ($cell->isFormula()) {
-                        $cell->setValue($cell->getCalculatedValue());
-                    }
-                }
-            }
-        }
 
         // ---------------------------
         // SAVE XLS
