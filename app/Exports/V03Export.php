@@ -76,7 +76,7 @@ class V03Export
                     ->sum('amount_amd');
 
             $finalSum = $balance50000 + $balance52000 + $balance52001;
-            $sheet2->setCellValue('B' . $row, $finalSum/1000);
+            $sheet2->setCellValue('B' . $row, $finalSum);
 
             $current->addDay();
             $row++;
