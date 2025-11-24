@@ -68,6 +68,8 @@ class V03Export
             $sheet2->setCellValue('B' . $row, $finalSum);
             $row++;
         }
+        $sheet6 = $spreadsheet->getSheetByName('Sheet6');
+        $sheet6->setCellValue('D10', 0);
 
         // ---------------------------
         // SAFE FORMULA HANDLING
