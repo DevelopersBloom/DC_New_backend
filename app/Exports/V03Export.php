@@ -69,7 +69,7 @@ class V03Export
             $row++;
         }
         $sheet6 = $spreadsheet->getSheetByName('Sheet6');
-        $sheet6->setCellValue('E10', 0);
+//        $sheet6->setCellValue('E10', 0);
 
         $d10 = $sheet6->getCell('D10')->getValue();
 
@@ -91,27 +91,6 @@ class V03Export
 
 //        $sheet6->setCellValue('E10', $e10);
 
-
-        // ---------------------------
-        // SAFE FORMULA HANDLING
-        // ---------------------------
-        foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
-            foreach ($worksheet->getRowIterator() as $row) {
-                foreach ($row->getCellIterator() as $cell) {
-                    if ($cell->isFormula()) {
-                        if ($worksheet->getTitle() === 'Sheet6' && $cell->getCoordinate() === 'E10') {
-                            continue;
-                        }
-
-                        try {
-                            $cell->setValue($cell->getCalculatedValue());
-                        } catch (\PhpOffice\PhpSpreadsheet\Calculation\Exception $e) {
-                            $cell->setValue($cell->getValue());
-                        }
-                    }
-                }
-            }
-        }
 
         // ---------------------------
         // SAVE XLS
