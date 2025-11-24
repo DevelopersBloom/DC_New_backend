@@ -89,7 +89,7 @@ class V03Export
             $e10 = 4;
         }
 
-        $sheet6->setCellValue('E10', $e10);
+//        $sheet6->setCellValue('E10', $e10);
 
 
         // ---------------------------
