@@ -72,6 +72,7 @@ class V03Export
 //        $sheet6->setCellValue('E10', 0);
 
         $d10 = $sheet6->getCell('D10')->getValue();
+        $sheet6->setCellValue('E10', '=IF(D10<=4,3,IF(D10=5,3.4,IF(D10=6,3.5,IF(D10=7,3.65,IF(D10=8,3.75,IF(D10=9,3.85,4))))))');
 
         if ($d10 <= 4) {
             $e10 = 3;
