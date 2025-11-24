@@ -87,16 +87,16 @@ class V03Export
         // ---------------------------
         // SAVE XLS
         // ---------------------------
-        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xls';
-        $filePath = storage_path('app/public/' . $fileName);
-
-        $writer = new Xls($spreadsheet);
-        $writer->save($filePath);
-//        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xlsx';
+//        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xls';
 //        $filePath = storage_path('app/public/' . $fileName);
 //
-//        $writer = new Xlsx($spreadsheet);
+//        $writer = new Xls($spreadsheet);
 //        $writer->save($filePath);
+        $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xlsx';
+        $filePath = storage_path('app/public/' . $fileName);
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($filePath);
         return $filePath;
     }
 }
