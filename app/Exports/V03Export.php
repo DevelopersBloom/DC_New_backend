@@ -17,26 +17,24 @@ class V03Export
         $spreadsheet = $reader->load($path);
 
         /**
-         *  ---------------------------
-         *  SHEET 1
-         *  ---------------------------
+         * ---------------------------
+         * SHEET 1
+         * ---------------------------
          */
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
 
         $sheet1->setCellValue('D10', 'Ակրեդիտ');
-
         $sheet1->setCellValue('D11', Carbon::parse($from)->format('d.m.Y'));
-
         $sheet1->setCellValue('F11', Carbon::parse($to)->format('d.m.Y'));
+
         /**
-         *  ---------------------------
-         *  SHEET 2
-         *  ---------------------------
+         * ---------------------------
+         * SHEET 2
+         * ---------------------------
          */
         $sheet = $spreadsheet->getSheetByName('Sheet2');
 
         $sheet->setCellValue('C3', Carbon::parse($from)->format('d.m.Y'));
-
         $sheet->setCellValue('E3', Carbon::parse($to)->format('d.m.Y'));
 
         $start = Carbon::parse($from)->startOfMonth();
@@ -61,6 +59,7 @@ class V03Export
 
             $balance50000 = $credit50000 - $debit50000;
 
+            // 52000 balance
             $debit52000 = DocumentJournal::where('debit_account_id', $acc52000)
                 ->whereDate('date', $date)
                 ->sum('amount_amd');
@@ -71,6 +70,7 @@ class V03Export
 
             $balance52000 = $credit52000 - $debit52000;
 
+            // 52001 balance
             $debit52001 = DocumentJournal::where('debit_account_id', $acc52001)
                 ->whereDate('date', $date)
                 ->sum('amount_amd');
@@ -86,6 +86,17 @@ class V03Export
             $sheet->setCellValue('B' . $row, $finalSum);
 
             $row++;
+        }
+
+
+        foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
+            foreach ($worksheet->getRowIterator() as $row) {
+                foreach ($row->getCellIterator() as $cell) {
+                    if ($cell->isFormula()) {
+                        $cell->setValue($cell->getCalculatedValue());
+                    }
+                }
+            }
         }
 
         $fileName = 'v03_export_' . now()->format('Ymd_His') . '.xls';
