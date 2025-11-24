@@ -73,6 +73,10 @@ class V03Export
             foreach ($worksheet->getRowIterator() as $row) {
                 foreach ($row->getCellIterator() as $cell) {
                     if ($cell->isFormula()) {
+                        if ($worksheet->getTitle() === 'Sheet6' && $cell->getCoordinate() === 'E10') {
+                            continue;
+                        }
+
                         try {
                             $cell->setValue($cell->getCalculatedValue());
                         } catch (\PhpOffice\PhpSpreadsheet\Calculation\Exception $e) {
@@ -82,6 +86,7 @@ class V03Export
                 }
             }
         }
+
 
 
         // ---------------------------
