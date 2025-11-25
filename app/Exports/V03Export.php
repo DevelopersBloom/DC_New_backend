@@ -117,7 +117,7 @@ class V03Export
                 if ($risk === null) {
                     continue;
                 }
-
+dd($dailyAmounts[$risk]);
                 if (!isset($dailyAmounts[$risk])) {
                     continue;
                 }
