@@ -113,7 +113,6 @@ class V03Export
                 $risk = optional(
                     $j->journalable->client->classification
                 )->risk_weight;
-                dd($risk,$j);
 
                 if ($risk === null) {
                     continue;
@@ -123,10 +122,10 @@ class V03Export
                     continue;
                 }
 
-                $dailyAmounts[$risk] += $j->amount_amd / 1000;
+                $dailyAmounts[$risk] += $j->amount_amd;
+                dd( $dailyAmounts[$risk], $j->amount_amd);
             }
 
-            // Գրել Excel-ում
             foreach ($dailyAmounts as $risk => $value) {
                 $col = $riskColumns[$risk];
                 $sheet3->setCellValue($col . $row, $value);
