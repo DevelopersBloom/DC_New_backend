@@ -102,7 +102,6 @@ class V03Export
                 ->whereDate('date', $current->format('Y-m-d'))
                 ->where('document_type',DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
                 ->get();
-            dd($current->format('Y-m-d'),$journals);
             $dailyAmounts = [
                 0 => 0, 10 => 0, 20 => 0, 30 => 0,
                 50 => 0, 75 => 0, 100 => 0, 110 => 0,
