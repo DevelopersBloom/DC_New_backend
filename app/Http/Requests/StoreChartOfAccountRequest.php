@@ -29,6 +29,7 @@ class StoreChartOfAccountRequest extends FormRequest
             'type'      => 'required|in:active,passive,active-passive,off-balance',
             'parent_id' => 'nullable|exists:chart_of_accounts,id',
             'income_expense' => 'nullable|string',
+            'risk_weight' => 'nullable|numeric',
         ];
     }
     public function messages(): array

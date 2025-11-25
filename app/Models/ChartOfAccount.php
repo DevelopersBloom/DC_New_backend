@@ -27,6 +27,7 @@ class ChartOfAccount extends Model
         'parent_id',
         'description',
         'income_expense',
+        'risk_weight',
     ];
     protected $appends = ['parent_code'];
     protected $hidden = ['parent'];

@@ -125,6 +125,30 @@ class V03Export
 
                 $dailyAmounts[$riskKey] += $j->amount_amd;
             }
+            $accountIds = [
+                ChartOfAccount::idByCode('2101'),
+                ChartOfAccount::idByCode('2211')
+            ];
+
+            foreach ($accountIds as $accId) {
+                $account = \App\Models\ChartOfAccount::find($accId);
+                if (!$account) continue;
+
+                $riskWeight = $account->risk_weight;
+                if ($riskWeight === null) continue;
+
+                $balance = DocumentJournal::where('debit_account_id', $accId)
+                        ->whereDate('date', $current)
+                        ->sum('amount_amd')
+                    + DocumentJournal::where('credit_account_id', $accId)
+                        ->whereDate('date', $current)
+                        ->sum('amount_amd') * -1;
+
+                $riskKey = (int) $riskWeight;
+                if (!isset($dailyAmounts[$riskKey])) continue;
+
+                $dailyAmounts[$riskKey] += $balance;
+            }
 
             foreach ($dailyAmounts as $risk => $value) {
                 $col = $riskColumns[$risk];

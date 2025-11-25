@@ -29,7 +29,7 @@ class ChartOfAccountController
     public function index(): JsonResponse
     {
         $accounts = ChartOfAccount::query()
-            ->select('id','parent_id','name','code','type','income_expense')
+            ->select('id','parent_id','name','code','type','income_expense','risk_weight')
             ->whereNull('parent_id')
             ->get();
 
@@ -41,10 +41,10 @@ class ChartOfAccountController
         $parentId = $request->query('id');
 
         $account = ChartOfAccount::query()
-            ->select('id','parent_id','name','code','type','income_expense')
+            ->select('id','parent_id','name','code','type','income_expense','risk_weight')
             ->where('id', $parentId)
             ->with(['children' => function($q) {
-                $q->select('id','parent_id','name','code','type','income_expense');
+                $q->select('id','parent_id','name','code','type','income_expense','risk_weight');
             }])
             ->first();
 
@@ -79,6 +79,7 @@ class ChartOfAccountController
 //            'currency_id'    => 'nullable|exists:currencies,id',
             'parent_id'      => 'nullable|exists:chart_of_accounts,id',
             'income_expense' => 'nullable|string',
+            'risk_weight' => 'nullable|numeric'
         ]);
 
         if (isset($validated['parent_id']) && $validated['parent_id'] == $id) {
