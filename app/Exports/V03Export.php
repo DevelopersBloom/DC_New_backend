@@ -113,7 +113,7 @@ class V03Export
                 $risk = optional(
                     $j->journalable->client->classification
                 )->risk_weight;
-                dd($dailyAmounts[$risk],$risk,isset($dailyAmounts[$risk]));
+                dd($dailyAmounts,$risk,isset($dailyAmounts[$risk]));
 
                 if ($risk === null) {
                     continue;
