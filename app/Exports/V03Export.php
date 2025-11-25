@@ -147,7 +147,7 @@ class V03Export
                 $riskKey = (int) $riskWeight;
                 if (!isset($dailyAmounts[$riskKey])) continue;
 
-                $dailyAmounts[$riskKey] += $balance;
+                $dailyAmounts[$riskKey] -= $balance;
             }
 
             foreach ($dailyAmounts as $risk => $value) {
