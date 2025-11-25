@@ -113,6 +113,7 @@ class V03Export
                 $risk = optional(
                     $j->journalable->client->classification
                 )->risk_weight;
+                dd($risk,$j);
 
                 if ($risk === null) {
                     continue;
