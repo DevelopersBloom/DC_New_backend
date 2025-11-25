@@ -123,7 +123,6 @@ class V03Export
                 }
 
                 $dailyAmounts[$riskKey] += $j->amount_amd;
-                dd( $dailyAmounts[$riskKey], $j->amount_amd);
             }
 
             foreach ($dailyAmounts as $risk => $value) {
