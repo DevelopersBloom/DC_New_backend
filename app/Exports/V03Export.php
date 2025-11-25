@@ -91,7 +91,8 @@ class V03Export
             225 => 'T',
         ];
 
-        $row = 8;
+        $startDay = Carbon::parse($from)->day;
+        $row = 8 + ($startDay - 1);
         $current = Carbon::parse($from);
 
         while ($current->lte($end)) {
