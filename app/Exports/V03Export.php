@@ -100,10 +100,9 @@ class V03Export
                 'journalable.client.classification'
             ])
                 ->whereDate('date', $current)
-                ->where('comment', 'contract_payment') // ըստ քո business rule-ի
+                ->where('document_type',DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
                 ->get();
-
-            // Risk-weight մեկ օրվա ընդհանուր գումարները
+            dd($journals);
             $dailyAmounts = [
                 0 => 0, 10 => 0, 20 => 0, 30 => 0,
                 50 => 0, 75 => 0, 100 => 0, 110 => 0,
