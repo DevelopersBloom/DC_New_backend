@@ -109,11 +109,11 @@ class V03Export
             ];
 
             foreach ($journals as $j) {
+                dd($dailyAmounts[$risk],$risk,isset($dailyAmounts[$risk]));
 
                 $risk = optional(
                     $j->journalable->client->classification
                 )->risk_weight;
-                dd($dailyAmounts[$risk],$risk,isset($dailyAmounts[$risk]));
 
                 if ($risk === null) {
                     continue;
