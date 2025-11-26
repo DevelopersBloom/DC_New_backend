@@ -67,6 +67,21 @@ class V06Export
             'suspicious'    => 0,
             'loss'          => 0,
         ];
+        $amountsByClassification = [
+            'standard'      => 0,
+            'monitored'     => 0,
+            'substandard'   => 0,
+            'suspicious'    => 0,
+            'loss'          => 0,
+        ];
+        $weightedByClassification = [
+            'standart'      => 0,
+            'monitored'     => 0,
+            'substandard'   => 0,
+            'suspicious'    => 0,
+            'loss'          => 0,
+        ];
+
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || !$contract->client || !$contract->client->classification) continue;
@@ -96,9 +111,17 @@ class V06Export
             }
 
             $name = $contract->client->classification->name;
-            if (isset($classificationCounts[$name])) {
-                $classificationCounts[$name]++;
-            }
+            if (!isset($amountsByClassification[$name])) continue;
+
+            $classificationCounts[$name]++;
+            $amountsByClassification[$name] += $doc->amount_amd;
+
+            $interest = DocumentJournal::where('journalable_id', $doc->id)
+                ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
+                ->where('date','<',$date)
+                ->sum('amount_amd');
+
+            $weightedByClassification[$name] += $interest;
         }
 
         $rowsOnTime = [15, 16];
@@ -142,11 +165,15 @@ class V06Export
             }
         }
 
-        $sheet->setCellValue('B125', $classificationCounts['standard']);
-        $sheet->setCellValue('B126', $classificationCounts['monitored']);
-        $sheet->setCellValue('B127', $classificationCounts['substandard']);
-        $sheet->setCellValue('B128', $classificationCounts['suspicious']);
-        $sheet->setCellValue('B129', $classificationCounts['loss']);
+        $rows = [125, 126, 127, 128, 129];
+        $classificationKeys = ['standard', 'monitored', 'substandard', 'suspicious', 'loss'];
+
+        foreach ($rows as $index => $row) {
+            $key = $classificationKeys[$index];
+            $sheet->setCellValue('D' . $row, $amountsByClassification[$key]+$weightedByClassification[$key]);
+            $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0');
+        }
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
 
