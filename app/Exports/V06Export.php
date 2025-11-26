@@ -180,6 +180,7 @@ class V06Export
         foreach ($rows as $index => $row) {
             $key = $classificationKeys[$index];
             $sheet->setCellValue('D' . $row, $amountsByClassification[$key]+$weightedByClassification[$key]);
+            $sheet->setCellValue('F' . $row, $reserveByClassification[$key]);
             $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('F' . $row)->getNumberFormat()->setFormatCode('#,##0');
