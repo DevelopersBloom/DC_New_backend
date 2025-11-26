@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\ReportsJournalExport;
 use App\Exports\V03Export;
+use App\Exports\V06Export;
 use App\Exports\V07Export;
 use App\Exports\V17Export;
 use Illuminate\Http\Request;
@@ -39,8 +40,16 @@ class ReportController
 
     public function getV06Report(Request $request)
     {
-        return $this->downloadTemplate('v06.xls', $request);
-    }
+        $request->validate([
+            'from' => 'required|date',
+            'to'   => 'required|date',
+        ]);
+
+        $export = new V06Export();
+
+        $path = $export->export($request->from, $request->to);
+
+        return response()->download($path)->deleteFileAfterSend();    }
 
     public function getV07Report(Request $request)
     {
