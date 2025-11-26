@@ -52,14 +52,15 @@ class V06Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getColumnByDays($days);
-dd($hasExpiredPayment,$days,$doc->amount_amd);
             $groups[$col] += $doc->amount_amd;
         }
 
-        $row = 15;
-        foreach ($groups as $col => $value) {
-            $sheet->setCellValue($col . $row, $value / 1000);
-            $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
+        $rows = [15, 16];
+        foreach ($rows as $row) {
+            foreach ($groups as $col => $value) {
+                $sheet->setCellValue($col . $row, $value);
+                $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
+            }
         }
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
