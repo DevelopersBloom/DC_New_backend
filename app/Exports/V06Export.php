@@ -26,13 +26,23 @@ class V06Export
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date','<', $date)
             ->get();
-        $groups = [
-            'B' => 0, // <= 90
-            'D' => 0, // 91–180
-            'F' => 0, // 181–270
-            'H' => 0, // 271–365
-            'J' => 0, // 1–5
-            'L' => 0, // >5
+
+        $groupsOnTime = [
+            'B' => 0,
+            'D' => 0,
+            'F' => 0,
+            'H' => 0,
+            'J' => 0,
+            'L' => 0,
+        ];
+
+        $groupsExpired = [
+            'B' => 0,
+            'D' => 0,
+            'F' => 0,
+            'H' => 0,
+            'J' => 0,
+            'L' => 0,
         ];
 
         foreach ($docs as $doc) {
@@ -44,20 +54,29 @@ class V06Export
                     return Carbon::parse($p->date)->lt($date);
                 });
 
-            if ($hasExpiredPayment) {
-                continue;
-            }
-
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getColumnByDays($days);
-            $groups[$col] += $doc->amount_amd;
+
+            if ($hasExpiredPayment) {
+                $groupsExpired[$col] += $doc->amount_amd;
+            } else {
+                $groupsOnTime[$col] += $doc->amount_amd;
+            }
         }
 
-        $rows = [15, 16];
-        foreach ($rows as $row) {
-            foreach ($groups as $col => $value) {
+        $rowsOnTime = [15, 16];
+        foreach ($rowsOnTime as $row) {
+            foreach ($groupsOnTime as $col => $value) {
+                $sheet->setCellValue($col . $row, $value);
+                $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
+            }
+        }
+
+        $rowsExpired = [21, 22];
+        foreach ($rowsExpired as $row) {
+            foreach ($groupsExpired as $col => $value) {
                 $sheet->setCellValue($col . $row, $value);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
