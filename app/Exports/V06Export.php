@@ -24,7 +24,7 @@ class V06Export
             $q->where('status', 'initial');
         }])
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereDate('date', $date)
+            ->whereDate('date','<', $date)
             ->get();
 dd($docs);
         $groups = [
