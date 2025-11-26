@@ -75,7 +75,7 @@ class V06Export
             'loss'          => 0,
         ];
         $weightedByClassification = [
-            'standart'      => 0,
+            'standard'      => 0,
             'monitored'     => 0,
             'substandard'   => 0,
             'suspicious'    => 0,
