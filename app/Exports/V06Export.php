@@ -26,7 +26,6 @@ class V06Export
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date','<', $date)
             ->get();
-dd($docs);
         $groups = [
             'B' => 0, // <= 90
             'D' => 0, // 91–180
@@ -53,7 +52,7 @@ dd($docs);
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getColumnByDays($days);
-
+dd($hasExpiredPayment,$days,$doc->amount_amd);
             $groups[$col] += $doc->amount_amd;
         }
 
