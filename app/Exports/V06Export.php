@@ -60,9 +60,16 @@ class V06Export
             'J' => 0,
             'L' => 0,
         ];
+        $classificationCounts = [
+            'standard'      => 0,
+            'monitored'     => 0,
+            'substandard'   => 0,
+            'suspicious'    => 0,
+            'loss'          => 0,
+        ];
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
-            if (!$contract) continue;
+            if (!$contract || !$contract->client || !$contract->client->classification) continue;
 
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
@@ -86,6 +93,11 @@ class V06Export
                 $groupsExpired[$col] += $doc->amount_amd;
             } else {
                 $groupsOnTime[$col] += $doc->amount_amd;
+            }
+
+            $name = $contract->client->classification->name;
+            if (isset($classificationCounts[$name])) {
+                $classificationCounts[$name]++;
             }
         }
 
@@ -129,6 +141,12 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
+
+        $sheet->setCellValue('B125', $classificationCounts['standard']);
+        $sheet->setCellValue('B126', $classificationCounts['monitored']);
+        $sheet->setCellValue('B127', $classificationCounts['substandard']);
+        $sheet->setCellValue('B128', $classificationCounts['suspicious']);
+        $sheet->setCellValue('B129', $classificationCounts['loss']);
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
 
