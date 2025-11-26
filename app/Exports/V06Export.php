@@ -44,7 +44,22 @@ class V06Export
             'J' => 0,
             'L' => 0,
         ];
-
+        $groupsCar= [
+            'B' => 0,
+            'D' => 0,
+            'F' => 0,
+            'H' => 0,
+            'J' => 0,
+            'L' => 0,
+        ];
+        $groupsGold = [
+            'B' => 0,
+            'D' => 0,
+            'F' => 0,
+            'H' => 0,
+            'J' => 0,
+            'L' => 0,
+        ];
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract) continue;
@@ -58,6 +73,14 @@ class V06Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getColumnByDays($days);
+            if ($contract->category && $contract->category->name === 'car') {
+                $groupsCar[$col] += $doc->amount_amd;
+            }
+
+            if ($contract->category && $contract->category->name === 'gold') {
+                $groupsGold[$col] += $doc->amount_amd;
+            }
+
 
             if ($hasExpiredPayment) {
                 $groupsExpired[$col] += $doc->amount_amd;
@@ -81,7 +104,31 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
+        $rowsCar = [110];
+        $rowsGold = [112];
+        $rowsTotal = [108];
 
+        foreach ($groupsCar as $col => $value) {
+            foreach ($rowsCar as $row) {
+                $sheet->setCellValue($col . $row, $value);
+                $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
+            }
+        }
+
+        foreach ($groupsGold as $col => $value) {
+            foreach ($rowsGold as $row) {
+                $sheet->setCellValue($col . $row, $value);
+                $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
+            }
+        }
+
+        foreach ($groupsCar as $col => $value) {
+            $goldValue = $groupsGold[$col] ?? 0;
+            foreach ($rowsTotal as $row) {
+                $sheet->setCellValue($col . $row, $value + $goldValue);
+                $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
+            }
+        }
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
 
