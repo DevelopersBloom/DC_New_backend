@@ -81,6 +81,13 @@ class V06Export
             'suspicious'    => 0,
             'loss'          => 0,
         ];
+        $reserveByClassification = [
+            'standard'      => 0,
+            'monitored'     => 0,
+            'substandard'   => 0,
+            'suspicious'    => 0,
+            'loss'          => 0,
+        ];
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
@@ -122,6 +129,8 @@ class V06Export
                 ->sum('amount_amd');
 
             $weightedByClassification[$name] += $interest;
+            $reserve_percent = $contract->client->classification->reserve_percent ?? 0;
+            $reserveByClassification[$name] += $contract->mother * $reserve_percent / 100;
         }
 
         $rowsOnTime = [15, 16];
@@ -173,6 +182,8 @@ class V06Export
             $sheet->setCellValue('D' . $row, $amountsByClassification[$key]+$weightedByClassification[$key]);
             $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle('F' . $row)->getNumberFormat()->setFormatCode('#,##0');
+
         }
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
