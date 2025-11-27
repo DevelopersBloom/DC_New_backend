@@ -334,6 +334,43 @@ class V06Export
         $sheet2->setCellValue("D{$rowGold}", $goldAmountBetween);
         $sheet2->setCellValue("D87", $carAmountBetween + $goldAmountBetween);
 
+        $acc89860001 = ChartOfAccount::idByCode('89860001');
+        $balance89860001 = 0;
+        if ($acc89860001) {
+            $balance89860001 = DocumentJournal::where('debit_account_id', $acc89860001)
+                ->whereDate('date', '<', $dateFrom)
+                ->sum('amount_amd');
+        }
+
+        $acc91860001 = ChartOfAccount::idByCode('91860001');
+        $balance91860001 = 0;
+        if ($acc91860001) {
+            $balance91860001 = DocumentJournal::where('debit_account_id', $acc91860001)
+                ->whereDate('date', '<', $dateFrom)
+                ->sum('amount_amd');
+        }
+
+        $sheet2->setCellValue("H89", $balance89860001);
+        $sheet2->setCellValue("H91", $balance91860001);
+        $sheet2->setCellValue("H87", $balance89860001 + $balance91860001);
+
+        $balance89860001_J = 0;
+        if ($acc89860001) {
+            $balance89860001_J = DocumentJournal::where('debit_account_id', $acc89860001)
+                ->whereBetween('date', [$dateFrom, $date])
+                ->sum('amount_amd');
+        }
+
+        $balance91860001_J = 0;
+        if ($acc91860001) {
+            $balance91860001_J = DocumentJournal::where('debit_account_id', $acc91860001)
+                ->whereBetween('date', [$dateFrom, $date])
+                ->sum('amount_amd');
+        }
+
+        $sheet2->setCellValue("J89", $balance89860001_J);
+        $sheet2->setCellValue("J91", $balance91860001_J);
+        $sheet2->setCellValue("J87", $balance89860001_J + $balance91860001_J);
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
