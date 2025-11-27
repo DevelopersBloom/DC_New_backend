@@ -264,11 +264,13 @@ class V06Export
 
         $carAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereHas('journalable', function ($q) {
-                $q->whereHas('category', function ($q2) {
-                    $q2->where('name', 'car');
+                // Կլիենտի դասակարգումը
+                $q->whereHas('client.classification', function ($q2) {
+                    $q2->whereNotIn('name', ['standard', 'monitored']);
                 });
-                $q->whereHas('client.classification', function ($q3) {
-                    $q3->whereNotIn('name', ['standard', 'monitored']);
+                // Կատեգորիան ավտո
+                $q->whereHas('category', function ($q3) {
+                    $q3->where('name', 'car');
                 });
             })
             ->whereDate('date', '<', $dateFrom)
@@ -281,7 +283,7 @@ class V06Export
                     $q2->whereNotIn('name', ['standard', 'monitored']);
                 });
                 // Կատեգորիան ոսկի
-                $q->whereHas('contract.category', function ($q3) {
+                $q->whereHas('category', function ($q3) {
                     $q3->where('name', 'gold');
                 });
             })
@@ -293,7 +295,7 @@ class V06Export
                 $q->whereHas('client.classification', function ($q2) {
                     $q2->whereNotIn('name', ['standard', 'monitored']);
                 });
-                $q->whereHas('contract.category', function ($q3) {
+                $q->whereHas('category', function ($q3) {
                     $q3->where('name', 'car');
                 });
             })
@@ -305,12 +307,13 @@ class V06Export
                 $q->whereHas('client.classification', function ($q2) {
                     $q2->whereNotIn('name', ['standard', 'monitored']);
                 });
-                $q->whereHas('contract.category', function ($q3) {
+                $q->whereHas('category', function ($q3) {
                     $q3->where('name', 'gold');
                 });
             })
             ->whereBetween('date', [$dateFrom, $date])
             ->sum('amount_amd');
+
 
         $sheet2->setCellValue("B{$rowCar}", $carAmountBefore);
         $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore);
