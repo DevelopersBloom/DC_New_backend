@@ -90,6 +90,9 @@ class V06Export
             'loss'          => 0,
         ];
 
+        $onTimeCount = 0;
+        $expiredCount = 0;
+
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || !$contract->client || !$contract->client->classification) continue;
@@ -99,6 +102,11 @@ class V06Export
                     return Carbon::parse($p->date)->lt($date);
                 });
 
+            if ($hasExpiredPayment) {
+                $expiredCount++;
+            } else {
+                $onTimeCount++;
+            }
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($contract->date));
 
@@ -149,6 +157,12 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
+        $sheet->setCellValue('R15', $onTimeCount);
+        $sheet->setCellValue('R16', $onTimeCount);
+
+        $sheet->setCellValue('R21', $expiredCount);
+        $sheet->setCellValue('R22', $expiredCount);
+
         $rowsCar = [110];
         $rowsGold = [112];
         $rowsTotal = [108];
