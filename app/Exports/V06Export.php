@@ -263,61 +263,65 @@ class V06Export
         $rowGold = 91;
 
         $goldAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereHas('journalable', function ($journalableQuery) {
-                // client -> classification
-                $journalableQuery->whereHas('client', function ($clientQuery) {
-                    $clientQuery->whereHas('classification', function ($classificationQuery) {
-                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+            ->whereHasMorph(
+                'journalable',
+                [Contract::class],
+                function ($q) {
+                    $q->whereHas('client.classification', function ($q2) {
+                        $q2->whereNotIn('name', ['standard', 'monitored']);
                     });
-                });
-
-                // category
-                $journalableQuery->whereHas('category', function ($categoryQuery) {
-                    $categoryQuery->where('name', 'gold');
-                });
-            })
+                    $q->whereHas('category', function ($q3) {
+                        $q3->where('name', 'gold');
+                    });
+                }
+            )
             ->whereDate('date', '<', $dateFrom)
             ->sum('amount_amd');
-
         $carAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereHas('journalable', function ($q) {
-                $q->whereHas('client', function ($clientQuery) {
-                    $clientQuery->whereHas('classification', function ($classificationQuery) {
-                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+            ->whereHasMorph(
+                'journalable',
+                [Contract::class],
+                function ($q) {
+                    $q->whereHas('client.classification', function ($q2) {
+                        $q2->whereNotIn('name', ['standard', 'monitored']);
                     });
-                });
-                $q->whereHas('category', function ($categoryQuery) {
-                    $categoryQuery->where('name', 'car');
-                });
-            })
+                    $q->whereHas('category', function ($q3) {
+                        $q3->where('name', 'car');
+                    });
+                }
+            )
             ->whereDate('date', '<', $dateFrom)
             ->sum('amount_amd');
 
         $carAmountBetween = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereHas('journalable', function ($q) {
-                $q->whereHas('client', function ($clientQuery) {
-                    $clientQuery->whereHas('classification', function ($classificationQuery) {
-                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+            ->whereHasMorph(
+                'journalable',
+                [Contract::class],
+                function ($q) {
+                    $q->whereHas('client.classification', function ($q2) {
+                        $q2->whereNotIn('name', ['standard', 'monitored']);
                     });
-                });
-                $q->whereHas('category', function ($categoryQuery) {
-                    $categoryQuery->where('name', 'car');
-                });
-            })
+                    $q->whereHas('category', function ($q3) {
+                        $q3->where('name', 'car');
+                    });
+                }
+            )
             ->whereBetween('date', [$dateFrom, $date])
             ->sum('amount_amd');
 
         $goldAmountBetween = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereHas('journalable', function ($journalableQuery) {
-                $journalableQuery->whereHas('client', function ($clientQuery) {
-                    $clientQuery->whereHas('classification', function ($classificationQuery) {
-                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+            ->whereHasMorph(
+                'journalable',
+                [Contract::class],
+                function ($q) {
+                    $q->whereHas('client.classification', function ($q2) {
+                        $q2->whereNotIn('name', ['standard', 'monitored']);
                     });
-                });
-                $journalableQuery->whereHas('category', function ($categoryQuery) {
-                    $categoryQuery->where('name', 'gold');
-                });
-            })
+                    $q->whereHas('category', function ($q3) {
+                        $q3->where('name', 'gold');
+                    });
+                }
+            )
             ->whereBetween('date', [$dateFrom, $date])
             ->sum('amount_amd');
 
