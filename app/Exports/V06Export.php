@@ -18,6 +18,7 @@ class V06Export
         $spreadsheet = $reader->load($path);
 
         $date = Carbon::parse($to)->format('Y-m-d');
+        $dateFrom = Carbon::parse($from)->from('Y-m-d');
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
@@ -255,6 +256,58 @@ class V06Export
         }
         $sheet->setCellValue('X125', $balance19400PC);
         $sheet->getStyle('X125')->getNumberFormat()->setFormatCode('#,##0');
+
+        $sheet2 = $spreadsheet->getSheetByName('Sheet2');
+
+        $rowCar  = 89;
+        $rowGold = 91;
+
+        $carAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->whereHas('journalable.client.classification', function ($q) {
+                $q->whereNotIn('name', ['standard', 'monitored']);
+            })
+            ->whereHas('journalable.contract', function ($q) {
+                $q->where('name', 'car');
+            })
+            ->whereDate('date', '<', $dateFrom)
+            ->sum('amount_amd');
+
+        $goldAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->whereHas('journalable.client.classification', function ($q) {
+                $q->whereNotIn('name', ['standard', 'monitored']);
+            })
+            ->whereHas('journalable.contract', function ($q) {
+                $q->where('name', 'gold');
+            })
+            ->whereDate('date', '<', $dateFrom)
+            ->sum('amount_amd');
+
+        $carAmountBetween = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->whereHas('journalable.client.classification', function ($q) {
+                $q->whereNotIn('name', ['standard', 'monitored']);
+            })
+            ->whereHas('journalable.contract', function ($q) {
+                $q->where('name', 'car');
+            })
+            ->whereBetween('date', [$dateFrom, $date])
+            ->sum('amount_amd');
+
+        $goldAmountBetween = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->whereHas('journalable.client.classification', function ($q) {
+                $q->whereNotIn('name', ['standard', 'monitored']);
+            })
+            ->whereHas('journalable.contract', function ($q) {
+                $q->where('name', 'gold');
+            })
+            ->whereBetween('date', [$dateFrom, $date])
+            ->sum('amount_amd');
+
+        $sheet2->setCellValue("B{$rowCar}", $carAmountBefore);
+        $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore);
+
+        $sheet2->setCellValue("C{$rowCar}", $carAmountBetween);
+        $sheet2->setCellValue("C{$rowGold}", $goldAmountBetween);
+
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
