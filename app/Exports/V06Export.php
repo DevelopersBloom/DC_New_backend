@@ -205,6 +205,43 @@ class V06Export
         $sheet->setCellValue('L125', $balance10210);
         $sheet->getStyle('L125')->getNumberFormat()->setFormatCode('#,##0');
 
+        $acc15300 = ChartOfAccount::idByCode('15300');
+        $balance15300 = 0;
+        if ($acc15300) {
+            $balance15300 = DocumentJournal::where('credit_account_id', $acc15300)
+                ->whereDate('date', '<', $date)
+                ->sum('amount_amd');
+        }
+        $sheet->setCellValue('N125', $balance15300);
+        $sheet->getStyle('N125')->getNumberFormat()->setFormatCode('#,##0');
+
+        $acc19331 = ChartOfAccount::idByCode('19331');
+        $balance19331 = 0;
+        $debitPartnersCount = 0;
+        if ($acc19331) {
+            $balance19331 = DocumentJournal::where('debit_account_id', $acc19331)
+                ->whereDate('date', '<', $date)
+                ->sum('amount_amd');
+            $debitPartnersCount = DocumentJournal::where('debit_account_id', $acc19331)
+                ->whereDate('date', '<', $date)
+                ->distinct('partner_id')
+                ->count('partner_id');
+        }
+        $sheet->setCellValue('R125', $debitPartnersCount);
+        $sheet->getStyle('R125')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('T125', $balance19331);
+        $sheet->getStyle('T125')->getNumberFormat()->setFormatCode('#,##0');
+
+        $acc19400PC = ChartOfAccount::idByCode('19400PC');
+        $balance19400PC = 0;
+        if ($acc19400PC) {
+            $balance19400PC = DocumentJournal::where('debit_account_id', $acc19400PC)
+                ->whereDate('date', '<', $date)
+                ->sum('amount_amd');
+        }
+        $sheet->setCellValue('X125', $acc19400PC);
+        $sheet->getStyle('X125')->getNumberFormat()->setFormatCode('#,##0');
+
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
 
