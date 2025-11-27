@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
 use App\Models\Contract;
 use Carbon\Carbon;
@@ -186,6 +187,24 @@ class V06Export
             $sheet->getStyle('F' . $row)->getNumberFormat()->setFormatCode('#,##0');
 
         }
+        $acc10210 = ChartOfAccount::idByCode('10210');
+        $accCount = 0;
+        $balance10210 = 0;
+        if ($acc10210){
+            $accCount++;
+            $balance10210 = DocumentJournal::where('debit_account_id', $acc10210)
+                    ->whereDate('date', '<', $date)
+                    ->sum('amount_amd')
+                - DocumentJournal::where('credit_account_id', $acc10210)
+                    ->whereDate('date',  '<', $date)
+                    ->sum('amount_amd');
+        }
+        $sheet->setCellValue('J125', $accCount);
+        $sheet->getStyle('J125')->getNumberFormat()->setFormatCode('#,##0');
+
+        $sheet->setCellValue('L125', $balance10210);
+        $sheet->getStyle('L125')->getNumberFormat()->setFormatCode('#,##0');
+
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
 
