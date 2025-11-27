@@ -239,7 +239,7 @@ class V06Export
                 ->whereDate('date', '<', $date)
                 ->sum('amount_amd');
         }
-        $sheet->setCellValue('X125', $acc19400PC);
+        $sheet->setCellValue('X125', $balance19400PC);
         $sheet->getStyle('X125')->getNumberFormat()->setFormatCode('#,##0');
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
