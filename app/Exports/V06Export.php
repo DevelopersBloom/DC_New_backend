@@ -329,8 +329,8 @@ class V06Export
         $sheet2->setCellValue("B{$rowCar}", $carAmountBefore);
         $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore);
 
-        $sheet2->setCellValue("C{$rowCar}", $carAmountBetween);
-        $sheet2->setCellValue("C{$rowGold}", $goldAmountBetween);
+        $sheet2->setCellValue("D{$rowCar}", $carAmountBetween);
+        $sheet2->setCellValue("D{$rowGold}", $goldAmountBetween);
 
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
