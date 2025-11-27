@@ -262,29 +262,32 @@ class V06Export
         $rowCar  = 89;
         $rowGold = 91;
 
-        $carAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereHas('journalable', function ($q) {
-                // Կլիենտի դասակարգումը
-                $q->whereHas('client.classification', function ($q2) {
-                    $q2->whereNotIn('name', ['standard', 'monitored']);
+        $goldAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->whereHas('journalable', function ($journalableQuery) {
+                // client -> classification
+                $journalableQuery->whereHas('client', function ($clientQuery) {
+                    $clientQuery->whereHas('classification', function ($classificationQuery) {
+                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+                    });
                 });
-                // Կատեգորիան ավտո
-                $q->whereHas('category', function ($q3) {
-                    $q3->where('name', 'car');
+
+                // category
+                $journalableQuery->whereHas('category', function ($categoryQuery) {
+                    $categoryQuery->where('name', 'gold');
                 });
             })
             ->whereDate('date', '<', $dateFrom)
             ->sum('amount_amd');
 
-        $goldAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+        $carAmountBefore = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereHas('journalable', function ($q) {
-                // Կլիենտի դասակարգումը
-                $q->whereHas('client.classification', function ($q2) {
-                    $q2->whereNotIn('name', ['standard', 'monitored']);
+                $q->whereHas('client', function ($clientQuery) {
+                    $clientQuery->whereHas('classification', function ($classificationQuery) {
+                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+                    });
                 });
-                // Կատեգորիան ոսկի
-                $q->whereHas('category', function ($q3) {
-                    $q3->where('name', 'gold');
+                $q->whereHas('category', function ($categoryQuery) {
+                    $categoryQuery->where('name', 'car');
                 });
             })
             ->whereDate('date', '<', $dateFrom)
@@ -292,23 +295,27 @@ class V06Export
 
         $carAmountBetween = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereHas('journalable', function ($q) {
-                $q->whereHas('client.classification', function ($q2) {
-                    $q2->whereNotIn('name', ['standard', 'monitored']);
+                $q->whereHas('client', function ($clientQuery) {
+                    $clientQuery->whereHas('classification', function ($classificationQuery) {
+                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+                    });
                 });
-                $q->whereHas('category', function ($q3) {
-                    $q3->where('name', 'car');
+                $q->whereHas('category', function ($categoryQuery) {
+                    $categoryQuery->where('name', 'car');
                 });
             })
             ->whereBetween('date', [$dateFrom, $date])
             ->sum('amount_amd');
 
         $goldAmountBetween = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereHas('journalable', function ($q) {
-                $q->whereHas('client.classification', function ($q2) {
-                    $q2->whereNotIn('name', ['standard', 'monitored']);
+            ->whereHas('journalable', function ($journalableQuery) {
+                $journalableQuery->whereHas('client', function ($clientQuery) {
+                    $clientQuery->whereHas('classification', function ($classificationQuery) {
+                        $classificationQuery->whereNotIn('name', ['standard', 'monitored']);
+                    });
                 });
-                $q->whereHas('category', function ($q3) {
-                    $q3->where('name', 'gold');
+                $journalableQuery->whereHas('category', function ($categoryQuery) {
+                    $categoryQuery->where('name', 'gold');
                 });
             })
             ->whereBetween('date', [$dateFrom, $date])
