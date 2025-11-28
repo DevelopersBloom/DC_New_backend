@@ -355,22 +355,34 @@ class V06Export
         $sheet2->setCellValue("H87", $balance89860001 + $balance91860001);
 
         $balance89860001_J = 0;
+        $creditBalance89860001_J = 0;
         if ($acc89860001) {
             $balance89860001_J = DocumentJournal::where('debit_account_id', $acc89860001)
+                ->whereBetween('date', [$dateFrom, $date])
+                ->sum('amount_amd');
+            $creditBalance89860001_J = DocumentJournal::where('credit_account_id', $acc89860001)
                 ->whereBetween('date', [$dateFrom, $date])
                 ->sum('amount_amd');
         }
 
         $balance91860001_J = 0;
+        $creditBalance91860001_J = 0;
         if ($acc91860001) {
             $balance91860001_J = DocumentJournal::where('debit_account_id', $acc91860001)
                 ->whereBetween('date', [$dateFrom, $date])
                 ->sum('amount_amd');
+            $creditBalance91860001_J = DocumentJournal::where('credit_account_id', $acc91860001)
+                ->whereBetween('date', [$dateFrom, $date])
+                ->sum('amount_amd');
+
         }
 
         $sheet2->setCellValue("J89", $balance89860001_J);
         $sheet2->setCellValue("J91", $balance91860001_J);
         $sheet2->setCellValue("J87", $balance89860001_J + $balance91860001_J);
+        $sheet2->setCellValue("L89", $creditBalance89860001_J);
+        $sheet2->setCellValue("L91", $creditBalance91860001_J);
+        $sheet2->setCellValue("L87", $creditBalance89860001_J + $creditBalance91860001_J);
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
