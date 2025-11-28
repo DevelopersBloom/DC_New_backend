@@ -63,6 +63,47 @@ class DocumentJournalController
 
         return response()->json($page);
     }
+    public function show(int $id): JsonResponse
+    {
+        $j = DocumentJournal::with([
+            'currency:id,code',
+            'partner:id,type,name,surname,company_name,social_card_number,tax_number',
+            'user:id,name,surname',
+        ])->findOrFail($id);
+
+        $partner = $j->partner;
+
+        $partnerCode = $partner
+            ? ($partner->type === 'individual'
+                ? ($partner->social_card_number ?? null)
+                : ($partner->tax_number ?? null))
+            : null;
+
+        $partnerName = $partner
+            ? ($partner->type === 'legal'
+                ? ($partner->company_name ?? '')
+                : trim(($partner->name ?? '') . ' ' . ($partner->surname ?? '')))
+            : null;
+
+        $data = [
+            'id'                  => $j->id,
+            'date'                => optional($j->date)->format('Y-m-d'),
+            'document_number'     => $j->document_number,
+            'document_type'       => $j->document_type,
+            'amount_currency'     => $j->currency?->code,
+            'amount_currency_id'  => $j->currency_id,
+            'amount_amd'          => $j->amount_amd,
+            'debit_partner_code'  => $partnerCode,
+            'debit_partner_name'  => $partnerName,
+            'comment'             => $j->comment,
+            'user_id'             => $j->user_id,
+            'user'                => $j->user,
+            'disbursement_date'   => optional($j->created_at)->format('Y-m-d H:i:s'),
+        ];
+
+        return response()->json($data);
+    }
+
     public function trashed(Request $request): JsonResponse
     {
         $from = $request->query('from_date');
