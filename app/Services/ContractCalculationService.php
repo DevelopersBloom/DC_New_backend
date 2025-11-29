@@ -166,34 +166,34 @@ class ContractCalculationService
     protected function calculateWrittenOffData(Contract $contract, Carbon $calcToday): void
     {
         $writtenOff = null;
+        $writtenOffInterest = null;
+
 
         if (($contract->client?->classification?->name) === 'loss') {
             $writtenOff = max(0, (float)($contract->provided_amount ?? 0));
+            $writtenOffInterest = $contract->payments()
+                ->where('status', 'initial')
+                ->sum('amount');
+
         }
         $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
+        $contract->written_off_interest =  $writtenOffInterest !== null ? round($writtenOffInterest, 2) : null;
+//        if (!empty($contract->written_off_amount) && !empty($contract->interest_rate)) {
+//
+//            $writeOffDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
+//
+//            $days = 0;
+//            if ($calcToday->gt($writeOffDate)) {
+//                $days = $writeOffDate->diffInDays($calcToday);
+//            }
+//
+//            $writtenOffInterest = $this->calcAmount(
+//                $contract->written_off_amount,
+//                $days,
+//                $contract->interest_rate
+//            );
+//        }
 
-        $writtenOffInterest = null;
-        if (!empty($contract->written_off_amount) && !empty($contract->interest_rate)) {
-
-            $writeOffDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
-
-            $days = 0;
-            if ($calcToday->gt($writeOffDate)) {
-                $days = $writeOffDate->diffInDays($calcToday);
-            }
-
-            $writtenOffInterest = $this->calcAmount(
-                $contract->written_off_amount,
-                $days,
-                $contract->interest_rate
-            );
-        }
-        $initialPaymentsSum = $contract->payments()
-            ->where('status', 'initial')
-            ->whereDate('date', '<', $calcToday->format('Y-m-d'))
-            ->sum('amount');
-
-        $contract->written_off_interest =  round($initialPaymentsSum, 2);
     }
 
 
