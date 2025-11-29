@@ -188,7 +188,12 @@ class ContractCalculationService
                 $contract->interest_rate
             );
         }
-        $contract->written_off_interest = $writtenOffInterest;
+        $initialPaymentsSum = $contract->payments()
+            ->where('status', 'initial')
+            ->whereDate('date', '<', $calcToday->format('Y-m-d'))
+            ->sum('amount');
+
+        $contract->written_off_interest =  round($initialPaymentsSum, 2);
     }
 
 
