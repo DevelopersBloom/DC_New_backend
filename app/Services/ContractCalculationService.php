@@ -272,15 +272,16 @@ class ContractCalculationService
 
         $daysProvided = 0;
 
-        $deadlineDate = $contract->deadline
-            ?: ($contract->payments_max_to_date ?: $contract->payments->max('to_date'));
+        $deadlineDate = $contract->deadline;
+//            ?: ($contract->payments_max_to_date ?: $contract->payments->max('to_date'));
 
         if ($deadlineDate) {
-            $deadline = Carbon::parse($deadlineDate)->startOfDay();
+            $deadline = Carbon::parse($deadlineDate);
+//            $deadline = Carbon::parse($deadlineDate)->startOfDay();
 
-            if ($toDay->gt($deadline)) {
-                $daysProvided = $deadline->diffInDays($toDay);
-            }
+//            if ($toDay->gt($deadline)) {
+            $daysProvided = $deadline->diffInDays($startDate);
+//            }
         }
         $contract->days_provided = $daysProvided;
 
