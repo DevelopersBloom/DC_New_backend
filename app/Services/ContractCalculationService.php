@@ -288,8 +288,8 @@ class ContractCalculationService
 
         $remainingRepaymentDays = 0;
         if ($calcToday) {
-            if ($calcToday->gt($startDate)) {
-                $remainingRepaymentDays = $startDate->diffInDays($calcToday);
+            if ($calcToday->gt($deadline)) {
+                $remainingRepaymentDays = $startDate->diffInDays($calcToday->format('Y-m-d'));
             }
         }
         $contract->remaining_repayment_days = $remainingRepaymentDays;
