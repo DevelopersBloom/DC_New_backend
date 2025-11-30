@@ -267,7 +267,7 @@ class ContractCalculationService
      */
     protected function calculateDaysData(Contract $contract, Carbon $calcToday): void
     {
-        $toDay = Carbon::now()->startOfDay();
+        $toDay = Carbon::now()->format('Y-m-d');
         $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
 
         $daysProvided = 0;
@@ -287,11 +287,13 @@ class ContractCalculationService
 
 
         $remainingRepaymentDays = 0;
-        if ($calcToday) {
-            if ($calcToday->gt($deadline)) {
-                $remainingRepaymentDays = $startDate->diffInDays($calcToday->format('Y-m-d'));
-            }
-        }
+        $remainingRepaymentDays = $deadline->diffInDays($toDay);
+
+//        if ($calcToday) {
+//            if ($calcToday->gt($deadline)) {
+//                $remainingRepaymentDays = $startDate->diffInDays($calcToday->format('Y-m-d'));
+//            }
+//        }
         $contract->remaining_repayment_days = $remainingRepaymentDays;
     }
 }
