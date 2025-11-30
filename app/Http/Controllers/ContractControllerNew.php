@@ -280,10 +280,10 @@ class ContractControllerNew extends Controller
 
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
             $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
-            $contract->effective_annual_rate = round($effectiveRates['annual'],10); // 24.00 (%)
-            $contract->effective_daily_rate = round($effectiveRates['daily'],10);   // 0.064321 (%)
-            $contract->effective_rate_kasko = round($effectiveRates['kasko_daily'],10);
-            $contract->effective_rate_annual_kasko = round($effectiveRates['kasko_annual'],10);
+            $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
+            $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
+            $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
+            $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
             $contract->save();
 
             ContractAmountHistory::create([
