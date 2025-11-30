@@ -199,6 +199,12 @@ class ContractControllerNew extends Controller
             }
             $contract->category_id = $category_id;
             $contract->save();
+            if ($contract->category->name == 'car')
+            {
+                $contract->kasko_amount = $contractRequest->kasko_amount;
+                $contract->save();
+            }
+
             $filesData = $contractRequest->all()['files'] ?? null;
             if ($filesData) {
                 $this->fileService->uploadContractFiles($contract->id, $filesData);
