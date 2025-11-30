@@ -54,7 +54,8 @@ class EffectiveRateService
             effectiveAnnual: {$effectiveAnnualDecimal}, effectiveDaily:{$effectiveDailyDecimal}");
 
         $kaskoDaily = null;
-
+        $effectiveKaskoAnnual = null;
+        $effectiveKaskoDaily = null;
         if (!empty($kaskoAmount)) {
 
             foreach ($contract->payments as $payment) {
@@ -84,11 +85,14 @@ class EffectiveRateService
         Log::info('cashflowsKasko', [
             'data' => $cashflowsKasko
         ]);
+        $effectiveKaskoAnnual = $effectiveKaskoAnnual ?
+            round($effectiveKaskoAnnual * 100, 10) : null;
+        $effectiveKaskoDaily = $effectiveKaskoDaily ?  round($effectiveKaskoDaily * 100, 10) : null;
         return [
-            'annual'      => round($effectiveAnnualDecimal * 100, 10),
-            'daily'       => round($effectiveDailyDecimal * 100, 10),
-            'kasko_annual' => round($effectiveKaskoAnnual * 100, 10),
-            'kasko_daily' => round($effectiveKaskoDaily * 100, 10),
+            'annual'      => $effectiveAnnualDecimal,
+            'daily'       =>$effectiveDailyDecimal,
+            'kasko_annual' => $effectiveKaskoAnnual,
+            'kasko_daily' => $effectiveKaskoDaily,
         ];
     }
 
