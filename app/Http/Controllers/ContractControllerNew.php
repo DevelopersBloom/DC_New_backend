@@ -78,6 +78,27 @@ class ContractControllerNew extends Controller
             'executed' => $data['executedContracts'],
         ]);
     }
+    public function getForAdmin(): JsonResponse
+    {
+        $contracts = Contract::with('client:id,name,surname')
+            ->get(['id', 'num', 'client_id', 'provided_amount', 'estimated_amount','date']);
+
+        $result = $contracts->map(fn($c) => [
+            'id' => $c->id,
+            'num' => $c->num,
+            'client_name' => $c->client->name ?? null,
+            'client_surname' => $c->client->surname ?? null,
+            'provided_amount' => $c->provided_amount,
+            'estimated_amount' => $c->estimated_amount,
+            'date' => $c->date,
+        ]);
+
+        return response()->json([
+            'contracts' => $result,
+            'total' => $contracts->count(),
+        ]);
+    }
+
 
     public function show($id, Request $request)
     {
