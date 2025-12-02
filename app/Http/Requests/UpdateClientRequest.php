@@ -66,12 +66,32 @@ class UpdateClientRequest extends FormRequest
             'name' => ['nullable','string','max:255'],
             'surname' => ['nullable','string','max:255'],
             'middle_name' => ['nullable','string','max:255'],
+//            'passport_series' => [
+//                'sometimes','nullable','string','max:50',
+//                Rule::unique('clients','passport_series')
+//                    ->ignore($clientId)
+//                    ->where(fn($q) => $q->where('type','individual'))
+//            ],
             'passport_series' => [
-                'nullable','string','max:50',
-                Rule::unique('clients','passport_series')
-                    ->ignore($clientId)
-                    ->where(fn($q) => $q->where('type','individual'))
+                'sometimes','nullable','string','max:50',
+                function ($attribute, $value, $fail) {
+                    $clientId = (int) $this->route('client_id');
+                    $pawnshopId = auth()->user()->pawnshop_id;
+
+                    $normalized = strtoupper(str_replace(' ', '', $value));
+
+                    $exists = Client::whereRaw('UPPER(REPLACE(passport_series, " ", "")) = ?', [$normalized])
+                        ->where('type', 'individual')
+                        ->whereHas('pawnshops', fn($q) => $q->where('pawnshop_id', $pawnshopId))
+                        ->where('id', '!=', $clientId)
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('Այս անձնագրի սերիայով ֆիզիկական հաճախորդ արդեն գոյություն ունի։');
+                    }
+                },
             ],
+
             'passport_validity' => ['nullable','date'],
             'passport_issued' => ['nullable','string','max:255'],
             'date_of_birth' => ['nullable','date'],
