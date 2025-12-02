@@ -11,7 +11,7 @@ class UpdateClientRequest extends FormRequest
 {
     public function rules(): array
     {
-        $clientId = (int) $this->route('client_id');
+        $clientId = (int) $this->route('id');
         $current  = Client::find($clientId);
         $effectiveType = $this->input('type', $current?->type ?? 'individual');
 
@@ -66,28 +66,14 @@ class UpdateClientRequest extends FormRequest
             'name' => ['nullable','string','max:255'],
             'surname' => ['nullable','string','max:255'],
             'middle_name' => ['nullable','string','max:255'],
-//            'passport_series' => [
-//                'sometimes','nullable','string','max:50',
-//                Rule::unique('clients','passport_series')
-//                    ->ignore($clientId)
-//                    ->where(fn($q) => $q->where('type','individual'))
-//            ],
             'passport_series' => [
-                'sometimes','nullable','string','max:50',
-                function ($attribute, $value, $fail) {
-                    $clientId = (int) $this->route('id');
-                    $pawnshopId = auth()->user()->pawnshop_id;
-
-                    $normalized = strtoupper(str_replace(' ', '', $value));
-
-                    $exists = Client::whereRaw('UPPER(REPLACE(passport_series, " ", "")) = ?', [$normalized])
-                        ->where('type', 'individual')
-                        ->where('id', '!=', $clientId)
-                        ->exists();
-                    if ($exists) {
-                        $fail('Այս անձնագրի սերիայով ֆիզիկական հաճախորդ արդեն գոյություն ունի!!։');
-                    }
-                },
+                'sometimes',
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('clients')
+                    ->ignore($clientId)
+                    ->where('type', 'individual'),
             ],
 
             'passport_validity' => ['nullable','date'],
@@ -96,7 +82,7 @@ class UpdateClientRequest extends FormRequest
 
             'company_name' => ['nullable','string','max:255'],
             'legal_form' => ['nullable','string','max:50'],
-            'tax_number' => ['nullable','string','max:50'], // unique ՉԿԱ
+            'tax_number' => ['nullable','string','max:50'],
             'state_register_number' => ['nullable','string','max:50'],
             'activity_field' => ['nullable','string','max:255'],
             'director_name' => ['nullable','string','max:255'],
