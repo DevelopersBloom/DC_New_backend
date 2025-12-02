@@ -83,8 +83,7 @@ class UpdateClientRequest extends FormRequest
                     $exists = Client::whereRaw('UPPER(REPLACE(passport_series, " ", "")) = ?', [$normalized])
                         ->where('type', 'individual')
                         ->where('id', '!=', $clientId)
-                        ->get();
-dd($exists,$clientId);
+                        ->exists();
                     if ($exists) {
                         $fail('Այս անձնագրի սերիայով ֆիզիկական հաճախորդ արդեն գոյություն ունի!!։');
                     }
