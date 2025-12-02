@@ -84,9 +84,9 @@ class UpdateClientRequest extends FormRequest
                         ->where('type', 'individual')
                         ->where('id', '!=', $clientId)
                         ->exists();
-
+dd($exists);
                     if ($exists) {
-                        $fail('Այս անձնագրի սերիայով ֆիզիկական հաճախորդ արդեն գոյություն ունի։');
+                        $fail('Այս անձնագրի սերիայով ֆիզիկական հաճախորդ արդեն գոյություն ունի!!։');
                     }
                 },
             ],
