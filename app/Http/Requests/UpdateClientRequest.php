@@ -75,7 +75,7 @@ class UpdateClientRequest extends FormRequest
             'passport_series' => [
                 'sometimes','nullable','string','max:50',
                 function ($attribute, $value, $fail) {
-                    $clientId = (int) $this->route('client_id');
+                    $clientId = (int) $this->route('id');
                     $pawnshopId = auth()->user()->pawnshop_id;
 
                     $normalized = strtoupper(str_replace(' ', '', $value));
