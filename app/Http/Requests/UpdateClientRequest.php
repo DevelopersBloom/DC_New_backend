@@ -82,7 +82,6 @@ class UpdateClientRequest extends FormRequest
 
                     $exists = Client::whereRaw('UPPER(REPLACE(passport_series, " ", "")) = ?', [$normalized])
                         ->where('type', 'individual')
-                        ->whereHas('pawnshops', fn($q) => $q->where('pawnshop_id', $pawnshopId))
                         ->where('id', '!=', $clientId)
                         ->exists();
 
