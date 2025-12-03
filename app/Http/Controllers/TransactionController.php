@@ -55,7 +55,7 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
 
-        $transactions = $query->orderBy('date', 'desc')->paginate(20);
+        $transactions = $query->orderBy('id', 'desc')->paginate(20);
 
         return response()->json($transactions);
     }
@@ -117,7 +117,7 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
 
-        $transactions = $query->orderBy('date', 'desc')->paginate(20);
+        $transactions = $query->orderBy('id', 'desc')->paginate(20);
 
         return response()->json($transactions);
     }
