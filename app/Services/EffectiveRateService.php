@@ -87,10 +87,10 @@ class EffectiveRateService
         ]);
 
         return [
-            'annual'      => $effectiveAnnualDecimal,
-            'daily'       =>$effectiveDailyDecimal,
-            'kasko_annual' => $effectiveKaskoAnnual,
-            'kasko_daily' => $effectiveKaskoDaily,
+            'annual'      => $effectiveAnnualDecimal * 100,
+            'daily'       =>$effectiveDailyDecimal * 100,
+            'kasko_annual' => $effectiveKaskoAnnual * 100,
+            'kasko_daily' => $effectiveKaskoDaily * 100,
         ];
     }
 
