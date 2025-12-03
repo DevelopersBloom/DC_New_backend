@@ -324,7 +324,7 @@ class ReportV01Controller extends Controller
 
         $dateValue = Date::PHPToExcel(strtotime($toStr));
         $sheet->setCellValue('C1', $dateValue);
-        $sheet->getStyle('C1')->getNumberFormat()->setFormatCode('dd-mm-yy');
+        $sheet->getStyle('C1')->getNumberFormat()->setFormatCode('dd/mm/yy');
 
 
         $writer->save($path);
