@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
 
@@ -54,6 +55,12 @@ class V07Export
 
             $row++;
         }
+        $sheet->setCellValueExplicit('D12', 'Ակրեդիտ', DataType::TYPE_STRING);
+        $sheet->setCellValue('C14', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
+        $sheet->getStyle('C14')->getNumberFormat()->setFormatCode('dd/mm/yy');
+
+        $sheet->setCellValue('E14', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to));
+        $sheet->getStyle('E14')->getNumberFormat()->setFormatCode('dd/mm/yy');
 
         $fileName = 'v07_export_' . now()->format('Ymd_His') . '.xls';
         $path = storage_path('app/public/' . $fileName);
