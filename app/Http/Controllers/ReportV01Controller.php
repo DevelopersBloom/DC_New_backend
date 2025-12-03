@@ -219,6 +219,7 @@ namespace App\Http\Controllers;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -318,6 +319,13 @@ class ReportV01Controller extends Controller
         while (ob_get_level() > 0) {
             @ob_end_clean();
         }
+        $sheet->setCellValueExplicit('A1', 'Ա կրեդիտ', DataType::TYPE_STRING);
+
+
+        $dateValue = Date::PHPToExcel(strtotime($toStr));
+        $sheet->setCellValue('C1', $dateValue);
+        $sheet->getStyle('C1')->getNumberFormat()->setFormatCode('dd-mm-yy');
+
 
         $writer->save($path);
 
