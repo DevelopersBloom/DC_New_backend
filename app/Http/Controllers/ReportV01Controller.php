@@ -219,6 +219,7 @@ namespace App\Http\Controllers;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -322,13 +323,12 @@ class ReportV01Controller extends Controller
         $sheet->setCellValueExplicit('A1', 'Ա կրեդիտ', DataType::TYPE_STRING);
 
         $timestamp = strtotime($toStr);
+
         $pureDate = date('Y-m-d', $timestamp);
         $dateValue = Date::PHPToExcel(strtotime($pureDate));
+        $sheet->getDataValidation('C1')->setType(DataValidation::TYPE_NONE);
         $sheet->setCellValue('C1', $dateValue);
         $sheet->getStyle('C1')->getNumberFormat()->setFormatCode('dd/mm/yy');
-
-        $writer->save($path);
-
 
         return response()->download($path, $filename, [
             'Content-Type' => 'application/vnd.ms-excel.sheet.macroEnabled.12',
