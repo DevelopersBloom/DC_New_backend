@@ -613,10 +613,10 @@ class V06Export
         $sheet->getStyle('X125')->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->setCellValueExplicit('D5', 'Ակրեդիտ', DataType::TYPE_STRING);
-        $sheet->setCellValue('D7', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
+        $sheet->setCellValue('D7', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from->format('dd/mm/yy')));
         $sheet->getStyle('D7')->getNumberFormat()->setFormatCode('dd/mm/yy');
 
-        $sheet->setCellValue('F7', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to));
+        $sheet->setCellValue('F7', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to->format('dd/mm/yy')));
         $sheet->getStyle('F7')->getNumberFormat()->setFormatCode('dd/mm/yy');
 
         $sheet2 = $spreadsheet->getSheetByName('Sheet2');
