@@ -5,6 +5,7 @@
     use App\Models\LoanNdm;
     use App\Models\DocumentJournal;
     use Carbon\Carbon;
+    use PhpOffice\PhpSpreadsheet\Cell\DataType;
     use PhpOffice\PhpSpreadsheet\IOFactory;
     use PhpOffice\PhpSpreadsheet\Writer\Xls;
 
@@ -21,6 +22,12 @@
 
             // ---------- sheet 1 ----------
             $sheet1 = $spreadsheet->getSheetByName('Sheet1');
+            $sheet1->setCellValueExplicit('C9', 'Ակրեդիտ', DataType::TYPE_STRING);
+            $sheet1->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
+            $sheet1->getStyle('C10')->getNumberFormat()->setFormatCode('dd/mm/yy');
+
+            $sheet1->setCellValue('E10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to));
+            $sheet1->getStyle('E10')->getNumberFormat()->setFormatCode('dd/mm/yy');
     //        $ndms = LoanNdm::whereBetween('disbursement_date', [$start, $end])->get();
             $docs = DocumentJournal::with(['parentDoc.journalable'])
                 ->where('document_type', DocumentJournal::LOAN_ATTRACTION)
