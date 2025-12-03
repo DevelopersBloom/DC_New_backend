@@ -321,11 +321,11 @@ class ReportV01Controller extends Controller
         }
         $sheet->setCellValueExplicit('A1', 'Ա կրեդիտ', DataType::TYPE_STRING);
 
-
-        $dateValue = Date::PHPToExcel(strtotime($toStr));
+        $timestamp = strtotime($toStr);
+        $pureDate = date('Y-m-d', $timestamp);
+        $dateValue = Date::PHPToExcel(strtotime($pureDate));
         $sheet->setCellValue('C1', $dateValue);
         $sheet->getStyle('C1')->getNumberFormat()->setFormatCode('dd/mm/yy');
-
 
         $writer->save($path);
 
