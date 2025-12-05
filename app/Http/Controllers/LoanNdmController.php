@@ -11,6 +11,7 @@ use App\Models\LoanNdm;
 use App\Models\NdmRepaymentDetail;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Services\ActivityService;
 use App\Services\LoanNdmInterestService;
 use App\Traits\Journalable;
 use App\Traits\OrderTrait;
@@ -25,9 +26,13 @@ class LoanNdmController extends Controller
 {
 //    use OrderTrait;
     protected $loanNdmInterestService;
-    public function __construct(LoanNdmInterestService $loanNdmInterestService)
+
+    protected $activity;
+
+    public function __construct(LoanNdmInterestService $loanNdmInterestService, ActivityService $activity)
     {
         $this->loanNdmInterestService = $loanNdmInterestService;
+        $this->activity = $activity;
     }
 
     public function index(): JsonResponse
@@ -40,6 +45,10 @@ class LoanNdmController extends Controller
                 'pawnshop:id,city',
             ])->get();
 
+        $this->activity->log(
+            action: 'loan_ndm_list_viewed',
+            description: 'Viewed Loan NDM list'
+        );
             return response()->json([
                 'data'    => $loans,
             ]);
@@ -87,58 +96,12 @@ class LoanNdmController extends Controller
             $data['calc_date'] = $data['contract_date'];
             $loanNdm = LoanNdm::create($data);
 
-//            $purpose = Order::NDM_PURPOSE;
-//            $filter_type = Order::NDM_FILTER;
-//            $type = 'cost_out';
-//            $cash = true;
-//            $clientId = $data['client_id'];
-
-//            $client = Client::findOrFail($clientId);
-
-//            $partnerName = $client->type == 'legal' ? $client->company_name : $client->name . ' ' . $client->surname;
-//
-//            $partnerCode = $client->type == 'individual' ? $client->social_card_number :
-//                $client->tax_number;
-
-//            Transaction::create([
-//                'date'               => $data['contract_date'],
-//                'document_number'    => $data['contract_number'],
-//                'document_type'      => Transaction::LOAN_NDM_TYPE,
-//
-////                'debit_account_id'   => 0,
-//                'debit_partner_code' => $partnerCode,
-//                'debit_partner_name' => $partnerName,
-//                'debit_currency_id'  => $data['currency_id'],
-//                'disbursement_date'  => $data['disbursement_date'],
-//
-////                'credit_account_id'   => 0,
-////                'credit_partner_code' => $creditPartnerCode,
-////                'credit_partner_name' => $creditPartnerName,
-////                'credit_currency_id'  => $reminderOrder->currency_id,
-//
-//                'amount_amd'       => $data['amount'],
-//                'amount_currency'  => 0,
-//                'amount_currency_id'=> null,
-//
-//                'comment'   => $data['comment'],
-//                'user_id'   => auth()->id(),
-//                'is_system' => false,
-//            ]);
-
-
-//            $order_id = $this->getOrder($cash, $type);
-//            $this->createOrderAndDeal(
-//                $order_id,
-//                $type === 'out' ? 'cost_out' : 'in',
-//                $name,
-//                $amount,
-//                $purpose,
-//                null,
-//                $cash,
-//                $filter_type,
-//                $interestAmount,
-//                $clientId
-//            );
+            $this->activity->log(
+                action: 'loan_ndm_created',
+                description: "Created Loan NDM contract #{$loanNdm->id}",
+                model: LoanNdm::class,
+                modelId: $loanNdm->id
+            );
 
             DB::commit();
 
@@ -208,6 +171,12 @@ class LoanNdmController extends Controller
 
 
             $journal->save();
+            $this->activity->log(
+                action: 'loan_ndm_updated',
+                description: "Updated Loan NDM #{$loan->id}, doc journal {$journalPayload->id}",
+                model: LoanNdm::class,
+                modelId: $loan->id
+            );
 
             DB::commit();
 
@@ -283,7 +252,12 @@ class LoanNdmController extends Controller
             'interestAccount' => $loan->interestAccount,
             'pawnshop' => $loan->pawnshop,
         ];
-
+        $this->activity->log(
+            action: 'loan_ndm_viewed',
+            description: "Viewed Loan NDM #{$loan->id}",
+            model: LoanNdm::class,
+            modelId: $loan->id
+        );
         return response()->json(['data' => $response]);
     }
 
@@ -382,6 +356,13 @@ class LoanNdmController extends Controller
                     'transactionable_type'=> DocumentJournal::class,
                     'transactionable_id'  => $data['document_journal_id'],
                 ]);
+
+                $this->activity->log(
+                    action: 'loan_attraction_created',
+                    description: "Created Loan Attraction for NDM #{$loan->id}, amount {$amount},doc #{$journalDoc->id}",
+                    model: DocumentJournal::class,
+                    modelId: $journalDoc->id
+                );
 
                 return response()->json([
                     'message'     => 'Վարկի ներգրավումը հաջողությամբ ստեղծվեց',
@@ -506,6 +487,12 @@ class LoanNdmController extends Controller
                 } else {
                     Transaction::create($txAttrs);
                 }
+                $this->activity->log(
+                    action: 'loan_attraction_updated',
+                    description: "Updated Loan Attraction for NDM #{$loan->id}, journal #{$journal->id}",
+                    model: DocumentJournal::class,
+                    modelId: $journal->id
+                );
 
                 return response()->json([
                     'message' => 'Վարկի ներգրավումը հաջողությամբ թարմացվեց',
@@ -537,6 +524,13 @@ class LoanNdmController extends Controller
             return response()->json($result);
 
         }
+        $this->activity->log(
+            action: 'loan_interest_calculated',
+            description: "Calculated interest for Loan NDM #{$loan->id} from {$from} to {$data['calculation_date']}",
+            model: LoanNdm::class,
+            modelId: $loan->id
+        );
+
         return "Something went wrong";
     }
 
@@ -622,6 +616,12 @@ class LoanNdmController extends Controller
                     'credit_partner_id' => $clientId,
                 ]);
             }
+            $this->activity->log(
+                action: 'loan_interest_posted',
+                description: "Posted interest for Loan NDM #{$loan->id}. Effective: {$data['effective_interest_amount']}, Interest: {$data['interest_amount']}",
+                model: LoanNdm::class,
+                modelId: $loan->id
+            );
 
             DB::commit();
 
@@ -808,6 +808,12 @@ class LoanNdmController extends Controller
                 $documentNumber++;
                 $transactionDocumentNumber++;
             }
+            $this->activity->log(
+                action: 'loan_repayment',
+                description: "Repayment for Loan NDM #{$loan->id}. Principal: {$principal}, Interest: {$interest}, Tax: {$taxInt}",
+                model: LoanNdm::class,
+                modelId: $loan->id
+            );
 
             return response()->json(['status' => 'ok']);
         });

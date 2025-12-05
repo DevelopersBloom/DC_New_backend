@@ -22,6 +22,7 @@ use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\Transaction;
+use App\Services\ActivityService;
 use App\Services\ClientClassificationService;
 use App\Services\ClientService;
 use App\Services\ContractCalculationService;
@@ -46,9 +47,12 @@ class ContractControllerNew extends Controller
     protected FileService $fileService;
     protected ClientClassificationService $clientClassificationService;
     protected ContractCalculationService $contractCalculationService;
+    protected ActivityService $activityService;
     public function __construct(ClientService $clientService, ContractService $contractService,FileService $fileService,
                                 EffectiveRateService $effectiveRateService,
-                                ClientClassificationService $clientClassificationService,ContractCalculationService $contractCalculationService
+                                ClientClassificationService $clientClassificationService,ContractCalculationService $contractCalculationService,
+                                ActivityService $activityService
+
     )
     {
         $this->clientService = $clientService;
@@ -57,6 +61,7 @@ class ContractControllerNew extends Controller
         $this->effectiveRateService = $effectiveRateService;
         $this->clientClassificationService = $clientClassificationService;
         $this->contractCalculationService = $contractCalculationService;
+        $this->activityService = $activityService;
     }
     public function get(Request $request): JsonResponse
     {
@@ -70,6 +75,12 @@ class ContractControllerNew extends Controller
         ]);
 
         $data = $this->contractService->getContracts($filters);
+
+        $this->activityService->log(
+            'view_contracts_list',
+            'User viewed contracts',
+            Contract::class
+        );
 
         return response()->json([
             'contracts' => $data['contracts'],
@@ -139,6 +150,12 @@ class ContractControllerNew extends Controller
 //            $contract->written_off_amount = $contract->overdue_interest + $contract->unearned_interest;
 //        }
 
+        $this->activityService->log(
+            'view_contract_details',
+            "Viewed contract details",
+            Contract::class,
+            $id
+        );
         return new ContractDetailResource($contract);
     }
     public function getHistoryDetails(int $id)
@@ -198,6 +215,12 @@ class ContractControllerNew extends Controller
                 ];
                 break;
         }
+        $this->activityService->log(
+            'view_history_details',
+            "Viewed contract history details",
+            History::class,
+            $id
+        );
         return response()->json([
             'details' => $details
         ]);
@@ -248,6 +271,12 @@ class ContractControllerNew extends Controller
                 'category_id' => $category_id,
                 'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
             ]);
+            $this->activityService->log(
+                'create_contract',
+                "Created contract #{$contract->num}",
+                Contract::class,
+                $contract->id
+            );
             DB::commit();
 
             return response()->json([
@@ -441,6 +470,12 @@ class ContractControllerNew extends Controller
             auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;
             auth()->user()->pawnshop->save();
 
+            $this->activityService->log(
+                'pay_contract_amount',
+                "Paid contract amount for contract #{$contract->num}",
+                Contract::class,
+                $contract->id
+            );
             DB::commit();
             return response()->json([
                 'message' => 'Contract amount paid successfully',
@@ -469,6 +504,13 @@ class ContractControllerNew extends Controller
 
         $contract->num = $validatedData['contract_number'];
         $contract->save();
+
+        $this->activityService->log(
+            'update_contract_number',
+            "Updated contract number to {$validatedData['contract_number']}",
+            Contract::class,
+            $contract->id
+        );
 
         return response()->json([
             'message' => 'Contract number updated successfully.',
@@ -504,12 +546,7 @@ class ContractControllerNew extends Controller
 
         return $this->contractService->updateContractItems($validatedData['items']);
     }
-    public function exportContracts1(Request $request)
-    {
-        $date = $request->input('date') ?? now()->toDateString();
 
-        return Excel::download(new DailyExport(), 'contracts_export_' . $date . '.xlsx');
-    }
     public function exportContracts()
     {
         return Excel::download(new ContractsExport(), 'contracts_export.xlsx');
@@ -526,7 +563,12 @@ class ContractControllerNew extends Controller
         $calcToday = Carbon::parse($request->calc_date, 'Asia/Yerevan')->startOfDay();
 
         $this->contractCalculationService->calculateInterestRates($contract, $calcToday);
-
+        $this->activityService->log(
+            'calculate_interest',
+            "Calculated interest {$contract->calculatedInterest}, calculated effective {$contract->calculatedEffectiveInterest} for contract #{$contract->id}",
+            Contract::class,
+            $contract->id
+        );
         return response()->json([
             'calculated_interest' => $contract->calculatedInterest,
             'calculated_effective_interest' => $contract->calculatedEffectiveInterest,
@@ -697,6 +739,12 @@ class ContractControllerNew extends Controller
                 $nextDocNum++;
             }
 
+            $this->activityService->log(
+                'confirm_interest',
+                "Confirmed interest for contract #{$contract->id} (interest: {$request->calculated_interest}, effective: {$request->calculated_effective_interest})",
+                Contract::class,
+                $contract->id
+            );
             DB::commit();
 
             return response()->json([

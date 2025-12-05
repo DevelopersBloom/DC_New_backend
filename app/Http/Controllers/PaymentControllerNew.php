@@ -14,6 +14,7 @@ use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Transaction;
+use App\Services\ActivityService;
 use App\Services\PaymentService;
 use App\Traits\ContractTrait;
 use App\Traits\FileTrait;
@@ -29,10 +30,13 @@ class PaymentControllerNew extends Controller
     use FileTrait;
 
     protected PaymentService $paymentService;
+    protected ActivityService $activityService;
 
-    public function __construct(PaymentService $paymentService)
+
+    public function __construct(PaymentService $paymentService, ActivityService $activityService)
     {
         $this->paymentService = $paymentService;
+        $this->activityService = $activityService;
     }
     public function makePayment(Request $request): JsonResponse
     {
@@ -118,6 +122,13 @@ class PaymentControllerNew extends Controller
             'transactionable_type' => DocumentJournal::class,
             'transactionable_id'   => $journalDoc->id,
         ]);
+
+        $this->activityService->log(
+            'make_payment',
+            "Payment made: {$amount} AMD for contract #{$contract->id}, and deal #{$deal->id}",
+            Contract::class,
+            $contract->id
+        );
 
 
        return response()->json([
@@ -226,6 +237,13 @@ class PaymentControllerNew extends Controller
                     'description' => 'Refund payment',
                     'date' => \Illuminate\Support\Carbon::now()->format('Y-m-d'),
                 ]);
+                $this->activityService->log(
+                    'refund_lump',
+                    "Refund lump sum: {$refundAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",
+                    Contract::class,
+                    $contract->id
+                );
+
                 return response()->json([
                     'success' => 'success',
                     'message' => 'Full payment created successfully with a lump sum refund',
@@ -233,6 +251,12 @@ class PaymentControllerNew extends Controller
                 ]);
             }
         }
+        $this->activityService->log(
+            'full_payment',
+            "Full payment of {$amount} AMD for contract #{$contract->id} and deal #{$deal->id}",
+            Contract::class,
+            $contract->id
+        );
 
         return response()->json([
             'success' => 'success',
@@ -317,6 +341,12 @@ class PaymentControllerNew extends Controller
 //            'credit_partner_id' => $contract->client_id,
 //        ]);
         $this->updateContractStatus($contract);
+        $this->activityService->log(
+            'partial_payment',
+            "Partial payment: {$partialAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",
+            Contract::class,
+            $contract->id
+        );
 
         return response()->json([
             'success' => 'success',
@@ -406,6 +436,13 @@ class PaymentControllerNew extends Controller
                 'category_id' => $contract->category_id ?? null,
                 'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
             ]);
+            $this->activityService->log(
+                'execute_item',
+                "Contract executed. Amount: {$executedAmount} AMD and deal #{$deal->id}",
+                Contract::class,
+                $contractId
+            );
+
             DB::commit();
 
             return response()->json([

@@ -123,23 +123,17 @@ class LoanNdmInterestService
 
 
 
-        // day-count resolver
         [$baseDaysFunc, $fixedBaseDays] = $this->resolveDayCount($loan->day_count_convention ?? 'calendar_year');
-
-        // ---- 1) Կառուցենք utilization timeline-ը և հաշվենք W = Σ principal * (days/baseDays) ----
         $W = $this->weightedYearFractions($loan, $from, $to, $baseDaysFunc, $fixedBaseDays);
 
-        // ---- 2) Քաշենք տոկոսադրույքները loan table-ից (annual %) ----
         $nominalRate = (float)($loan->interest_rate ?? 0);            // % / year
         $effectiveRate = (float)($loan->effective_interest_rate ?? 0);  // % / year
-        // ---- 3) Հաշվենք գումարները ----
         $interestAmount = $W * ($nominalRate / 100.0);
         $effectiveInterestAmount = $W * ($effectiveRate / 100.0);
 
         return [
-            'interest_amount' => round($interestAmount, 2),          // ըստ interest_rate
-            'effective_interest_amount' => round($effectiveInterestAmount, 2), // ըստ effective_interest_rate
-            // ցանկության դեպքում կարող ես նաև վերադառնալ՝
+            'interest_amount' => round($interestAmount, 2),
+            'effective_interest_amount' => round($effectiveInterestAmount, 2),
             // 'interest_rate'            => round($nominalRate, 4),
             // 'effective_interest_rate'  => round($effectiveRate, 4),
         ];
