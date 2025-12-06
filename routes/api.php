@@ -127,7 +127,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::delete('/{id}', [ChartOfAccountController::class, 'destroy']);
         });
 
-        Route::get('/contracts', [ContractControllerNew::class, 'getForAdmin']);
+        Route::get('/contracts', [AdminControllerNew::class, 'getContracts']);
 
         Route::get('/accounts/balances', [ChartOfAccountController::class, 'accountBalances']);
         Route::get('/transactions/account-balance/export', [TransactionController::class, 'exportAccountBalances']);

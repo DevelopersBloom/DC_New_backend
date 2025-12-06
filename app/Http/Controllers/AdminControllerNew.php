@@ -14,6 +14,7 @@ use App\Models\Deal;
 use App\Models\DealAction;
 use App\Models\Discount;
 use App\Models\File;
+use App\Models\LoanNdm;
 use App\Models\LumpRate;
 use App\Models\Order;
 use App\Models\Pawnshop;
@@ -907,5 +908,61 @@ class AdminControllerNew extends Controller
             'discounts' => $discounts
         ]);
     }
+    public function getContracts(): JsonResponse
+    {
+        $contracts = Contract::with('client:id,name,surname')
+            ->get(['id', 'num', 'client_id', 'provided_amount', 'estimated_amount','date']);
+
+        $regular = $contracts->map(fn($c) => [
+            'id' => $c->id,
+            'num' => $c->num,
+            'client_name' => $c->client->name ?? null,
+            'client_surname' => $c->client->surname ?? null,
+            'provided_amount' => $c->provided_amount,
+            'estimated_amount' => $c->estimated_amount,
+            'date' => $c->date,
+        ]);
+
+
+        $ndm = LoanNdm::with('client:id,name,surname')
+            ->get([
+                'id',
+                'contract_number',
+                'client_id',
+                'amount',
+                'interest_rate',
+                'interest_amount',
+                'income',
+                'contract_date',
+                'maturity_date'
+            ]);
+
+        $ndmFormatted = $ndm->map(fn($n) => [
+            'id' => $n->id,
+            'contract_number' => $n->contract_number,
+            'client_name' => $n->client->name ?? null,
+            'client_surname' => $n->client->surname ?? null,
+            'amount' => $n->amount,
+            'interest_rate' => $n->interest_rate,
+            'interest_amount' => $n->interest_amount,
+            'income' => $n->income,
+            'contract_date' => $n->contract_date,
+            'maturity_date' => $n->maturity_date,
+        ]);
+
+
+        return response()->json([
+            'contracts' => [
+                'regular' => $regular,
+                'ndm' => $ndmFormatted,
+            ],
+            'totals' => [
+                'regular' => $regular->count(),
+                'ndm' => $ndmFormatted->count(),
+                'all' => $regular->count() + $ndmFormatted->count()
+            ]
+        ]);
+    }
+
 
 }
