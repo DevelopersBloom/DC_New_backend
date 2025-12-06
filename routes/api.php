@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BusinessEventController;
 use App\Http\Controllers\CategoryController;
@@ -128,6 +129,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         });
 
         Route::get('/contracts', [AdminControllerNew::class, 'getContracts']);
+        Route::get('logs', [ActivityLogController::class,'getLogs']);
 
         Route::get('/accounts/balances', [ChartOfAccountController::class, 'accountBalances']);
         Route::get('/transactions/account-balance/export', [TransactionController::class, 'exportAccountBalances']);
