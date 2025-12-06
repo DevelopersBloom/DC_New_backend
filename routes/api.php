@@ -129,7 +129,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         });
 
         Route::get('/contracts', [AdminControllerNew::class, 'getContracts']);
-        Route::get('logs', [ActivityLogController::class,'getLogs']);
+        Route::get('/logs', [ActivityLogController::class,'getLogs']);
 
         Route::get('/accounts/balances', [ChartOfAccountController::class, 'accountBalances']);
         Route::get('/transactions/account-balance/export', [TransactionController::class, 'exportAccountBalances']);
