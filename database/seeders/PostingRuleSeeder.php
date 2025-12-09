@@ -19,12 +19,8 @@ class PostingRuleSeeder extends Seeder
         $acc33513NI        = ChartOfAccount::idByCode('33513NI');
         $acc391021         = ChartOfAccount::idByCode('391021');
 
-        $loanAccount       = ChartOfAccount::idByCode('33512NV');
-        $interestAccount   = ChartOfAccount::idByCode('7331');
-        $taxAccount        = ChartOfAccount::idByCode('3421');
-        $bankAccount       = ChartOfAccount::idByCode('2211');
 
-        DB::table('business_event_rules')->insert([
+        DB::table('posting_rules')->insert([
             [
                 'business_event_filter' => 'attach_loan',
                 'debit_account_id'  => $acc102101,
