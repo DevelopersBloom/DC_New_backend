@@ -9,15 +9,15 @@ class PostingRule extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'business_event_id',
+        'business_event_filter',
         'debit_account_id',
         'credit_account_id',
     ];
 
-    public function businessEvent(): BelongsTo
-    {
-        return $this->belongsTo(BusinessEvent::class);
-    }
+//    public function businessEvent(): BelongsTo
+//    {
+//        return $this->belongsTo(BusinessEvent::class);
+//    }
 
     public function debitAccount(): BelongsTo
     {

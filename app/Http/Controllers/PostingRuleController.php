@@ -11,14 +11,14 @@ class PostingRuleController extends Controller
 {
     public function index(): JsonResponse
     {
-        $rules = PostingRule::with(['businessEvent', 'debitAccount', 'creditAccount'])->get();
+        $rules = PostingRule::with(['debitAccount', 'creditAccount'])->get();
         return response()->json($rules);
     }
 
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'business_event_id' => 'required|exists:business_events,id',
+            'business_event_filter' => 'required',
             'debit_account_id' => 'required|exists:chart_of_accounts,id',
             'credit_account_id' => 'required|exists:chart_of_accounts,id',
         ]);
@@ -29,7 +29,7 @@ class PostingRuleController extends Controller
 
     public function show(PostingRule $postingRule): JsonResponse
     {
-        $postingRule->load(['businessEvent', 'debitAccount', 'creditAccount']);
+        $postingRule->load(['debitAccount', 'creditAccount']);
 
         return response()->json(new PostingRuleResource($postingRule));
     }
@@ -38,7 +38,7 @@ class PostingRuleController extends Controller
     public function update(Request $request, PostingRule $postingRule): JsonResponse
     {
         $data = $request->validate([
-            'business_event_id' => 'sometimes|exists:business_events,id',
+            'business_event_filter' => 'sometimes',
             'debit_account_id' => 'sometimes|exists:chart_of_accounts,id',
             'credit_account_id' => 'sometimes|exists:chart_of_accounts,id',
         ]);

@@ -8,6 +8,7 @@ use App\Http\Controllers\DocumentJournalController;
 use App\Http\Controllers\LoanNdmController;
 use App\Http\Controllers\MonthlyIncomeExpenseController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TransactionsExport;
 use App\Http\Controllers\PostingRuleController;
@@ -214,7 +215,14 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/', [TaskController::class, 'store']);
         Route::put('{id}', [TaskController::class, 'update']);
         Route::delete('{id}', [TaskController::class, 'destroy']);
+
+        // Comments belong to tasks
+        Route::get('/{task}/comments', [TaskCommentController::class, 'index']);
+        Route::post('/{task}/comments', [TaskCommentController::class, 'store']);
     });
+
+    Route::delete('/comments/{comment}', [TaskCommentController::class, 'destroy']);
+
     Route::get('/get-discount-requests', [DiscountController::class, 'getDiscountRequests']);
 
     Route::group(['prefix' => 'notes'], function () {

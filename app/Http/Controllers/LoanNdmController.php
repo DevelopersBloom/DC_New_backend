@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Exports\LoanNdmJournalExport;
 use App\Http\Requests\StoreLoanNdmRequest;
+use App\Models\BusinessEvent;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use App\Models\NdmRepaymentDetail;
 use App\Models\Order;
+use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
 use App\Services\LoanNdmInterestService;
@@ -289,12 +291,23 @@ class LoanNdmController extends Controller
                 $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
 
 //                $acc102101 = ChartOfAccount::idByCode('102101');
-                $acc33512NV = ChartOfAccount::idByCode('33512NV');
-                $loanAccountId = $loan->account_id;
+//                $acc33512NV = ChartOfAccount::idByCode('33512NV');
+//                $loanAccountId = $loan->account_id;
+
+                $rule = PostingRule::where('business_event_filter', 'attach_loan')
+                    ->first();
+
+                if (!$rule) {
+                    throw new \RuntimeException('Posting rule for attach_loan not found');
+                }
+
+                $debitAccountId = $rule->debit_account_id;
+                $creditAccountId = $rule->credit_account_id;
+
                 $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
                 $creditPartnerId = $loan->client_id;
 
-                if (!$acc33512NV || !$loanAccountId) return 'One of 102101, 33512NV not wxist';
+//                if (!$acc33512NV || !$loanAccountId) return 'One of 102101, 33512NV not wxist';
 
                 $journalDoc = DocumentJournal::create([
                     'date'            => $date,
@@ -305,44 +318,23 @@ class LoanNdmController extends Controller
                     'partner_id'      => $partnerId,
                     'credit_partner_id' => $creditPartnerId,
                     'comment'         => $data['comment'] ?? null,
-                    'debit_account_id' => $loanAccountId,
-                    'credit_account_id' => $acc33512NV,
+                    'debit_account_id' => $debitAccountId,
+                    'credit_account_id' => $creditAccountId,
                     'user_id'         => auth()->id(),
                     'journalable_type'   => DocumentJournal::class,
                     'journalable_id'     => $journal->id,
                 ]);
 
-//                $journal->transactions()->create([
-//                    'date'               => $date,
-//                    'document_number'    => $docNum,
-//                    'document_type'      => Transaction::LOAN_ATTRACTION,
-//
-//                    'debit_account_id'   => $loanAccountId,
-//                    'debit_partner_id' => $partnerId,
-//                    'debit_currency_id'  => $loan->currency_id,
-//
-//                    'credit_account_id'  => $acc33512NV,
-//                    'credit_currency_id' => $loan->currency_id,
-//                    'credit_partner_id'  => $creditPartnerId,
-//
-//                    'amount_amd'         => $amount,
-//
-//                    'comment'            => $data['comment'] ?? null,
-//                    'user_id'            => auth()->id(),
-//                    'is_system'          => false,
-//
-//                    'disbursement_date'  => $date,
-//                ]);
                 Transaction::create([
                     'date'               => $date,
                     'document_number'    => $docNum,
                     'document_type'      => Transaction::LOAN_ATTRACTION,
 
-                    'debit_account_id'   => $loanAccountId,
+                    'debit_account_id'   => $debitAccountId,
                     'debit_partner_id' => $partnerId,
                     'debit_currency_id'  => $loan->currency_id,
 
-                    'credit_account_id'  => $acc33512NV,
+                    'credit_account_id'  => $creditAccountId,
                     'credit_currency_id' => $loan->currency_id,
                     'credit_partner_id'  => $creditPartnerId,
 
@@ -426,7 +418,7 @@ class LoanNdmController extends Controller
 
                 $acc33512NV     = ChartOfAccount::idByCode('33512NV');
                 $loanAccountId  = (int)$data['account_id'];
-                $partnerId      = 1;//Client::where('company_name', 'Diamond Credit')->value('id');
+                $partnerId      = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
                 $creditPartnerId= $loan->client_id;
 
                 if (!$acc33512NV || !$loanAccountId || !$partnerId || !$creditPartnerId) {
@@ -560,12 +552,24 @@ class LoanNdmController extends Controller
             return response()->json(['message' => 'Both interest amounts are zero; nothing to post.'], 422);
         }
 
-        $acc70315   = ChartOfAccount::idByCode('70315');
-        $acc33512   = ChartOfAccount::idByCode('33512');
-        $acc33513NI = ChartOfAccount::idByCode('33513NI');
-        if (!$acc70315 || !$acc33512 || !$acc33513NI) {
-            return response()->json(['message' => 'One of the accounts 70315, 33512, 33513NI does not exist'], 422);
+        $ruleEffective = PostingRule::where('business_event_filter', 'effective_interest_calculation')
+            ->first();
+
+        if (!$ruleEffective) {
+            throw new \RuntimeException('Posting rule for effective_interest_calculation not found');
         }
+        $effectiveDebit = $ruleEffective->debit_account_id;
+        $effectiveCredit = $ruleEffective->credit_account_id;
+
+        $ruleInterest = PostingRule::where('business_event_filter', 'interest_calculation')
+            ->first();
+
+        if (!$ruleInterest) {
+            throw new \RuntimeException('Posting rule for interest_calculation not found');
+        }
+        $interestDebit = $ruleInterest->debit_account_id;
+        $interestCredit = $ruleInterest->credit_account_id;
+
 
         DB::beginTransaction();
         try {
@@ -599,8 +603,8 @@ class LoanNdmController extends Controller
             if ((float)$data['effective_interest_amount'] > 0) {
                 $created['effective'] = $mkTx([
                     'document_type'     => DocumentJournal::EFFECTIVE_RATE,
-                    'debit_account_id'  => $acc70315,
-                    'credit_account_id' => $acc33512,
+                    'debit_account_id'  => $effectiveDebit,
+                    'credit_account_id' => $effectiveCredit,
                     'amount_amd'        => (float) $data['effective_interest_amount'],
                     'credit_partner_id' => $clientId,
                 ]);
@@ -609,8 +613,8 @@ class LoanNdmController extends Controller
             if ((float)$data['interest_amount'] > 0) {
                 $created['interest'] = $mkTx([
                     'document_type'     => DocumentJournal::INTEREST_RATE,
-                    'debit_account_id'  => $acc33512,
-                    'credit_account_id' => $acc33513NI,
+                    'debit_account_id'  => $interestDebit,
+                    'credit_account_id' => $interestCredit,
                     'amount_amd'        => (float) $data['interest_amount'],
                     'debit_partner_id'  => $clientId,
                     'credit_partner_id' => $clientId,
@@ -675,20 +679,18 @@ class LoanNdmController extends Controller
         if (!$loan) {
             return response()->json(['message' => 'Related LoanNdm not found.'], 404);
         }
+//        $acc33513NI = ChartOfAccount::idByCode('33513NI');
+//        $acc33512NV = ChartOfAccount::idByCode('33512NV');
+//        $acc102101 = ChartOfAccount::idByCode('102101');
+//        $acc391021 = ChartOfAccount::idByCode('391021');
 
-        $acc33513NI = ChartOfAccount::idByCode('33513NI');
-        $acc33512NV = ChartOfAccount::idByCode('33512NV');
-        $acc102101 = ChartOfAccount::idByCode('102101');
-        $acc391021 = ChartOfAccount::idByCode('391021');
-
-        if (!$acc33513NI || !$acc102101 || !$acc391021) return "One of the 391021,33513NI,102101 not exist";
 
         $principal = (float)($data['principal_amount'] ?? 0);
         $interest  = (float)($data['interest_amount'] ?? 0);
         $taxInt    = (float)($data['tax_from_interest'] ?? 0);
 
 
-        return DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt, $acc33513NI, $acc33512NV, $acc102101,$acc391021) {
+        return DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt) {
             $lombardId = Client::where('company_name','Diamond Credit')->first()->id;
             $clientId = $loan->client_id;
             $loanAccountId = $loan->account_id;
@@ -726,12 +728,21 @@ class LoanNdmController extends Controller
             $commonJWithFK = $commonJ + ['ndm_repayment_id' => $detail->id];
 
             if ($interest > 0) {
+                $ruleInterestPayment = PostingRule::where('business_event_filter', 'interest_payment')
+                    ->first();
+
+                if (!$ruleInterestPayment) {
+                    throw new \RuntimeException('Posting rule for interest_payment not found');
+                }
+
+                $debitInterestPayment = $ruleInterestPayment->debit_account_id;
+                $creditInterestPayment = $ruleInterestPayment->credit_account_id;
                 $j = DocumentJournal::create($commonJWithFK + [
                         'document_type'     => 'Տոկոսի մարում',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $interest,
-                        'debit_account_id'  => $acc33513NI,
-                        'credit_account_id' => $acc102101,
+                        'debit_account_id'  => $debitInterestPayment,
+                        'credit_account_id' => $creditInterestPayment,
                         'partner_id' => $clientId,
                         'credit_partner_id' => $lombardId,
                     ]);
@@ -740,8 +751,8 @@ class LoanNdmController extends Controller
                     'date'              => $data['operation_date'],
                     'document_type'     => 'Տոկոսի մարում',
                     'document_number' => $transactionDocumentNumber,
-                    'debit_account_id'  => $acc33513NI,
-                    'credit_account_id' => $acc102101,
+                    'debit_account_id'  => $debitInterestPayment,
+                    'credit_account_id' => $creditInterestPayment,
                     'currency_id'       => $commonJ['currency_id'],
                     'amount_amd'        => $interest,
                     'amount_currency'   => $interest,
@@ -754,12 +765,23 @@ class LoanNdmController extends Controller
             }
 
             if ($principal > 0) {
+
+                $ruleLoanPayment = PostingRule::where('business_event_filter', 'loan_payment')
+                    ->first();
+
+                if (!$ruleLoanPayment) {
+                    throw new \RuntimeException('Posting rule for loan_payment not found');
+                }
+
+                $debitLoanPayment = $ruleLoanPayment->debit_account_id;
+                $creditLoanPayment = $ruleLoanPayment->credit_account_id;
+
                 $j = DocumentJournal::create($commonJWithFK + [
                         'document_type'     => 'Վարկի մարում',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $principal,
-                        'debit_account_id'  => $acc33512NV,
-                        'credit_account_id' => $loanAccountId,
+                        'debit_account_id'  => $debitLoanPayment,
+                        'credit_account_id' => $creditLoanPayment,
                         'partner_id' => $clientId,
                         'credit_partner_id' => $lombardId,
                     ]);
@@ -768,8 +790,8 @@ class LoanNdmController extends Controller
                     'date'              => $data['operation_date'],
                     'document_type'     => Transaction::LOAN_REPAYMENT,
                     'document_number' => $transactionDocumentNumber,
-                    'debit_account_id'  => $acc33512NV,
-                    'credit_account_id' => $loanAccountId,
+                    'debit_account_id'  => $debitLoanPayment,
+                    'credit_account_id' => $creditLoanPayment,
                     'currency_id'       => $commonJ['currency_id'],
                     'amount_amd'        => $principal,
                     'amount_currency'   => $principal,
@@ -782,12 +804,22 @@ class LoanNdmController extends Controller
             }
 
             if ($taxInt > 0) {
+                $ruleTax = PostingRule::where('business_event_filter', 'tax_collection')
+                    ->first();
+
+                if (!$ruleTax) {
+                    throw new \RuntimeException('Posting rule for tax_collection not found');
+                }
+
+                $debitTax = $ruleTax->debit_account_id;
+                $creditTax = $ruleTax->credit_account_id;
+
                 $j = DocumentJournal::create($commonJWithFK + [
                         'document_type'     => 'Հարկի գանձում տոկոսի մարումից',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $taxInt,
-                        'debit_account_id'  => $acc33513NI,
-                        'credit_account_id' => $acc391021,
+                        'debit_account_id'  => $debitTax,
+                        'credit_account_id' => $creditTax,
                         'partner_id' => $clientId,
                         'credit_partner_id' => $lombardId,
                     ]);
@@ -796,8 +828,8 @@ class LoanNdmController extends Controller
                     'date'              => $data['operation_date'],
                     'document_type'     => 'Հարկի գանձում տոկոսի մարումից',
                     'document_number' => $transactionDocumentNumber,
-                    'debit_account_id'  => $acc33513NI,
-                    'credit_account_id' => $acc391021,
+                    'debit_account_id'  => $debitTax,
+                    'credit_account_id' => $creditTax,
                     'currency_id'       => $commonJ['currency_id'],
                     'amount_amd'        => $taxInt,
                     'amount_currency'   => $taxInt,
