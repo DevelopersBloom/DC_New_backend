@@ -11,7 +11,12 @@ class PostingRuleController extends Controller
 {
     public function index(): JsonResponse
     {
-        $rules = PostingRule::with(['debitAccount', 'creditAccount'])->get();
+        $rules = PostingRule::select('id','business_event_filter','debit_account_id','credit_account_id')
+            ->with([
+                'debitAccount:id,code,name',
+                'creditAccount:id,code,name',
+            ])
+            ->get();
         return response()->json($rules);
     }
 
