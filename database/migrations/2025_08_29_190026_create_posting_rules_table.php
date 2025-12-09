@@ -15,9 +15,9 @@ return new class extends Migration
     {
         Schema::create('posting_rules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('business_event_filter')->constrained('business_events');
-            $table->foreignId('debit_account_id')->constrained('chart_of_accounts');
-            $table->foreignId('credit_account_id')->constrained('chart_of_accounts');
+            $table->string('business_event_filter')->nullable();
+            $table->foreignId('debit_account_id')->nullable()->constrained('chart_of_accounts');
+            $table->foreignId('credit_account_id')->nullable()->constrained('chart_of_accounts');
             $table->timestamps();
         });
     }
