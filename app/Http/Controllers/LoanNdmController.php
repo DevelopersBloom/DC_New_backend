@@ -62,6 +62,23 @@ class LoanNdmController extends Controller
         try {
             DB::beginTransaction();
 
+            $yearShort = Carbon::parse($data['contract_date'])->format('y');
+
+            $lastContract = LoanNdm::whereYear('contract_date', Carbon::parse($data['contract_date'])->year)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($lastContract && isset($lastContract->contract_number)) {
+                $lastSequence = intval(substr($lastContract->contract_number, -4));
+                $nextSequence = $lastSequence + 1;
+            } else {
+                $nextSequence = 1;
+            }
+
+            $sequencePadded = str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+
+            $data['contract_number'] = "DM-{$yearShort}-{$sequencePadded}";
+
             $amount = $data['amount'];
             $interestRate = $data['interest_rate'] ?? 0;
 

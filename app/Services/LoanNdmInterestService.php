@@ -145,7 +145,6 @@ class LoanNdmInterestService
         ?int     $fixedBaseDays
     ): float
     {
-        // Բերում ենք loan-ի journals → transactions մինչև $to
         $txs = $loan->journals()
             ->with(['transactions' => function ($q) use ($to) {
                 $q->whereDate('date', '<=', $to->toDateString());
@@ -153,7 +152,7 @@ class LoanNdmInterestService
             ->get()
             ->pluck('transactions')
             ->flatten();
-        // Կառուցում ենք իրադարձություններ {date, delta}
+
         $events = collect();
         foreach ($txs as $trx) {
             $d = Carbon::parse($trx->date)->startOfDay();
@@ -164,10 +163,8 @@ class LoanNdmInterestService
             }
         }
 
-        // Սկզբնական principal՝ մինչև from եղած Δ-ների գումարը
         $initialPrincipal = $events->filter(fn($e) => $e['date']->lt($from))->sum('delta');
 
-        // from..to իրադարձություններ + սահմանիչ կետեր
         $periodEvents = $events
             ->filter(fn($e) => !$e['date']->lt($from) && !$e['date']->gt($to))
             ->sortBy('date')
@@ -179,7 +176,6 @@ class LoanNdmInterestService
         $timeline->push(['date' => $to->copy(), 'delta' => 0.0]);    // end marker
         $timeline = $timeline->sortBy('date')->values();
 
-        // Հիմնական հաշվարկ՝ միայն W-ի համար
         $principal = (float)$initialPrincipal;
         $W = 0.0;
 
@@ -187,7 +183,6 @@ class LoanNdmInterestService
             $curr = $timeline[$i];
             $next = $timeline[$i + 1];
 
-            // delta-ն կիրառվում է սեգմենտի սկզբում
             if ($i > 0 || $curr['delta'] != 0.0) {
                 $principal += (float)$curr['delta'];
                 if ($principal < 0) $principal = 0.0;
