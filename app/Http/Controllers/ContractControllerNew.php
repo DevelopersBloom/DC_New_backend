@@ -21,6 +21,7 @@ use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
+use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
 use App\Services\ClientClassificationService;
@@ -347,11 +348,15 @@ class ContractControllerNew extends Controller
                 'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
             ]);
 
-            $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
-            $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
+            $ruleContractAmount = PostingRule::where('business_event_filter', 'provide_contract_amount')
+                ->first();
 
-            $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
-            $reserveCreditAccount = $client->classification->name == 'standard' ? ChartOfAccount::idByCode('16605PC') : ChartOfAccount::idByCode('16605PS');
+            if (!$ruleContractAmount) {
+                throw new \RuntimeException('Posting rule for provide_contract_amount not found');
+            }
+
+            $debitContractAmount = $ruleContractAmount->debit_account_id;
+            $creditContractAmount =  $ruleContractAmount->credit_account_id;
 
             $clientId = $contract->client_id;
             $diamondId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
@@ -370,8 +375,8 @@ class ContractControllerNew extends Controller
                 'partner_id'         => $clientId,
                 'credit_partner_id'  => $diamondId,
                 'comment'            => 'contract_payment',
-                'debit_account_id'   => $acc16200NV,
-                'credit_account_id'  => $acc10210,
+                'debit_account_id'   => $debitContractAmount,
+                'credit_account_id'  => $creditContractAmount,
                 'user_id'            => auth()->id(),
                 'journalable_type'   => Contract::class,
                 'journalable_id'     => $contract->id,
@@ -382,11 +387,11 @@ class ContractControllerNew extends Controller
                 'document_number'    => $nextDocNum,
                 'document_type'      => $document_type,
 
-                'debit_account_id'   => $acc16200NV,
+                'debit_account_id'   => $debitContractAmount,
                 'debit_partner_id'   => $clientId,
                 'debit_currency_id'  => 1,
 
-                'credit_account_id'  => $acc10210,
+                'credit_account_id'  => $creditContractAmount,
                 'credit_currency_id' => 1,
                 'credit_partner_id'  => $diamondId,
 
@@ -410,6 +415,28 @@ class ContractControllerNew extends Controller
                 $reserveDocumentType = $client->classification->name == 'standard' ?
                     DocumentJournal::RESERVE_GENERAL_AMOUNT: DocumentJournal::RESERVE_SPECIAL_AMOUNT;
 
+                if ($contract->client->classification->name == 'standard') {
+
+                    $ruleReserve = PostingRule::where('business_event_filter', 'reserve_general_amount')
+                        ->first();
+
+                    if (!$ruleReserve) {
+                        throw new \RuntimeException('Posting rule for reserve_general_amount not found');
+                    }
+
+                    $debitReserve = $ruleReserve->debit_account_id;
+                    $creditReserve = $ruleReserve->credit_account_id;
+                } else {
+                    $ruleReserve = PostingRule::where('business_event_filter', 'reserve_special_amount')
+                        ->first();
+
+                    if (!$ruleReserve) {
+                        throw new \RuntimeException('Posting rule for reserve_special_amount not found');
+                    }
+
+                    $debitReserve = $ruleReserve->debit_account_id;
+                    $creditReserve = $ruleReserve->credit_account_id;
+                }
                 $reserveJournal = DocumentJournal::create([
                         'date'               => $contract->date,
                         'document_number'    => $nextDocNum,
@@ -418,8 +445,8 @@ class ContractControllerNew extends Controller
                         'partner_id'         => $diamondId,
                         'credit_partner_id'  => $clientId,
                         'comment'            => "General reserve for contract #{$contract->id} on disbursement",
-                        'debit_account_id'   => $acc73015,
-                        'credit_account_id'  => $reserveCreditAccount,
+                        'debit_account_id'   => $debitReserve,
+                        'credit_account_id'  => $creditReserve,
                         'user_id'            => auth()->id(),
                         'journalable_type'   => DocumentJournal::class,
                         'journalable_id'     => $journalDoc->id,
@@ -430,11 +457,11 @@ class ContractControllerNew extends Controller
                     'document_number'    => $nextDocNum,
                     'document_type'      => $reserveDocumentType,
 
-                    'debit_account_id'   => $acc73015,
+                    'debit_account_id'   => $debitReserve,
                     'debit_partner_id'   => $diamondId,
                     'debit_currency_id'  => 1,
 
-                    'credit_account_id'  => $reserveCreditAccount,
+                    'credit_account_id'  => $creditReserve,
                     'credit_currency_id' => 1,
                     'credit_partner_id'  => $clientId,
 
@@ -587,12 +614,29 @@ class ContractControllerNew extends Controller
         $contract = Contract::findOrFail($request->contract_id);
 
         $creditPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
-        $acc16200 = ChartOfAccount::idByCode('16200') ?? 1;
-        $acc60120 = ChartOfAccount::idByCode('60120') ?? 1;
-        $acc16201NI = ChartOfAccount::idByCode('16201NI') ?? 1;
+
 
         $documentTypeInterest = DocumentJournal::INTEREST_RATE_AMOUNT;
         $documentTypeEffective = DocumentJournal::EFFECTIVE_RATE_AMOUNT;
+        $ruleEffective = PostingRule::where('business_event_filter', 'effective_rate_amount')
+            ->first();
+
+        if (!$ruleEffective) {
+            throw new \RuntimeException('Posting rule for effective_rate_amount not found');
+        }
+
+        $debitEffective = $ruleEffective->debit_account_id;
+        $creditEffective =  $ruleEffective->credit_account_id;
+
+        $ruleInterest = PostingRule::where('business_event_filter', 'interest_rate_amount')
+            ->first();
+
+        if (!$ruleInterest) {
+            throw new \RuntimeException('Posting rule for interest_rate_amount not found');
+        }
+
+        $debitInterest = $ruleInterest->debit_account_id;
+        $creditInterest =  $ruleInterest->credit_account_id;
 
         $debetPartnerId = $contract->client_id;
         $date = Carbon::parse($request->calc_date, 'Asia/Yerevan')->startOfDay();;
@@ -613,8 +657,8 @@ class ContractControllerNew extends Controller
                     'partner_id' => $debetPartnerId,
                     'credit_partner_id' => $debetPartnerId,
                     'comment' => 'Confirmed interest for contract #' . $contract->id,
-                    'debit_account_id' => $acc16201NI,
-                    'credit_account_id' => $acc16200,
+                    'debit_account_id' => $debitInterest,
+                    'credit_account_id' => $creditInterest,
                     'user_id' => $systemUserId,
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal->id,
@@ -624,10 +668,10 @@ class ContractControllerNew extends Controller
                     'date' => $date,
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeInterest,
-                    'debit_account_id' => $acc16201NI,
+                    'debit_account_id' => $debitInterest,
                     'debit_partner_id' => $debetPartnerId,
                     'debit_currency_id' => 1,
-                    'credit_account_id' => $acc16200,
+                    'credit_account_id' => $creditInterest,
                     'credit_currency_id' => 1,
                     'credit_partner_id' => $debetPartnerId,
                     'amount_amd' => $request->calculated_interest,
@@ -651,8 +695,8 @@ class ContractControllerNew extends Controller
                     'partner_id' => $debetPartnerId,
                     'credit_partner_id' => $creditPartnerId,
                     'comment' => 'Confirmed effective interest for contract #' . $contract->id,
-                    'debit_account_id' => $acc16200,
-                    'credit_account_id' => $acc60120,
+                    'debit_account_id' => $debitEffective,
+                    'credit_account_id' => $creditEffective,
                     'user_id' => $systemUserId,
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal->id,
@@ -662,10 +706,10 @@ class ContractControllerNew extends Controller
                     'date' => $date,
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeEffective,
-                    'debit_account_id' => $acc16200,
+                    'debit_account_id' => $debitEffective,
                     'debit_partner_id' => $debetPartnerId,
                     'debit_currency_id' => 1,
-                    'credit_account_id' => $acc60120,
+                    'credit_account_id' => $creditEffective,
                     'credit_currency_id' => 1,
                     'credit_partner_id' => $creditPartnerId,
                     'amount_amd' => $request->calculated_effective_interest,
@@ -694,12 +738,30 @@ class ContractControllerNew extends Controller
 
                 $reserveAmount = $request->calculated_effective_interest * $contract->client->classification->reserve_percent / 100;
                 $clientId = $contract->client_id;
-                $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
-                $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
-                $acc73015 = CHARTOfAccount::idByCode('73015') ?? 1;
-                $debetClassification = $acc73015;
-                $creditClassification = $contract->client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
+
                 $documentTypeReserve = $contract->client->classification->name == 'standard' ? DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+                if ($contract->client->classification->name == 'standard') {
+
+                    $ruleReserve = PostingRule::where('business_event_filter', 'reserve_general_amount')
+                        ->first();
+
+                    if (!$ruleReserve) {
+                        throw new \RuntimeException('Posting rule for reserve_general_amount not found');
+                    }
+
+                    $debitReserve = $ruleReserve->debit_account_id;
+                    $creditReserve = $ruleReserve->credit_account_id;
+                } else {
+                    $ruleReserve = PostingRule::where('business_event_filter', 'reserve_special_amount')
+                        ->first();
+
+                    if (!$ruleReserve) {
+                        throw new \RuntimeException('Posting rule for reserve_special_amount not found');
+                    }
+
+                    $debitReserve = $ruleReserve->debit_account_id;
+                    $creditReserve = $ruleReserve->credit_account_id;
+                }
                 $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
                 $journalDoc = DocumentJournal::create([
@@ -710,8 +772,8 @@ class ContractControllerNew extends Controller
                     'partner_id' => $diamondId,
                     'credit_partner_id' => $clientId,
                     'comment' => "Old reserve for contract #{$contract->id} due to classification change",
-                    'debit_account_id' => $debetClassification,
-                    'credit_account_id' => $creditClassification,
+                    'debit_account_id' => $debitReserve,
+                    'credit_account_id' => $creditEffective,
                     'user_id' => auth()->check() ? auth()->id() : 1,
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal?->id,
@@ -721,10 +783,10 @@ class ContractControllerNew extends Controller
                     'date' => $date,
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeReserve,
-                    'debit_account_id' => $debetClassification,
+                    'debit_account_id' => $debitReserve,
                     'debit_partner_id' => $diamondId,
                     'debit_currency_id' => 1,
-                    'credit_account_id' => $creditClassification,
+                    'credit_account_id' => $creditReserve,
                     'credit_currency_id' => 1,
                     'credit_partner_id' => $clientId,
                     'amount_amd' => $reserveAmount,

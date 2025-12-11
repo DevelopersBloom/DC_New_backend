@@ -19,7 +19,14 @@ class PostingRuleSeeder extends Seeder
         $acc33513NI        = ChartOfAccount::idByCode('33513NI');
         $acc391021         = ChartOfAccount::idByCode('391021');
 
-
+        $acc16200NV = ChartOfAccount::idByCode('16200NV') ;
+        $acc10210 = ChartOfAccount::idByCode('10210');
+        $acc16200 = ChartOfAccount::idByCode('16200');
+        $acc60120 = ChartOfAccount::idByCode('60120');
+        $acc16201NI = ChartOfAccount::idByCode('16201NI');
+        $acc73015 = CHARTOfAccount::idByCode('73015');
+        $acc16605PC = ChartOfAccount::idByCode('16605PC');
+        $acc16605PS = ChartOfAccount::idByCode('16605PS');
         DB::table('posting_rules')->insert([
             [
                 'business_event_filter' => 'attach_loan',
@@ -68,6 +75,42 @@ class PostingRuleSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'business_event_filter' => 'provide_contract_amount',
+                'debit_account_id'  => $acc16200NV,
+                'credit_account_id' => $acc10210,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'effective_rate_amount',
+                'debit_account_id'  => $acc16200,
+                'credit_account_id' => $acc60120,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'interest_rate_amount',
+                'debit_account_id'  => $acc16201NI,
+                'credit_account_id' => $acc16200,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'reserve_general_amount',
+                'debit_account_id'  => $acc73015,
+                'credit_account_id' => $acc16605PC,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'reserve_special_amount',
+                'debit_account_id'  => $acc73015,
+                'credit_account_id' => $acc16605PS,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+
 
         ]);
 
