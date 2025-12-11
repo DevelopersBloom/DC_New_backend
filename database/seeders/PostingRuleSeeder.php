@@ -168,6 +168,13 @@ class PostingRuleSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'business_event_filter' => 'pay_interest_amount',
+                'debit_account_id'  => $acc10210,
+                'credit_account_id' => $acc16200,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
     }

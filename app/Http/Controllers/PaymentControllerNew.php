@@ -13,6 +13,7 @@ use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
 use App\Services\PaymentService;
@@ -69,8 +70,16 @@ class PaymentControllerNew extends Controller
         $deal->delay_days = $result['delay_days'];
         $deal->save();
 
-        $acc16200 = ChartOfAccount::idByCode('16200') ?? 1;
-        $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
+        $ruleInterestPayment = PostingRule::where('business_event_filter', 'pay_interest_amount')
+            ->first();
+
+        if (!$ruleInterestPayment) {
+            throw new \RuntimeException('Posting rule for pay_interest_amount not found');
+        }
+
+        $debitInterestPayment = $ruleInterestPayment->debit_account_id;
+        $creditInterestPayment=  $ruleInterestPayment->credit_account_id;
+
 
         $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
         $creditPartnerId = $contract->client_id;
@@ -91,8 +100,8 @@ class PaymentControllerNew extends Controller
             'partner_id'         => $debetPartnerId,
             'credit_partner_id'  => $creditPartnerId,
             'comment'            => 'interest_amount_payment',
-            'debit_account_id'   => $acc10210,
-            'credit_account_id'  => $acc16200,
+            'debit_account_id'   => $debitInterestPayment,
+            'credit_account_id'  => $creditInterestPayment,
             'user_id'            => auth()->id(),
             'journalable_type'   => DocumentJournal::class,
             'journalable_id'     => $journal->id,
@@ -104,11 +113,11 @@ class PaymentControllerNew extends Controller
             'document_number'    => $nextDocNum,
             'document_type'      => $document_type,
 
-            'debit_account_id'   => $acc10210,
+            'debit_account_id'   => $debitInterestPayment,
             'debit_partner_id'   => $debetPartnerId,
             'debit_currency_id'  => 1,
 
-            'credit_account_id'  => $acc16200,
+            'credit_account_id'  => $creditInterestPayment,
             'credit_currency_id' => 1,
             'credit_partner_id'  => $creditPartnerId,
 
