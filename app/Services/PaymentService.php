@@ -10,6 +10,7 @@ use App\Models\DealAction;
 use App\Models\DocumentJournal;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Traits\ContractTrait;
@@ -74,7 +75,7 @@ class PaymentService {
         } else {
             $discountAmount = $isDiscount ? $penalty : 0;
             $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash,[],$deal_id,null,true,$parent_id,$discountAmount);
-          //  return $amount - $penalty;
+            //  return $amount - $penalty;
             return [
                 'penalty' => $penalty,
                 'amount'  => $amount - $penalty,
@@ -95,14 +96,14 @@ class PaymentService {
             }
             $contract->save();
             return ['interest_amount' => $paymentFinal,
-                    'amount' => $amount - $paymentFinal];
+                'amount' => $amount - $paymentFinal];
         } else {
             $this->partiallyCompletePayment($payment, $amount,$deal_id);
             $contract->collected += $amount;
             $contract->save();
 
             return ['interest_amount' => $amount,
-                    'amount' => 0];
+                'amount' => 0];
         }
     }
 
@@ -188,7 +189,7 @@ class PaymentService {
         $decrease = $amount % 1000;
         $amount -= $decrease;
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
-                                ->where('id','!=',$payment_id)->first();
+            ->where('id','!=',$payment_id)->first();
         $oldAmount = $nextPayment->amount;
         $oldDate = $nextPayment->date;
         $oldPaid = $nextPayment->paid;
@@ -228,7 +229,7 @@ class PaymentService {
     }
     public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null,$date=null,$is_completed = false,$parent_id=null,$discountAmount = 0)
     {
-       // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
+        // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
         if ($type === 'penalty' || $type === 'full' || $type === 'partial') {
             $status = 'completed';
         } else {
@@ -246,7 +247,7 @@ class PaymentService {
         $payment->pawnshop_id = $user->pawnshop_id;
         $lastPGI = Payment::where('contract_id', $contract_id)->max('PGI_ID');
         $payment->PGI_ID = $lastPGI ? $lastPGI + 1 : 1;
-       // $payment->paid_date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
+        // $payment->paid_date = Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->date = $date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d');
         $payment->status = $status;
         $payment->discount_amount = ($payment->discount_amount ?? 0) + $discountAmount;
@@ -258,18 +259,18 @@ class PaymentService {
             $payment->phone = $payer['phone'] ?? null;
         }
         $payment->save();
-       if ($deal_id) {
-           DealAction::create([
-               'deal_id' => $deal_id,
-               'actionable_id' => $payment->id,
-               'actionable_type' => Payment::class,
-               'amount' => $amount,
-               'type' => $type,
-               'description' => $type . 'payment',
-               'date' => $date ?? Carbon::now()->format('Y-m-d'),
-               'history' => $history,
-           ]);
-       }
+        if ($deal_id) {
+            DealAction::create([
+                'deal_id' => $deal_id,
+                'actionable_id' => $payment->id,
+                'actionable_type' => Payment::class,
+                'amount' => $amount,
+                'type' => $type,
+                'description' => $type . 'payment',
+                'date' => $date ?? Carbon::now()->format('Y-m-d'),
+                'history' => $history,
+            ]);
+        }
         return $payment->id;
     }
 
@@ -372,15 +373,31 @@ class PaymentService {
 //        if ($isActionable) {
 //            return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history, $deal_id);
 //        }
-        $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
-        $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
-        $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
-        $acc63015 = ChartOfAccount::idByCode('63015') ?? 1;
+
+
+
+        $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
+            ->first();
+
+        if (!$ruleMotherAmount) {
+            throw new \RuntimeException('Posting rule for pay_mother_amount not found');
+        }
+
+        $debitMother = $ruleMotherAmount->debit_account_id;
+        $creditMother =  $ruleMotherAmount->credit_account_id;
+
+        $ruleProvideAmountChange = PostingRule::where('business_event_filter', 'provide_general_amount_change')
+            ->first();
+
+        if (!$ruleProvideAmountChange) {
+            throw new \RuntimeException('Posting rule for provide_general_amount_change not found');
+        }
+
+        $debitAmountChange = $ruleProvideAmountChange->debit_account_id;
+        $creditAmountChange = $ruleProvideAmountChange->credit_account_id;
 
         $diamondId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
         $clientId = $contract->client_id;
-
-//        if (!$acc16201 || !$acc10210) return 'One of 16201, 10210 not exist';
 
         $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
 
@@ -397,8 +414,8 @@ class PaymentService {
             'partner_id'         => $diamondId,
             'credit_partner_id'  => $clientId,
             'comment'            => 'mother_amount_payment',
-            'debit_account_id'   => $acc10210,
-            'credit_account_id'  => $acc16200NV,
+            'debit_account_id'   => $debitMother,
+            'credit_account_id'  => $creditMother,
             'user_id'            => auth()->id(),
             'journalable_type'   => DocumentJournal::class,
             'journalable_id'     => $journal->id,
@@ -408,13 +425,13 @@ class PaymentService {
             'document_number'    => $nextDocNum,
             'document_type'      => $document_type,
 
-            'debit_account_id'   => $acc10210,
-            'debit_partner_id'   => $debetPartnerId,
+            'debit_account_id'   => $debitMother,
+            'debit_partner_id'   => $diamondId,
             'debit_currency_id'  => 1,
 
-            'credit_account_id'  => $acc16200NV,
+            'credit_account_id'  => $creditMother,
             'credit_currency_id' => 1,
-            'credit_partner_id'  => $creditPartnerId,
+            'credit_partner_id'  => $clientId,
 
             'amount_amd'         => $partialAmount,
 
@@ -440,8 +457,8 @@ class PaymentService {
             'partner_id'         => $clientId,
             'credit_partner_id'  => $diamondId,
             'comment'            => 'reserve_payment',
-            'debit_account_id'   => $acc16605PC,
-            'credit_account_id'  => $acc63015,
+            'debit_account_id'   => $debitAmountChange,
+            'credit_account_id'  => $creditAmountChange,
             'user_id'            => auth()->id(),
             'journalable_type'   => DocumentJournal::class,
             'journalable_id'     => $journal->id,
@@ -452,13 +469,13 @@ class PaymentService {
             'document_number'    => $nextDocNum,
             'document_type'      => $document_type_provided,
 
-            'debit_account_id'   => $acc16605PC,
-            'debit_partner_id'   => $debetPartnerId,
+            'debit_account_id'   => $debitAmountChange,
+            'debit_partner_id'   => $diamondId,
             'debit_currency_id'  => 1,
 
-            'credit_account_id'  => $acc63015,
+            'credit_account_id'  => $creditAmountChange,
             'credit_currency_id' => 1,
-            'credit_partner_id'  => $creditPartnerId,
+            'credit_partner_id'  => $clientId,
 
             'amount_amd'         => $reserveAmount,
 
@@ -548,8 +565,17 @@ class PaymentService {
 //        $contract->estimated_amount = 0;
         $contract->save();
 
-        $acc10210 = ChartOfAccount::idByCode('10210') ?? 1;
-        $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
+
+        $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
+            ->first();
+
+        if (!$ruleMotherAmount) {
+            throw new \RuntimeException('Posting rule for pay_mother_amount not found');
+        }
+
+        $debitMother = $ruleMotherAmount->debit_account_id;
+        $creditMother =  $ruleMotherAmount->credit_account_id;
+
 
         $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
         $creditPartnerId = $contract->client_id;
@@ -571,8 +597,8 @@ class PaymentService {
             'partner_id'         => $debetPartnerId,
             'credit_partner_id'  => $creditPartnerId,
             'comment'            => 'mother_amount_payment',
-            'debit_account_id'   => $acc10210,
-            'credit_account_id'  => $acc16200NV,
+            'debit_account_id'   => $debitMother,
+            'credit_account_id'  => $creditMother,
             'user_id'            => auth()->id(),
             'journalable_type'   => DocumentJournal::class,
             'journalable_id'     => $journal->id,
@@ -582,36 +608,9 @@ class PaymentService {
             'document_number'    => $nextDocNum,
             'document_type'      => $document_type,
 
-            'debit_account_id'   => $acc10210,
+            'debit_account_id'   => $debitMother,
             'debit_partner_id'   => $debetPartnerId,
             'debit_currency_id'  => 1,
 
-            'credit_account_id'  => $acc16200NV,
-            'credit_currency_id' => 1,
-            'credit_partner_id'  => $creditPartnerId,
-
-            'amount_amd'         => $amount,
-
-            'comment'            => 'mother_amount_payment',
-            'user_id'            => auth()->id(),
-            'is_system'          => false,
-
-            'disbursement_date'    =>  $date,
-            'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journalDoc->id,
-        ]);
-
-        return [
-            'payment_id' => $payment,
-            'penalty' => $penalty,
-            'delay_days' => $delayDays,
-            'interest_amount' => $interestAmount
-        ];
-    }
-    public function calcAmount($amount,$days,$rate): int
-    {
-        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
-    }
-
-
-}
+            'credit_account_id'  => $creditMother,
+            'credit_currency_id'

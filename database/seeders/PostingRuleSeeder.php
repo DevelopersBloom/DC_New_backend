@@ -27,6 +27,8 @@ class PostingRuleSeeder extends Seeder
         $acc73015 = CHARTOfAccount::idByCode('73015');
         $acc16605PC = ChartOfAccount::idByCode('16605PC');
         $acc16605PS = ChartOfAccount::idByCode('16605PS');
+        $acc63015 = ChartOfAccount::idByCode('63015');
+
         DB::table('posting_rules')->insert([
             [
                 'business_event_filter' => 'attach_loan',
@@ -110,8 +112,34 @@ class PostingRuleSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-
-
+            [
+                'business_event_filter' => 'provide_general_amount_change',
+                'debit_account_id'  => $acc16605PC,
+                'credit_account_id' => $acc63015,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'provide_special_amount_change',
+                'debit_account_id'  => $acc16605PS,
+                'credit_account_id' => $acc63015,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'classification_general_to_special',
+                'debit_account_id'  => $acc16605PC,
+                'credit_account_id' => $acc16605PS,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'classification_special_to_general',
+                'debit_account_id'  => $acc16605PS,
+                'credit_account_id' => $acc16605PC,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
     }

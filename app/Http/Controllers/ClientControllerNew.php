@@ -15,6 +15,7 @@ use App\Models\ClientPawnshop;
 use App\Models\Contract;
 use App\Models\ContractReserveHistory;
 use App\Models\DocumentJournal;
+use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ClientClassificationService;
 use App\Services\ClientService;
@@ -385,8 +386,29 @@ class ClientControllerNew extends Controller
                     $debetAllocation = $acc73015;
                     $creditAllocation = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
 
-                    $debetClassification = $client->classification->name === 'standard' ? $acc16605PS : $acc16605PC;
-                    $creditClassification = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
+                    if ($client->classification->name === 'standard') {
+                        $ruleClassification = PostingRule::where('business_event_filter', 'classification_general_to_special')
+                            ->first();
+
+                        if (!$ruleClassification) {
+                            throw new \RuntimeException('Posting rule for classification_general_to_special not found');
+                        }
+
+                        $debitClassification  = $ruleClassification->debit_account_id;
+                        $creditClassification =  $ruleClassification->credit_account_id;
+
+                    } else {
+                        $ruleClassification = PostingRule::where('business_event_filter', 'classification_special_to_general')
+                            ->first();
+
+                        if (!$ruleClassification) {
+                            throw new \RuntimeException('Posting rule for classification_special_to_general not found');
+                        }
+
+                        $debitClassification  = $ruleClassification->debit_account_id;
+                        $creditClassification =  $ruleClassification->credit_account_id;
+                    }
+
 
                     $documentType = $client->classification->name === 'standard'
                         ? DocumentJournal::RESERVE_GENERAL_AMOUNT
@@ -786,7 +808,7 @@ class ClientControllerNew extends Controller
                         'partner_id' => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment' => "Old reserve for contract #{$contract->id} due to classification change",
-                        'debit_account_id' => $debetClassification,
+                        'debit_account_id' => $debitClassification,
                         'credit_account_id' => $creditClassification,
                         'user_id' => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
@@ -797,7 +819,7 @@ class ClientControllerNew extends Controller
                         'date' => now()->toDateString(),
                         'document_number' => $nextDocNum,
                         'document_type' => $classificationType,
-                        'debit_account_id' => $debetClassification,
+                        'debit_account_id' => $debitClassification,
                         'debit_partner_id' => $clientId,
                         'debit_currency_id' => 1,
                         'credit_account_id' => $creditClassification,

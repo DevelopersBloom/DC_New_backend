@@ -740,6 +740,7 @@ class ContractControllerNew extends Controller
                 $clientId = $contract->client_id;
 
                 $documentTypeReserve = $contract->client->classification->name == 'standard' ? DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+
                 if ($contract->client->classification->name == 'standard') {
 
                     $ruleReserve = PostingRule::where('business_event_filter', 'reserve_general_amount')
