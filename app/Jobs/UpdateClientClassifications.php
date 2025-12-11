@@ -273,6 +273,16 @@ class UpdateClientClassifications implements ShouldQueue
 
                                 // amount that was in 16605PS (if any)
                                 if ($amount16605PS > 0) {
+                                    $ruleLossReserve = PostingRule::where('business_event_filter', 'loss_reserve_amount')
+                                        ->first();
+
+                                    if (!$ruleLossReserve) {
+                                        throw new \RuntimeException('Posting rule for loss_reserve_amount not found');
+                                    }
+
+                                    $debitLossReserve = $ruleLossReserve->debit_account_id;
+                                    $creditLoseReserve =  $ruleLossReserve->credit_account_id;
+
                                     $lossDoc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -281,8 +291,8 @@ class UpdateClientClassifications implements ShouldQueue
                                         'partner_id' => $clientId,
                                         'credit_partner_id' => $clientId,
                                         'comment' => "Loss client, reserve for contract #{$contract->id}",
-                                        'debit_account_id' => $acc16605PS,
-                                        'credit_account_id' => $acc16200NV,
+                                        'debit_account_id' => $debitLossReserve,
+                                        'credit_account_id' => $creditLoseReserve,
                                         'user_id' => auth()->check() ? auth()->id() : 1,
                                         'journalable_type' => DocumentJournal::class,
                                         'journalable_id' => $journal->id,
@@ -292,10 +302,10 @@ class UpdateClientClassifications implements ShouldQueue
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
                                         'document_type' => $lossType,
-                                        'debit_account_id' => $acc16605PS,
+                                        'debit_account_id' => $debitLossReserve,
                                         'debit_partner_id' => $clientId,
                                         'debit_currency_id' => 1,
-                                        'credit_account_id' => $acc16200NV,
+                                        'credit_account_id' => $creditLoseReserve,
                                         'credit_currency_id' => 1,
                                         'credit_partner_id' => $clientId,
                                         'amount_amd' => $amount16605PS,
@@ -316,6 +326,16 @@ class UpdateClientClassifications implements ShouldQueue
                                     ->sum('amount_amd');
 
                                 if ($amount16200Debit > 0) {
+                                    $ruleLossEffective = PostingRule::where('business_event_filter', 'loss_reserve_effective')
+                                        ->first();
+
+                                    if (!$ruleLossEffective) {
+                                        throw new \RuntimeException('Posting rule for loss_reserve_effective not found');
+                                    }
+
+                                    $debitLossEffective = $ruleLossEffective->debit_account_id;
+                                    $creditLossEffective =  $ruleLossEffective->credit_account_id;
+
                                     $lossEffectiveDoc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -324,8 +344,8 @@ class UpdateClientClassifications implements ShouldQueue
                                         'partner_id' => $clientId,
                                         'credit_partner_id' => $clientId,
                                         'comment' => "Zeroing 16200 for contract #{$contract->id} due to loss classification",
-                                        'debit_account_id' => $acc16605PS,
-                                        'credit_account_id' => $acc16200,
+                                        'debit_account_id' => $debitLossEffective,
+                                        'credit_account_id' => $creditLossEffective,
                                         'user_id' => auth()->check() ? auth()->id() : 1,
                                         'journalable_type' => DocumentJournal::class,
                                         'journalable_id' => $journal->id,
@@ -335,10 +355,10 @@ class UpdateClientClassifications implements ShouldQueue
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
                                         'document_type' => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
-                                        'debit_account_id' => $acc16605PS,
+                                        'debit_account_id' => $debitLossEffective,
                                         'debit_partner_id' => $clientId,
                                         'debit_currency_id' => 1,
-                                        'credit_account_id' => $acc16200,
+                                        'credit_account_id' => $creditLossEffective,
                                         'credit_currency_id' => 1,
                                         'credit_partner_id' => $clientId,
                                         'amount_amd' => $amount16200Debit,
@@ -411,6 +431,15 @@ class UpdateClientClassifications implements ShouldQueue
                                     ->sum('amount_amd');
 
                                 if ($amount16201NIDebit > 0) {
+                                    $ruleLoss = PostingRule::where('business_event_filter', 'loss_reserve')
+                                        ->first();
+
+                                    if (!$ruleLoss) {
+                                        throw new \RuntimeException('Posting rule for loss_reserve not found');
+                                    }
+
+                                    $debitLoss  = $ruleLoss->debit_account_id;
+                                    $creditLoss =  $ruleLoss->credit_account_id;
                                     $loss16201NI = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -419,8 +448,8 @@ class UpdateClientClassifications implements ShouldQueue
                                         'partner_id' => $clientId,
                                         'credit_partner_id' => $clientId,
                                         'comment' => "Zeroing 16201NI for contract #{$contract->id} due to loss classification",
-                                        'debit_account_id' => $acc16605PS,
-                                        'credit_account_id' => $acc16201NI,
+                                        'debit_account_id' => $debitLoss,
+                                        'credit_account_id' => $creditLoss,
                                         'user_id' => auth()->check() ? auth()->id() : 1,
                                         'journalable_type' => DocumentJournal::class,
                                         'journalable_id' => $journal->id,
@@ -430,10 +459,10 @@ class UpdateClientClassifications implements ShouldQueue
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
                                         'document_type' => DocumentJournal::LOSS_RESERVE,
-                                        'debit_account_id' => $acc16605PS,
+                                        'debit_account_id' => $debitLoss,
                                         'debit_partner_id' => $clientId,
                                         'debit_currency_id' => 1,
-                                        'credit_account_id' => $acc16201NI,
+                                        'credit_account_id' => $creditLoss,
                                         'credit_currency_id' => 1,
                                         'credit_partner_id' => $clientId,
                                         'amount_amd' => $amount16201NIDebit,

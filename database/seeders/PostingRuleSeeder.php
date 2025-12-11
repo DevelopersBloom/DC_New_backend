@@ -140,6 +140,27 @@ class PostingRuleSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'business_event_filter' => 'loss_reserve_amount',
+                'debit_account_id'  => $acc16605PS,
+                'credit_account_id' => $acc16200NV,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'loss_reserve_effective',
+                'debit_account_id'  => $acc16605PS,
+                'credit_account_id' => $acc16200,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'loss_reserve',
+                'debit_account_id'  => $acc16605PS,
+                'credit_account_id' => $acc16201NI,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
     }
