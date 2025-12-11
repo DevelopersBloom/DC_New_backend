@@ -16,9 +16,12 @@ use App\Models\User;
 use App\Traits\ContractTrait;
 use Illuminate\Support\Carbon;
 
-class PaymentService {
+class PaymentService
+{
     use ContractTrait;
-    public function processPayments($contract, $amount, $payer, $cash, $payments,$deal_id) {
+
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id)
+    {
         $payments_sum = 0;
         $interest_amount = 0;
         $effective_amount = 0;
@@ -34,63 +37,65 @@ class PaymentService {
         $discount = 0;
         // Process penalty
         if ($penalty) {
-            $amount = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash,$deal_id,$parent_id)['amount'];
+            $amount = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id)['amount'];
             $payed_penalty = $initial_amount - $amount;
         }
         // Process payments
         if ($amount > 0) {
             foreach ($payments as $payment) {
-                $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash,$deal_id);
+                $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 //$effective_amount += $result['effective_amount'];
             }
             // Handle any remaining amount
-            if ($amount> 0 ) {
-                $decrease = $this->handleRemainingAmount($contract, $amount, $cash,$payment->id,$deal_id);
-                $interest_amount+=$decrease;
+            if ($amount > 0) {
+                $decrease = $this->handleRemainingAmount($contract, $amount, $cash, $payment->id, $deal_id);
+                $interest_amount += $decrease;
             }
 
         }
         return [
-            'id'              => $payment->id ?? null,
-            'payments_sum'    => $payments_sum,
+            'id' => $payment->id ?? null,
+            'payments_sum' => $payments_sum,
             'interest_amount' => $interest_amount,
-            'delay_days'      => $delay_days,
-            'penalty'         => $payed_penalty,
-            'discount'        => $discount,
+            'delay_days' => $delay_days,
+            'penalty' => $payed_penalty,
+            'discount' => $discount,
         ];
     }
 
-    public function processPenalty($contractId, $amount, $penalty, $payer, $cash,$deal_id=null,$parent_id=null,$isDiscount = false) {
+    public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false)
+    {
         if ($amount < $penalty) {
             $discountAmount = $isDiscount ? $amount : 0;
-            $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash,[],$deal_id,null,false,$parent_id,$discountAmount);
+            $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash, [], $deal_id, null, false, $parent_id, $discountAmount);
             //return 0;
             return [
                 'penalty' => $amount,
-                'amount'  => 0,
+                'amount' => 0,
                 'payment_id' => $paymentId
             ];
         } else {
             $discountAmount = $isDiscount ? $penalty : 0;
-            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash,[],$deal_id,null,true,$parent_id,$discountAmount);
+            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash, [], $deal_id, null, true, $parent_id, $discountAmount);
             //  return $amount - $penalty;
             return [
                 'penalty' => $penalty,
-                'amount'  => $amount - $penalty,
+                'amount' => $amount - $penalty,
                 'payment_id' => $paymentId
             ];
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash,$deal_id) {
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
+    {
         $paymentFinal = ($payment['amount'] + $payment['penalty']);
         if ($amount >= $paymentFinal) {
-            $this->completePayment($payment,$payer, $cash,$contract->id,$deal_id);
+            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
             $contract->collected += $paymentFinal;
             if ($contract->payment_type == 'amortized') {
-                $contract->left = max(0,$contract->left - $payment->principal_payment);
+                $contract->left = max(0, $contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
 
             }
@@ -98,7 +103,7 @@ class PaymentService {
             return ['interest_amount' => $paymentFinal,
                 'amount' => $amount - $paymentFinal];
         } else {
-            $this->partiallyCompletePayment($payment, $amount,$deal_id);
+            $this->partiallyCompletePayment($payment, $amount, $deal_id);
             $contract->collected += $amount;
             $contract->save();
 
@@ -107,7 +112,7 @@ class PaymentService {
         }
     }
 
-    private function completePayment($payment, $payer, $cash,$contract_id,$deal_id=null): void
+    private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null): void
     {
         $oldAmount = $payment['amount'];
         $oldPaid = $payment['paid'];
@@ -134,25 +139,25 @@ class PaymentService {
             'payment_id' => $payment->id,
             'old_amount' => $oldAmount,
             'new_amount' => $payment->amount,
-            'old_paid'   => $oldPaid,
-            'new_paid'   => $payment->paid,
-            'old_date'   => $oldDate,
+            'old_paid' => $oldPaid,
+            'new_paid' => $payment->paid,
+            'old_date' => $oldDate,
             'old_mother' => $payment->mother,
             'updated_at' => now()->toDateTimeString()
         ];
         DealAction::create([
-            'deal_id'        => $deal_id,
-            'actionable_id'  => $payment->id,
-            'actionable_type'=> Payment::class,
-            'amount'         => $oldAmount,
-            'type'           => 'regular',
-            'description'    => 'Regular payment',
-            'date'           => Carbon::now()->format('Y-m-d'),
-            'history'        => $history
+            'deal_id' => $deal_id,
+            'actionable_id' => $payment->id,
+            'actionable_type' => Payment::class,
+            'amount' => $oldAmount,
+            'type' => 'regular',
+            'description' => 'Regular payment',
+            'date' => Carbon::now()->format('Y-m-d'),
+            'history' => $history
         ]);
     }
 
-    private function partiallyCompletePayment($payment, $paid,$deal_id=null,$history=[]): void
+    private function partiallyCompletePayment($payment, $paid, $deal_id = null, $history = []): void
     {
         $oldPaid = $payment->paid;
         $oldAmount = $payment->amount;
@@ -167,29 +172,29 @@ class PaymentService {
             'payment_id' => $payment->id,
             'old_amount' => $oldAmount,
             'new_amount' => $payment->amount,
-            'old_paid'   => $oldPaid,
-            'new_paid'   => $payment->paid,
-            'old_date'   => $oldDate,
+            'old_paid' => $oldPaid,
+            'new_paid' => $payment->paid,
+            'old_date' => $oldDate,
             'updated_at' => now()->toDateTimeString()
         ];
         DealAction::create([
-            'deal_id'        => $deal_id,
-            'actionable_id'  => $payment->id,
-            'actionable_type'=> Payment::class,
-            'amount'         => $paid,
-            'type'           => 'regular',
-            'description'    => 'Regular payment',
-            'date'           => Carbon::now()->format('Y-m-d'),
-            'history'        => $history
+            'deal_id' => $deal_id,
+            'actionable_id' => $payment->id,
+            'actionable_type' => Payment::class,
+            'amount' => $paid,
+            'type' => 'regular',
+            'description' => 'Regular payment',
+            'date' => Carbon::now()->format('Y-m-d'),
+            'history' => $history
         ]);
     }
 
-    private function handleRemainingAmount($contract, $amount, $cash,$payment_id,$deal_id=null)
+    private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
     {
         $decrease = $amount % 1000;
         $amount -= $decrease;
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
-            ->where('id','!=',$payment_id)->first();
+            ->where('id', '!=', $payment_id)->first();
         $oldAmount = $nextPayment->amount;
         $oldDate = $nextPayment->date;
         $oldPaid = $nextPayment->paid;
@@ -202,32 +207,33 @@ class PaymentService {
                 'payment_id' => $nextPayment->id,
                 'old_amount' => $oldAmount,
                 'new_amount' => $nextPayment->amout,
-                'old_paid'   => $oldPaid,
-                'new_paid'   => $nextPayment->paid,
-                'old_date'   => $oldDate,
+                'old_paid' => $oldPaid,
+                'new_paid' => $nextPayment->paid,
+                'old_date' => $oldDate,
                 'updated_at' => now()->toDateTimeString()
             ];
             DealAction::create([
-                'deal_id'        => $deal_id,
-                'actionable_id'  => $nextPayment->id,
-                'actionable_type'=> Payment::class,
-                'amount'         => $decrease,
-                'type'           => 'regular',
-                'description'    => 'Regular payment',
-                'date'           => Carbon::now()->format('Y-m-d'),
-                'history'        => $history
+                'deal_id' => $deal_id,
+                'actionable_id' => $nextPayment->id,
+                'actionable_type' => Payment::class,
+                'amount' => $decrease,
+                'type' => 'regular',
+                'description' => 'Regular payment',
+                'date' => Carbon::now()->format('Y-m-d'),
+                'history' => $history
             ]);
             //$contract->collected += $decrease;
 
         }
         if ($amount > 0) {
-            $this->payPartial($contract, $amount, false, $cash,$deal_id);
+            $this->payPartial($contract, $amount, false, $cash, $deal_id);
         }
         return $decrease;
 
 
     }
-    public function createPayment($contract_id, $amount, $type, $payer, $cash,$history = [],$deal_id=null,$date=null,$is_completed = false,$parent_id=null,$discountAmount = 0)
+
+    public function createPayment($contract_id, $amount, $type, $payer, $cash, $history = [], $deal_id = null, $date = null, $is_completed = false, $parent_id = null, $discountAmount = 0)
     {
         // $status = ($type === 'penalty' ||  $type === 'full') ? 'completed' : 'initial';
         if ($type === 'penalty' || $type === 'full' || $type === 'partial') {
@@ -243,7 +249,7 @@ class PaymentService {
         $payment->cash = $cash ?? true;
         $payment->is_completed = $is_completed;
         $payment->parent_id = $parent_id;
-        $user = auth()->user() ?? User::where('id',1)->first();
+        $user = auth()->user() ?? User::where('id', 1)->first();
         $payment->pawnshop_id = $user->pawnshop_id;
         $lastPGI = Payment::where('contract_id', $contract_id)->max('PGI_ID');
         $payment->PGI_ID = $lastPGI ? $lastPGI + 1 : 1;
@@ -274,7 +280,7 @@ class PaymentService {
         return $payment->id;
     }
 
-    public function payPartial($contract, $partialAmount, $payer, $cash,$deal_id=null,$date=null)
+    public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null)
     {
         $now = Carbon::now();
         $payments = Payment::where('contract_id', $contract->id)->where('type', 'regular')->get();
@@ -296,9 +302,9 @@ class PaymentService {
                         'payment_id' => $payment->id,
                         'old_amount' => $oldAmount,
                         'new_amount' => $amount,
-                        'old_paid'   => $payment->paid,
-                        'new_paid'   => $payment->paid,
-                        'old_date'   => $payment->date,
+                        'old_paid' => $payment->paid,
+                        'new_paid' => $payment->paid,
+                        'old_date' => $payment->date,
                         'updated_at' => now()->toDateTimeString()
                     ];
                 } else {
@@ -318,9 +324,9 @@ class PaymentService {
                         'payment_id' => $payment->id,
                         'old_amount' => $payment->amount,
                         'new_amount' => $sum,
-                        'old_paid'   => $payment->paid,
-                        'new_paid'   => $payment->paid,
-                        'old_date'   => $payment->date,
+                        'old_paid' => $payment->paid,
+                        'new_paid' => $payment->paid,
+                        'old_date' => $payment->date,
                         'updated_at' => now()->toDateTimeString()
                     ];
                     $payment->amount = $sum;
@@ -347,7 +353,7 @@ class PaymentService {
             'new_collected' => $contract->collected + $partialAmount,
             'old_estimated' => $contract->estimated_amount,
             'old_provided' => $contract->provided_amount,
-            'new_provided' =>  max(0, $contract->provided_amount - $partialAmount),
+            'new_provided' => max(0, $contract->provided_amount - $partialAmount),
             'updated_at' => now()->toDateTimeString()
         ];
         ContractAmountHistory::create([
@@ -362,18 +368,17 @@ class PaymentService {
         ]);
 
         // Update contract with partial payment
-        $contract->left = max(0,$contract->left-$partialAmount);
+        $contract->left = max(0, $contract->left - $partialAmount);
         $contract->collected += $partialAmount;
         $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
         $contract->save();
-        $pawnshop =  auth()->user()->pawnshop ?? Pawnshop::where('id',1)->first();
+        $pawnshop = auth()->user()->pawnshop ?? Pawnshop::where('id', 1)->first();
         $pawnshop->given -= $partialAmount;
         $pawnshop->save();
         // Create the partial payment record
 //        if ($isActionable) {
 //            return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history, $deal_id);
 //        }
-
 
 
         $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
@@ -384,7 +389,7 @@ class PaymentService {
         }
 
         $debitMother = $ruleMotherAmount->debit_account_id;
-        $creditMother =  $ruleMotherAmount->credit_account_id;
+        $creditMother = $ruleMotherAmount->credit_account_id;
 
         $ruleProvideAmountChange = PostingRule::where('business_event_filter', 'provide_general_amount_change')
             ->first();
@@ -396,10 +401,10 @@ class PaymentService {
         $debitAmountChange = $ruleProvideAmountChange->debit_account_id;
         $creditAmountChange = $ruleProvideAmountChange->credit_account_id;
 
-        $diamondId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+        $diamondId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
         $clientId = $contract->client_id;
 
-        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
         $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
         $date = Carbon::now()->format('Y-m-d');
@@ -407,94 +412,93 @@ class PaymentService {
             ->where('journalable_id', $contract->id)
             ->first();
         $journalDoc = DocumentJournal::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type,
-            'amount_amd'         => $partialAmount,
-            'partner_id'         => $diamondId,
-            'credit_partner_id'  => $clientId,
-            'comment'            => 'mother_amount_payment',
-            'debit_account_id'   => $debitMother,
-            'credit_account_id'  => $creditMother,
-            'user_id'            => auth()->id(),
-            'journalable_type'   => DocumentJournal::class,
-            'journalable_id'     => $journal->id,
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type,
+            'amount_amd' => $partialAmount,
+            'partner_id' => $diamondId,
+            'credit_partner_id' => $clientId,
+            'comment' => 'mother_amount_payment',
+            'debit_account_id' => $debitMother,
+            'credit_account_id' => $creditMother,
+            'user_id' => auth()->id(),
+            'journalable_type' => DocumentJournal::class,
+            'journalable_id' => $journal->id,
         ]);
         Transaction::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type,
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type,
 
-            'debit_account_id'   => $debitMother,
-            'debit_partner_id'   => $diamondId,
-            'debit_currency_id'  => 1,
+            'debit_account_id' => $debitMother,
+            'debit_partner_id' => $diamondId,
+            'debit_currency_id' => 1,
 
-            'credit_account_id'  => $creditMother,
+            'credit_account_id' => $creditMother,
             'credit_currency_id' => 1,
-            'credit_partner_id'  => $clientId,
+            'credit_partner_id' => $clientId,
 
-            'amount_amd'         => $partialAmount,
+            'amount_amd' => $partialAmount,
 
-            'comment'            => 'mother_amount_payment',
-            'user_id'            => auth()->id(),
-            'is_system'          => false,
+            'comment' => 'mother_amount_payment',
+            'user_id' => auth()->id(),
+            'is_system' => false,
 
-            'disbursement_date'    =>  $date,
+            'disbursement_date' => $date,
             'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journalDoc->id,
+            'transactionable_id' => $journalDoc->id,
         ]);
 
-        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
         $document_type_provided = DocumentJournal::PROVIDED_AMOUNT_CHANGE;
         $reservePercent = $contract->client->classification->reserve_percent ?? 0;
         $reserveAmount = $partialAmount * $reservePercent / 100;
 
         $journalDoc = DocumentJournal::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type_provided,
-            'amount_amd'         => $reserveAmount,
-            'partner_id'         => $clientId,
-            'credit_partner_id'  => $diamondId,
-            'comment'            => 'reserve_payment',
-            'debit_account_id'   => $debitAmountChange,
-            'credit_account_id'  => $creditAmountChange,
-            'user_id'            => auth()->id(),
-            'journalable_type'   => DocumentJournal::class,
-            'journalable_id'     => $journal->id,
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type_provided,
+            'amount_amd' => $reserveAmount,
+            'partner_id' => $clientId,
+            'credit_partner_id' => $diamondId,
+            'comment' => 'reserve_payment',
+            'debit_account_id' => $debitAmountChange,
+            'credit_account_id' => $creditAmountChange,
+            'user_id' => auth()->id(),
+            'journalable_type' => DocumentJournal::class,
+            'journalable_id' => $journal->id,
         ]);
 
         Transaction::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type_provided,
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type_provided,
 
-            'debit_account_id'   => $debitAmountChange,
-            'debit_partner_id'   => $diamondId,
-            'debit_currency_id'  => 1,
+            'debit_account_id' => $debitAmountChange,
+            'debit_partner_id' => $diamondId,
+            'debit_currency_id' => 1,
 
-            'credit_account_id'  => $creditAmountChange,
+            'credit_account_id' => $creditAmountChange,
             'credit_currency_id' => 1,
-            'credit_partner_id'  => $clientId,
+            'credit_partner_id' => $clientId,
 
-            'amount_amd'         => $reserveAmount,
+            'amount_amd' => $reserveAmount,
 
-            'comment'            => 'reserve_amount',
-            'user_id'            => auth()->id(),
-            'is_system'          => false,
+            'comment' => 'reserve_amount',
+            'user_id' => auth()->id(),
+            'is_system' => false,
 
-            'disbursement_date'    =>  $date,
+            'disbursement_date' => $date,
             'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journalDoc->id,
+            'transactionable_id' => $journalDoc->id,
         ]);
 
-        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash,$history,$deal_id,$date);
+        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
 
     }
 
 
-
-    public function processFullPayment($contract, $amount, $payer, $cash,$deal_id = null)
+    public function processFullPayment($contract, $amount, $payer, $cash, $deal_id = null)
     {
         $result = $this->countPenalty($contract->id);
         $penalty = $result['penalty_amount'];
@@ -556,7 +560,7 @@ class PaymentService {
 //            'new_mother' => 0,
 //        ];
         // process full payment
-        $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash,$history,$deal_id);
+        $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash, $history, $deal_id);
 
         $contract->status = 'completed';
         $contract->left = 0;
@@ -574,15 +578,15 @@ class PaymentService {
         }
 
         $debitMother = $ruleMotherAmount->debit_account_id;
-        $creditMother =  $ruleMotherAmount->credit_account_id;
+        $creditMother = $ruleMotherAmount->credit_account_id;
 
 
-        $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+        $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
         $creditPartnerId = $contract->client_id;
 
 //        if (!$acc16201 || !$acc10210) return 'One of 16201, 10210 not exist';
 
-        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
         $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
         $date = Carbon::now()->format('Y-m-d');
@@ -590,27 +594,41 @@ class PaymentService {
             ->where('journalable_id', $contract->id)
             ->first();
         $journalDoc = DocumentJournal::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type,
-            'amount_amd'         => $amount,
-            'partner_id'         => $debetPartnerId,
-            'credit_partner_id'  => $creditPartnerId,
-            'comment'            => 'mother_amount_payment',
-            'debit_account_id'   => $debitMother,
-            'credit_account_id'  => $creditMother,
-            'user_id'            => auth()->id(),
-            'journalable_type'   => DocumentJournal::class,
-            'journalable_id'     => $journal->id,
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type,
+            'amount_amd' => $amount,
+            'partner_id' => $debetPartnerId,
+            'credit_partner_id' => $creditPartnerId,
+            'comment' => 'mother_amount_payment',
+            'debit_account_id' => $debitMother,
+            'credit_account_id' => $creditMother,
+            'user_id' => auth()->id(),
+            'journalable_type' => DocumentJournal::class,
+            'journalable_id' => $journal->id,
         ]);
         Transaction::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type,
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type,
 
-            'debit_account_id'   => $debitMother,
-            'debit_partner_id'   => $debetPartnerId,
-            'debit_currency_id'  => 1,
+            'debit_account_id' => $debitMother,
+            'debit_partner_id' => $debetPartnerId,
+            'debit_currency_id' => 1,
 
-            'credit_account_id'  => $creditMother,
-            'credit_currency_id'
+            'credit_account_id' => $creditMother,
+            'credit_currency_id' => 1,
+            'credit_partner_id' => $creditPartnerId,
+
+            'amount_amd' => $amount,
+
+            'comment' => 'mother_amount_payment',
+            'user_id' => auth()->id(),
+            'is_system' => false,
+
+            'disbursement_date' => $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id' => $journalDoc->id
+        ]);
+    }
+}
