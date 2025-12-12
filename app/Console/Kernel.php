@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Jobs\ProcessContractDailyRate;
+use App\Jobs\ProcessDailyNdmInterest;
 use App\Jobs\UpdateClientClassifications;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -29,6 +30,11 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/schedule.log'));
 
+        $schedule->job(new ProcessDailyNdmInterest)
+            ->dailyAt('21:59')
+            ->timezone('Asia/Yerevan')
+            ->withoutOverlapping(10)
+            ->appendOutputTo(storage_path('logs/schedule.log'));
     }
 
     /**
