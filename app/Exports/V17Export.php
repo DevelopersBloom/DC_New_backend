@@ -195,7 +195,8 @@
 
                 $col = $this->getColumnByDays($days);
                 $amount = $doc->amount_amd;
-                $rate = $contract->effective_rate_kasko ?? $contract->effective_annual_rate;
+                $rate = 15;
+//                $contract->effective_rate_kasko ?? $contract->effective_annual_rate;
 
                 $groups5[$col]['amount'] += $amount;
                 $groups5[$col]['weighted'] += $amount * ($rate / 100);
