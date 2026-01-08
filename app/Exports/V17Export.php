@@ -187,16 +187,15 @@
             ];
             foreach ($docsContract as $doc) {
                 $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
-                $carCategory = Category::where('name','car')->first();
-                if (!$contract || ($contract->category_id && $contract->category_id !== $carCategory->id)) continue;
+//                $carCategory = Category::where('name','car')->first();
+//                if (!$contract || ($contract->category_id && $contract->category_id !== $carCategory->id)) continue;
 
                 $days = Carbon::parse($contract->deadline)
                     ->diffInDays(Carbon::parse($contract->date));
 
                 $col = $this->getColumnByDays($days);
                 $amount = $doc->amount_amd;
-                $rate = 15;
-//                $contract->effective_rate_kasko ?? $contract->effective_annual_rate;
+                $rate = $contract->effective_rate_kasko ?? $contract->effective_annual_rate;
 
                 $groups5[$col]['amount'] += $amount;
                 $groups5[$col]['weighted'] += $amount * ($rate / 100);
