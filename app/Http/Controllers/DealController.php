@@ -225,12 +225,12 @@ DealController extends Controller
 
         $debitBank = DB::table('transactions')
             ->whereIn('debit_account_id', $accountIds)
-            ->where('date', '<=', $date)
+//            ->where('date', '<=', $date)
             ->sum('amount_amd');
 
         $creditBank = DB::table('transactions')
             ->whereIn('credit_account_id', $accountIds)
-            ->where('date', '<=', $date)
+//            ->where('date', '<=', $date)
             ->sum('amount_amd');
 
         $cash_box = ($deals->total_cash_in ?? 0) - ($deals->total_cash_out ?? 0);
