@@ -196,7 +196,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
         'Պայմանագրի գումար' => 'contract.contract_amount',
         'Տրամադրված գումար' => 'provided_amount',
         'Տոկոսադրույք' => 'contract.interest_rate',
-        'Արդ․ տոկոս․' => 'contract.effectiveRate',
+        'Արդ․ տոկոս․' => 'contract.effective_annual_rate',
         'Ժամկետանց գումար' => 'contract.overdue_amount',
         'Դուրս գրված գումար' => 'contract.written_off_amount',
         'Տոկոս' => 'contract.calculatedInterest',
@@ -286,6 +286,11 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
                     $value = 'դրամ';
                 } elseif ($dataKey === 'client.is_linked_to_company' || $dataKey === 'client.is_company_employee') {
                     $value = (bool)$value ? 'Այո' : 'Ոչ';
+                }
+
+                if ($label === 'Տոկոսադրույք') {
+                    $dailyRate = (float)$value;
+                    $value = $dailyRate * 365;
                 }
                 $row[] = $value;
             }
