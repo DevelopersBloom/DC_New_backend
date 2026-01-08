@@ -155,7 +155,7 @@
 
                 $col = $this->getForthSheetColumnByDays($days);
                 $amount = $doc->amount_amd;
-                $rate = $contract->effective_daily_rate ? $contract->effective_daily_rate * 365 : 0;
+                $rate = $contract->effective_annual_rate ?? 0;
 
                 $groups4[$col]['amount'] += $amount;
                 $groups4[$col]['weighted'] += $amount * ($rate / 100);
