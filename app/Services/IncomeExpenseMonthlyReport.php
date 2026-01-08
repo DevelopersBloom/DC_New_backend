@@ -20,7 +20,7 @@ class IncomeExpenseMonthlyReport
             SUM(CASE WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd ELSE 0 END) as inflow,
             SUM(CASE WHEN a.type IN ('passive','equity','income') THEN t.amount_amd ELSE 0 END) as outflow
         ")
-            ->groupBy('a.income_expense');   // <<=== ԱՆՊԱՅՄԱՆ
+            ->groupBy('a.income_expense');
 
         $credit = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
