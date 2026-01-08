@@ -225,13 +225,11 @@ DealController extends Controller
 
         $debitBank = DB::table('transactions')
             ->whereIn('debit_account_id', $accountIds)
-            ->where('pawnshop_id', $pawnshop_id)
             ->where('date', '<=', $date)
             ->sum('amount_amd');
 
         $creditBank = DB::table('transactions')
             ->whereIn('credit_account_id', $accountIds)
-            ->where('pawnshop_id', $pawnshop_id)
             ->where('date', '<=', $date)
             ->sum('amount_amd');
 
