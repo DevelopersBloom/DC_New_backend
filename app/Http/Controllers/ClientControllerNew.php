@@ -319,10 +319,10 @@ class ClientControllerNew extends Controller
             $clientId = $client->id;
             $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
-            $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
-            $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
-            $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
-            $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
+            $acc73015 = ChartOfAccount::idByCode('73015');
+            $acc16605PC = ChartOfAccount::idByCode('16605PC');
+            $acc16605PS = ChartOfAccount::idByCode('16605PS');
+            $acc16200NV = ChartOfAccount::idByCode('16200NV');
 
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
@@ -386,7 +386,7 @@ class ClientControllerNew extends Controller
                     $debetAllocation = $acc73015;
                     $creditAllocation = $client->classification->name === 'standard' ? $acc16605PC : $acc16605PS;
 
-                    if ($client->classification->name === 'standard') {
+                    if ($oldClassificationName === 'standard') {
                         $ruleClassification = PostingRule::where('business_event_filter', 'classification_general_to_special')
                             ->first();
 

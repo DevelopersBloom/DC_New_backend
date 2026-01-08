@@ -156,7 +156,7 @@ class UpdateClientClassifications implements ShouldQueue
                             }
 
                             // accounts and document types depending on classification name
-                            if ($contract->client->classification->name == 'standard') {
+                            if ($oldClassificationName == 'standard') {
 
                                 $ruleReserve = PostingRule::where('business_event_filter', 'reserve_general_amount')
                                     ->first();
