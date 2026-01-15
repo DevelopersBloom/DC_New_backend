@@ -395,6 +395,8 @@ class FileController extends Controller
         $client = $contract->client;
         $pawnshop = $contract->pawnshop;
 
+        $filesToZip = [];
+
         $templateProcessor = new TemplateProcessor(
             public_path('files/contract_gold_template.docx')
         );
@@ -402,7 +404,7 @@ class FileController extends Controller
         $clientName = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
 
         $yearlyRate = round($contract->interest_rate * 365, 5);
-        $effectiveRate = round($contract->effective_annual_rate,5);
+        $effectiveRate = round($contract->effective_annual_rate, 5);
 
         $templateProcessor->setValues([
             'num' => $contract->num,
@@ -430,7 +432,9 @@ class FileController extends Controller
             'card_number' => $client->card_number,
         ]);
 
-
+        // ============================
+        // 📄 Payment schedule
+        // ============================
 
         $paymentRows = [];
         foreach ($contract->payments as $p) {
@@ -447,38 +451,42 @@ class FileController extends Controller
             $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
         }
 
+        // ============================
+        // 💾 Պահպանում ենք DOCX
+        // ============================
 
+        $contractFilename = $contract->num . '_ոսկու_պայմանագիր.docx';
+        $contractPath = storage_path('app/tmp/' . $contractFilename);
 
-//        $goldRows = [];
-//        foreach ($contract->items as $item) {
-//            if ($item->category->name === 'gold') {
-//                $goldRows[] = [
-//                    'g_name' => $item->subcategory ?? '',
-//                    'g_qty' => 1,
-//                    'g_w' => $item->weight,
-//                    'g_cw' => $item->clear_weight,
-//                    'g_h' => $item->hallmark,
-//                    'g_price' => $this->makeMoney((int)$item->price_per_gram),
-//                    'g_total' => $this->makeMoney((int)$item->estimated_amount),
-//                ];
-//            }
-//        }
-//
-//        if (count($goldRows)) {
-//            $templateProcessor->cloneRowAndSetValues('g_name', $goldRows);
-//        }
-
-
-        $fileName = $contract->num . '_ոսկու_պայմանագիր.docx';
-        $path = storage_path('app/tmp/' . $fileName);
-
-        if (!file_exists(dirname($path))) {
-            mkdir(dirname($path), 0775, true);
+        if (!file_exists(dirname($contractPath))) {
+            mkdir(dirname($contractPath), 0775, true);
         }
 
-        $templateProcessor->saveAs($path);
+        $templateProcessor->saveAs($contractPath);
+        $filesToZip[] = $contractPath;
 
-        return response()->download($path)->deleteFileAfterSend(true);
+
+        $zipFileName = $contract->num . '_փաստաթղթեր.zip';
+        $zipFilePath = storage_path('app/tmp/' . $zipFileName);
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($filesToZip as $file) {
+                $zip->addFile($file, basename($file));
+            }
+            $zip->close();
+        } else {
+            abort(500, 'Չհաջողվեց ստեղծել ZIP ֆայլ։');
+        }
+
+        // 🧹 Մաքրում ենք temp ֆայլերը
+        foreach ($filesToZip as $file) {
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
+
+        return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
     public function downloadBond($id)
