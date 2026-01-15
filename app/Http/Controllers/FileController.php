@@ -384,6 +384,102 @@ class FileController extends Controller
         return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
+    /**
+     * @throws CopyFileException
+     * @throws CreateTemporaryFileException
+     */
+    public function downloadContractGold($id)
+    {
+        $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments'])->findOrFail($id);
+
+        $client = $contract->client;
+        $pawnshop = $contract->pawnshop;
+
+        $templateProcessor = new TemplateProcessor(
+            public_path('files/contract_gold_template.docx')
+        );
+
+        $clientName = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
+
+        $yearlyRate = round($contract->interest_rate * 365, 5);
+        $effectiveRate = round($contract->effective_annual_rate,5);
+
+        $templateProcessor->setValues([
+            'num' => $contract->num,
+            'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
+
+            'client' => $clientName,
+            'passport_series' => $client->passport_series,
+            'passport_validity' => \Carbon\Carbon::parse($client->passport_validity)->format('d.m.Y'),
+            'passport_issued' => $client->passport_issued,
+            'social_card_number' => $client->social_card_number ?? $client->tax_number ?? '',
+            'city' => $client->city,
+            'street' => $client->street,
+            'phone' => $client->phone ?? $contract->additional_phone ?? '',
+
+            'contract_amount' => $this->makeMoney((int)$contract->contract_amount),
+            'mother_amount' => $this->makeMoney((int)$contract->mother),
+
+            'interest_annual_rate' => $yearlyRate . ' %',
+            'effective_annual_rate' => $effectiveRate . ' %',
+
+            'deadline' => \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y'),
+
+            'bank_name' => $client->bank_name,
+            'account_number' => $client->account_number,
+            'card_number' => $client->card_number,
+        ]);
+
+
+
+        $paymentRows = [];
+        foreach ($contract->payments as $p) {
+            $paymentRows[] = [
+                'p_d' => \Carbon\Carbon::parse($p->date)->format('d.m.Y'),
+                'p_m' => $this->makeMoney((int)$p->principal_payment),
+                'p_i' => $this->makeMoney((int)$p->interest_payment),
+                'p_a' => $this->makeMoney((int)$p->amount),
+                'p_r' => $this->makeMoney((int)$p->remaining_amount),
+            ];
+        }
+
+        if (count($paymentRows)) {
+            $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
+        }
+
+
+
+//        $goldRows = [];
+//        foreach ($contract->items as $item) {
+//            if ($item->category->name === 'gold') {
+//                $goldRows[] = [
+//                    'g_name' => $item->subcategory ?? '',
+//                    'g_qty' => 1,
+//                    'g_w' => $item->weight,
+//                    'g_cw' => $item->clear_weight,
+//                    'g_h' => $item->hallmark,
+//                    'g_price' => $this->makeMoney((int)$item->price_per_gram),
+//                    'g_total' => $this->makeMoney((int)$item->estimated_amount),
+//                ];
+//            }
+//        }
+//
+//        if (count($goldRows)) {
+//            $templateProcessor->cloneRowAndSetValues('g_name', $goldRows);
+//        }
+
+
+        $fileName = $contract->num . '_ոսկու_պայմանագիր.docx';
+        $path = storage_path('app/tmp/' . $fileName);
+
+        if (!file_exists(dirname($path))) {
+            mkdir(dirname($path), 0775, true);
+        }
+
+        $templateProcessor->saveAs($path);
+
+        return response()->download($path)->deleteFileAfterSend(true);
+    }
 
     public function downloadBond($id)
     {
