@@ -192,7 +192,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/calculate-interest', [ContractControllerNew::class, 'calculateContractInterest']);
         Route::get('/calc-export', [ContractControllerNew::class, 'exportContractsCalc']);
         Route::post('/confirm-interest', [ContractControllerNew::class, 'confirmCalculatedInterest']);
-        Route::get('/download/{id}', [FileController::class, 'downloadContract']);
+        Route::get('/download/{id}', [FileController::class, 'downloadContractGold']);
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles']);
         Route::get('/export', [FileController::class, 'exportZip']);
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts']);
