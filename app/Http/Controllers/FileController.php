@@ -393,7 +393,6 @@ class FileController extends Controller
         $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments'])->findOrFail($id);
 
         $client = $contract->client;
-        $pawnshop = $contract->pawnshop;
 
         $filesToZip = [];
 
@@ -432,10 +431,6 @@ class FileController extends Controller
             'card_number' => $client->card_number,
         ]);
 
-        // ============================
-        // 📄 Payment schedule
-        // ============================
-
         $paymentRows = [];
         foreach ($contract->payments as $p) {
             $paymentRows[] = [
@@ -443,7 +438,7 @@ class FileController extends Controller
                 'p_m' => $this->makeMoney((int)$p->principal_payment),
                 'p_i' => $this->makeMoney((int)$p->interest_payment),
                 'p_a' => $this->makeMoney((int)$p->amount),
-                'p_r' => $this->makeMoney((int)$p->remaining_amount),
+                'p_r' => $this->makeMoney((int)$p->remaining),
             ];
         }
 
@@ -451,9 +446,7 @@ class FileController extends Controller
             $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
         }
 
-        // ============================
-        // 💾 Պահպանում ենք DOCX
-        // ============================
+
 
         $contractFilename = $contract->num . '_ոսկու_պայմանագիր.docx';
         $contractPath = storage_path('app/tmp/' . $contractFilename);
