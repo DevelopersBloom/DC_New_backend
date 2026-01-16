@@ -819,7 +819,7 @@ class AdminControllerNew extends Controller
                         'paid' => $item['old_paid'],
                         'date' => $item['old_date'],
                         'status' => 'initial',
-                        'mother' => $item['old_mother'] ?? 0
+//                        'mother' => $item['old_mother'] ?? 0
                     ])
                 ),
                 'contract_changes' => Contract::where('id', $historyItem['contract_id'])
