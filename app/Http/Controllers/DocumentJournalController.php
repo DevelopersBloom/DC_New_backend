@@ -17,11 +17,22 @@ class DocumentJournalController
         $from   = $request->query('from_date');
         $to     = $request->query('to_date');
 
+        $typeMap = [
+            'ndm' => DocumentJournal::LOAN_NDM_TYPE,
+            // 'cash_in' => DocumentJournal::CASH_IN_TYPE,
+            // 'cash_out' => DocumentJournal::CASH_OUT_TYPE,
+        ];
+
+        $requestType = $request->query('document_type');
+
+        $documentType = $typeMap[$requestType] ?? null;
+
         $query = DocumentJournal::with([
             'currency:id,code',
             'partner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])
+            ->when($documentType,fn($q) => $q->where('document_type', $documentType))
             ->when($from && $to, fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
             ->when(!$from && $to, fn($q) => $q->where('date', '<=', $to))
