@@ -35,6 +35,8 @@ class ContractRequest extends FormRequest
             'lump_rate' => 'required|numeric',
             'payment_type' => 'required|string',
             'kasko_amount' => 'nullable|numeric',
+            'guarantors' => 'nullable|array',
+            'guarantors.*.id' => 'nullable|exists:clients ,id',
 //            'files' => 'nullable|array',
 //            'files.*.file' => 'required|file',
 //            'files.*.file_type' => 'required|string',

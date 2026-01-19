@@ -168,31 +168,30 @@ class ContractCalculationService
         $writtenOff = null;
         $writtenOffInterest = null;
 
-
         if (($contract->client?->classification?->name) === 'loss') {
-            $writtenOff = max(0, (float)($contract->provided_amount ?? 0));
-            $writtenOffInterest = $contract->payments()
-                ->where('status', 'initial')
-                ->sum('amount');
 
+            if ($contract->payment_type === 'amortized') {
+
+                $writtenOff = $contract->payments()
+                    ->where('status', 'initial')
+                    ->sum('principal_payment');
+
+                $writtenOffInterest = $contract->payments()
+                    ->where('status', 'initial')
+                    ->sum('interest_payment');
+
+            } else {
+
+                $writtenOff = max(0, (float)($contract->provided_amount ?? 0));
+
+                $writtenOffInterest = $contract->payments()
+                    ->where('status', 'initial')
+                    ->sum('amount');
+            }
         }
+
         $contract->written_off_amount = $writtenOff !== null ? round($writtenOff, 2) : null;
-        $contract->written_off_interest =  $writtenOffInterest !== null ? round($writtenOffInterest, 2) : null;
-//        if (!empty($contract->written_off_amount) && !empty($contract->interest_rate)) {
-//
-//            $writeOffDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
-//
-//            $days = 0;
-//            if ($calcToday->gt($writeOffDate)) {
-//                $days = $writeOffDate->diffInDays($calcToday);
-//            }
-//
-//            $writtenOffInterest = $this->calcAmount(
-//                $contract->written_off_amount,
-//                $days,
-//                $contract->interest_rate
-//            );
-//        }
+        $contract->written_off_interest = $writtenOffInterest !== null ? round($writtenOffInterest, 2) : null;
 
     }
 

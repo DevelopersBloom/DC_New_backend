@@ -122,6 +122,7 @@ class ContractControllerNew extends Controller
 
         $contract = Contract::with([
             'client',
+            'guarantors',
             'payments' => function ($query) { $query->orderBy('to_date', 'ASC'); },
             'history' => function ($query) {
                 $query->whereDoesntHave('order', function ($q) {
@@ -244,6 +245,24 @@ class ContractControllerNew extends Controller
             }
             $contract->category_id = $category_id;
             $contract->save();
+            $guarantors = $contractRequest->input('guarantors', []);
+
+//            if (!empty($guarantors)) {
+//                foreach ($guarantors as $guarantorData) {
+//                    $guarantor = $this->clientService->storeOrUpdate($guarantorData);
+//
+//                    $contract->guarantors()->attach($guarantor->id);
+//                }
+//            }
+
+            if (!empty($guarantors)) {
+                $guarantorIds = collect($guarantors)->pluck('id')->unique()->toArray();
+
+                $guarantorIds = array_filter($guarantorIds, fn($id) => $id != $client->id);
+
+                $contract->guarantors()->sync($guarantorIds);
+            }
+
             if ($contract->category->name == 'car')
             {
                 $contract->kasko_amount = $contractRequest->kasko_amount;

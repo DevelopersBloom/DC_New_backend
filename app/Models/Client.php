@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -175,12 +177,18 @@ class Client extends Model
             ? ($this->company_name ?? '')
             : trim(($this->name ?? '') . ' ' . ($this->surname ?? ''));
     }
-    public function classification() {
+    public function classification(): BelongsTo
+    {
         return $this->belongsTo(ClientClassification::class, 'classification_id');
     }
-    public function acraClassification() {
+    public function acraClassification(): BelongsTo
+    {
         return $this->belongsTo(ClientClassification::class, 'acra_classification_id');
     }
 
+    public function guaranteedContracts(): BelongsToMany
+    {
+        return $this->belongsToMany(Contract::class, 'contract_guarantors');
+    }
 
 }
