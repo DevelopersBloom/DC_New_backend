@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('contract_guarantors', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('contract_id')->constrained()->cascadeOnDelete();
             $table->foreignId('client_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
