@@ -245,7 +245,7 @@ class ContractControllerNew extends Controller
             }
             $contract->category_id = $category_id;
             $contract->save();
-            $guarantors = $contractRequest->input('guarantors', []);
+            $guarantors = $contractRequest->validated()['guarantors'] ?? [];
 
 //            if (!empty($guarantors)) {
 //                foreach ($guarantors as $guarantorData) {

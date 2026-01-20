@@ -36,7 +36,7 @@ class ContractRequest extends FormRequest
             'payment_type' => 'required|string',
             'kasko_amount' => 'nullable|numeric',
             'guarantors' => 'nullable|array',
-            'guarantors.*.id' => 'nullable|exists:clients ,id',
+            'guarantors.*.id' => 'nullable|exists:clients,id',
 //            'files' => 'nullable|array',
 //            'files.*.file' => 'required|file',
 //            'files.*.file_type' => 'required|string',
