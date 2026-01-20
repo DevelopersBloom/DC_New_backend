@@ -361,73 +361,178 @@ class   ContractService
         $contract->payment_schedule = $schedule;
         $contract->save();
     }
+//    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
+//    {
+//        $principal = $contract->provided_amount;
+//        $months = $contract->deadline_days;
+//        $annualRate = $contract->interest_rate * 365;
+////        $annualRate = $contract->interest_rate;
+//        $monthlyRate = $annualRate / 100 / 12;
+//        $effectiveAnnualRate = $contract->effective_annual_rate;
+//
+//        $effectiveMonthlyRate = pow(1 + $effectiveAnnualRate, 1/12) - 1;
+//
+//        $annuityPayment = ($principal * $monthlyRate) / (1 - pow(1 + $monthlyRate, -$months));
+//
+//        $remaining = $principal;
+//        $schedule = [];
+//        $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
+//        $pgi_id = 1;
+//
+//        $currentDate = $import_date ? \Carbon\Carbon::parse($import_date) : \Carbon\Carbon::parse($contract->date);
+//
+//        for ($i = 1; $i <= $months; $i++) {
+//            $interest = $remaining * $monthlyRate;
+//            $effective = $remaining * $effectiveMonthlyRate;
+//            $principalPayment = $annuityPayment - $interest;
+//            $remaining -= $principalPayment;
+//
+//            $paymentDate = (clone $currentDate)->addMonths($i);
+//            $kaskoAmount = 0;
+//
+//            $isLastMonth = ($i == $months);
+//
+//            if ($contract->kasko_amount &&
+//                $paymentDate->month == $currentDate->month &&
+//                !$isLastMonth) {
+//                    $kaskoAmount = $contract->kasko_amount;
+//            }
+//            $payment = [
+//                'contract_id' => $contract->id,
+//                'date' => $paymentDate->format('Y-m-d'),
+//                'to_date' => $paymentDate->format('Y-m-d'),
+//                'amount' => round($annuityPayment, 10),
+//                'principal_payment' => round($principalPayment, 10),
+//                'interest_payment' => round($interest, 10),
+//                'effective_payment' => round($effective,10),
+//                'remaining' => round(max($remaining, 0), 10),
+//                'kasko_amount' => $kaskoAmount,
+//                'pawnshop_id' => $pawnshop_id,
+//                'PGI_ID' => $pgi_id,
+//            ];
+//
+//            Payment::create($payment);
+//            $pgi_id++;
+//
+//            $schedule[] = [
+//                'date' => $paymentDate->format('Y-m-d'),
+//                'amount' => round($annuityPayment, 3),
+//            ];
+//        }
+//
+//        $contract->payment_schedule = $schedule;
+//        $contract->save();
+//    }
+
     protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
     {
-        $principal = $contract->provided_amount;
-        $months = $contract->deadline_days;
-        $annualRate = $contract->interest_rate * 365;
-//        $annualRate = $contract->interest_rate;
-        $monthlyRate = $annualRate / 100 / 12;
-        $effectiveAnnualRate = $contract->effective_annual_rate;
+        $principal   = (float) $contract->provided_amount;
+        $months      = (int) $contract->deadline_days;
 
+        // interest_rate-ը քեզ մոտ օրական տոկոս է (օր.` 0.0438356` => տարեկան 16%)
+        $annualRate  = (float) $contract->interest_rate * 365;
+        $monthlyRate = $annualRate / 100 / 12;
+
+        $effectiveAnnualRate  = (float) $contract->effective_annual_rate;
         $effectiveMonthlyRate = pow(1 + $effectiveAnnualRate, 1/12) - 1;
 
+        /**
+         * ✅ Service fee rate (Excel-ում Monthly Fee Rate = 0.24)
+         * Կպահենք contract-ում որպես annual rate.
+         * Եթե արժեքը 24 է => 24%
+         * Եթե արժեքը 0.24 է => 24%
+         */
+        $serviceAnnual = 24;//(float) ($contract->service_fee_rate ?? 0); // ավելացրու contract-ում
+        if ($serviceAnnual > 0 && $serviceAnnual <= 1) {
+            $serviceAnnual = $serviceAnnual * 100; // 0.24 => 24
+        }
+        $serviceMonthlyRate = ($serviceAnnual / 100) / 12; // 24% / 12 => 2% ամսական
+
+        // annuity payment (ընդհանուր վճար՝ Excel-ի Payment սյունակը)
         $annuityPayment = ($principal * $monthlyRate) / (1 - pow(1 + $monthlyRate, -$months));
 
-        $remaining = $principal;
-        $schedule = [];
+        $remaining   = $principal;
+        $schedule    = [];
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
-        $pgi_id = 1;
+        $pgi_id      = 1;
 
-        $currentDate = $import_date ? \Carbon\Carbon::parse($import_date) : \Carbon\Carbon::parse($contract->date);
+        $currentDate = $import_date
+            ? \Carbon\Carbon::parse($import_date)
+            : \Carbon\Carbon::parse($contract->date);
 
         for ($i = 1; $i <= $months; $i++) {
-            $interest = $remaining * $monthlyRate;
-            $effective = $remaining * $effectiveMonthlyRate;
-            $principalPayment = $annuityPayment - $interest;
-            $remaining -= $principalPayment;
 
             $paymentDate = (clone $currentDate)->addMonths($i);
-            $kaskoAmount = 0;
 
+            // Excel logic: fee + interest հաշվվում են սկզբի մնացորդից
+            $interest   = $remaining * $monthlyRate;
+            $effective  = $remaining * $effectiveMonthlyRate;
+
+            $serviceFee = $remaining * $serviceMonthlyRate;
+
+            // Principal = Payment - Interest - Fee
+            $principalPayment = $annuityPayment - $interest - $serviceFee;
+
+            // safety (եթե rate-երը բարձր են ու principal-ը դառնա բացասական)
+            if ($principalPayment < 0) {
+                $principalPayment = 0;
+            }
+
+            // Remaining = Remaining - Principal - Fee (Excel-ի նման)
+            $remaining -= ($principalPayment + $serviceFee);
+
+            // ✅ Վերջին ամիսը՝ հարթեցում, որ մնացորդը չմտնի մինուս (rounding issue)
             $isLastMonth = ($i == $months);
+            if ($isLastMonth && $remaining != 0.0) {
+                // եթե մնացել է փոքր պլյուս/մինուս, principal-ը ուղղում ենք
+                $principalPayment += $remaining; // remaining-ը կարող է լինել փոքր մինուս էլ
+                $remaining = 0;
+            }
 
+            // Kasko logic (քոնը թողել եմ նույնը)
+            $kaskoAmount = 0;
             if ($contract->kasko_amount &&
                 $paymentDate->month == $currentDate->month &&
                 !$isLastMonth) {
-                    $kaskoAmount = $contract->kasko_amount;
+                $kaskoAmount = $contract->kasko_amount;
             }
+
             $payment = [
-                'contract_id' => $contract->id,
-                'date' => $paymentDate->format('Y-m-d'),
-                'to_date' => $paymentDate->format('Y-m-d'),
-                'amount' => round($annuityPayment, 10),
-                'principal_payment' => round($principalPayment, 10),
-                'interest_payment' => round($interest, 10),
-                'effective_payment' => round($effective,10),
-                'remaining' => round(max($remaining, 0), 10),
-                'kasko_amount' => $kaskoAmount,
-                'pawnshop_id' => $pawnshop_id,
-                'PGI_ID' => $pgi_id,
+                'contract_id'        => $contract->id,
+                'date'               => $paymentDate->format('Y-m-d'),
+                'to_date'            => $paymentDate->format('Y-m-d'),
+
+                // Excel Payment (Total)
+                'amount'             => round($annuityPayment, 10),
+
+                // Excel Principal / Interest / Monthly fee
+                'principal_payment'  => round($principalPayment, 10),
+                'interest_payment'   => round($interest, 10),
+
+                // ✅ Նոր դաշտ (պետք է ավելացնես payments աղյուսակում)
+                'service_fee_payment'=> round($serviceFee, 10),
+
+                'effective_payment'  => round($effective, 10),
+                'remaining'          => round(max($remaining, 0), 10),
+
+                'kasko_amount'       => $kaskoAmount,
+                'pawnshop_id'        => $pawnshop_id,
+                'PGI_ID'             => $pgi_id,
             ];
 
             Payment::create($payment);
             $pgi_id++;
 
             $schedule[] = [
-                'date' => $paymentDate->format('Y-m-d'),
+                'date'   => $paymentDate->format('Y-m-d'),
                 'amount' => round($annuityPayment, 3),
+                'service_fee' => round($serviceFee, 3),
             ];
         }
 
         $contract->payment_schedule = $schedule;
         $contract->save();
     }
-
-//    public function calcAmount($amount,$days,$rate): int
-//    {
-//        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
-//    }
     public function calcAmount($amount, $days, $rate): float
     {
         return $days * $rate * $amount;

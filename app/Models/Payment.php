@@ -39,7 +39,8 @@ class Payment extends Model
         'to_date',
         'effective_payment',
         'kasko_amount',
-        'kasko_paid'
+        'kasko_paid',
+        'service_fee_payment'
     ];
     protected $casts = [
         'mother'             => 'decimal:2',
