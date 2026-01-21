@@ -430,24 +430,77 @@ class   ContractService
         return $days * $rate * $amount;
     }
 
+    private function excelPmt(float $rate, int $nper, float $pv, float $fv = 0.0, int $when = 0): float
+    {
+        // Excel PMT (returns negative for payment)
+        if (abs($rate) < 1e-12) {
+            return -($pv + $fv) / $nper;
+        }
+
+        $pow = pow(1 + $rate, $nper);
+
+        return -($rate * ($fv + $pv * $pow)) / ((1 + $rate * $when) * ($pow - 1));
+    }
+
+    private function excelFv(float $rate, int $nper, float $pmt, float $pv, int $when = 0): float
+    {
+        // Excel FV
+        if (abs($rate) < 1e-12) {
+            return -($pv + $pmt * $nper);
+        }
+
+        $pow = pow(1 + $rate, $nper);
+
+        return -($pv * $pow + $pmt * (1 + $rate * $when) * (($pow - 1) / $rate));
+    }
+
+    private function excelIpmt(float $rate, int $per, int $nper, float $pv, float $fv = 0.0, int $when = 0): float
+    {
+        // Excel IPMT (returns negative)
+        $pmt = $this->excelPmt($rate, $nper, $pv, $fv, $when);
+
+        // balance BEFORE payment at period 'per'
+        // (valid for when = 0)
+        if ($when !== 0) {
+            throw new \InvalidArgumentException('when != 0 not supported here (matches your Excel sheet).');
+        }
+
+        $pow = pow(1 + $rate, $per - 1);
+
+        $balance = $fv + $pv * $pow + $pmt * (($pow - 1) / $rate);
+
+        return -$balance * $rate;
+    }
+
+    private function excelPpmt(float $rate, int $per, int $nper, float $pv, float $fv = 0.0, int $when = 0): float
+    {
+        // Excel PPMT (returns negative)
+        $pmt  = $this->excelPmt($rate, $nper, $pv, $fv, $when);
+        $ipmt = $this->excelIpmt($rate, $per, $nper, $pv, $fv, $when);
+
+        return $pmt - $ipmt;
+    }
     protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
     {
-        $principal = (float) $contract->provided_amount;
-        $months    = (int) $contract->deadline_days;
+        $loanAmount = (float) $contract->provided_amount;
+        $months     = (int) $contract->deadline_days;
 
-        $annualInterestRate = ((float) $contract->interest_rate) * 365 / 100;
+        // 1) Convert your stored daily % to monthly decimal rate (Excel style)
+        // interest_rate is daily percent(?) => annual percent = *365 => monthly decimal = /100/12
+        $interestAnnualPercent = (float) $contract->interest_rate * 365;
+        $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
-        $annualServiceFeeRate = 24;
-//        (float) ($contract->service_fee_rate ?? 0);
+        // IMPORTANT: take service fee from your field (rename to your real column)
+        // Example: $contract->service_fee_rate (daily percent like interest_rate)
+        $feeDaily = (float) ($contract->service_fee_rate ?? 0); // <-- փոխիր ըստ քո DB-ի
+        $feeAnnualPercent = $feeDaily * 365;
+        $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
 
-        $annualAllRate   = $annualInterestRate + $annualServiceFeeRate;
-        $monthlyAllRate  = $annualAllRate / 12;
+        // Excel All_interest = InterestRate + MonthlyFeeRate
+        $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
 
-        // Excel-ի MonthlyPayment = -PMT(All_interest/12, n, pv)
-        $monthlyPayment = $this->pmt($monthlyAllRate, $months, $principal);
-
-        $effectiveAnnualRate  = (float) $contract->effective_annual_rate;
-        $effectiveMonthlyRate = pow(1 + $effectiveAnnualRate, 1/12) - 1;
+        // 2) Excel MonthlyPayment = -PMT(all/12, n, pv)
+        $monthlyPayment = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
 
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $pgi_id      = 1;
@@ -460,61 +513,56 @@ class   ContractService
 
         for ($i = 1; $i <= $months; $i++) {
 
-            // Excel Opening Balance = -FV(All_interest/12, i-1, -MonthlyPayment, LoanAmount)
-            $openingBalance = $this->fv($monthlyAllRate, $i - 1, -$monthlyPayment, $principal);
+            // 3) Excel columns (1:1)
+            $beginingBalance = -$this->excelFv($allMonthlyRate, $i - 1, -$monthlyPayment, $loanAmount);
+            $endingBalance   = -$this->excelFv($allMonthlyRate, $i,     -$monthlyPayment, $loanAmount);
 
-            // Excel Principal = -PPMT(All_interest/12, i, n, pv)
-            $principalPayment = $this->ppmt($monthlyAllRate, $i, $months, $principal);
-
-            // Excel Interest = -IPMT(InterestRate/12, i, n, pv)
-            $interestPayment = $this->ipmt($annualInterestRate / 12, $i, $months, $principal);
-
-            // Excel Monthly fee = -IPMT(MonthlyFeeRate/12, i, n, pv)
-            $serviceFeePayment = $this->ipmt($annualServiceFeeRate / 12, $i, $months, $principal);
-
-            // Excel Ending Balance = -FV(All_interest/12, i, -MonthlyPayment, LoanAmount)
-            $endingBalance = $this->fv($monthlyAllRate, $i, -$monthlyPayment, $principal);
-
-            // Effective payment (ձեր հին լոգիկան պահում եմ, բայց ավելի ճիշտ է openingBalance-ից հաշվարկել)
-            $effective = $openingBalance * $effectiveMonthlyRate;
+            $principalPayment = -$this->excelPpmt($allMonthlyRate, $i, $months, $loanAmount);
+            $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
+            $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate,      $i, $months, $loanAmount);
 
             $paymentDate = (clone $currentDate)->addMonths($i);
 
+            // keep your kasko logic
             $kaskoAmount = 0;
-            $isLastMonth = ($i == $months);
-            if ($contract->kasko_amount &&
-                $paymentDate->month == $currentDate->month &&
-                !$isLastMonth) {
-                $kaskoAmount = $contract->kasko_amount;
+            $isLastMonth = ($i === $months);
+            if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastMonth) {
+                $kaskoAmount = (float) $contract->kasko_amount;
             }
 
-            $payment = [
+            Payment::create([
                 'contract_id'        => $contract->id,
                 'date'               => $paymentDate->format('Y-m-d'),
                 'to_date'            => $paymentDate->format('Y-m-d'),
 
-                // Excel Payment (Total)
+                // Excel "Payment" column = MonthlyPayment (առանց fee)
                 'amount'             => round($monthlyPayment, 10),
 
-                // Excel split
+                // Excel Principal / Interest / Monthly fee columns
                 'principal_payment'  => round($principalPayment, 10),
                 'interest_payment'   => round($interestPayment, 10),
-                'service_fee_payment'=> round($serviceFeePayment, 10),
+                'service_fee_payment' => round($monthlyFeeAmount, 10),
 
-                // extra fields
-                'effective_payment'  => round($effective, 10),
+                // Excel Ending Balance
                 'remaining'          => round(max($endingBalance, 0), 10),
+
+                // keep your other fields
                 'kasko_amount'       => $kaskoAmount,
                 'pawnshop_id'        => $pawnshop_id,
                 'PGI_ID'             => $pgi_id,
-            ];
+            ]);
 
-            Payment::create($payment);
             $pgi_id++;
 
+            // If you want, keep schedule export compatible
             $schedule[] = [
-                'date'   => $paymentDate->format('Y-m-d'),
-                'amount' => round($monthlyPayment, 3),
+                'date'         => $paymentDate->format('Y-m-d'),
+                'payment'      => round($monthlyPayment, 3),
+                'monthly_fee'  => round($monthlyFeeAmount, 3),
+                'total'        => round($monthlyPayment + $monthlyFeeAmount, 3),
+                'principal'    => round($principalPayment, 3),
+                'interest'     => round($interestPayment, 3),
+                'balance'      => round(max($endingBalance, 0), 3),
             ];
         }
 
@@ -522,53 +570,5 @@ class   ContractService
         $contract->save();
     }
 
-    /**
-     * Excel compatible financial functions (PMT, FV, IPMT, PPMT)
-     * Rate is monthly rate (decimal), nper periods, pv positive.
-     */
-    private function pmt(float $rate, int $nper, float $pv, float $fv = 0.0, int $type = 0): float
-    {
-        if ($nper <= 0) return 0.0;
-        if (abs($rate) < 1e-12) {
-            return -($pv + $fv) / $nper;
-        }
-        $pow = pow(1 + $rate, $nper);
-        return -($rate * ($pv * $pow + $fv)) / (($pow - 1) * (1 + $rate * $type));
-    }
-
-    private function fv(float $rate, int $nper, float $pmt, float $pv, int $type = 0): float
-    {
-        if (abs($rate) < 1e-12) {
-            return -($pv + $pmt * $nper);
-        }
-        $pow = pow(1 + $rate, $nper);
-        return -($pv * $pow + $pmt * (1 + $rate * $type) * (($pow - 1) / $rate));
-    }
-
-    private function ipmt(float $rate, int $per, int $nper, float $pv, float $fv = 0.0, int $type = 0): float
-    {
-        if ($per < 1 || $per > $nper) return 0.0;
-        if (abs($rate) < 1e-12) return 0.0;
-
-        $pmt = $this->pmt($rate, $nper, $pv, $fv, $type);
-
-        // interest is based on balance at start of period
-        $balance = $this->fv($rate, $per - 1, $pmt, $pv, $type);
-
-        // If payments are at beginning, first period interest is 0
-        if ($type === 1) {
-            if ($per === 1) return 0.0;
-            $balance = $this->fv($rate, $per - 2, $pmt, $pv, $type);
-        }
-
-        return $balance * $rate;
-    }
-
-    private function ppmt(float $rate, int $per, int $nper, float $pv, float $fv = 0.0, int $type = 0): float
-    {
-        $pmt  = $this->pmt($rate, $nper, $pv, $fv, $type);
-        $ipmt = $this->ipmt($rate, $per, $nper, $pv, $fv, $type);
-        return $pmt - $ipmt;
-    }
 
 }
