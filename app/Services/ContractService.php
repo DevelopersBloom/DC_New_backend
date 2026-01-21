@@ -492,8 +492,8 @@ class   ContractService
 
         // IMPORTANT: take service fee from your field (rename to your real column)
         // Example: $contract->service_fee_rate (daily percent like interest_rate)
-        $feeDaily = (float) ($contract->service_fee_rate ?? 0); // <-- փոխիր ըստ քո DB-ի
-        $feeAnnualPercent = $feeDaily * 365;
+//        $feeDaily = (float) ($contract->service_fee_rate ?? 0); // <-- փոխիր ըստ քո DB-ի
+        $feeAnnualPercent = 24;
         $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
 
         // Excel All_interest = InterestRate + MonthlyFeeRate
