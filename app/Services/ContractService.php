@@ -432,7 +432,6 @@ class   ContractService
 
     private function excelPmt(float $rate, int $nper, float $pv, float $fv = 0.0, int $when = 0): float
     {
-        // Excel PMT (returns negative for payment)
         if (abs($rate) < 1e-12) {
             return -($pv + $fv) / $nper;
         }
@@ -444,7 +443,6 @@ class   ContractService
 
     private function excelFv(float $rate, int $nper, float $pmt, float $pv, int $when = 0): float
     {
-        // Excel FV
         if (abs($rate) < 1e-12) {
             return -($pv + $pmt * $nper);
         }
@@ -456,11 +454,8 @@ class   ContractService
 
     private function excelIpmt(float $rate, int $per, int $nper, float $pv, float $fv = 0.0, int $when = 0): float
     {
-        // Excel IPMT (returns negative)
         $pmt = $this->excelPmt($rate, $nper, $pv, $fv, $when);
 
-        // balance BEFORE payment at period 'per'
-        // (valid for when = 0)
         if ($when !== 0) {
             throw new \InvalidArgumentException('when != 0 not supported here (matches your Excel sheet).');
         }
@@ -474,7 +469,6 @@ class   ContractService
 
     private function excelPpmt(float $rate, int $per, int $nper, float $pv, float $fv = 0.0, int $when = 0): float
     {
-        // Excel PPMT (returns negative)
         $pmt  = $this->excelPmt($rate, $nper, $pv, $fv, $when);
         $ipmt = $this->excelIpmt($rate, $per, $nper, $pv, $fv, $when);
 
@@ -485,21 +479,14 @@ class   ContractService
         $loanAmount = (float) $contract->provided_amount;
         $months     = (int) $contract->deadline_days;
 
-        // 1) Convert your stored daily % to monthly decimal rate (Excel style)
-        // interest_rate is daily percent(?) => annual percent = *365 => monthly decimal = /100/12
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
-        // IMPORTANT: take service fee from your field (rename to your real column)
-        // Example: $contract->service_fee_rate (daily percent like interest_rate)
-//        $feeDaily = (float) ($contract->service_fee_rate ?? 0); // <-- փոխիր ըստ քո DB-ի
         $feeAnnualPercent = 24;
         $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
 
-        // Excel All_interest = InterestRate + MonthlyFeeRate
         $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
 
-        // 2) Excel MonthlyPayment = -PMT(all/12, n, pv)
         $monthlyPayment = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
 
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
@@ -513,7 +500,6 @@ class   ContractService
 
         for ($i = 1; $i <= $months; $i++) {
 
-            // 3) Excel columns (1:1)
             $beginingBalance = -$this->excelFv($allMonthlyRate, $i - 1, -$monthlyPayment, $loanAmount);
             $endingBalance   = -$this->excelFv($allMonthlyRate, $i,     -$monthlyPayment, $loanAmount);
 
@@ -523,7 +509,6 @@ class   ContractService
 
             $paymentDate = (clone $currentDate)->addMonths($i);
 
-            // keep your kasko logic
             $kaskoAmount = 0;
             $isLastMonth = ($i === $months);
             if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastMonth) {
@@ -535,18 +520,14 @@ class   ContractService
                 'date'               => $paymentDate->format('Y-m-d'),
                 'to_date'            => $paymentDate->format('Y-m-d'),
 
-                // Excel "Payment" column = MonthlyPayment (առանց fee)
                 'amount'             => round($monthlyPayment, 10),
 
-                // Excel Principal / Interest / Monthly fee columns
                 'principal_payment'  => round($principalPayment, 10),
                 'interest_payment'   => round($interestPayment, 10),
                 'service_fee_payment' => round($monthlyFeeAmount, 10),
 
-                // Excel Ending Balance
                 'remaining'          => round(max($endingBalance, 0), 10),
 
-                // keep your other fields
                 'kasko_amount'       => $kaskoAmount,
                 'pawnshop_id'        => $pawnshop_id,
                 'PGI_ID'             => $pgi_id,
@@ -554,7 +535,6 @@ class   ContractService
 
             $pgi_id++;
 
-            // If you want, keep schedule export compatible
             $schedule[] = [
                 'date'         => $paymentDate->format('Y-m-d'),
                 'payment'      => round($monthlyPayment, 3),
