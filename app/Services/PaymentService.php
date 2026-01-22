@@ -94,20 +94,45 @@ class PaymentService
         if ($amount >= $paymentFinal) {
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
             $contract->collected += $paymentFinal;
+            $interest_amount = $payment->amount;
             if ($contract->payment_type == 'amortized') {
                 $contract->left = max(0, $contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
-
+                $interest_amount = $payment->inetrest_payment;
             }
+
             $contract->save();
-            return ['interest_amount' => $paymentFinal,
+            return ['interest_amount' => $interest_amount,
                 'amount' => $amount - $paymentFinal];
         } else {
             $this->partiallyCompletePayment($payment, $amount, $deal_id);
             $contract->collected += $amount;
+
+            $paidDeal = DealAction::where('actionable_type', Payment::class)
+                ->where('actionable_id', $payment['id'])
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $paidAmount = $paidDeal?->history['new_paid'] ?? 0;
+
+            $remainingInterest = $payment->interest_payment - $paidAmount;
+
+            $isInterestPaid = $remainingInterest <= 0;
+
+            if ($contract->payment_type == 'amortized') {
+                if ($isInterestPaid) {
+                    $interest_amount = 0;
+                } else {
+                    $interest_amount = min($amount, $remainingInterest);
+                }
+            } else {
+                $interest_amount = $amount;
+            }
+
             $contract->save();
 
-            return ['interest_amount' => $amount,
+
+            return ['interest_amount' => $interest_amount,
                 'amount' => 0];
         }
     }
