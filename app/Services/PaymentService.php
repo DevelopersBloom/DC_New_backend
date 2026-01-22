@@ -91,6 +91,7 @@ class PaymentService
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
     {
         $paymentFinal = ($payment['amount'] + $payment['penalty']);
+        dd($amount,$paymentFinal,$amount>=$paymentFinal);
         if ($amount >= $paymentFinal) {
             $interest_amount = $payment->amount;
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
