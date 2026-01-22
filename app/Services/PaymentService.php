@@ -98,7 +98,18 @@ class PaymentService
             if ($contract->payment_type == 'amortized') {
                 $contract->left = max(0, $contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
-                $interest_amount = $payment->interest_payment;
+                $paidDeal = DealAction::where('actionable_type', Payment::class)
+                    ->where('actionable_id', $payment->id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $paidAmount = $paidDeal?->history['new_paid'] ?? 0;
+                $remainingInterest = $payment->interest_payment - $paidAmount;
+                $isInterestPaid = $remainingInterest <= 0;
+                if ($isInterestPaid) {
+                    $interest_amount = 0;
+                } else {
+                    $interest_amount = min($amount, $remainingInterest);
+                }
             }
 
             $contract->save();
