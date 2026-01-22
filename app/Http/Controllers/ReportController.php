@@ -66,7 +66,7 @@ class ReportController
 
     public function getV013Report(Request $request)
     {
-        return $this->downloadTemplate('v013.XLS', $request);
+        return $this->downloadTemplate('v13.XLS', $request);
     }
     public function getV17Report(Request $request)
     {
