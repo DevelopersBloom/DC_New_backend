@@ -92,9 +92,10 @@ class PaymentService
     {
         $paymentFinal = ($payment['amount'] + $payment['penalty']);
         if ($amount >= $paymentFinal) {
+            $interest_amount = $payment->amount;
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
             $contract->collected += $paymentFinal;
-            $interest_amount = $payment->amount;
+
             if ($contract->payment_type == 'amortized') {
                 $contract->left = max(0, $contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
