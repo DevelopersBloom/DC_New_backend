@@ -128,7 +128,7 @@ class PaymentService
             $remainingInterest = $payment->interest_payment - $paidAmount;
 
             $isInterestPaid = $remainingInterest <= 0;
-dd($paidDeal,$paidAmount,$remainingInterest,$isInterestPaid);
+dd($paidAmount,$remainingInterest,$isInterestPaid);
             if ($contract->payment_type == 'amortized') {
                 if ($isInterestPaid) {
                     $interest_amount = 0;
