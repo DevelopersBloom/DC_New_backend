@@ -31,6 +31,7 @@ class ContractRequest extends FormRequest
             'description' => 'nullable|string',
             'interest_rate' => 'required|numeric',
             'effective_rate' => 'nullable|numeric',
+            'fee_annual_rate' => 'nullable|numeric',
             'penalty' => 'required|numeric',
             'lump_rate' => 'required|numeric',
             'payment_type' => 'required|string',

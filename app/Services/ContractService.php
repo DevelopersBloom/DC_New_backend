@@ -272,6 +272,7 @@ class   ContractService
             'mother' => $data['mother'] ?? $data['provided_amount'], // Default to provided amount
             'interest_rate' => $data['interest_rate'],
             'effective_rate' => $data['effective_rate'] ?? null,
+            'fee_annual_rate' => $data['fee_annual_rate'] ?? 0,
             'penalty' => $data['penalty'],
             'deadline' => $deadline,
             'deadline_days' => $data['deadline'],
@@ -482,7 +483,7 @@ class   ContractService
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
-        $feeAnnualPercent = 24;
+        $feeAnnualPercent = (float) $contract->fee_annual_rate;
         $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
 
         $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;

@@ -25,6 +25,7 @@ return new class extends Migration
             $table->decimal('effective_rate',12, 10)->nullable();
             $table->decimal('effective_annual_rate', 15, 10)->nullable();
             $table->decimal('effective_daily_rate', 15, 10)->nullable();
+            $table->decimal('fee_annual_rate', 15, 10)->nullable();
             $table->enum('payment_type', ['classic', 'amortized'])->default('classic');
             $table->json('payment_schedule')->nullable();
             $table->decimal('penalty', 15, 6)->nullable();

@@ -73,7 +73,8 @@ class Contract extends Model
         'effective_daily_rate',
         'kasko_amount',
         'effective_rate_kasko',
-        'effective_rate_annual_kasko'
+        'effective_rate_annual_kasko',
+        'fee_annual_rate'
     ];
 
     protected $casts = [
@@ -93,6 +94,7 @@ class Contract extends Model
         'collected'             => 'decimal:2',
         'effective_rate_kasko'  => 'decimal:4',
         'kasko_amount'          => 'decimal:2',
+        'fee_annual_rate'       => 'decimal:4',
 
     ];
 
