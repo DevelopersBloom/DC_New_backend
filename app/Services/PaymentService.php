@@ -99,7 +99,7 @@ class PaymentService
                 $contract->left = max(0, $contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
                 $interest_amount = $payment->inetrest_payment;
-        dd($interest_amount,$payment->inetrest_payment);
+        dd($interest_amount,$payment,$payment->inetrest_payment);
             }
 
             $contract->save();
