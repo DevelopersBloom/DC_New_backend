@@ -102,8 +102,8 @@ class PaymentService
                     ->where('actionable_id', $payment->id)
                     ->orderBy('id', 'desc')
                     ->first();
-                $paidAmount = $paidDeal?->history['new_paid'] ?? 0;
-                $remainingInterest = $payment->interest_payment - $paidAmount;
+                $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
                 $isInterestPaid = $remainingInterest <= 0;
                 if ($isInterestPaid) {
                     $interest_amount = 0;
@@ -125,10 +125,9 @@ class PaymentService
                 ->first();
             $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
 
-            $remainingInterest = $payment->interest_payment - $paidAmount;
+            $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
 
             $isInterestPaid = $remainingInterest <= 0;
-dd($paidAmount,$remainingInterest,$isInterestPaid);
             if ($contract->payment_type == 'amortized') {
                 if ($isInterestPaid) {
                     $interest_amount = 0;
