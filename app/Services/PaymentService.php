@@ -123,7 +123,7 @@ class PaymentService
                 ->where('actionable_id', $payment->id)
                 ->orderBy('id', 'desc')
                 ->first();
-            $paidAmount = $paidDeal?->history['new_paid'] ?? 0;
+            $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
 
             $remainingInterest = $payment->interest_payment - $paidAmount;
 
