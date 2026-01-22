@@ -152,7 +152,7 @@ class ContractCalculationService
 
         if ($contract->payment_type === 'amortized') {
             $unearnedInterest = $futureInitialPayments
-                ->sum(fn($p) => max(0, (float)$p->interest_payment - (float)$p->amount));
+                ->sum(fn($p) => max(0, (float)$p->interest_payment - (float)$p->paid));
         } else {
             $unearnedInterest = $futureInitialPayments
                 ->sum(fn($p) => max(0, (float)($p->amount ?? 0)));
