@@ -109,10 +109,10 @@ class PaymentService
             $contract->collected += $amount;
 
             $paidDeal = DealAction::where('actionable_type', Payment::class)
-                ->where('actionable_id', $payment['id'])
+                ->where('actionable_id', $payment->id)
                 ->orderBy('id', 'desc')
                 ->first();
-
+dd($paidDeal,$payment->id, $paidDeal?->history['new_paid'] );
             $paidAmount = $paidDeal?->history['new_paid'] ?? 0;
 
             $remainingInterest = $payment->interest_payment - $paidAmount;
