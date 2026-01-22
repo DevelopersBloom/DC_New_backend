@@ -91,12 +91,11 @@ class PaymentService
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
     {
         $paymentFinal = ($payment['amount'] + $payment['penalty']);
-        dd($amount,$paymentFinal,$amount>=$paymentFinal);
         if ($amount >= $paymentFinal) {
             $interest_amount = $payment->amount;
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
             $contract->collected += $paymentFinal;
-
+dd($contract->payment_type == 'amortized',$interest_amount,$contract->payment_type);
             if ($contract->payment_type == 'amortized') {
                 $contract->left = max(0, $contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
