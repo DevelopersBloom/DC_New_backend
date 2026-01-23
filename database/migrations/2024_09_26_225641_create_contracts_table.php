@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
-            $table->integer('num')->nullable();
+            $table->string('num')->nullable();
             $table->foreignId('user_id')->nullable()->constrained('users');
             $table->unsignedBigInteger('client_id');
             $table->decimal('estimated_amount', 15, 6);
