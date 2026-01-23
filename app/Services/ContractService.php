@@ -258,7 +258,9 @@ class   ContractService
     }
     public function createContract(int $client_id, array $data, $deadline)
     {
-        $contractNumber = $this->generateContractNumber($data['category_id']);
+        $categoryId = $data['items'][0]['category_id'];
+
+        $contractNumber = $this->generateContractNumber($categoryId);
 
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
 
@@ -283,7 +285,7 @@ class   ContractService
             'closed_at' => $data['closed_at'] ?? null,
             'pawnshop_id' => auth()->user()->pawnshop_id ?? $data['pawnshop_id'],
             'user_id' => auth()->user()->id ?? 1,
-            'category_id' => $data['category_id'] ?? null,
+            'category_id' => $categoryId ,
             'payment_type' => $data['payment_type'],
 //            'kasko_amount' => $data['kasko_amount'] ?? null,
         ];
