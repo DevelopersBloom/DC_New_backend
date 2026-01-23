@@ -22,7 +22,7 @@ class CategoryAndRateSeeder extends Seeder
             ],
             [
                 'name' => 'electronics',
-                'title' => 'Տեխնիկա'
+                'title' => 'Անշարժ գույք'
             ],
             [
                 'name' => 'car',

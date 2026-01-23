@@ -258,13 +258,14 @@ class   ContractService
     }
     public function createContract(int $client_id, array $data, $deadline)
     {
-        $maxNum = Contract::max('num') ?? 0;
+        $contractNumber = $this->generateContractNumber($data['category_id']);
+
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
 
         $values = [
             'date' => $data['date'] ?? now()->toDateString(),
             'client_id' => $client_id,
-            'num' => $data['num'] ?? $maxNum + 1, //if import from excel , use data['num']
+            'num' => $contractNumber,
             'estimated_amount' => $data['estimated_amount'],
             'provided_amount' => $data['provided_amount'],
             'contract_amount' => $data['contract_amount'] ?? null,
@@ -289,6 +290,34 @@ class   ContractService
 
         // Create and return the contract
         return Contract::create($values);
+    }
+    private function generateContractNumber(int $categoryId): string
+    {
+
+        $map = [
+            1 => 'A', // մեքենա
+            2 => 'G', // ոսկի
+            3 => 'C', // սպառողական
+            4 => 'H', // անշարժ
+        ];
+
+        $prefix = $map[$categoryId] ?? 'X';
+
+        $year = now()->format('y');
+
+        $last = Contract::orderByDesc('id')->value('num');
+
+        if ($last) {
+            $lastNumber = (int) substr($last, -5);
+        } else {
+            $lastNumber = 0;
+        }
+
+        $newNumber = $lastNumber + 1;
+
+        $formatted = str_pad($newNumber, 5, '0', STR_PAD_LEFT);
+
+        return "{$prefix}-{$year}-{$formatted}";
     }
 
     public function createPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
