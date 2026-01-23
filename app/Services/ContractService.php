@@ -259,8 +259,7 @@ class   ContractService
     public function createContract(int $client_id, array $data, $deadline)
     {
 
-        dd($data,$data['items'][0]);
-        $categoryId = $data['items'][0]['category_id'];
+        $categoryId = $data['category_id'] ?? 1;
 
         $contractNumber = $this->generateContractNumber($categoryId);
 
