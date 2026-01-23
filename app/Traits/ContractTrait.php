@@ -38,14 +38,54 @@ trait ContractTrait
             ? ceil($lump_amount_original / 10) * 10
             : floor($lump_amount_original / 10) * 10;
 
-        if ($isOpen) {
-            $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING, $num, $pawnshop_id, $date,null);
-        }
-        $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'in', 'one_time_payment', $lump_amount, $cash, Contract::LUMP_PAYMENT, $num, $pawnshop_id, $date,Order::ONE_TIME_PAYMENT_FILTER);
-//        $this->createOrderHistoryEntry($contract,$client_id, $client_name, 'out', 'opening', $contract->provided_amount, $cash, Contract::CONTRACT_OPENING,$num,$pawnshop_id,$date);
-        return $this->createOrderHistoryEntry($contract, $client_id, $client_name, 'out', 'mother_payment', $contract->provided_amount, $cash, Contract::MOTHER_AMOUNT_PAYMENT, $num, $pawnshop_id, $date,Order::MOTHER_PAYMENT);
-    }
+        $lastNumber = $this->getLastOrderNumber();
 
+
+        if ($isOpen) {
+            $numOutOpening = $this->formatOrderNumber(++$lastNumber, 'out', $cash);
+            $this->createOrderHistoryEntry(
+                $contract, $client_id, $client_name,
+                'out', 'opening',
+                $contract->provided_amount, $cash,
+                Contract::CONTRACT_OPENING,
+                $numOutOpening, $pawnshop_id, $date, null
+            );
+        }
+        $numInOneTime = $this->formatOrderNumber(++$lastNumber, 'in', $cash);
+        $this->createOrderHistoryEntry(
+            $contract, $client_id, $client_name,
+            'in', 'one_time_payment',
+            $lump_amount, $cash,
+            Contract::LUMP_PAYMENT,
+            $numInOneTime, $pawnshop_id, $date,
+            Order::ONE_TIME_PAYMENT_FILTER
+        );
+
+        $numOutMother = $this->formatOrderNumber(++$lastNumber, 'out', $cash);
+        return $this->createOrderHistoryEntry(
+            $contract, $client_id, $client_name,
+            'out', 'mother_payment',
+            $contract->provided_amount, $cash,
+            Contract::MOTHER_AMOUNT_PAYMENT,
+            $numOutMother, $pawnshop_id, $date,
+            Order::MOTHER_PAYMENT
+        );
+    }
+    private function getLastOrderNumber(): int
+    {
+        $last = Order::orderByDesc('id')->value('num');
+
+        return $last ? (int) preg_replace('/\D/', '', $last) : 0;
+    }
+    private function formatOrderNumber(int $number, string $direction, bool $isCash): string
+    {
+        $prefix = match($direction) {
+            'in'  => $isCash ? 'IN' : 'T-IN',
+            'out' => $isCash ? 'OUT' : 'T-OUT',
+        };
+
+        return $prefix . '-' . str_pad($number, 6, '0', STR_PAD_LEFT);
+    }
     private function createOrderAndHistoryEntry($contract, $client_id, $client_name, $cash, $category_id, $num = null, $pawnshop_id = null, $date = null)
     {
         $this->createOrderHistoryEntry(
@@ -57,11 +97,56 @@ trait ContractTrait
     /**
      * Helper method to create individual order and history entries
      */
+//    private function createOrderHistoryEntry($contract, $client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose, $num = null, $pawnshop_id, $date = null,$filter=null)
+//    {
+//        $order_id = $this->getOrder($cash, $type, $pawnshop_id);
+//        if ($historyTypeName !== 'opening') {
+//            // Create an order
+//            $order = Order::create([
+//                'num' => $num,
+//                'contract_id' => $contract->id,
+//                'type' => $type,
+//                'title' => 'Օրդեր',
+//                'pawnshop_id' => auth()->user()->pawnshop_id ?? $pawnshop_id,
+//                'order' => $order_id,
+//                'amount' => $amount,
+//                'rep_id' => '2211',
+//                'date' => $date ?? \Illuminate\Support\Carbon::now()->format('Y-m-d'),
+//                'client_name' => $client_name,
+//                'purpose' => $purpose,
+//                'cash' => $cash,
+//                'filter' => $filter ?? null
+//            ]);
+//        }
+//        $order_id = $order->id ?? null;
+//        // Add history for the order
+//        $historyType = HistoryType::where('name', $historyTypeName)->first();
+//        $history = History::create([
+//            'type_id' => $historyType->id,
+//            'contract_id' => $contract->id,
+//            'user_id' => auth()->user()->id ?? null,
+//            'order_id' => $order_id,
+//            'date' => $date ?? Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+//            'amount' => $amount,
+//        ]);
+//        if ($historyTypeName !== 'opening') {
+//            // Create a deal for the order
+//            $deal = $this->createDeal($amount, null, null, null, null, $type, $contract->id, $client_id, $order_id, $cash, null, $purpose, 'contract', $history->id, null, null, $pawnshop_id, $date);
+//            return $deal->id;
+//        }
+//        return 0;
+//    }
     private function createOrderHistoryEntry($contract, $client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose, $num = null, $pawnshop_id, $date = null,$filter=null)
     {
-        $order_id = $this->getOrder($cash, $type, $pawnshop_id);
         if ($historyTypeName !== 'opening') {
-            // Create an order
+            $lastNumber = $this->getLastOrderNumber();
+
+            $num = $this->formatOrderNumber(++$lastNumber, $type, $cash);
+        }
+
+        $order_id = $this->getOrder($cash, $type, $pawnshop_id);
+
+        if ($historyTypeName !== 'opening') {
             $order = Order::create([
                 'num' => $num,
                 'contract_id' => $contract->id,
@@ -78,8 +163,9 @@ trait ContractTrait
                 'filter' => $filter ?? null
             ]);
         }
+
         $order_id = $order->id ?? null;
-        // Add history for the order
+
         $historyType = HistoryType::where('name', $historyTypeName)->first();
         $history = History::create([
             'type_id' => $historyType->id,
@@ -89,11 +175,28 @@ trait ContractTrait
             'date' => $date ?? Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
             'amount' => $amount,
         ]);
+
         if ($historyTypeName !== 'opening') {
             // Create a deal for the order
-            $deal = $this->createDeal($amount, null, null, null, null, $type, $contract->id, $client_id, $order_id, $cash, null, $purpose, 'contract', $history->id, null, null, $pawnshop_id, $date);
+            $deal = $this->createDeal(
+                $amount,
+                null, null, null, null,
+                $type,
+                $contract->id,
+                $client_id,
+                $order_id,
+                $cash,
+                null,
+                $purpose,
+                'contract',
+                $history->id,
+                null, null,
+                $pawnshop_id,
+                $date
+            );
             return $deal->id;
         }
+
         return 0;
     }
 

@@ -31,7 +31,7 @@ return new class extends Migration
                 ->constrained('clients')
                 ->nullOnDelete();
             $table->boolean('is_draft')->default(false);
-            $table->unsignedInteger('num');
+            $table->string('num')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
