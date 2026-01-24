@@ -59,29 +59,30 @@ class ContractCalculationService
     }
 
     //    Տոկոսագումարը, որը հաշվարկվում է օրական
-    public function calculateDailyRates(Contract $contract): float
+    public function calculateDailyRates(Contract $contract,$calcToday): void
     {
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->first();
+        $contract->daily_interest_sum = 0;
+        $contract->daily_effective_sum = 0;
 
-        if (!$journal) {
-            return 0;
+        if ($journal) {
+            $dailyInterestSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                ->where('journalable_id', $journal->id)
+                ->where('document_type',DocumentJournal::INTEREST_RATE_AMOUNT)
+                ->sum('amount_amd');
+
+            $dailyEffectiveSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                ->where('journalable_id', $journal->id)
+                ->where('document_type',DocumentJournal::EFFECTIVE_RATE_AMOUNT)
+                ->sum('amount_amd');
+
+            $contract->daily_interest_sum = $dailyInterestSum;
+            $contract->daily_effective_sum =  $dailyEffectiveSum;
         }
 
-        $dailyInterestSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
-            ->where('journalable_id', $journal->id)
-            ->where('document_type',DocumentJournal::INTEREST_RATE_AMOUNT)
-            ->sum('amount_amd');
-
-        $dailyEffectiveSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
-            ->where('journalable_id', $journal->id)
-            ->where('document_type',DocumentJournal::EFFECTIVE_RATE_AMOUNT)
-            ->sum('amount_amd');
-
-         $contract->daily_interest_sum = $dailyInterestSum;
-         $contract->daily_effective_sum =  $dailyEffectiveSum;
     }
 
 
