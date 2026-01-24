@@ -33,7 +33,7 @@ class ContractDetailResource extends JsonResource
                 'provided_amount'  => $this->provided_amount,
                 'contract_amount'  => $this->contract_amount,
                 'interest_rate'    => $this->interest_rate,
-                'interest_annual_rate' => pow(1 + $this->interest_rate, 365) - 1,
+                'interest_annual_rate' => $this->interest_rate * 365,
                 'effective_rate'   => $this->effective_rate,
                 'effective_annual_rate' => $this->effective_annual_rate,
                 'fee_annual_rate'  => $this->fee_annual_rate,
