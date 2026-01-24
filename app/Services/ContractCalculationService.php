@@ -46,13 +46,42 @@ class ContractCalculationService
         $this->calculateOverdueData($contract, $calcToday);
 
         // 6. Պահուստ և Ռիսկի Կշիռ
-        $this->calculateClassificationData($contract,$calcToday);
+        $this->calculateClassificationData($contract, $calcToday);
 
         // 7. Տրամադրման/Մարման Օրեր
         $this->calculateDaysData($contract, $calcToday);
 
+        // 8. Տոկոսագումարը, որը հաշվարկվում է օրական
+        $this->calculateDailyRates($contract,$calcToday);
+
 
         return $contract;
+    }
+
+    //    Տոկոսագումարը, որը հաշվարկվում է օրական
+    public function calculateDailyRates(Contract $contract): float
+    {
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->first();
+
+        if (!$journal) {
+            return 0;
+        }
+
+        $dailyInterestSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
+            ->where('journalable_id', $journal->id)
+            ->where('document_type',DocumentJournal::INTEREST_RATE_AMOUNT)
+            ->sum('amount_amd');
+
+        $dailyEffectiveSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
+            ->where('journalable_id', $journal->id)
+            ->where('document_type',DocumentJournal::EFFECTIVE_RATE_AMOUNT)
+            ->sum('amount_amd');
+
+         $contract->daily_interest_sum = $dailyInterestSum;
+         $contract->daily_effective_sum =  $dailyEffectiveSum;
     }
 
 
