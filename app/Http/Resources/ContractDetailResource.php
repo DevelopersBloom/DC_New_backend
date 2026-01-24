@@ -40,7 +40,7 @@ class ContractDetailResource extends JsonResource
                 'lump_rate'        => $this->lump_rate,
                 'description'      => $this->description,
                 'status'           => $this->status,
-                'effective_rate'    => $this->effectiv_daily_rate,
+                'effective_rate'    => $this->effective_daily_rate,
                 'kasko_amount'     => $this->kasko_amount,
                 'effective_rate_kasko' => $this->effective_rate_kasko,
                 'effective_annual_rate_kasko' => $this->effective_annual_rate_kasko,
