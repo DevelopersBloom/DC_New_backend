@@ -168,6 +168,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
         Route::get('/files', [FileController::class, 'index']);
         Route::post('/upload-file', [FileController::class, 'upload']);
+        Route::get('/files/{id}/download', [FileController::class, 'download']);
 
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);

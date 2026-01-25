@@ -27,7 +27,9 @@ class FileController extends Controller
     use CalculationTrait;
     public function index()
     {
-        $files = ModelsFile::orderBy('created_at', 'desc')->get();
+        $files = ModelsFile::orderBy('created_at', 'desc')
+            ->select('id', 'name', 'path', 'original_name')
+            ->get();
 
         $files->transform(function ($file) {
             $file->url = asset('storage/' . $file->path);
@@ -39,6 +41,19 @@ class FileController extends Controller
         ]);
     }
 
+    public function download($id)
+    {
+        $file = ModelsFile::findOrFail($id);
+
+        if (!$file->path || !Storage::disk('public')->exists($file->path)) {
+            abort(404, 'File not found');
+        }
+
+        return Storage::disk('public')->download(
+            $file->path,
+            $file->original_name
+        );
+    }
     public function upload(Request $request)
     {
         $request->validate([
