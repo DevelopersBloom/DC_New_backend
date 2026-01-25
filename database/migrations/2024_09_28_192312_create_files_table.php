@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('file_type')->nullable();
             $table->unsignedBigInteger('fileable_id')->nullable(); // ID of the related model
-            $table->string('fileable_type');
+            $table->string('fileable_type')->nullable();
 
             $table->string('name');
             $table->string('type');
