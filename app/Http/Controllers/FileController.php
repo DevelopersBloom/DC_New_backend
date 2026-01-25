@@ -64,7 +64,7 @@ class FileController extends Controller
             'name' => $request->name,
             'original_name' => $originalName,
             'type' => $uploadedFile->getClientOriginalExtension(),
-            'doc_type' => $request->doc_type ?? null,
+            'doc_type' => $request->doc_type ?? 'regular',
             'path' => $path,
         ]);
 
