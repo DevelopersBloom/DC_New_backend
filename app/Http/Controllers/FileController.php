@@ -21,13 +21,13 @@ use PhpOffice\PhpWord\Settings;
 use PhpOffice\PhpWord\TemplateProcessor;
 use ZipArchive;
 use ZipStream\File;
-
+use App\Models\File as ModelsFile;
 class FileController extends Controller
 {
     use CalculationTrait;
     public function index()
     {
-        $files = File::orderBy('created_at', 'desc')->get();
+        $files = ModelsFile::orderBy('created_at', 'desc')->get();
 
         $files->transform(function ($file) {
             $file->url = asset('storage/' . $file->path);
@@ -57,7 +57,7 @@ class FileController extends Controller
 
         $path = $uploadedFile->storeAs('files', $storedName, 'public');
 
-        File::create([
+        ModelsFile::create([
             'file_type' => $uploadedFile->getClientMimeType(),
             'fileable_id' => $request->fileable_id,
             'fileable_type' => $request->fileable_type,
