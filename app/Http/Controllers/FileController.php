@@ -12,6 +12,7 @@ use App\Traits\FileTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpWord\Exception\CopyFileException;
 use PhpOffice\PhpWord\Exception\CreateTemporaryFileException;
@@ -24,156 +25,52 @@ use ZipStream\File;
 class FileController extends Controller
 {
     use CalculationTrait;
-
-    public function downloadContractOld($id)
+    public function index()
     {
-        $contract = Contract::where('id', $id)
-            ->with(['client', 'items', 'pawnshop', 'payments'])
-            ->firstOrFail();
-        $hasCar = $contract->items->contains(function ($item) {
-            return $item->category->name === 'car';
+        $files = File::orderBy('created_at', 'desc')->get();
+
+        $files->transform(function ($file) {
+            $file->url = asset('storage/' . $file->path);
+            return $file;
         });
-        $templateFile = $hasCar ? 'contract_bond_car_template.docx' : 'contract_bond_template.docx';
-        $templateProcessor = new TemplateProcessor(public_path('/files/' . $templateFile));        $pawnshop = $contract->pawnshop;
 
-        $client = $contract->client;
-        $client_name = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
-        $client_numbers = $client->phone;
-        if ($client->additional_phone) {
-            $client_numbers .= ', ' . $client->additional_phone;
-        }  $pawnshop_numbers = $pawnshop->telephone;
-        if ($pawnshop->phone1) {
-            $pawnshop_numbers .= ', ' . $pawnshop->phone1;
-        }
-        if ($pawnshop->phone2) {
-            $pawnshop_numbers .= ', ' . $pawnshop->phone2;
-        }
-
-        $yearly_rate = $contract?->category?->name == 'electronics' ? 158.39 : $contract->interest_rate * 365;
-        $cash = $contract->provided_amount > 20000 ? 'անկանխիկ' : 'կանխիկ';
-        $o_t_p = $contract->provided_amount >= 400000 ? '2' : '2,5';
-        $rate_percentage = 0;
-
-        if ($contract->estimated_amount > 0) {
-            $rate_percentage = ($contract->provided_amount / $contract->estimated_amount) * 100;
-            $rate_percentage = round($rate_percentage, 2);
-        }
-
-        $templateProcessor->setValues([
-            'city' => $pawnshop->city,
-            'date' => Carbon::parse($contract->date)->format('d.m.Y'),
-            'license' => $pawnshop->license,
-            'address' => $pawnshop->address,
-            'representative' => $pawnshop->representative,
-            'client_name' => $client_name,
-            'client_dob' => Carbon::parse($client->date_of_birth)->format('d.m.Y'),
-            'client_passport' => $client->passport_series,
-            'client_given' => $client->passport_issued,
-            'client_address' => ($client->country === 'Armenia' ? 'Հայաստան' : $client->country)
-                . ', ' . $client->city . ', ' . $client->street,
-            'client_numbers' => $client_numbers,
-            'given' => $this->makeMoney((int) $contract->provided_amount),
-            'rate_percentage' => $rate_percentage,
-            'given_text' => $this->numberToText($contract->mother),
-            'contract_id' => $contract->num,
-            'deadline' => Carbon::parse($contract->deadline)->format('d.m.Y'),
-//            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date )),
-            'dl_ds' => Carbon::parse($contract->deadline)->diffInDays(Carbon::parse($contract->date)), //should include start date
-            'dl_dt' => Carbon::parse($contract->deadline)->format('d'),
-            'psh_numbers' => $pawnshop_numbers,
-            'psh_mail' => $pawnshop->email,
-            'psh_bank' => $pawnshop->bank,
-            'psh_card' => preg_replace('/(\d{4})(?=\d)/', '$1 ', $pawnshop->card_account_number),
-            'client_bank' => $client->bank_name,
-            'client_card' => preg_replace('/(\d{4})(?=\d)/', '$1 ', $client->card_number),
-            'rate' => $contract->interest_rate,
-            'yr_rate' => $yearly_rate,
-            'penalty' => $contract->penalty,
-            'o_t_p' => $o_t_p,
-            'cash' => $cash,
-
+        return response()->json([
+            'data' => $files
         ]);
-        $table_values = [];
-        $car_values = [];
+    }
 
-        foreach ($contract->items as $item) {
-            if ($item->category->name === 'car') {
-                $itemName =  $item->category->title . ($item->model ? ', ' . $item->model : '') . ($contract->description ? '. ' . $contract->description : '');
-                $car_values = [
-                    'item' => $itemName,
-                    'desc' => $contract->description,
-                    'i_c' => $item->car_make,
-                    'i_m' => $item->model,
-                    'i_man' => $item->manufacture,
-                    'i_col' => $item->color,
-                    'i_l' => $item->license_plate,
-                    'i_i' => $item->identification,
-                    'i_p' => $item->power,
-                    'i_r' => $item->registration,
-                    'i_o' => $item->ownership,
-                    'i_iss' => $item->issued_by,
-                    'i_d' => Carbon::parse($item->date_of_issuance)->format('d.m.Y'),
-                    'price' => $item->estimated_amount ? $this->makeMoney((int) $item->estimated_amount) :
-                        $this->makeMoney((int) $contract->estimated_amount),
+    public function upload(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240',
+            'name' => 'required|string|max:255',
+            'fileable_id' => 'nullable|integer',
+            'fileable_type' => 'nullable|string',
+        ]);
 
-                ];
-            } else {
-                $itemName =  $item->category->title . ($item->subcategory ? ', ' . $item->subcategory : '')
-                    . ($item->model ? ', ' . $item->model : '') . ($item->sn ? ', ' . $item->sn : '')
-                    . ($item->imei ? ', ' . $item->imei : '') . ($contract->description ? '. ' . $contract->description : '');
-                $table_values[] = [
-                    'item' => $itemName,
-                    'desc' => $contract->description,
-                    'i_t' => $item->hallmark,
-                    'i_w' => $item->weight,
-                    'i_cw' => $item->clear_weight,
-                    'price' => $item->estimated_amount ? $this->makeMoney((int) $item->estimated_amount) :
-                        $this->makeMoney((int) $contract->estimated_amount),
-                ];
-            }
-        }
-        if ($hasCar) {
-            $templateProcessor->setValues($car_values);
-        } else {
-            $templateProcessor->cloneRowAndSetValues('item', $table_values);
-        }
-        $payment_values = [];
-        $i = 1;
 
-        if (!empty($contract->payment_schedule) && is_array($contract->payment_schedule)) {
-            foreach ($contract->payment_schedule as $payment) {
-                $payment_values[] = [
-                    'p_n' => $i . '.',
-                    'p_d' => Carbon::parse($payment['date'])->format('d.m.Y'),
-                    'p_m' => $payment['amount'],
-                    'p_text' => $this->numberToText($payment['amount'])
-                ];
-                $i++;
-            }
-        } else {
-            foreach ($contract->payments as $payment) {
-                $payment_values[] = [
-                    'p_n' => $i . '.',
-                    'p_d' => Carbon::parse($payment->date)->format('d.m.Y'),
-                    'p_m' => $payment->amount,
-                    'p_text' => $this->numberToText($payment->amount)
-                ];
-                $i++;
-            }
-        }
+        $uploadedFile = $request->file('file');
 
-        $templateProcessor->cloneRowAndSetValues('p_n', $payment_values);
+        $originalName = $uploadedFile->getClientOriginalName();
 
-        $filename = time() . 'contract_bond.docx';
-        $pathToSave = public_path('/files/download/' . $filename);
-        $templateProcessor->saveAs($pathToSave);
-        $downloadName = $contract->num . '_Գրավատոմս_և_Պայմանագիր.docx';
-        $headers = [
-            'Content-Type' => 'application/vnd.malformations-office document.multiprocessing.document',
-            'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
-        ];
-        return response()->download($pathToSave, $downloadName)->deleteFileAfterSend(true);
+        $storedName = Str::uuid() . '.' . $uploadedFile->getClientOriginalExtension();
 
+        $path = $uploadedFile->storeAs('files', $storedName, 'public');
+
+        File::create([
+            'file_type' => $uploadedFile->getClientMimeType(),
+            'fileable_id' => $request->fileable_id,
+            'fileable_type' => $request->fileable_type,
+            'name' => $request->name,
+            'original_name' => $originalName,
+            'type' => $uploadedFile->getClientOriginalExtension(),
+            'doc_type' => $request->doc_type ?? null,
+            'path' => $path,
+        ]);
+
+        return response()->json([
+            'message' => 'File uploaded successfully',
+        ]);
     }
 
     public function downloadContract($id)
@@ -219,7 +116,7 @@ class FileController extends Controller
             'client_dob' => Carbon::parse($client->date_of_birth)->format('d.m.Y'),
             'client_passport' => $client->passport_series,
             'client_given' => $client->passport_issued,
-            'client_address' => ($client->country === 'Armenia' ? 'Հայաստան' : $client->country) . ', ' . $client->                                                         city . ', ' . $client->street,
+            'client_address' => ($client->country === 'Armenia' ? 'Հայաստան' : $client->country) . ', ' . $client->city . ', ' . $client->street,
             'client_numbers' => $client_numbers,
             'given' => $this->makeMoney((int)$contract->provided_amount),
             'rate_percentage' => $rate_percentage,
@@ -595,34 +492,6 @@ class FileController extends Controller
         return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
 
-    public function downloadOrderOutOld($id)
-    {
-        $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template.docx'));
-        $order = Order::where('id', $id)->first();
-        $contract = Contract::where('id', $order->contract_id)->first();
-        $templateProcessor->setValues([
-            'amount' => $this->makeMoney($order->amount),
-            'rep_id' => $order->rep_id,
-            'order' => $order->order,
-            'date' => Carbon::parse($order->date)->format('d.m.Y'),
-            'receiver' => $order->receiver,
-            'contract_id' => $contract->ADB_ID,
-            'cl_dob' => $contract->dob,
-            'cl_pas' => $contract->passport,
-            'cl_giv' => $contract->passport_given,
-            'amount_text' => $this->numberToText($order->amount),
-        ]);
-        $filename = time() . 'order_out.docx';
-        $pathToSave = public_path('/files/download/' . $filename);
-        $templateProcessor->saveAs($pathToSave);
-        $downloadName = $order->order . ' Ելքի Օրդեր.docx';
-        $headers = [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Disposition' => 'attachment; filename=' . $downloadName,
-        ];
-        // Return the document as a response and delete the temporary file after sending
-        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
-    }
     public function downloadOrderOut($id)
     {
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template.docx'));
@@ -656,29 +525,7 @@ class FileController extends Controller
         return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
     }
 
-    public function downloadCostOrderOut($id)
-    {
-        $templateProcessor = new TemplateProcessor(public_path('/files/cost_out_template.docx'));
-        $order = Order::where('id', $id)->first();
-        $templateProcessor->setValues([
-            'amount' => $this->makeMoney($order->amount),
-            'receiver' => $order->receiver,
-            'order' => $order->order,
-            'date' => Carbon::parse($order->date)->format('d.m.Y'),
-            'purpose' => $order->purpose,
-            'amount_text' => $this->numberToText($order->amount),
-        ]);
-        $filename = time() . 'cost_order_out.docx';
-        $pathToSave = public_path('/files/download/' . $filename);
-        $templateProcessor->saveAs($pathToSave);
-        $downloadName = $order->order . ' Ծախս.docx';
-        $headers = [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Disposition' => 'attachment; filename=' . $downloadName,
-        ];
-        // Return the document as a response and delete the temporary file after sending
-        return response()->file($pathToSave, $headers)->deleteFileAfterSend(true);
-    }
+
     public function downloadCostOrderIn($id)
     {
         $templateProcessor = new TemplateProcessor(public_path('/files/cost_in_template.docx'));

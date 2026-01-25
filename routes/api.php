@@ -165,6 +165,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::put('/journal/{journal}', [DocumentJournalController::class, 'update']);
 
         Route::get('/transactions/reports', [\App\Http\Controllers\ReportV01Controller::class]);
+
+        Route::get('/files', [FileController::class, 'index']);
+        Route::post('/upload-file', [FileController::class, 'upload']);
+
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search-partner', [ClientControllerNew::class, 'searchPartner']);

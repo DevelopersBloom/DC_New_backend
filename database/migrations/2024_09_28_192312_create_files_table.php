@@ -15,14 +15,15 @@ return new class extends Migration
     {
         Schema::create('files', function (Blueprint $table) {
             $table->id();
-            $table->string('file_type');
-            $table->unsignedBigInteger('fileable_id'); // ID of the related model
+            $table->string('file_type')->nullable();
+            $table->unsignedBigInteger('fileable_id')->nullable(); // ID of the related model
             $table->string('fileable_type');
 
             $table->string('name');
             $table->string('type');
             $table->string('original_name');
             $table->string('doc_type')->default('regular');
+            $table->string('path')->nullable();
 
             $table->timestamps();
         });
