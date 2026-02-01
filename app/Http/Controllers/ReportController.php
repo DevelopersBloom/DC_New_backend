@@ -7,6 +7,7 @@ use App\Exports\V03Export;
 use App\Exports\V06Export;
 use App\Exports\V07Export;
 use App\Exports\V17Export;
+use App\Services\ActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -14,11 +15,21 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController
 {
+    protected ActivityService $activity;
+    public function __construct(ActivityService $activity)
+    {
+        $this->activity = $activity;
+    }
     public function getFirstReport(Request $request)
     {
         $to = $request->query('to');
 
         $filename = 'Հաշվետվություն' . ($to ? "_to_{$to}" : '') . '.xlsx';
+
+        $this->activity->log(
+            'export_first_report',
+            "Export {$filename}"
+        );
 
         return Excel::download(new ReportsJournalExport($to), $filename);
     }
@@ -30,6 +41,10 @@ class ReportController
             'to'   => 'required|date',
         ]);
 
+        $this->activity->log(
+            'export_v03',
+            "Export V03 from {$request->from} to {$request->to}"
+        );
         $export = new V03Export();
 
         $path = $export->export($request->from, $request->to);
@@ -45,6 +60,11 @@ class ReportController
             'to'   => 'required|date',
         ]);
 
+        $this->activity->log(
+            'export_v06',
+            "Export V06 from {$request->from} to {$request->to}"
+        );
+
         $export = new V06Export();
 
         $path = $export->export($request->from, $request->to);
@@ -57,6 +77,10 @@ class ReportController
             'from' => 'required|date',
             'to'   => 'required|date',
         ]);
+        $this->activity->log(
+            'export_v07',
+            "Export V07 from {$request->from} to {$request->to}"
+        );
 
         $export = new V07Export();
         $path = $export->export($request->from, $request->to);
@@ -77,10 +101,6 @@ class ReportController
 
 //        $from = now()->subDays(7)->startOfDay();
 //        $to   = now()->endOfDay();
-        $request->validate([
-            'from' => 'nullable|date',
-            'to'   => 'nullable|date'
-        ]);
 
         $from = $request->from
             ? Carbon::parse($request->from)->startOfDay()
@@ -89,6 +109,10 @@ class ReportController
         $to = $request->to
             ? Carbon::parse($request->to)->endOfDay()
             : now()->endOfDay();
+        $this->activity->log(
+            'export_v17',
+            "Export V17 from {$from} to {$to}"
+        );
 
         $export = new V17Export();
         $file = $export->export($from, $to);
@@ -105,6 +129,10 @@ class ReportController
         $from = $this->sanitizeDatePart($from);
         $to   = $this->sanitizeDatePart($to);
 
+        $this->activity->log(
+            'download_template',
+            "Download template {$templateFile} from {$from} to {$to}"
+        );
         $suffix = $this->buildSuffix($from, $to);
 
         $absPath = base_path($templateFile);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\DocumentsJournalExport;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
+use App\Services\ActivityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,12 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class DocumentJournalController
 {
+    protected ActivityService $activity;
+
+    public function __construct(ActivityService $activity)
+    {
+        $this->activity = $activity;
+    }
     public function index(Request $request): JsonResponse
     {
         $from   = $request->query('from_date');
@@ -219,7 +226,10 @@ class DocumentJournalController
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
         $type = $request->query('document_type');
-
+        $this->activity->log(
+            'export_documents_journal',
+            "Export documents journal from {$from} to {$to}, type {$type}"
+        );
         return Excel::download(
             new DocumentsJournalExport($from, $to, $type),
             'ՓաստաթղթերիՄատյան.xlsx'
