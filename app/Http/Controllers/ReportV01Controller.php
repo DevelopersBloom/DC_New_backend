@@ -216,6 +216,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ActivityService;
+use App\Services\IncomeExpenseMonthlyReport;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -233,12 +235,14 @@ class ReportV01Controller extends Controller
     protected ?string $to;
     protected array $summary = [];
 
-    public function __construct(?string $to = null)
+    protected ActivityService $activity;
+
+    public function __construct(ActivityService $activity,?string $to = null)
     {
+        $this->activity = $activity;
         $this->to = $to;
         $this->summary = [];
     }
-
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
         $toStr = $request->query('to') ?? now()->format('Y-m-d');
@@ -247,7 +251,10 @@ class ReportV01Controller extends Controller
         if (!$toStr) {
             return response()->json(['message' => 'Provide ?to=YYYY-MM-DD'], 422);
         }
-
+        $this->activity->log(
+            'export_v01',
+            "Export V01 journal to {$toStr}"
+        );
         $rawRows = $this->balancesRowsQuery($toStr)->get();
         $rows = $this->transformToReport1($rawRows)->values();
         $this->summary = $this->balancesSummary($toStr) ?? [];

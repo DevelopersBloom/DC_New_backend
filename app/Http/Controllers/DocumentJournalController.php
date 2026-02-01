@@ -228,7 +228,7 @@ class DocumentJournalController
         $type = $request->query('document_type');
 
         $this->activity->log(
-            'export_documents_journal',
+            'export_v01',
             "Export V01 to {$to}"
         );
         return Excel::download(

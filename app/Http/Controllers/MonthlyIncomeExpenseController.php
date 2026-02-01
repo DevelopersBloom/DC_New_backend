@@ -187,7 +187,7 @@ class MonthlyIncomeExpenseController extends Controller
         }
 
         $this->activity->log(
-            'export_documents_journal',
+            'export_v05',
             "Export V05 journal from{$from} to {$to}"
         );
         if ($from->gt($to)) {
