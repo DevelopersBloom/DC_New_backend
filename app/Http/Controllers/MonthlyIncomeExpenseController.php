@@ -150,6 +150,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ActivityService;
 use App\Services\IncomeExpenseMonthlyReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -162,10 +163,13 @@ use Carbon\Carbon;
 
 class MonthlyIncomeExpenseController extends Controller
 {
-    public function __construct(private IncomeExpenseMonthlyReport $svc)
-    {
-    }
 
+    protected ActivityService $activity;
+
+    public function __construct(private IncomeExpenseMonthlyReport $svc,ActivityService $activity)
+    {
+        $this->activity = $activity;
+    }
     public function __invoke(Request $request): Response|BinaryFileResponse
     {
         $fromStr = $request->query('from');
@@ -182,6 +186,10 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => 'Invalid date format. Use YYYY-MM-DD'], 422);
         }
 
+        $this->activity->log(
+            'export_documents_journal',
+            "Export V05 journal from{$from} to {$to}"
+        );
         if ($from->gt($to)) {
             return response()->json(['message' => '`from` must be <= `to`'], 422);
         }

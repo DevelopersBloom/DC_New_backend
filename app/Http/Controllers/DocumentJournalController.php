@@ -226,9 +226,10 @@ class DocumentJournalController
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
         $type = $request->query('document_type');
+
         $this->activity->log(
             'export_documents_journal',
-            "Export documents journal from {$from} to {$to}, type {$type}"
+            "Export V01 to {$to}"
         );
         return Excel::download(
             new DocumentsJournalExport($from, $to, $type),
