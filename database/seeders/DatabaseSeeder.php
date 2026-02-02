@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
         ]);
         $this->call(CurrencySeeder::class);
         $this->call(ClientClassificationSeeder::class);
+        $this->call(ClientSeeder::class);
 //        $this->call(ChartOfAccountsSeeder::class);
 
     }
