@@ -595,6 +595,11 @@ class ContractControllerNew extends Controller
 
     public function exportContracts()
     {
+        $this->activityService->log(
+            'export_contracts',
+            "Export all contracts",
+        );
+
         return Excel::download(new ContractsExport(), 'contracts_export.xlsx');
     }
 
@@ -849,7 +854,10 @@ class ContractControllerNew extends Controller
         $calcToday = $calculationDateInput
             ? Carbon::parse($calculationDateInput, 'Asia/Yerevan')->startOfDay()
             : Carbon::now('Asia/Yerevan')->startOfDay();
-
+        $this->activityService->log(
+            'summary_contracts',
+            "Summary contracts to {$calcToday}"
+        );
         $contracts = Contract::with([
             'client.classification',
             'payments',

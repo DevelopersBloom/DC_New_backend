@@ -7,6 +7,7 @@ use App\Exports\DealsExport;
 use App\Exports\PaymentsExport;
 use App\Models\Contract;
 use App\Models\Order;
+use App\Services\ActivityService;
 use App\Traits\CalculationTrait;
 use App\Traits\FileTrait;
 use Carbon\Carbon;
@@ -25,6 +26,12 @@ use App\Models\File as ModelsFile;
 class FileController extends Controller
 {
     use CalculationTrait;
+    protected ActivityService $activity;
+
+    public function __construct(ActivityService $activity)
+    {
+        $this->activity = $activity;
+    }
     public function index()
     {
         $files = ModelsFile::orderBy('created_at', 'desc')
@@ -374,6 +381,13 @@ class FileController extends Controller
         $zipFileName = $contract->num . '_փաստաթղթեր.zip';
         $zipFilePath = storage_path('app/tmp/' . $zipFileName);
 
+        $this->activity->log(
+            'download_contract_file',
+            'User downloaded contract file with num = #' . $contract->num,
+            Contract::class,
+            $contract->id,
+        );
+
         $zip = new \ZipArchive;
         if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             foreach ($filesToZip as $file) {
@@ -384,7 +398,6 @@ class FileController extends Controller
             abort(500, 'Չհաջողվեց ստեղծել ZIP ֆայլ։');
         }
 
-        // 🧹 Մաքրում ենք temp ֆայլերը
         foreach ($filesToZip as $file) {
             if (file_exists($file)) {
                 unlink($file);
@@ -445,6 +458,12 @@ class FileController extends Controller
         }
         $order = Order::where('id', $id)->first();
 
+        $this->activity->log(
+            'download_order',
+            'User downloaded order #' . $order->id,
+            Order::class,
+            $order->id,
+        );
         if ($order) {
             switch ($order->type) {
                 case 'in':
