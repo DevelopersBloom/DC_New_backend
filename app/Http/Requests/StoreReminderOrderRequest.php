@@ -29,9 +29,9 @@ class StoreReminderOrderRequest extends FormRequest
             'currency_id'      => 'nullable|exists:currencies,id',
             'comment'          => 'nullable|string|max:1000',
             'debit_account_id' => 'required|exists:chart_of_accounts,id',
-            'debit_partner_id' => 'required|exists:clients,id',
+            'debit_partner_id' => 'nullable|exists:clients,id',
             'credit_account_id'=> 'required|exists:chart_of_accounts,id',
-            'credit_partner_id'=> 'required|exists:clients,id',
+            'credit_partner_id'=> 'nullable|exists:clients,id',
             'is_draft'         => 'boolean',
         ];
     }

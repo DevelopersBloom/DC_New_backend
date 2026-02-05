@@ -131,11 +131,9 @@ class ReminderOrderController
     {
         $validated = $request->validated();
 
-        // Վերջին համարը (ընդամենը թիվը)
         $lastNum = ReminderOrder::orderByDesc('id')->value('num');
 
         if ($lastNum) {
-            // Վերցնում ենք թվային մասը՝ MO-00001 → 1
             $lastNumber = (int) preg_replace('/\D/', '', $lastNum);
         } else {
             $lastNumber = 0;
@@ -160,7 +158,6 @@ class ReminderOrderController
 
         $reminderOrder->load(['debitPartner','creditPartner']);
 
-        // Որոշ helper functions
         $displayName = function ($p) {
             if (!$p) return null;
             if (!empty($p->company_name)) return $p->company_name;
