@@ -26,14 +26,6 @@ class AdminController extends Controller
         return response()->json(['message' => 'Pawnshop updated successfully']);
     }
 
-    public function getUsers1()
-    {
-        $users = User::with('pawnshop')->withCount('contracts')->get();
-        return response()->json([
-            'users' => $users
-        ]);
-    }
-
     public function getDiscounts()
     {
         $discounts = Discount::where('status', 'initial')->with(['contract', 'user', 'pawnshop'])->orderBy('id', 'desc')->paginate(8);

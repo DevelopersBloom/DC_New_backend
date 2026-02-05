@@ -189,7 +189,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients']);
 
 
-    Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::group(['prefix' => 'contracts'], function () {
 //        Route::get('/export', [ContractControllerNew::class, 'exportContracts']);
         Route::get('/', [ContractControllerNew::class, 'get']);
@@ -242,6 +241,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/{id}', [CategoryController::class, 'show']);
     });
 
+    Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox']);
     Route::get('/get-cashBox-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox']);
     Route::get('/get-deals', [DealController::class, 'index']);

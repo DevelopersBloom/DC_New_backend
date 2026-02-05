@@ -487,6 +487,10 @@ class   ContractService
 
     private function excelIpmt(float $rate, int $per, int $nper, float $pv, float $fv = 0.0, int $when = 0): float
     {
+        if (abs($rate) < 1e-12) {
+            return 0.0;
+        }
+
         $pmt = $this->excelPmt($rate, $nper, $pv, $fv, $when);
 
         if ($when !== 0) {
