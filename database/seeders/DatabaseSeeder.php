@@ -24,14 +24,18 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TypeSeeder::class
         ]);
-        $this->call([
-            UserSeeder::class
-        ]);
+
         $this->call([
             PawnshopSeeder::class
         ]);
         $this->call([
             PawnshopConfigSeeder::class
+        ]);
+        $this->call([
+            RolesAndPermissionsSeeder::class
+        ]);
+        $this->call([
+            UserSeeder::class
         ]);
         $this->call(CurrencySeeder::class);
         $this->call(ClientClassificationSeeder::class);
