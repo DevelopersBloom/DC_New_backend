@@ -108,14 +108,14 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount'])->middleware('can:delete_discount');
 
         Route::prefix('reports')->group(function (){
-            Route::get('/monthly-income-expense', MonthlyIncomeExpenseController::class)->middleware('can:view_v05_reports');
+            Route::get('/monthly-income-expense', MonthlyIncomeExpenseController::class)->middleware('can:view_v05_report');
             Route::get('/v03',  [ReportController::class, 'getV03Report'])->middleware('can:view_v03_report');
             Route::get('/v06',  [ReportController::class, 'getV06Report'])->middleware('can:view_v06_report');
             Route::get('/v07',  [ReportController::class, 'getV07Report'])->middleware('can:view_v07_report');
             Route::get('/v013', [ReportController::class, 'getV013Report'])->middleware('can:view_v13_report');
             Route::get('/v17',[ReportController::class,'getV17Report'])->middleware('can:view_v17_report');
         });
-        Route::get('/transactions/reports/export', \App\Http\Controllers\ReportV01Controller::class)->middleware('can:view_v01_reports');
+        Route::get('/transactions/reports/export', \App\Http\Controllers\ReportV01Controller::class)->middleware('can:view_v01_report');
 //        Route::get('/transactions/reports/export', [ReportController::class, 'getFirstReport']);
 
         Route::prefix('chart-of-accounts')->middleware('can:view_chart_of_accounts')->group(function () {

@@ -338,7 +338,7 @@ class FileController extends Controller
             'phone' => $client->phone ?? $contract->additional_phone ?? '',
 
             'contract_amount' => $this->makeMoney((int)$contract->contract_amount),
-            'mother_amount' => $this->makeMoney((int)$contract->mother),
+            'mother_amount' => $this->makeMoney((int)$contract->estimated_amount),
 
             'interest_annual_rate' => $yearlyRate . ' %',
             'effective_annual_rate' => $effectiveRate . ' %',
