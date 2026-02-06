@@ -312,7 +312,7 @@ class FileController extends Controller
         $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments'])->findOrFail($id);
 
         $client = $contract->client;
-
+        $user = $contract->user;
         $filesToZip = [];
 
         $templateProcessor = new TemplateProcessor(
@@ -320,7 +320,7 @@ class FileController extends Controller
         );
 
         $clientName = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
-
+        $userName = $user->name . ' ' . $user->surname . ' ' . ($user->middle_name ?? '');
         $yearlyRate = round($contract->interest_rate * 365, 5);
         $effectiveRate = round($contract->effective_annual_rate, 5);
 
@@ -348,6 +348,7 @@ class FileController extends Controller
             'bank_name' => $client->bank_name,
             'account_number' => $client->account_number,
             'card_number' => $client->card_number,
+            'user_name' => $userName,
         ]);
 
         $paymentRows = [];
