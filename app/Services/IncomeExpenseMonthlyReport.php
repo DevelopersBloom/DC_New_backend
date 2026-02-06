@@ -12,7 +12,7 @@ class IncomeExpenseMonthlyReport
     {
         $debit = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
-            ->whereNull('t.deleted_at')
+//            ->whereNull('t.deleted_at')
             ->whereNotNull('t.debit_account_id')
             ->whereNotNull('a.income_expense')
             ->whereBetween('t.date', [$from, $to])
@@ -25,7 +25,7 @@ class IncomeExpenseMonthlyReport
 
         $credit = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
-            ->whereNull('t.deleted_at')
+//            ->whereNull('t.deleted_at')
             ->whereNotNull('t.credit_account_id')
             ->whereNotNull('a.income_expense')
             ->whereBetween('t.date', [$from, $to])
