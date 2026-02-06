@@ -50,9 +50,9 @@ class IncomeExpenseMonthlyReport
 
         return ( $rows->map(fn($r) => [
             'code'    => (string)$r->code,
-            'inflow'  => (float)$r->inflow,
-            'outflow' => (float)$r->outflow,
-            'net'     => (float)$r->net,
+            'inflow'  => (float)$r->inflow / 1000,
+            'outflow' => (float)$r->outflow / 1000,
+            'net'     => (float)$r->net / 1000,
         ])->all());
     }
 }
