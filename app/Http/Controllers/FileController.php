@@ -366,8 +366,21 @@ class FileController extends Controller
             $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
         }
 
+        $itemRows = [];
+        foreach ($contract->items as $item) {
+            $itemRows[] = [
+              'i_desc' => $item->description,
+              'i_c' => $item->count,
+              'i_w' => $item->weight,
+              'i_cw' => $item->clear_weight,
+              'i_h' => $item->hallmark,
+              'i_a' => $contract->mother
+            ];
+        }
 
-
+        if (count($itemRows)) {
+            $templateProcessor->cloneRowAndSetValues('i_desc', $itemRows);
+        }
         $contractFilename = $contract->num . '_ոսկու_պայմանագիր.docx';
         $contractPath = storage_path('app/tmp/' . $contractFilename);
 
