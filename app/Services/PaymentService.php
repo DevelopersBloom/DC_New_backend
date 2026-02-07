@@ -139,7 +139,6 @@ class PaymentService
                     $interest_amount = min($amount, $remainingInterest);
                 }
             }
-            dd($interest_amount,$payment->interest_payment,$paidAmount,$remainingInterest,$amount,$paymentFinal,$amount-$paymentFinal);
 
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
             $contract->collected += $paymentFinal;
