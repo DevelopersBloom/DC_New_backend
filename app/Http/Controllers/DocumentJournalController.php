@@ -70,6 +70,8 @@ class DocumentJournalController
                 'amount_currency'     => $j->currency?->code,
                 'amount_currency_id'  => $j->currency_id,
                 'amount_amd'          => $j->amount_amd,
+                'debit_account_id'    => $j->debit_account_id,
+                'credit_account_id'    => $j->credit_account_id,
                 'debit_partner_code'  => $partnerCode,
                 'debit_partner_name'  => $partnerName,
                 'comment'             => $j->comment,
