@@ -318,8 +318,8 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor(
             public_path('files/contract_gold_template.docx')
         );
-
-        $clientName = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
+        $clientName = $client->name . ' ' . $client->surname;
+//        $clientName = $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '');
         $userName = $user->name . ' ' . $user->surname . ' ' . ($user->middle_name ?? '');
         $yearlyRate = round($contract->interest_rate * 365, 5);
         $effectiveRate = round($contract->effective_annual_rate, 5);
