@@ -49,17 +49,28 @@ class DocumentJournalController
 
         $page->getCollection()->transform(function (DocumentJournal $j) {
             $partner = $j->partner;
+            $creditPartner = $j->creditPartner;
 
             $partnerCode = $partner
                 ? ($partner->type === 'individual'
                     ? ($partner->social_card_number ?? null)
                     : ($partner->tax_number ?? null))
                 : null;
+            $creditPartnerCode = $creditPartner
+                ? ($creditPartner->type === 'individual'
+                    ? ($creditPartner->social_card_number ?? null)
+                    : ($creditPartner->tax_number ?? null))
+                : null;
 
             $partnerName = $partner
                 ? ($partner->type === 'legal'
                     ? ($partner->company_name ?? '')
                     : trim(($partner->name ?? '') . ' ' . ($partner->surname ?? '')))
+                : null;
+            $creditPartnerName = $creditPartner
+                ? ($creditPartner->type === 'legal'
+                    ? ($creditPartner->company_name ?? '')
+                    : trim(($creditPartner->name ?? '') . ' ' . ($creditPartner->surname ?? '')))
                 : null;
 
             return [
@@ -76,6 +87,8 @@ class DocumentJournalController
                 'credit_account_code'    => $j->creditAccount->code,
                 'debit_partner_code'  => $partnerCode,
                 'debit_partner_name'  => $partnerName,
+                'credit_partner_code'  => $creditPartnerCode,
+                'credit_partner_name'  => $creditPartnerName,
                 'comment'             => $j->comment,
                 'user_id'             => $j->user_id,
                 'user'                => $j->user,
