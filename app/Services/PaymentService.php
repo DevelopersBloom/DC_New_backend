@@ -129,7 +129,8 @@ class PaymentService
                     ->orderBy('id', 'desc')
                     ->first();
                 $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
-                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
+//                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
+                $remainingInterest = $payment->interest_payment - $paidAmount;
                 $isInterestPaid = $remainingInterest <= 0;
                 if ($isInterestPaid) {
                     $interest_amount = 0;
