@@ -132,7 +132,7 @@ class PaymentService
 //                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
                 $remainingInterest = $payment->interest_payment - $paidAmount;
                 $isInterestPaid = $remainingInterest <= 0;
-                dd($interest_amount,$paidAmount,$remainingInterest,$amount,$paymentFinal,$amount-$paymentFinal);
+                dd($payment->interest_payment,$paidAmount,$remainingInterest,$amount,$paymentFinal,$amount-$paymentFinal);
 
                 if ($isInterestPaid) {
                     $interest_amount = 0;
