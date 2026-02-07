@@ -72,6 +72,8 @@ class DocumentJournalController
                 'amount_amd'          => $j->amount_amd,
                 'debit_account_id'    => $j->debit_account_id,
                 'credit_account_id'    => $j->credit_account_id,
+                'debit_account_code'    => $j->debitAccount->code,
+                'credit_account_code'    => $j->creditAccount->code,
                 'debit_partner_code'  => $partnerCode,
                 'debit_partner_name'  => $partnerName,
                 'comment'             => $j->comment,
