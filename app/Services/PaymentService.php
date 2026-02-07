@@ -132,6 +132,8 @@ class PaymentService
 //                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
                 $remainingInterest = $payment->interest_payment - $paidAmount;
                 $isInterestPaid = $remainingInterest <= 0;
+                dd($interest_amount,$paidAmount,$remainingInterest,$amount,$paymentFinal,$amount-$paymentFinal);
+
                 if ($isInterestPaid) {
                     $interest_amount = 0;
                 } else {
@@ -141,7 +143,6 @@ class PaymentService
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
             $contract->collected += $paymentFinal;
             $contract->save();
-            dd($interest_amount,$remainingInterest,$amount,$paymentFinal,$amount-$paymentFinal);
             return ['interest_amount' => $interest_amount,
                 'amount' => $amount - $paymentFinal];
         } else {
