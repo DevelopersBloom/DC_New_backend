@@ -155,9 +155,9 @@ class ClientControllerNew extends Controller
         $status = $request->query('status');
 
         $clients = Client::select([
-            'id',  DB::raw("DATE_FORMAT(date, '%d-%m-%Y') as registration_date"), 'name', 'surname', 'middle_name', DB::raw("DATE_FORMAT(date_of_birth, '%d-%m-%Y') as date_of_birth"), 'country',
+            'id',  DB::raw("DATE_FORMAT(date, '%d-%m-%Y') as registration_date"), 'type','name', 'surname', 'middle_name', DB::raw("DATE_FORMAT(date_of_birth, '%d-%m-%Y') as date_of_birth"), 'country',
             'city', 'street', 'building', 'passport_series', 'passport_validity',
-            'passport_issued', 'phone', 'additional_phone', 'email', 'has_contract','is_linked_to_company','is_company_employee'
+            'passport_issued', 'phone', 'additional_phone', 'email', 'has_contract','company_name','is_linked_to_company','is_company_employee'
         ])
         ->whereHas('pawnshopClients', function ($query) use ($pawnshopId) {
             $query->where('pawnshop_id', $pawnshopId);
