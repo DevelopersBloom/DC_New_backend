@@ -369,7 +369,7 @@ class FileController extends Controller
         $itemRows = [];
         foreach ($contract->items as $item) {
             $itemRows[] = [
-              'i_desc' => $item->description,
+              'i_desc' => $item->category->title . ' ' . $item->subcategory,
               'i_c' => $item->count,
               'i_w' => $item->weight,
               'i_cw' => $item->clear_weight,
