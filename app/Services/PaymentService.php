@@ -141,6 +141,7 @@ class PaymentService
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
             $contract->collected += $paymentFinal;
             $contract->save();
+            dd($interest_amount,$remainingInterest,$amount,$paymentFinal,$amount-$paymentFinal);
             return ['interest_amount' => $interest_amount,
                 'amount' => $amount - $paymentFinal];
         } else {
