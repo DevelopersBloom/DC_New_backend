@@ -755,6 +755,9 @@ class PaymentService
                         'new_mother' => $contract->left - $partialAmount,
                     ];
                     $payment->mother = $contract->left - $partialAmount;
+                    if ($payment->mother <= 0) {
+                        $payment->status = 'completed';
+                    }
                     $payment->save();
                 }
             }
