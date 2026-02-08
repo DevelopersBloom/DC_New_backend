@@ -183,7 +183,6 @@ class PaymentService
     {
         $penalty = $payment->penalty ?? 0;
         $totalRequired = $payment->amount + $penalty;
-        dd($totalRequired);
 
         $paidDeal = DealAction::where('actionable_type', Payment::class)
             ->where('actionable_id', $payment->id)
@@ -191,6 +190,7 @@ class PaymentService
             ->first();
         $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
         $remainingInterest = max(0, $payment->interest_payment - $alreadyPaidTotal);
+        dd($totalRequired,$alreadyPaidTotal,$remainingInterest);
 
         $remainingAmount = $amount;
 
