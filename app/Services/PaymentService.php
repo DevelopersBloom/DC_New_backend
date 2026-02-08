@@ -190,7 +190,6 @@ class PaymentService
             ->first();
         $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
         $remainingInterest = max(0, $payment->interest_payment - $alreadyPaidTotal);
-        dd($totalRequired,$alreadyPaidTotal,$remainingInterest);
 
         $remainingAmount = $amount;
 
