@@ -259,7 +259,6 @@ class PaymentService
         }
 
         $totalRequiredForThisLine = $payment->amount + $penalty;
-dd($amount,$totalRequiredForThisLine,$remainingAmount);
         if ($amount >= $totalRequiredForThisLine) {
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
         } else {
@@ -355,17 +354,16 @@ dd($amount,$totalRequiredForThisLine,$remainingAmount);
 
     private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
     {
-        $decrease = $amount % 1000;
-        $amount -= $decrease;
+
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)->first();
         if ($nextPayment) {
+            $decrease = $amount % 1000;
+            $amount -= $decrease;
             $oldAmount = $nextPayment->amount;
             $oldDate = $nextPayment->date;
             $oldPaid = $nextPayment->paid;
         }
-
-
         if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
             $nextPayment->paid += $decrease;
