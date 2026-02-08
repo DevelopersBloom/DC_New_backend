@@ -368,7 +368,6 @@ class PaymentService
             $oldDate = $nextPayment->date;
             $oldPaid = $nextPayment->paid;
         }
-        dd($nextPayment,$decrease, $amount);
         if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
             $nextPayment->paid += $decrease;
@@ -396,6 +395,7 @@ class PaymentService
 
         }
         if ($amount > 0) {
+            dd($amount);
             $this->payPartial($contract, $amount, false, $cash, $deal_id);
         }
         return $decrease;
