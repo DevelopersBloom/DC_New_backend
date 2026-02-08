@@ -357,6 +357,7 @@ class PaymentService
 
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)->first();
+        $decrease = 0;
         if ($nextPayment) {
             $decrease = $amount % 1000;
             $amount -= $decrease;
