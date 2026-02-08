@@ -182,7 +182,7 @@ class PaymentControllerNew extends Controller
 
                 'disbursement_date' => $date,
                 'transactionable_type' => DocumentJournal::class,
-                'transactionable_id' => $journalDoc->id
+                'transactionable_id' => $journalDocPrincipal->id
             ]);
         }
 
