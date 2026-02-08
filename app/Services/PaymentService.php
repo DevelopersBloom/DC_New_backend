@@ -680,6 +680,7 @@ class PaymentService
 
         if ($contract->payment_type == 'amortized') {
             foreach ($payments as $payment) {
+                dd($remainingPartial);
                 if ($remainingPartial <= 0) break;
 
                 $oldPrincipal = $payment->principal_payment;
