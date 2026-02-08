@@ -702,59 +702,61 @@ class PaymentService
             foreach ($payments as $index => $payment) {
                 $dateToCheck = Carbon::createFromFormat('Y-m-d', $payment->date);
 
-                if ($dateToCheck->gt($now)) {
-                    if ($startedToChange) {
-                        $coeff = ($contract->left - $partialAmount) / $contract->left;
-                        $oldAmount = $payment->amount;
-                        $amount = intval(ceil($payment->amount * $coeff / 10) * 10);
-                        $payment->amount = $amount;
+                //$dateToCheck = Carbon::createFromFormat('Y-m-d', $payment->date);
+                if ($payment->amount > 0) {
+                    if ($dateToCheck->gt($now)) {
+                        if ($startedToChange) {
+                            $coeff = ($contract->left - $partialAmount) / $contract->left;
+                            $oldAmount = $payment->amount;
+                            $amount = intval(ceil($payment->amount * $coeff / 10) * 10);
+                            $payment->amount = max(0,$amount);
 
-                        $history['payment_changes'][] = [
-                            'payment_id' => $payment->id,
-                            'old_amount' => $oldAmount,
-                            'new_amount' => $amount,
-                            'old_paid' => $payment->paid,
-                            'new_paid' => $payment->paid,
-                            'old_date' => $payment->date,
-                            'updated_at' => now()->toDateTimeString()
-                        ];
-                    } else {
-                        $startedToChange = true;
-
-                        if ($index === 0) {
-                            $daysToCalc = $now->diffInDays(Carbon::parse($contract->date));
+                            $history['payment_changes'][] = [
+                                'payment_id' => $payment->id,
+                                'old_amount' => $oldAmount,
+                                'new_amount' => $amount,
+                                'old_paid' => $payment->paid,
+                                'new_paid' => $payment->paid,
+                                'old_date' => $payment->date,
+                                'updated_at' => now()->toDateTimeString()
+                            ];
                         } else {
-                            $daysToCalc = $now->diffInDays(Carbon::parse($payments[$index - 1]->date));
+                            $startedToChange = true;
+
+                            if ($index === 0) {
+                                $daysToCalc = $now->diffInDays(Carbon::parse($contract->date));
+                            } else {
+                                $daysToCalc = $now->diffInDays(Carbon::parse($payments[$index - 1]->date));
+                            }
+
+                            $daysLeft = $payment->days - $daysToCalc;
+                            $sum = $payment->amount;
+                            $sum -= $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate);
+                            $sum += $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
+                            $history['payment_changes'][] = [
+                                'payment_id' => $payment->id,
+                                'old_amount' => $payment->amount,
+                                'new_amount' => $sum,
+                                'old_paid' => $payment->paid,
+                                'new_paid' => $payment->paid,
+                                'old_date' => $payment->date,
+                                'updated_at' => now()->toDateTimeString()
+                            ];
+                            $payment->amount = max(0,$sum);
                         }
-
-                        $daysLeft = $payment->days - $daysToCalc;
-                        $sum = $payment->amount;
-                        $sum -= $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate);
-                        $sum += $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
-
-                        $history['payment_changes'][] = [
-                            'payment_id' => $payment->id,
-                            'old_amount' => $payment->amount,
-                            'new_amount' => $sum,
-                            'old_paid' => $payment->paid,
-                            'new_paid' => $payment->paid,
-                            'old_date' => $payment->date,
-                            'updated_at' => now()->toDateTimeString()
-                        ];
-                        $payment->amount = $sum;
+                        $payment->save();
                     }
+                }
+                if ($payment->last_payment) {
+
+                    $history['mother_amount'] = [
+                        'payment_id' => $payment->id,
+                        'old_mother' => $payment->mother,
+                        'new_mother' => $contract->left - $partialAmount,
+                    ];
+                    $payment->mother = $contract->left - $partialAmount;
                     $payment->save();
                 }
-            }
-            $lastPayment = Payment::where('contract_id', $contract->id)->where('last_payment', 1)->first();
-            if ($lastPayment) {
-                $history['mother_amount'] = [
-                    'payment_id' => $lastPayment->id,
-                    'old_mother' => $lastPayment->mother,
-                    'new_mother' => $contract->left - $partialAmount,
-                ];
-                $lastPayment->mother = $contract->left - $partialAmount;
-                $lastPayment->save();
             }
         }
 
