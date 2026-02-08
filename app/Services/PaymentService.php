@@ -89,6 +89,7 @@ class PaymentService
         if ($amount > 0) {
             foreach ($payments as $payment) {
                 $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
+                dd($result);
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
@@ -260,7 +261,6 @@ class PaymentService
 
         $totalRequiredForThisLine = $payment->amount + $penalty;
         if ($amount >= $totalRequiredForThisLine) {
-            dd($payment->amount);
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
         } else {
             $this->partiallyCompletePayment($payment, $amount, $deal_id);
