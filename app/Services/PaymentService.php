@@ -222,49 +222,7 @@ class PaymentService
 //                'amount' => 0];
 //        }
 //    }
-//    private function processSinglePaymentNew($contract, $payment, $amount, $payer, $cash, $deal_id)
-//    {
-//        $penalty = $payment->penalty ?? 0;
-//        $totalRequired = $payment->amount + $penalty;
-//
-//        $paidDeal = DealAction::where('actionable_type', Payment::class)
-//            ->where('actionable_id', $payment->id)
-//            ->orderBy('id', 'desc')
-//            ->first();
-//        $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
-//        $remainingInterest = max(0, $payment->interest_payment - $alreadyPaidTotal);
-//
-//        $remainingAmount = $amount;
-//
-//        $paidPenalty = min($remainingAmount, $penalty);
-//        $remainingAmount -= $paidPenalty;
-//
-//        $paidInterest = min($remainingAmount, $remainingInterest);
-//        $remainingAmount -= $paidInterest;
-//
-//        $paidPrincipal = 0;
-//        if ($contract->payment_type == 'amortized') {
-//            $paidPrincipal = min($remainingAmount, $payment->principal_payment);
-//            $remainingAmount -= $paidPrincipal;
-//
-//            $contract->left = max(0, $contract->left - $paidPrincipal);
-//            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-//        }
-//        if ($amount >= ($totalRequired)) {
-//            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
-//        } else {
-//            $this->partiallyCompletePayment($payment, $amount, $deal_id);
-//        }
-//
-//        $contract->collected += $amount;
-//        $contract->save();
-//
-//        return [
-//            'interest_amount'  => $paidInterest,
-//            'principal_amount' => $paidPrincipal,
-//            'amount' => $remainingAmount
-//        ];
-//    }
+
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
     {
         $penalty = $payment->penalty ?? 0;
@@ -398,6 +356,7 @@ class PaymentService
     private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
     {
         $decrease = $amount % 1000;
+        dd($amount,$decrease,$amount-$decrease);
         $amount -= $decrease;
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)->first();
