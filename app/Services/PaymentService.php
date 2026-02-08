@@ -24,6 +24,7 @@ class PaymentService
     {
         $payments_sum = 0;
         $interest_amount = 0;
+        $principal_amount = 0;
         $effective_amount = 0;
         $initial_amount = $amount;
         foreach ($payments as $item) {
@@ -115,67 +116,115 @@ class PaymentService
                 'amount' => 0];
         }
     }
+//    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
+//    {
+//        $paymentFinal = ($payment['amount'] + $payment['penalty']);
+//
+//        if ($amount >= $paymentFinal) {
+//            $interest_amount = $payment->amount;
+//
+//            if ($contract->payment_type == 'amortized') {
+//                $contract->left = max(0, $contract->left - $payment->principal_payment);
+//                $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
+//                $paidDeal = DealAction::where('actionable_type', Payment::class)
+//                    ->where('actionable_id', $payment->id)
+//                    ->orderBy('id', 'desc')
+//                    ->first();
+//                $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+////                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
+//                $remainingInterest = $payment->interest_payment - $paidAmount;
+//                $isInterestPaid = $remainingInterest <= 0;
+//
+//                if ($isInterestPaid) {
+//                    $interest_amount = 0;
+//                    $principal_amount = min($amount,$payment->principal_payment);
+//                } else {
+//                    $interest_amount = min($amount, $remainingInterest);
+//                    $principal_amount = min($amount-$interest_amount, $payment->principal_payment);
+//                }
+//            }
+//
+//            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
+//            $contract->collected += $paymentFinal;
+//            $contract->save();
+//            return ['interest_amount' => $interest_amount,
+//                'amount' => $amount - $paymentFinal];
+//        } else {
+//
+//
+//            $paidDeal = DealAction::where('actionable_type', Payment::class)
+//                ->where('actionable_id', $payment->id)
+//                ->orderBy('id', 'desc')
+//                ->first();
+//            $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+//
+////            $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
+//            $remainingInterest = $payment->interest_payment - $paidAmount;
+//            $isInterestPaid = $remainingInterest <= 0;
+//            if ($contract->payment_type == 'amortized') {
+//                if ($isInterestPaid) {
+//                    $interest_amount = 0;
+//                } else {
+//                    $interest_amount = min($amount, $remainingInterest);
+//                }
+//            } else {
+//                $interest_amount = $amount;
+//            }
+//            $this->partiallyCompletePayment($payment, $amount, $deal_id);
+//            $contract->collected += $amount;
+//            $contract->save();
+//
+//
+//            return ['interest_amount' => $interest_amount,
+//                'amount' => 0];
+//        }
+//    }
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
     {
-        $paymentFinal = ($payment['amount'] + $payment['penalty']);
-        if ($amount >= $paymentFinal) {
-            $interest_amount = $payment->amount;
+        $penalty = $payment->penalty ?? 0;
+        $totalRequired = $payment->amount + $penalty;
 
-            if ($contract->payment_type == 'amortized') {
-                $contract->left = max(0, $contract->left - $payment->principal_payment);
-                $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
-                $paidDeal = DealAction::where('actionable_type', Payment::class)
-                    ->where('actionable_id', $payment->id)
-                    ->orderBy('id', 'desc')
-                    ->first();
-                $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
-//                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
-                $remainingInterest = $payment->interest_payment - $paidAmount;
-                $isInterestPaid = $remainingInterest <= 0;
+        $paidDeal = DealAction::where('actionable_type', Payment::class)
+            ->where('actionable_id', $payment->id)
+            ->orderBy('id', 'desc')
+            ->first();
+        $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
 
-                if ($isInterestPaid) {
-                    $interest_amount = 0;
-                } else {
-                    $interest_amount = min($amount, $remainingInterest);
-                }
-            }
+        $remainingInterest = max(0, $payment->interest_payment - $alreadyPaidTotal);
 
-            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
-            $contract->collected += $paymentFinal;
-            $contract->save();
-            return ['interest_amount' => $interest_amount,
-                'amount' => $amount - $paymentFinal];
-        } else {
+        $remainingAmount = $amount;
 
+        $paidPenalty = min($remainingAmount, $penalty);
+        $remainingAmount -= $paidPenalty;
 
-            $paidDeal = DealAction::where('actionable_type', Payment::class)
-                ->where('actionable_id', $payment->id)
-                ->orderBy('id', 'desc')
-                ->first();
-            $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+        $paidInterest = min($remainingAmount, $remainingInterest);
+        $remainingAmount -= $paidInterest;
 
-            $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
+        $paidPrincipal = 0;
+        if ($contract->payment_type == 'amortized') {
+            $paidPrincipal = min($remainingAmount, $payment->principal_payment);
+            $remainingAmount -= $paidPrincipal;
 
-            $isInterestPaid = $remainingInterest <= 0;
-            if ($contract->payment_type == 'amortized') {
-                if ($isInterestPaid) {
-                    $interest_amount = 0;
-                } else {
-                    $interest_amount = min($amount, $remainingInterest);
-                }
-            } else {
-                $interest_amount = $amount;
-            }
-            $this->partiallyCompletePayment($payment, $amount, $deal_id);
-            $contract->collected += $amount;
-            $contract->save();
-
-
-            return ['interest_amount' => $interest_amount,
-                'amount' => 0];
+            $contract->left = max(0, $contract->left - $paidPrincipal);
+            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
         }
-    }
 
+        if ($amount >= ($totalRequired - $alreadyPaidTotal)) {
+            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
+        } else {
+            $this->partiallyCompletePayment($payment, $amount, $deal_id);
+        }
+
+        $contract->collected += $amount;
+        $contract->save();
+
+        return [
+            'paid_interest'  => $paidInterest,
+            'paid_principal' => $paidPrincipal,
+            'paid_penalty'   => $paidPenalty,
+            'remaining_from_input' => $remainingAmount
+        ];
+    }
     private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null): void
     {
         $oldAmount = $payment['amount'];
