@@ -250,7 +250,7 @@ class PaymentService
             $contract->left = max(0, $contract->left - $paidPrincipal);
             $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
         }
-
+dd($amount,$totalRequired,$alreadyPaidTotal,$totalRequired-$alreadyPaidTotal);
         if ($amount >= ($totalRequired - $alreadyPaidTotal)) {
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
         } else {
