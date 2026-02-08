@@ -20,54 +20,96 @@ class PaymentService
 {
     use ContractTrait;
 
+//    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id)
+//    {
+//        $payments_sum = 0;
+//        $interest_amount = 0;
+//        $principal_amount = 0;
+//        $effective_amount = 0;
+//        $initial_amount = $amount;
+//        foreach ($payments as $item) {
+//            $payments_sum += $item['amount'] + $item['mother'];
+//        }
+//        $result = $this->countPenalty($contract->id);
+//        $penalty = $result['penalty_amount'];
+//        $delay_days = $result['delay_days'];
+//        $parent_id = $result['parent_id'];
+//        $payed_penalty = 0;
+//        $discount = 0;
+//        // Process penalty
+//        if ($penalty) {
+//            $amount = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id)['amount'];
+//            $payed_penalty = $initial_amount - $amount;
+//        }
+//        // Process payments
+//        if ($amount > 0) {
+//            foreach ($payments as $payment) {
+//                $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
+//                $amount = $result['amount'];
+//                $interest_amount += $result['interest_amount'];
+//                $principal_amount += $result['principal_amount'];
+//                //$effective_amount += $result['effective_amount'];
+//            }
+//            // Handle any remaining amount
+//            if ($amount > 0) {
+//                $decrease = $this->handleRemainingAmount($contract, $amount, $cash, $payment->id, $deal_id);
+//                $interest_amount += $decrease;
+//            }
+//
+//        }
+//        return [
+//            'id' => $payment->id ?? null,
+//            'payments_sum' => $payments_sum,
+//            'interest_amount' => $interest_amount,
+//            'principal_amount' => $principal_amount,
+//            'delay_days' => $delay_days,
+//            'penalty' => $payed_penalty,
+//            'discount' => $discount,
+//        ];
+//    }
     public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id)
     {
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
-        $effective_amount = 0;
         $initial_amount = $amount;
-        foreach ($payments as $item) {
-            $payments_sum += $item['amount'] + $item['mother'];
-        }
-        $result = $this->countPenalty($contract->id);
-        $penalty = $result['penalty_amount'];
-        $delay_days = $result['delay_days'];
-        $parent_id = $result['parent_id'];
+
+        $result_penalty = $this->countPenalty($contract->id);
+        $penalty = $result_penalty['penalty_amount'];
+        $delay_days = $result_penalty['delay_days'];
+        $parent_id = $result_penalty['parent_id'];
         $payed_penalty = 0;
-        $discount = 0;
-        // Process penalty
-        if ($penalty) {
-            $amount = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id)['amount'];
-            $payed_penalty = $initial_amount - $amount;
+
+        if ($penalty > 0) {
+            $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id);
+            $payed_penalty = $penaltyResult['penalty'];
+            $amount = $penaltyResult['amount'];
         }
-        // Process payments
+
         if ($amount > 0) {
             foreach ($payments as $payment) {
                 $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
-                //$effective_amount += $result['effective_amount'];
-            }
-            // Handle any remaining amount
-            if ($amount > 0) {
-                $decrease = $this->handleRemainingAmount($contract, $amount, $cash, $payment->id, $deal_id);
-                $interest_amount += $decrease;
             }
 
+            if ($amount > 0) {
+                $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id);
+                $principal_amount += $amount;
+                $amount = 0;
+            }
         }
+
         return [
-            'id' => $payment->id ?? null,
             'payments_sum' => $payments_sum,
             'interest_amount' => $interest_amount,
             'principal_amount' => $principal_amount,
-            'delay_days' => $delay_days,
             'penalty' => $payed_penalty,
-            'discount' => $discount,
+            'delay_days' => $delay_days,
+            'discount' => 0
         ];
     }
-
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false)
     {
         if ($amount < $penalty) {

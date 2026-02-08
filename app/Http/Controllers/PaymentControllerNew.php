@@ -174,7 +174,7 @@ class PaymentControllerNew extends Controller
                 'credit_currency_id' => 1,
                 'credit_partner_id' => $creditPartnerId,
 
-                'amount_amd' => $amount,
+                'amount_amd' => $principalAmount,
 
                 'comment' => 'mother_amount_payment',
                 'user_id' => auth()->id(),
