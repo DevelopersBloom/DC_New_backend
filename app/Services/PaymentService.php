@@ -678,9 +678,10 @@ class PaymentService
             ->orderBy('date', 'asc')
             ->get();
 
+
         if ($contract->payment_type == 'amortized') {
             foreach ($payments as $payment) {
-                if ($remainingPartial <= 0) break;
+                if ($remainingPartial <= 0 || $contract->provided_amount <= 0) break;
 
                 $reduction = min($remainingPartial,$payment->principal_payment, $payment->amount);
 
