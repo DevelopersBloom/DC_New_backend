@@ -356,7 +356,6 @@ class PaymentService
     private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
     {
         $decrease = $amount % 1000;
-        dd($amount,$decrease,$amount-$decrease);
         $amount -= $decrease;
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)->first();
