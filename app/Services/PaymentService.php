@@ -200,7 +200,6 @@ class PaymentService
         $remainingAmount -= $paidInterest;
 
         $paidPrincipal = 0;
-        dd($totalRequired,$alreadyPaidTotal,$remainingInterest,$remainingAmount);
         if ($contract->payment_type == 'amortized') {
             $paidPrincipal = min($remainingAmount, $payment->principal_payment);
             $remainingAmount -= $paidPrincipal;
@@ -219,10 +218,9 @@ class PaymentService
         $contract->save();
 
         return [
-            'paid_interest'  => $paidInterest,
-            'paid_principal' => $paidPrincipal,
-            'paid_penalty'   => $paidPenalty,
-            'remaining_from_input' => $remainingAmount
+            'interest_amount'  => $paidInterest,
+            'principal_amount' => $paidPrincipal,
+            'amount' => $remainingAmount
         ];
     }
     private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null): void
