@@ -685,9 +685,10 @@ class PaymentService
                 $oldPrincipal = $payment->principal_payment;
                 $reduction = min($remainingPartial, $oldPrincipal,$payment->amount);
 
-                $payment->principal_payment -= $reduction;
+//                $payment->principal_payment -= $reduction;
                 $payment->amount  -= $reduction;
                 $payment->paid += $reduction;
+                $contract->left = max(0, $contract->left - $reduction);
                 $remainingPartial -= $reduction;
 
                 $history['payment_changes'][] = [
@@ -697,6 +698,7 @@ class PaymentService
                     'reduction' => $reduction,
                     'updated_at' => now()->toDateTimeString()
                 ];
+                $contract->save();
                 $payment->save();
             }
         } else {
@@ -763,43 +765,45 @@ class PaymentService
                     $payment->save();
                 }
             }
+
+            $history['contract_changes'] = [
+                'contract_id' => $contract->id,
+                'old_left' => $contract->left,
+                'new_left' => $contract->left - $partialAmount,
+                'old_collected' => $contract->collected,
+                'new_collected' => $contract->collected + $partialAmount,
+                'old_provided' => $contract->provided_amount,
+                'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+                'updated_at' => now()->toDateTimeString()
+            ];
+
+            ContractAmountHistory::create([
+                'contract_id' => $contract->id,
+                'amount' => $partialAmount,
+                'amount_type' => 'provided_amount',
+                'type' => 'out',
+                'date' => now()->toDateTimeString(),
+                'deal_id' => $deal_id,
+                'category_id' => $contract->category_id,
+                'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+            ]);
+
+            $contract->left = max(0, $contract->left - $partialAmount);
+            $contract->collected += $partialAmount;
+            $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+            $contract->save();
+
+            $pawnshop = auth()->user()->pawnshop ?? Pawnshop::where('id', 1)->first();
+            $pawnshop->given -= $partialAmount;
+            $pawnshop->save();
+
+            $this->handleAccountingForPartial($contract, $partialAmount, $date);
             return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
         }
 
 
-
-        $history['contract_changes'] = [
-            'contract_id' => $contract->id,
-            'old_left' => $contract->left,
-            'new_left' => $contract->left - $partialAmount,
-            'old_collected' => $contract->collected,
-            'new_collected' => $contract->collected + $partialAmount,
-            'old_provided' => $contract->provided_amount,
-            'new_provided' => max(0, $contract->provided_amount - $partialAmount),
-            'updated_at' => now()->toDateTimeString()
-        ];
-
-        ContractAmountHistory::create([
-            'contract_id' => $contract->id,
-            'amount' => $partialAmount,
-            'amount_type' => 'provided_amount',
-            'type' => 'out',
-            'date' => now()->toDateTimeString(),
-            'deal_id' => $deal_id,
-            'category_id' => $contract->category_id,
-            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
-        ]);
-
-        $contract->left = max(0, $contract->left - $partialAmount);
-        $contract->collected += $partialAmount;
-        $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
-        $contract->save();
-
-        $pawnshop = auth()->user()->pawnshop ?? Pawnshop::where('id', 1)->first();
-        $pawnshop->given -= $partialAmount;
-        $pawnshop->save();
-
         $this->handleAccountingForPartial($contract, $partialAmount, $date);
+
 
 
     }
