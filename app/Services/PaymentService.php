@@ -89,7 +89,6 @@ class PaymentService
         if ($amount > 0) {
             foreach ($payments as $payment) {
                 $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
-                dd($result);
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
@@ -358,7 +357,10 @@ class PaymentService
 
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)->first();
-        $decrease = 0;
+        $decrease = null;
+        $oldAmount = null;
+        $oldDate = null;
+        $oldPaid = null;
         if ($nextPayment) {
             $decrease = $amount % 1000;
             $amount -= $decrease;
@@ -366,6 +368,7 @@ class PaymentService
             $oldDate = $nextPayment->date;
             $oldPaid = $nextPayment->paid;
         }
+        dd($nextPayment,$decrease, $amount);
         if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
             $nextPayment->paid += $decrease;
