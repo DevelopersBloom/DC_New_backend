@@ -683,10 +683,11 @@ class PaymentService
                 if ($remainingPartial <= 0) break;
 
                 $oldPrincipal = $payment->principal_payment;
-                $reduction = min($remainingPartial, $oldPrincipal);
+                $reduction = min($remainingPartial, $oldPrincipal,$payment->amount);
 
                 $payment->principal_payment -= $reduction;
                 $payment->amount  -= $reduction;
+                $payment->paid += $reduction;
                 $remainingPartial -= $reduction;
 
                 $history['payment_changes'][] = [
