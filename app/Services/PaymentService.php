@@ -680,13 +680,13 @@ class PaymentService
 
         if ($contract->payment_type == 'amortized') {
             foreach ($payments as $payment) {
-                dd($remainingPartial);
                 if ($remainingPartial <= 0) break;
 
                 $oldPrincipal = $payment->principal_payment;
                 $reduction = min($remainingPartial, $oldPrincipal);
 
                 $payment->principal_payment -= $reduction;
+                $payment->amount  -= $reduction;
                 $remainingPartial -= $reduction;
 
                 $history['payment_changes'][] = [
