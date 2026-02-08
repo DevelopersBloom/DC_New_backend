@@ -260,6 +260,7 @@ class PaymentService
 
         $totalRequiredForThisLine = $payment->amount + $penalty;
         if ($amount >= $totalRequiredForThisLine) {
+            dd($payment->amount);
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
         } else {
             $this->partiallyCompletePayment($payment, $amount, $deal_id);
