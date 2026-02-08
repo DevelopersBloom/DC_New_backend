@@ -91,46 +91,101 @@ class PaymentControllerNew extends Controller
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
             ->first();
+        $interestAmount = $result['interest_amount'];
+        $principalAmount = $result['principal_amount'];
+        if ($interestAmount > 0) {
+            $journalDoc = DocumentJournal::create([
+                'date'               => $date,
+                'document_number'    => $nextDocNum,
+                'document_type'      => $document_type,
+                'amount_amd'         => $result['interest_amount'],
+                'partner_id'         => $debetPartnerId,
+                'credit_partner_id'  => $creditPartnerId,
+                'comment'            => 'interest_amount_payment',
+                'debit_account_id'   => $debitInterestPayment,
+                'credit_account_id'  => $creditInterestPayment,
+                'user_id'            => auth()->id(),
+                'journalable_type'   => DocumentJournal::class,
+                'journalable_id'     => $journal->id,
+            ]);
 
-        $journalDoc = DocumentJournal::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type,
-            'amount_amd'         => $result['interest_amount'],
-            'partner_id'         => $debetPartnerId,
-            'credit_partner_id'  => $creditPartnerId,
-            'comment'            => 'interest_amount_payment',
-            'debit_account_id'   => $debitInterestPayment,
-            'credit_account_id'  => $creditInterestPayment,
-            'user_id'            => auth()->id(),
-            'journalable_type'   => DocumentJournal::class,
-            'journalable_id'     => $journal->id,
-        ]);
 
+            Transaction::create([
+                'date'               => $date,
+                'document_number'    => $nextDocNum,
+                'document_type'      => $document_type,
 
-        Transaction::create([
-            'date'               => $date,
-            'document_number'    => $nextDocNum,
-            'document_type'      => $document_type,
+                'debit_account_id'   => $debitInterestPayment,
+                'debit_partner_id'   => $debetPartnerId,
+                'debit_currency_id'  => 1,
 
-            'debit_account_id'   => $debitInterestPayment,
-            'debit_partner_id'   => $debetPartnerId,
-            'debit_currency_id'  => 1,
+                'credit_account_id'  => $creditInterestPayment,
+                'credit_currency_id' => 1,
+                'credit_partner_id'  => $creditPartnerId,
 
-            'credit_account_id'  => $creditInterestPayment,
-            'credit_currency_id' => 1,
-            'credit_partner_id'  => $creditPartnerId,
+                'amount_amd'         => $result['interest_amount'],
 
-            'amount_amd'         => $result['interest_amount'],
+                'comment'            => 'interest_amount_payment',
+                'user_id'            => auth()->id(),
+                'is_system'          => false,
 
-            'comment'            => 'interest_amount_payment',
-            'user_id'            => auth()->id(),
-            'is_system'          => false,
+                'disbursement_date'    =>  $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $journalDoc->id,
+            ]);
+            $nextDocNum++;
+        }
+        if ($principalAmount > 0) {
+            $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
+                ->first();
 
-            'disbursement_date'    =>  $date,
-            'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journalDoc->id,
-        ]);
+            if (!$ruleMotherAmount) {
+                throw new \RuntimeException('Posting rule for pay_mother_amount not found');
+            }
+
+            $debitMother = $ruleMotherAmount->debit_account_id;
+            $creditMother = $ruleMotherAmount->credit_account_id;
+            $documentTypePrincipal = DocumentJournal::PAY_MOTHER_AMOUNT;
+
+            $journalDocPrincipal = DocumentJournal::create([
+                'date' => $date,
+                'document_number' => $nextDocNum,
+                'document_type' => $documentTypePrincipal,
+                'amount_amd' => $principalAmount,
+                'partner_id' => $debetPartnerId,
+                'credit_partner_id' => $creditPartnerId,
+                'comment' => 'mother_amount_payment',
+                'debit_account_id' => $debitMother,
+                'credit_account_id' => $creditMother,
+                'user_id' => auth()->id(),
+                'journalable_type' => DocumentJournal::class,
+                'journalable_id' => $journal->id,
+            ]);
+            Transaction::create([
+                'date' => $date,
+                'document_number' => $nextDocNum,
+                'document_type' => $documentTypePrincipal,
+
+                'debit_account_id' => $debitMother,
+                'debit_partner_id' => $debetPartnerId,
+                'debit_currency_id' => 1,
+
+                'credit_account_id' => $creditMother,
+                'credit_currency_id' => 1,
+                'credit_partner_id' => $creditPartnerId,
+
+                'amount_amd' => $amount,
+
+                'comment' => 'mother_amount_payment',
+                'user_id' => auth()->id(),
+                'is_system' => false,
+
+                'disbursement_date' => $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id' => $journalDoc->id
+            ]);
+        }
+
 
         $this->activityService->log(
             'make_payment',

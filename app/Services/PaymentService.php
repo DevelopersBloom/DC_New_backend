@@ -47,6 +47,7 @@ class PaymentService
                 $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
+                $principal_amount += $result['principal_amount'];
                 //$effective_amount += $result['effective_amount'];
             }
             // Handle any remaining amount
@@ -60,6 +61,7 @@ class PaymentService
             'id' => $payment->id ?? null,
             'payments_sum' => $payments_sum,
             'interest_amount' => $interest_amount,
+            'principal_amount' => $principal_amount,
             'delay_days' => $delay_days,
             'penalty' => $payed_penalty,
             'discount' => $discount,
@@ -112,7 +114,6 @@ class PaymentService
             $contract->save();
 
             return ['interest_amount' => $amount,
-
                 'amount' => 0];
         }
     }
