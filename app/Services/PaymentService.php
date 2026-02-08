@@ -359,9 +359,12 @@ class PaymentService
         $amount -= $decrease;
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)->first();
-        $oldAmount = $nextPayment->amount;
-        $oldDate = $nextPayment->date;
-        $oldPaid = $nextPayment->paid;
+        if ($nextPayment) {
+            $oldAmount = $nextPayment->amount;
+            $oldDate = $nextPayment->date;
+            $oldPaid = $nextPayment->paid;
+        }
+
 
         if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
