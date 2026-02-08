@@ -682,6 +682,132 @@ class PaymentService
             foreach ($payments as $payment) {
                 if ($remainingPartial <= 0) break;
 
+                $reduction = min($remainingPartial,$payment->principal_payment, $payment->amount);
+
+                if ($reduction <= 0) continue;
+
+                $oldPrincipal = $payment->principal_payment;
+                $oldAmount = $payment->amount;
+                $oldPaid = $payment->paid;
+                $payment->amount -= $reduction;
+                $payment->paid += $reduction;
+
+                if ($payment->amount <= 0) {
+                    $payment->status = 'completed';
+                }
+
+                $remainingPartial -= $reduction;
+
+                $history['payment_changes'][] = [
+                    'payment_id' => $payment->id,
+                    'old_amount' => $oldAmount,
+                    'new_amount' => $payment->amount,
+                    'old_paid' => $oldPaid,
+                    'new_paid' => $payment->paid,
+                    'old_principal' => $oldPrincipal,
+                    'new_principal' => $payment->principal_payment,
+                    'reduction' => $reduction,
+                    'updated_at' => $now->toDateTimeString()
+                ];
+                $payment->save();
+            }
+        } else {
+            $startedToChange = false;
+            foreach ($payments as $index => $payment) {
+                if ($payment->amount <= 0) continue;
+
+                $dateToCheck = Carbon::parse($payment->date);
+
+                if ($dateToCheck->gt($now)) {
+                    $oldAmount = $payment->amount;
+                    if ($startedToChange) {
+                        $coeff = ($contract->left - $partialAmount) / $contract->left;
+                        $newAmount = intval(ceil($oldAmount * $coeff / 10) * 10);
+                    } else {
+                        $startedToChange = true;
+                        $prevDate = $index === 0 ? $contract->date : $payments[$index - 1]->date;
+                        $daysToCalc = $now->diffInDays(Carbon::parse($prevDate));
+
+                        $daysLeft = $payment->days - $daysToCalc;
+                        $newAmount = $oldAmount - $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate);
+                        $newAmount += $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
+                    }
+
+                    $payment->amount = max(0, $newAmount);
+                    $history['payment_changes'][] = [
+                        'payment_id' => $payment->id,
+                        'old_amount' => $oldAmount,
+                        'new_amount' => $payment->amount,
+                        'updated_at' => $now->toDateTimeString()
+                    ];
+                    $payment->save();
+                }
+
+                if ($payment->last_payment) {
+                    $this->updateLastPayment($payment, $contract->left - $partialAmount, $history);
+                }
+            }
+        }
+
+        $history['contract_changes'] = [
+            'old_left' => $contract->left,
+            'new_left' => $contract->left - $partialAmount,
+            'old_provided' => $contract->provided_amount,
+            'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+        ];
+
+        $contract->left = max(0, $contract->left - $partialAmount);
+        $contract->collected += $partialAmount;
+        $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+        $contract->save();
+
+        ContractAmountHistory::create([
+            'contract_id' => $contract->id,
+            'amount' => $partialAmount,
+            'amount_type' => 'provided_amount',
+            'type' => 'out',
+            'date' => now()->toDateTimeString(),
+            'deal_id' => $deal_id,
+            'category_id' => $contract->category_id,
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+        ]);
+        $this->handleAccountingForPartial($contract, $partialAmount, $date);
+
+        $this->handleAccountingForPartial($contract, $partialAmount, $date);
+
+        if ($contract->payment_type == 'classic')
+        {
+            return$this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
+        }
+        return null;
+    }
+
+    private function updateLastPayment($payment, $newMother, &$history) {
+        $history['mother_amount'] = [
+            'payment_id' => $payment->id,
+            'old_mother' => $payment->mother,
+            'new_mother' => $newMother,
+        ];
+        $payment->mother = $newMother;
+        if ($payment->mother <= 0) $payment->status = 'completed';
+        $payment->save();
+    }
+    public function payPartial2($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null)
+    {
+        $now = Carbon::now();
+        $history = [];
+        $remainingPartial = $partialAmount;
+
+        $payments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        if ($contract->payment_type == 'amortized') {
+            foreach ($payments as $payment) {
+                if ($remainingPartial <= 0) break;
+
                 $oldPrincipal = $payment->principal_payment;
                 $reduction = min($remainingPartial, $oldPrincipal,$payment->amount);
 
