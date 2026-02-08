@@ -361,7 +361,7 @@ class PaymentService
         $oldAmount = null;
         $oldDate = null;
         $oldPaid = null;
-        if ($nextPayment) {
+        if ($nextPayment  && $contract->payment_type == 'classic') {
             $decrease = $amount % 1000;
             $amount -= $decrease;
             $oldAmount = $nextPayment->amount;
@@ -761,6 +761,7 @@ class PaymentService
                     $payment->save();
                 }
             }
+            return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
         }
 
 
@@ -798,7 +799,7 @@ class PaymentService
 
         $this->handleAccountingForPartial($contract, $partialAmount, $date);
 
-        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
+
     }
 
     private function handleAccountingForPartial($contract, $partialAmount, $date)
