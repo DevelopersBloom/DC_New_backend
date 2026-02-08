@@ -222,35 +222,87 @@ class PaymentService
 //                'amount' => 0];
 //        }
 //    }
+//    private function processSinglePaymentNew($contract, $payment, $amount, $payer, $cash, $deal_id)
+//    {
+//        $penalty = $payment->penalty ?? 0;
+//        $totalRequired = $payment->amount + $penalty;
+//
+//        $paidDeal = DealAction::where('actionable_type', Payment::class)
+//            ->where('actionable_id', $payment->id)
+//            ->orderBy('id', 'desc')
+//            ->first();
+//        $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+//        $remainingInterest = max(0, $payment->interest_payment - $alreadyPaidTotal);
+//
+//        $remainingAmount = $amount;
+//
+//        $paidPenalty = min($remainingAmount, $penalty);
+//        $remainingAmount -= $paidPenalty;
+//
+//        $paidInterest = min($remainingAmount, $remainingInterest);
+//        $remainingAmount -= $paidInterest;
+//
+//        $paidPrincipal = 0;
+//        if ($contract->payment_type == 'amortized') {
+//            $paidPrincipal = min($remainingAmount, $payment->principal_payment);
+//            $remainingAmount -= $paidPrincipal;
+//
+//            $contract->left = max(0, $contract->left - $paidPrincipal);
+//            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+//        }
+//        if ($amount >= ($totalRequired)) {
+//            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
+//        } else {
+//            $this->partiallyCompletePayment($payment, $amount, $deal_id);
+//        }
+//
+//        $contract->collected += $amount;
+//        $contract->save();
+//
+//        return [
+//            'interest_amount'  => $paidInterest,
+//            'principal_amount' => $paidPrincipal,
+//            'amount' => $remainingAmount
+//        ];
+//    }
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
     {
         $penalty = $payment->penalty ?? 0;
-        $totalRequired = $payment->amount + $penalty;
-
-        $paidDeal = DealAction::where('actionable_type', Payment::class)
-            ->where('actionable_id', $payment->id)
-            ->orderBy('id', 'desc')
-            ->first();
-        $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
-        $remainingInterest = max(0, $payment->interest_payment - $alreadyPaidTotal);
-
         $remainingAmount = $amount;
 
         $paidPenalty = min($remainingAmount, $penalty);
         $remainingAmount -= $paidPenalty;
 
-        $paidInterest = min($remainingAmount, $remainingInterest);
-        $remainingAmount -= $paidInterest;
-
+        $paidInterest = 0;
         $paidPrincipal = 0;
+
         if ($contract->payment_type == 'amortized') {
-            $paidPrincipal = min($remainingAmount, $payment->principal_payment);
+            $paidDeal = DealAction::where('actionable_type', Payment::class)
+                ->where('actionable_id', $payment->id)
+                ->orderBy('id', 'desc')
+                ->first();
+            $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+
+            $remainingInterestPlan = max(0, ($payment->interest_payment ?? 0) - $alreadyPaidTotal);
+
+            $paidInterest = min($remainingAmount, $remainingInterestPlan);
+            $remainingAmount -= $paidInterest;
+
+            $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
             $remainingAmount -= $paidPrincipal;
 
             $contract->left = max(0, $contract->left - $paidPrincipal);
             $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+
+        } else {
+            $paidInterest = min($remainingAmount, $payment->amount);
+            $remainingAmount -= $paidInterest;
+            $paidPrincipal = 0;
         }
-        if ($amount >= ($totalRequired)) {
+
+        $totalRequiredForThisLine = $payment->amount + $penalty;
+
+        if ($amount >= $totalRequiredForThisLine) {
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
         } else {
             $this->partiallyCompletePayment($payment, $amount, $deal_id);
@@ -262,7 +314,8 @@ class PaymentService
         return [
             'interest_amount'  => $paidInterest,
             'principal_amount' => $paidPrincipal,
-            'amount' => $remainingAmount
+            'penalty'          => $paidPenalty,
+            'amount'           => $remainingAmount
         ];
     }
     private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null): void
