@@ -665,8 +665,184 @@ class PaymentService
 //        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
 //
 //    }
-
     public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null)
+    {
+        $now = Carbon::now();
+        $date = $date ?? $now->format('Y-m-d');
+        $history = [];
+
+        $this->recalculateSchedule($contract, $partialAmount, $now, $history);
+
+        $oldLeft = $contract->left;
+        $contract->left = max(0, $contract->left - $partialAmount);
+        $contract->collected += $partialAmount;
+        $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+
+        $history['contract_changes'] = [
+            'old_left' => $oldLeft,
+            'new_left' => $contract->left,
+            'old_provided' => $contract->provided_amount + $partialAmount,
+            'new_provided' => $contract->provided_amount,
+        ];
+        $contract->save();
+
+        $this->recordAmountHistory($contract, $partialAmount, $deal_id);
+        $this->handleAccountingForPartial($contract, $partialAmount, $date);
+
+        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
+    }
+
+
+    private function recalculateSchedule($contract, $partialAmount, $now, &$history)
+    {
+        $payments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        if ($contract->payment_type === 'amortized') {
+            $remainingToReduce = $partialAmount;
+            foreach ($payments as $payment) {
+                if ($remainingToReduce <= 0) break;
+
+                $reduction = min($remainingToReduce, $payment->principal_payment);
+                $payment->principal_payment -= $reduction;
+                $payment->amount -= $reduction;
+                $payment->paid += $reduction;
+
+                $payment->save();
+                if ($payment->amount <= 0) $payment->status = 'completed';
+                $remainingToReduce -= $reduction;
+            }
+        } else {
+            $startedToChange = false;
+
+            foreach ($payments as $index => $payment) {
+                $dateToCheck = Carbon::parse($payment->date);
+                if ($dateToCheck->gt($now)) {
+                    $oldAmount = $payment->amount;
+                    if (!$startedToChange) {
+                        $startedToChange = true;
+                        $prevDate = ($index === 0) ? $contract->date : $payments[$index - 1]->date;
+                        $daysToCalc = $now->diffInDays(Carbon::parse($prevDate));
+                        $daysLeft = $payment->days - $daysToCalc;
+
+                        $newAmount = $oldAmount - $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate);
+                        $newAmount += $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
+                    } else {
+                        $coeff = ($contract->left - $partialAmount) / $contract->left;
+                        $newAmount = intval(ceil($oldAmount * $coeff / 10) * 10);
+                    }
+                    $payment->amount = max(0, $newAmount);
+                    $payment->save();
+                }
+
+                if ($payment->last_payment) {
+                    $payment->mother = $contract->left - $partialAmount;
+                    $payment->save();
+                }
+            }
+        }
+    }
+
+    private function recordAmountHistory($contract, $partialAmount, $deal_id)
+    {
+        ContractAmountHistory::create([
+            'contract_id' => $contract->id,
+            'amount'      => $partialAmount,
+            'amount_type' => 'provided_amount',
+            'type'        => 'out',
+            'date'        => now()->toDateTimeString(),
+            'deal_id'     => $deal_id,
+            'category_id' => $contract->category_id,
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
+        ]);
+    }
+
+    private function handleAccountingForPartial($contract, $partialAmount, $date)
+    {
+        $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')->first();
+        $ruleProvideAmountChange = PostingRule::where('business_event_filter', 'provide_general_amount_change')->first();
+
+        if (!$ruleMotherAmount || !$ruleProvideAmountChange) {
+            throw new \RuntimeException('Posting rules not found');
+        }
+
+        $diamondId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
+        $clientId = $contract->client_id;
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->first();
+
+        $this->createAccountingEntry(
+            $date,
+            $partialAmount,
+            DocumentJournal::PAY_MOTHER_AMOUNT,
+            $ruleMotherAmount,
+            $diamondId,
+            $clientId,
+            'mother_amount_payment',
+            $journal
+        );
+
+        $reservePercent = $contract->client->classification->reserve_percent ?? 0;
+        $reserveAmount = ($partialAmount * $reservePercent) / 100;
+
+        if ($reserveAmount > 0) {
+            $this->createAccountingEntry(
+                $date,
+                $reserveAmount,
+                DocumentJournal::PROVIDED_AMOUNT_CHANGE,
+                $ruleProvideAmountChange,
+                $diamondId,
+                $clientId,
+                'reserve_payment',
+                $journal
+            );
+        }
+    }
+
+
+    private function createAccountingEntry($date, $amount, $type, $rule, $diamondId, $clientId, $comment, $parentJournal)
+    {
+        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+
+        $journalDoc = DocumentJournal::create([
+            'date'              => $date,
+            'document_number'   => $nextDocNum,
+            'document_type'     => $type,
+            'amount_amd'        => $amount,
+            'partner_id'        => $diamondId,
+            'credit_partner_id' => $clientId,
+            'comment'           => $comment,
+            'debit_account_id'  => $rule->debit_account_id,
+            'credit_account_id' => $rule->credit_account_id,
+            'user_id'           => auth()->id(),
+            'journalable_type'  => DocumentJournal::class,
+            'journalable_id'    => $parentJournal->id ?? null,
+        ]);
+
+        Transaction::create([
+            'date'                 => $date,
+            'document_number'      => $nextDocNum,
+            'document_type'        => $type,
+            'debit_account_id'     => $rule->debit_account_id,
+            'debit_partner_id'     => $diamondId,
+            'debit_currency_id'    => 1,
+            'credit_account_id'    => $rule->credit_account_id,
+            'credit_currency_id'   => 1,
+            'credit_partner_id'    => $clientId,
+            'amount_amd'           => $amount,
+            'comment'              => $comment,
+            'user_id'              => auth()->id(),
+            'is_system'            => false,
+            'disbursement_date'    => $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $journalDoc->id,
+        ]);
+    }
+    public function payPartial2($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null)
     {
         $now = Carbon::now();
         $history = [];
@@ -794,7 +970,7 @@ class PaymentService
         $payment->save();
     }
 
-    private function handleAccountingForPartial($contract, $partialAmount, $date)
+    private function handleAccountingForPartial2($contract, $partialAmount, $date)
     {
         $diamondId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
         $clientId = $contract->client_id;
@@ -887,7 +1063,6 @@ class PaymentService
         $oldMother = $lastPayment->mother;
         $lastPayment->mother = 0;
         $lastPayment->save();
-        // Remove remaining initial payments
         Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
 
