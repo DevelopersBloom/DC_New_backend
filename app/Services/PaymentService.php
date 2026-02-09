@@ -93,6 +93,7 @@ class PaymentService
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
+
             }
 
             if ($amount > 0) {
@@ -100,6 +101,7 @@ class PaymentService
                 $principal_amount += $amount;
                 $amount = 0;
             }
+
         }
 
         return [
@@ -235,29 +237,44 @@ class PaymentService
         $paidInterest = 0;
         $paidPrincipal = 0;
 
-        if ($contract->payment_type == 'amortized') {
-            $paidDeal = DealAction::where('actionable_type', Payment::class)
-                ->where('actionable_id', $payment->id)
-                ->orderBy('id', 'desc')
-                ->first();
-            $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+//        if ($contract->payment_type == 'amortized') {
+//            $paidDeal = DealAction::where('actionable_type', Payment::class)
+//                ->where('actionable_id', $payment->id)
+//                ->orderBy('id', 'desc')
+//                ->first();
+//            $alreadyPaidTotal = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
+//
+//            $remainingInterestPlan = max(0, ($payment->interest_payment ?? 0) - $alreadyPaidTotal);
+//
+//            $paidInterest = min($remainingAmount, $remainingInterestPlan);
+//            $remainingAmount -= $paidInterest;
+//
+//            $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
+//            $remainingAmount -= $paidPrincipal;
+//
+//            $contract->left = max(0, $contract->left - $paidPrincipal);
+//            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+//
+//        }
+           if ($contract->payment_type == 'amortized') {
 
-            $remainingInterestPlan = max(0, ($payment->interest_payment ?? 0) - $alreadyPaidTotal);
+                    $remainingInterestPlan = $payment->interest_payment;
 
-            $paidInterest = min($remainingAmount, $remainingInterestPlan);
-            $remainingAmount -= $paidInterest;
+                    $paidInterest = min($remainingAmount, $remainingInterestPlan);
+                    $remainingAmount -= $paidInterest;
 
-            $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
-            $remainingAmount -= $paidPrincipal;
+                    $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
+                    $remainingAmount -= $paidPrincipal;
 
-            $contract->left = max(0, $contract->left - $paidPrincipal);
-            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-
-        } else {
-            $paidInterest = min($remainingAmount, $payment->amount);
-            $remainingAmount -= $paidInterest;
-            $paidPrincipal = 0;
-        }
+                    $contract->left = max(0, $contract->left - $paidPrincipal);
+                    $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                    $payment->principal_payment -= $paidPrincipal;
+                    $payment->interest_payment -= $paidInterest;
+            } else {
+                $paidInterest = min($remainingAmount, $payment->amount);
+                $remainingAmount -= $paidInterest;
+                $paidPrincipal = 0;
+            }
 
         $totalRequiredForThisLine = $payment->amount + $penalty;
         if ($amount >= $totalRequiredForThisLine) {
