@@ -351,13 +351,29 @@ class PaymentControllerNew extends Controller
                 'message' => 'You have an unpaid penalty amount! ',
             ], 404);
         }
+
         $contract_id = $request->contract_id;
         $contract = Contract::findOrFail($contract_id);
+
         $partialAmount = $request->amount;
+
+        if ($contract->provided_amount <= 0) {
+            return response()->json([
+                'message' => 'You have already paid the principal amount.'
+            ], 400);
+        }
+
+        if ($partialAmount > $contract->provided_amount) {
+            return response()->json([
+                'message' => 'The amount entered is greater than the remaining principal amount.',
+                'max_allowed' => $contract->provided_amount
+            ], 400);
+        }
+
+
         $payer = $request->payer;
         $cash = $request->cash;
 
-        // Call the payment service to handle the partial payment
         $history_type = HistoryType::where('name','partial_payment')->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,'in');
@@ -390,20 +406,7 @@ class PaymentControllerNew extends Controller
 
         $deal->payment_id = $payment_id;
         $deal->save();
-//        $acc10210 = ChartOfAccount::idByCode('10210');
-//        $acc16200NV = ChartOfAccount::idByCode('16200NV');
-//        $deal->transactions()->create([
-//            'date'              => $deal->date,
-//            'document_type'     => Transaction::PARTIAL_PAYMENT,
-//            'document_number'   => Transaction::getNextDocumentNumber(),
-//            'debit_account_id'  => $acc10210,
-//            'credit_account_id' => $acc16200NV,
-//            'currency_id'       => 1, //testing
-//            'amount_amd'        => $partialAmount,
-//            'comment'           => 'partial_payment',
-//            'debit_partner_id' => 2,//testing
-//            'credit_partner_id' => $contract->client_id,
-//        ]);
+
         $this->updateContractStatus($contract);
         $this->activityService->log(
             'partial_payment',
