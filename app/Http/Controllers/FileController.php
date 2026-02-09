@@ -365,19 +365,44 @@ class FileController extends Controller
         if (count($paymentRows)) {
             $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
         }
-
         $itemRows = [];
-        foreach ($contract->items as $item) {
-            $itemRows[] = [
-              'i_desc' => $item->category->title . ' ' . $item->subcategory,
-              'i_c' => $item->count,
-              'i_w' => $item->weight,
-              'i_cw' => $item->clear_weight,
-              'i_h' => $item->hallmark,
-              'i_a' => $contract->mother
-            ];
-        }
 
+        $totalCount = 0;
+        $totalWeight = 0;
+        $totalClearWeight = 0;
+        $totalAmount = 0;
+        $totalSum = 0;
+
+        foreach ($contract->items as $item) {
+            $amount = $item->provided_amount ?? $contract->mother;
+            $count  = $item->count ?? 1;
+
+            $rowTotal = (int)$amount * (int)$count;
+
+            $itemRows[] = [
+                'i_desc'     => $item->category->title . ' ' . $item->subcategory,
+                'i_c'        => $count,
+                'i_w'        => $item->weight,
+                'i_cw'       => $item->clear_weight,
+                'i_h'        => $item->hallmark,
+                'i_am'       => $amount,
+                'i_total_am' => $rowTotal,
+            ];
+
+            $totalCount       += $count;
+            $totalWeight      += (float)$item->weight;
+            $totalClearWeight += (float)$item->clear_weight;
+            $totalAmount      += (float)$amount;
+            $totalSum         += $rowTotal;
+        }
+        $templateProcessor->setValues([
+            't_i_c' => $totalCount,
+            't_i_w' => $totalWeight,
+            't_i_cw' => $totalClearWeight,
+            't_i_am' => $totalAmount,
+            't_i_total_am' => $totalSum,
+
+        ]);
         if (count($itemRows)) {
             $templateProcessor->cloneRowAndSetValues('i_desc', $itemRows);
         }
