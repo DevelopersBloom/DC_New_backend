@@ -688,7 +688,7 @@ class PaymentService
 //        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
 //
 //    }
-    public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null,$is_recount = true)
+    public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null,$is_recount = false)
     {
         $now = Carbon::now();
         $history = ['payment_changes' => []];

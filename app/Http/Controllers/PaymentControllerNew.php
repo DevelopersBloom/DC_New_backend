@@ -356,6 +356,7 @@ class PaymentControllerNew extends Controller
         $contract = Contract::findOrFail($contract_id);
 
         $partialAmount = $request->amount;
+        $is_recount = $request->is_recount;
 
         if ($contract->provided_amount <= 0) {
             return response()->json([
@@ -402,7 +403,7 @@ class PaymentControllerNew extends Controller
         ]);
         $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id);
 
-        $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash,$deal->id);
+        $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash,$deal->id,null,$is_recount);
 
         $deal->payment_id = $payment_id;
         $deal->save();
