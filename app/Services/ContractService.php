@@ -323,14 +323,14 @@ class   ContractService
         return "{$prefix}-{$year}-{$formatted}";
     }
 
-    public function createPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
+    public function createPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null,$months = null)
     {
         if ($contract->payment_type === 'classic') {
              $this->createClassicPayment($contract, $import_date, $import_pawnshop_id);
         }
 
         if ($contract->payment_type === 'amortized') {
-             $this->createAnnuityPayment($contract, $import_date, $import_pawnshop_id);
+             $this->createAnnuityPayment($contract, $import_date, $import_pawnshop_id,$months);
         }
     }
 
@@ -511,10 +511,13 @@ class   ContractService
 
         return $pmt - $ipmt;
     }
-    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
+    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null,$months = null)
     {
         $loanAmount = (float) $contract->provided_amount;
-        $months     = (int) $contract->deadline_days;
+
+        if (!$months) {
+            $months = (int) $contract->deadline_days;
+        }
 
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;

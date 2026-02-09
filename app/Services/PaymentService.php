@@ -20,7 +20,11 @@ use Illuminate\Support\Facades\DB;
 class PaymentService
 {
     use ContractTrait;
-
+    protected $contractService;
+    public function __construct(ContractService $contractService)
+    {
+        $this->contractService = $contractService;
+    }
 //    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id)
 //    {
 //        $payments_sum = 0;
@@ -226,7 +230,7 @@ class PaymentService
 //        }
 //    }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id,)
     {
         $penalty = $payment->penalty ?? 0;
         $remainingAmount = $amount;
@@ -258,18 +262,19 @@ class PaymentService
 //        }
            if ($contract->payment_type == 'amortized') {
 
-                    $remainingInterestPlan = $payment->interest_payment;
+                   $remainingInterestPlan = $payment->interest_payment;
 
-                    $paidInterest = min($remainingAmount, $remainingInterestPlan);
-                    $remainingAmount -= $paidInterest;
+                   $paidInterest = min($remainingAmount, $remainingInterestPlan);
+                   $remainingAmount -= $paidInterest;
 
-                    $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
-                    $remainingAmount -= $paidPrincipal;
+                   $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
+                   $remainingAmount -= $paidPrincipal;
 
-                    $contract->left = max(0, $contract->left - $paidPrincipal);
-                    $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-                    $payment->principal_payment -= $paidPrincipal;
-                    $payment->interest_payment -= $paidInterest;
+                   $contract->left = max(0, $contract->left - $paidPrincipal);
+                   $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                   $payment->principal_payment -= $paidPrincipal;
+                   $payment->interest_payment -= $paidInterest;
+
             } else {
                 $paidInterest = min($remainingAmount, $payment->amount);
                 $remainingAmount -= $paidInterest;
@@ -683,7 +688,7 @@ class PaymentService
 //        return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
 //
 //    }
-    public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null)
+    public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null,$is_recount = true)
     {
         $now = Carbon::now();
         $history = ['payment_changes' => []];
@@ -695,7 +700,25 @@ class PaymentService
             ->get();
 
         if ($contract->payment_type == 'amortized') {
-            $history['payment_changes'] = $this->processAmortizedPayments($payments, $partialAmount, $now);
+            if ($is_recount) {
+                $remainingMonths = Payment::where('contract_id', $contract->id)
+                    ->where('type', 'regular')
+                    ->where('status', 'initial')
+                    ->count();
+
+                if ($remainingMonths > 0) {
+                    Payment::where('contract_id', $contract->id)
+                        ->where('type', 'regular')
+                        ->where('status', 'initial')
+                        ->delete();
+
+                    $targetDate = $date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
+
+                    $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
+                }
+            } else {
+                $history['payment_changes'] = $this->processAmortizedPayments($payments, $partialAmount, $now);
+            }
         } else {
             $history['payment_changes'] = $this->processClassicPayments($payments, $contract, $partialAmount, $now);
         }
