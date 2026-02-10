@@ -565,8 +565,6 @@ class FileController extends Controller
 
         if (!empty($itemRows)) {
             $rowId = ($categoryName == 'car') ? 'i_car_make' : 'i_desc';
-            dd($itemRows,$categoryName,$rowId);
-
             $templateProcessor->cloneRowAndSetValues($rowId, $itemRows);
         }
 
