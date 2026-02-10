@@ -168,6 +168,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/files', [FileController::class, 'index'])->middleware('can:view_files');
         Route::post('/upload-file', [FileController::class, 'upload'])->middleware('can:upload_file');
         Route::get('/files/{id}/download', [FileController::class, 'download'])->middleware('can:download_file');
+        Route::delete('/files/{id}', [FileController::class, 'destroy']);
 
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);

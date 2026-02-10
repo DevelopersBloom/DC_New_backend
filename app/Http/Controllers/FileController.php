@@ -95,6 +95,21 @@ class FileController extends Controller
         ]);
     }
 
+    public function destroy($id)
+    {
+        $file = ModelsFile::findOrFail($id);
+
+        if ($file->path && Storage::disk('public')->exists($file->path)) {
+            Storage::disk('public')->delete($file->path);
+        }
+
+        $file->delete();
+
+        return response()->json([
+            'message' => 'File deleted successfully'
+        ]);
+    }
+
     public function downloadContract($id)
     {
         $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments'])->findOrFail($id);
