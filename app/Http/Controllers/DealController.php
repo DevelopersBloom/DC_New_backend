@@ -254,20 +254,16 @@ DealController extends Controller
                 ->orWhere('code', 'like', '1020%');
         })->pluck('id');
 
-        $debitCash = Transaction::where('pawnshop_id', $pawnshop_id)
-            ->whereIn('debit_account_id', $cashAccountIds)
+        $debitCash = Transaction::whereIn('debit_account_id', $cashAccountIds)
             ->sum('amount_amd');
 
-        $creditCash = Transaction::where('pawnshop_id', $pawnshop_id)
-            ->whereIn('credit_account_id', $cashAccountIds)
+        $creditCash = Transaction::whereIn('credit_account_id', $cashAccountIds)
             ->sum('amount_amd');
 
-        $debitBank = Transaction::where('pawnshop_id', $pawnshop_id)
-            ->whereIn('debit_account_id', $bankAccountIds)
+        $debitBank = Transaction::whereIn('debit_account_id', $bankAccountIds)
             ->sum('amount_amd');
 
-        $creditBank = Transaction::where('pawnshop_id', $pawnshop_id)
-            ->whereIn('credit_account_id', $bankAccountIds)
+        $creditBank = Transaction::whereIn('credit_account_id', $bankAccountIds)
             ->sum('amount_amd');
 
         $cash_box = $debitCash - $creditCash;
