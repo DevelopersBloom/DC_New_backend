@@ -565,6 +565,7 @@ class FileController extends Controller
 
         if (!empty($itemRows)) {
             $rowId = ($categoryName == 'car') ? 'i_car_make' : 'i_desc';
+            dd($itemRows,$categoryName);
             $templateProcessor->cloneRowAndSetValues($rowId, $itemRows);
         }
 
@@ -578,7 +579,7 @@ class FileController extends Controller
             ]);
         }
 
-        $typeSuffix = ($categoryName == 'car') ? 'ավտոյի' : 'ոսկու';
+        $typeSuffix = ($categoryName == 'car') ? 'մեքենայի' : 'ոսկու';
         $contractFilename = $contract->num . '_' . $typeSuffix . '_պայմանագիր.docx';
         $contractPath = storage_path('app/tmp/' . $contractFilename);
 
