@@ -521,13 +521,30 @@ class FileController extends Controller
             $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
         }
 
-        $itemRows = [];
-        $totals = ['count' => 0, 'weight' => 0, 'clear_weight' => 0, 'amount' => 0, 'sum' => 0];
+        if ($categoryName == 'car') {
+            if ($firstItem) {
+                $amount = $firstItem->provided_amount ?? $contract->mother;
+                $templateProcessor->setValues([
+                    'i_car_make' => $firstItem->car_make,
+                    'i_mod'      => $firstItem->model,
+                    'i_pow'      => $firstItem->power,
+                    'i_man'      => $firstItem->manufacture,
+                    'i_col'      => $firstItem->color, // Word-ում `${i_col}`
+                    'i_reg'      => $firstItem->registration,
+                    'i_own'      => $firstItem->ownership,
+                    'i_ident'    => $firstItem->identification,
+                    'i_est'      => $this->makeMoney((int)$contract->estimated_amount),
+                    'i_prov'     => $this->makeMoney((int)$amount),
+                    'i_desc'     => $firstItem->description ?? '',
+                    'cliet'      => $clientName, // Ձեր Word-ի մեջ `${cliet}` է գրված
+                ]);
+            }
+        } else {
+            $itemRows = [];
+            $totals = ['count' => 0, 'weight' => 0, 'clear_weight' => 0, 'sum' => 0];
 
-        foreach ($contract->items as $item) {
-            $amount = $item->provided_amount ?? $contract->mother;
-
-            if ($categoryName == 'gold') {
+            foreach ($contract->items as $item) {
+                $amount = $item->provided_amount ?? $contract->mother;
                 $count = $item->count ?? 1;
                 $rowTotal = (int)$amount * (int)$count;
 
@@ -537,16 +554,125 @@ class FileController extends Controller
                     'i_w'        => $item->weight,
                     'i_cw'       => $item->clear_weight,
                     'i_h'        => $item->hallmark,
-                    'i_am'       => $amount,
-                    'i_total_am' => $rowTotal,
+                    'i_am'       => $this->makeMoney((int)$amount),
+                    'i_total_am' => $this->makeMoney((int)$rowTotal),
                 ];
 
                 $totals['count']  += $count;
                 $totals['weight'] += (float)$item->weight;
                 $totals['clear_weight'] += (float)$item->clear_weight;
-                $totals['amount'] += (float)$amount;
                 $totals['sum']    += $rowTotal;
-            } else {
+            }
+
+            if (!empty($itemRows)) {
+                $templateProcessor->cloneRowAndSetValues('i_desc', $itemRows);
+                $templateProcessor->setValues([
+                    't_i_c' => $totals['count'],
+                    't_i_w' => $totals['weight'],
+                    't_i_cw' => $totals['clear_weight'],
+                    't_i_total_am' => $this->makeMoney((int)$totals['sum']),
+                ]);
+            }
+        }
+
+        $typeSuffix = ($categoryName == 'car') ? 'մեքենայի' : 'ոսկու';
+        $contractFilename = $contract->num . '_' . $typeSuffix . '_պայմանագիր.docx';
+        $contractPath = storage_path('app/tmp/' . $contractFilename);
+
+        if (!file_exists(dirname($contractPath))) {
+            mkdir(dirname($contractPath), 0775, true);
+        }
+
+        $templateProcessor->saveAs($contractPath);
+        $filesToZip[] = $contractPath;
+
+        $zipFileName = $contract->num . '_փաստաթղթեր.zip';
+        $zipFilePath = storage_path('app/tmp/' . $zipFileName);
+
+        $this->activity->log('download_contract_file', 'Contract #' . $contract->num, Contract::class, $contract->id);
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($filesToZip as $file) {
+                $zip->addFile($file, basename($file));
+            }
+            $zip->close();
+        }
+
+        foreach ($filesToZip as $file) {
+            if (file_exists($file)) unlink($file);
+        }
+
+        return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
+    }
+    public function downloadContractOld($id)
+    {
+        $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments', 'user'])->findOrFail($id);
+
+        $client = $contract->client;
+        $user = $contract->user;
+        $filesToZip = [];
+
+        $firstItem = $contract->items->first();
+        $categoryName = $firstItem->category->name ?? 'gold';
+
+        $templateFileName = ($categoryName == 'car') ? 'contract_car_template.docx' : 'contract_gold_template.docx';
+        $templatePath = public_path('files/' . $templateFileName);
+
+        if (!file_exists($templatePath)) {
+            abort(404, "Template not found: " . $templateFileName);
+        }
+
+        $templateProcessor = new TemplateProcessor($templatePath);
+
+        $clientName = $client->name . ' ' . $client->surname;
+        $userName = $user ? ($user->name . ' ' . $user->surname) : '---';
+        $yearlyRate = round($contract->interest_rate * 365, 5);
+        $effectiveRate = round($contract->effective_annual_rate, 5);
+
+        $templateProcessor->setValues([
+            'num' => $contract->num,
+            'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
+            'client' => $clientName,
+            'passport_series' => $client->passport_series,
+            'passport_validity' => \Carbon\Carbon::parse($client->passport_validity)->format('d.m.Y'),
+            'passport_issued' => $client->passport_issued,
+            'social_card_number' => $client->social_card_number ?? $client->tax_number ?? '',
+            'city' => $client->city,
+            'street' => $client->street,
+            'phone' => $client->phone ?? $contract->additional_phone ?? '',
+            'contract_amount' => $this->makeMoney((int)$contract->contract_amount),
+            'mother_amount' => $this->makeMoney((int)$contract->estimated_amount),
+            'interest_annual_rate' => $yearlyRate . ' %',
+            'effective_annual_rate' => $effectiveRate . ' %',
+            'deadline' => \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y'),
+            'bank_name' => $client->bank_name,
+            'account_number' => $client->account_number,
+            'card_number' => $client->card_number,
+            'user_name' => $userName,
+        ]);
+
+        $paymentRows = [];
+        foreach ($contract->payments as $p) {
+            $paymentRows[] = [
+                'p_d' => \Carbon\Carbon::parse($p->date)->format('d.m.Y'),
+                'p_m' => $this->makeMoney((int)$p->principal_payment),
+                'p_i' => $this->makeMoney((int)$p->interest_payment),
+                'p_a' => $this->makeMoney((int)$p->amount),
+                'p_r' => $this->makeMoney((int)$p->remaining),
+            ];
+        }
+        if (!empty($paymentRows)) {
+            $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
+        }
+
+        $itemRows = [];
+        $totals = ['count' => 0, 'weight' => 0, 'clear_weight' => 0, 'amount' => 0, 'sum' => 0];
+
+        foreach ($contract->items as $item) {
+            $amount = $item->provided_amount ?? $contract->mother;
+
+
                 $itemRows[] = [
                     'i_car_make' => $item->car_make,
                     'i_mod'      => $item->model,
