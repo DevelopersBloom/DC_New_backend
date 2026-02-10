@@ -535,7 +535,7 @@ class FileController extends Controller
                     'i_ident'    => $firstItem->identification,
                     'i_est'      => $this->makeMoney((int)$contract->estimated_amount),
                     'i_prov'     => $this->makeMoney((int)$amount),
-                    'i_desc'     => $firstItem->description ?? '',
+                    'i_desc'     => $contract->description ?? '',
                 ]);
             }
         } else {
