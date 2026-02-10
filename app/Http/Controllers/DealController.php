@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\Deal;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\Transaction;
 use App\Traits\ContractTrait;
 use App\Traits\OrderTrait;
 use Carbon\Carbon;
@@ -215,32 +217,66 @@ DealController extends Controller
 //        ]);
 //    }
 
+//    public function getCashBox(int $pawnshop_id)
+//    {
+//        $date = Carbon::now()->format('Y-m-d');
+//
+//        $accountIds = DB::table('chart_of_accounts')
+//            ->where('code', 'like', '10210%')
+//            ->pluck('id');
+//
+//        $debitBank = DB::table('transactions')
+//            ->whereIn('debit_account_id', $accountIds)
+////            ->where('date', '<=', $date)
+//            ->sum('amount_amd');
+//
+//        $creditBank = DB::table('transactions')
+//            ->whereIn('credit_account_id', $accountIds)
+////            ->where('date', '<=', $date)
+//            ->sum('amount_amd');
+//
+//        $cash_box = ($deals->total_cash_in ?? 0) - ($deals->total_cash_out ?? 0);
+//        $bank_cash_box = ($debitBank ?? 0) - ($creditBank ?? 0);
+//        $total_amount = $cash_box + $bank_cash_box;
+//
+//        return response()->json([
+//            'cashBox' => $cash_box,
+//            'bankCashBox' => $bank_cash_box,
+//            'totalAmount' => $total_amount,
+//        ]);
+//    }
     public function getCashBox(int $pawnshop_id)
     {
-        $date = Carbon::now()->format('Y-m-d');
+        $cashAccountIds = ChartOfAccount::where('code', 'like', '1000%')->pluck('id');
 
-        $accountIds = DB::table('chart_of_accounts')
-            ->where('code', 'like', '10210%')
-            ->pluck('id');
+        $bankAccountIds = ChartOfAccount::where(function ($q) {
+            $q->where('code', 'like', '1010%')
+                ->orWhere('code', 'like', '1020%');
+        })->pluck('id');
 
-        $debitBank = DB::table('transactions')
-            ->whereIn('debit_account_id', $accountIds)
-//            ->where('date', '<=', $date)
+        $debitCash = Transaction::where('pawnshop_id', $pawnshop_id)
+            ->whereIn('debit_account_id', $cashAccountIds)
             ->sum('amount_amd');
 
-        $creditBank = DB::table('transactions')
-            ->whereIn('credit_account_id', $accountIds)
-//            ->where('date', '<=', $date)
+        $creditCash = Transaction::where('pawnshop_id', $pawnshop_id)
+            ->whereIn('credit_account_id', $cashAccountIds)
             ->sum('amount_amd');
 
-        $cash_box = ($deals->total_cash_in ?? 0) - ($deals->total_cash_out ?? 0);
-        $bank_cash_box = ($debitBank ?? 0) - ($creditBank ?? 0);
-        $total_amount = $cash_box + $bank_cash_box;
+        $debitBank = Transaction::where('pawnshop_id', $pawnshop_id)
+            ->whereIn('debit_account_id', $bankAccountIds)
+            ->sum('amount_amd');
+
+        $creditBank = Transaction::where('pawnshop_id', $pawnshop_id)
+            ->whereIn('credit_account_id', $bankAccountIds)
+            ->sum('amount_amd');
+
+        $cash_box = $debitCash - $creditCash;
+        $bank_cash_box = $debitBank - $creditBank;
 
         return response()->json([
             'cashBox' => $cash_box,
             'bankCashBox' => $bank_cash_box,
-            'totalAmount' => $total_amount,
+            'totalAmount' => $cash_box + $bank_cash_box,
         ]);
     }
 
