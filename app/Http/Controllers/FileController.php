@@ -562,8 +562,9 @@ class FileController extends Controller
                 ];
             }
         }
-        dd($itemRows,$categoryName);
+
         if (!empty($itemRows)) {
+            dd($itemRows,$categoryName);
             $rowId = ($categoryName == 'car') ? 'i_car_make' : 'i_desc';
 
             $templateProcessor->cloneRowAndSetValues($rowId, $itemRows);
