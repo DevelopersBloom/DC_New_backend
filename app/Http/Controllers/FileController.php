@@ -557,7 +557,8 @@ class FileController extends Controller
                     'i_own'      => $item->ownership,
                     'i_ident'    => $item->identification,
                     'i_est'      => $contract->estimated_amount,
-                    'i_prov'     => $amount
+                    'i_prov'     => $amount,
+                    'i_desc'     =>  $contract->description
                 ];
             }
         }

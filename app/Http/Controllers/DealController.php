@@ -247,13 +247,15 @@ DealController extends Controller
 //    }
     public function getCashBox(int $pawnshop_id)
     {
-        $cashAccountIds = ChartOfAccount::where('code', 'like', '1000%')->pluck('id');
+        $cashAccountIds = ChartOfAccount::where('code', 'like', '10000%')->pluck('id');
 
-        $bankAccountIds = ChartOfAccount::where(function ($q) {
-            $q->where('code', 'like', '1010%')
-                ->orWhere('code', 'like', '1020%')
-                ->orWhere('code', 'like', '1021%');
-        })->pluck('id');
+        $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
+
+//            ChartOfAccount::where(function ($q) {
+//            $q->where('code', 'like', '10210%')
+//                ->orWhere('code', 'like', '1020%')
+//                ->orWhere('code', 'like', '1021%');
+//        })->pluck('id');
 
         $debitCash = Transaction::whereIn('debit_account_id', $cashAccountIds)
             ->sum('amount_amd');
