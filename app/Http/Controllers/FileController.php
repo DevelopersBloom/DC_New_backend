@@ -529,14 +529,13 @@ class FileController extends Controller
                     'i_mod'      => $firstItem->model,
                     'i_pow'      => $firstItem->power,
                     'i_man'      => $firstItem->manufacture,
-                    'i_col'      => $firstItem->color, // Word-ում `${i_col}`
+                    'i_col'      => $firstItem->color,
                     'i_reg'      => $firstItem->registration,
                     'i_own'      => $firstItem->ownership,
                     'i_ident'    => $firstItem->identification,
                     'i_est'      => $this->makeMoney((int)$contract->estimated_amount),
                     'i_prov'     => $this->makeMoney((int)$amount),
                     'i_desc'     => $firstItem->description ?? '',
-                    'cliet'      => $clientName, // Ձեր Word-ի մեջ `${cliet}` է գրված
                 ]);
             }
         } else {
@@ -672,7 +671,26 @@ class FileController extends Controller
         foreach ($contract->items as $item) {
             $amount = $item->provided_amount ?? $contract->mother;
 
+            if ($categoryName == 'gold') {
+                $count = $item->count ?? 1;
+                $rowTotal = (int)$amount * (int)$count;
 
+                $itemRows[] = [
+                    'i_desc'     => $item->category->title . ' ' . $item->subcategory,
+                    'i_c'        => $count,
+                    'i_w'        => $item->weight,
+                    'i_cw'       => $item->clear_weight,
+                    'i_h'        => $item->hallmark,
+                    'i_am'       => $amount,
+                    'i_total_am' => $rowTotal,
+                ];
+
+                $totals['count']  += $count;
+                $totals['weight'] += (float)$item->weight;
+                $totals['clear_weight'] += (float)$item->clear_weight;
+                $totals['amount'] += (float)$amount;
+                $totals['sum']    += $rowTotal;
+            } else {
                 $itemRows[] = [
                     'i_car_make' => $item->car_make,
                     'i_mod'      => $item->model,
@@ -691,6 +709,7 @@ class FileController extends Controller
 
         if (!empty($itemRows)) {
             $rowId = ($categoryName == 'car') ? 'i_car_make' : 'i_desc';
+
             $templateProcessor->cloneRowAndSetValues($rowId, $itemRows);
         }
 
