@@ -251,7 +251,8 @@ DealController extends Controller
 
         $bankAccountIds = ChartOfAccount::where(function ($q) {
             $q->where('code', 'like', '1010%')
-                ->orWhere('code', 'like', '1020%');
+                ->orWhere('code', 'like', '1020%')
+                ->orWhere('code', 'like', '1021%');
         })->pluck('id');
 
         $debitCash = Transaction::whereIn('debit_account_id', $cashAccountIds)
