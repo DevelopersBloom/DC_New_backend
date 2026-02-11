@@ -194,13 +194,12 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => '`from` must be <= `to`'], 422);
         }
 
-        $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
-        $prevTo   = $from->copy()->subDay()->endOfDay();
-        $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
+//        $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
+//        $prevTo   = $from->copy()->subDay()->endOfDay();
+//        $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
 
-        $current  = $this->svc->build($from, $to);
-        $previous = $this->svc->build($prevFrom, $prevTo);
-dd($prevFrom, $prevTo,$from, $to);
+        $current  = $this->svc->build($from);
+        $previous = $this->svc->build($to);
         $currBy = [];
         foreach ($current as $r) {
             $currBy[(string)$r['code']] = $r;
