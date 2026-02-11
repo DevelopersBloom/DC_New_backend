@@ -244,6 +244,12 @@ class ContractControllerNew extends Controller
                 $this->contractService->storeContractItem($contract->id, $item_data);
             }
             $contract->category_id = $category_id;
+            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
+            $contract->effective_annual_rate = $effectiveRates['annual'];
+            $contract->effective_daily_rate = $effectiveRates['daily'];
+            $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
+            $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
+            $contract->save();
             $contract->save();
             $guarantors = $contractRequest->validated()['guarantors'] ?? [];
 
@@ -349,12 +355,12 @@ class ContractControllerNew extends Controller
             $this->contractService->createPayment($contract);
 
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
-            $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
-            $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
-            $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
-            $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
-            $contract->save();
+//            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
+//            $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
+//            $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
+//            $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
+//            $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
+//            $contract->save();
 
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
