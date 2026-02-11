@@ -8,7 +8,7 @@ class IncomeExpenseMonthlyReport
 {
 
 
-    public function build(string $date: array
+    public function build(string $date): array
     {
         $debit = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
