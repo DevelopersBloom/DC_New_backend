@@ -276,16 +276,16 @@ class ContractControllerNew extends Controller
             }
 
             $this->contractService->createPayment($contract);
-            $contract->load('payments');
-
-            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
-
-            $contract->update([
-                'effective_annual_rate'      => $effectiveRates['annual'],
-                'effective_daily_rate'       => $effectiveRates['daily'],
-                'effective_rate_kasko'       => $effectiveRates['kasko_daily'],
-                'effective_rate_annual_kasko' => $effectiveRates['kasko_annual'],
-            ]);
+//            $contract->load('payments');
+//
+//            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
+//
+//            $contract->update([
+//                'effective_annual_rate'      => $effectiveRates['annual'],
+//                'effective_daily_rate'       => $effectiveRates['daily'],
+//                'effective_rate_kasko'       => $effectiveRates['kasko_daily'],
+//                'effective_rate_annual_kasko' => $effectiveRates['kasko_annual'],
+//            ]);
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000 ? true : false;
 
@@ -359,12 +359,12 @@ class ContractControllerNew extends Controller
             $this->contractService->createPayment($contract);
 
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-//            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
-//            $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
-//            $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
-//            $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
-//            $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
-//            $contract->save();
+            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
+            $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
+            $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
+            $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
+            $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
+            $contract->save();
 
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
