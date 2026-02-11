@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\Acra\AcraExport;
 use App\Exports\ContractsCalcExport;
 use App\Exports\ContractsExport;
 use App\Exports\DailyExport;
