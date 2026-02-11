@@ -100,7 +100,7 @@ class AcraExport
     {
         if (!$sheet) return;
         $clients = $this->contracts->map->client->unique('id');
-        dd($this->contracts);
+
         $row = 2;
         foreach ($clients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
