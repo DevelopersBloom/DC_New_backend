@@ -37,13 +37,14 @@ namespace App\Exports\Acra;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use App\Models\Contract;
 
 class AcraExport
 {
     protected $contracts;
     protected $from;
     protected $to;
-    protected $customerCode = 'XYZ'; // Փոխարինեք ձեր Հաճախորդի կոդով [cite: 44]
+    protected $customerCode = 'XYZ'; // Այստեղ լրացրեք ձեր կազմակերպության ԱՔՌԱ կոդը
 
     public function __construct($contracts, $from, $to)
     {
@@ -54,122 +55,26 @@ class AcraExport
 
     public function export()
     {
-        // Բացում ենք Template ֆայլը
-        $path = base_path('acra_template.xlsx');
+        $path = storage_path('app/templates/acra_template.xlsx');
         $reader = IOFactory::createReader('Xlsx');
         $spreadsheet = $reader->load($path);
 
-        // 1. SHEET: PackageInfo [cite: 50]
-        $pInfo = $spreadsheet->getSheetByName('PackageInfo');
-        if ($pInfo) {
-            $pInfo->setCellValue('B1', $this->customerCode); // SourceName [cite: 44]
-            $pInfo->setCellValue('B2', $this->from); // StartDate
-            $pInfo->setCellValue('B3', $this->to); // EndDate
-            $pInfo->setCellValue('B4', now()->format('Y-m-d H:i:s')); // CreatedDateTime
-            $pInfo->setCellValue('B5', 1); // FileCount [cite: 45]
-            $pInfo->setCellValue('B6', 1); // FileNum [cite: 46]
-        }
+        // 1. PackageInfo
+        $this->fillPackageInfo($spreadsheet->getSheetByName('PackageInfo'));
 
-        // 2. SHEET: Debtor
-        $debtorSheet = $spreadsheet->getSheetByName('Debtor');
-        if ($debtorSheet) {
-            $clients = $this->contracts->map->client->unique('id');
-            dd($clients);
-            $row = 2;
-            foreach ($clients as $client) {
-                $debtorSheet->setCellValue('A' . $row, $client->id);
-                $debtorSheet->setCellValue('B' . $row, '1'); // Իրավաբանական կարգավիճակ
-                $debtorSheet->setCellValue('C' . $row, $client->name . ' ' . $client->surname);
-                $debtorSheet->setCellValue('D' . $row, $client->passport); // ՀՎՀՀ / Անձնագիր
-                $debtorSheet->setCellValue('E' . $row, $client->birth_date);
-                $debtorSheet->setCellValue('F' . $row, $client->passport_date);
-                $debtorSheet->setCellValue('G' . $row, $client->passport_by);
-                $debtorSheet->setCellValue('H' . $row, $client->ssn); // ՀԾՀ
-                $debtorSheet->setCellValue('I' . $row, $client->gender == 'male' ? '1' : '2');
-                $debtorSheet->setCellValue('J' . $row, '1'); // Ռեզիդենտություն
-                $debtorSheet->setCellValue('K' . $row, '10'); // Սեփականության ձև
-                $debtorSheet->setCellValue('L' . $row, $client->address);
-                $debtorSheet->setCellValue('M' . $row, '8'); // Գործունեության ոլորտ
-                $debtorSheet->setCellValue('R' . $row, $client->id_card); // Նույնականացման քարտ
-                $debtorSheet->setCellValue('S' . $row, $client->id_card_date);
-                $debtorSheet->setCellValue('T' . $row, $client->id_card_by);
-                $row++;
-            }
-        }
+        // 2. Debtor
+        $this->fillDebtor($spreadsheet->getSheetByName('Debtor'));
 
-        // 3. SHEET: Credit
-        $creditSheet = $spreadsheet->getSheetByName('Credit');
-        if ($creditSheet) {
-            $row = 2;
-            foreach ($this->contracts as $contract) {
-                $creditSheet->setCellValue('A' . $row, $contract->client_id);
-                $creditSheet->setCellValue('B' . $row, $contract->num);
-                $creditSheet->setCellValue('C' . $row, $contract->date);
-                $creditSheet->setCellValue('D' . $row, $contract->deadline);
-                $creditSheet->setCellValue('E' . $row, $contract->closed_at);
-                $creditSheet->setCellValue('F' . $row, '15'); // Վարկի տեսակ
-                $creditSheet->setCellValue('G' . $row, $contract->provided_amount);
-                $creditSheet->setCellValue('H' . $row, $contract->provided_amount);
-                $creditSheet->setCellValue('I' . $row, $contract->provided_amount - $contract->mother);
-                $creditSheet->setCellValue('J' . $row, $contract->mother);
-                $creditSheet->setCellValue('K' . $row, $contract->overdue_balance ?? 0);
-                $creditSheet->setCellValue('L' . $row, $contract->overdue_interest ?? 0);
-                $creditSheet->setCellValue('N' . $row, '1'); // Արժույթ (AMD)
-                $creditSheet->setCellValue('O' . $row, '1'); // Ռիսկի դաս
-                $creditSheet->setCellValue('P' . $row, $contract->status == 'initial' ? '1' : '2');
-                $creditSheet->setCellValue('Q' . $row, $contract->interest_rate);
-                $creditSheet->setCellValue('R' . $row, '8'); // Ոլորտ
-                $creditSheet->setCellValue('S' . $row, '1'); // Վայր
-                $creditSheet->setCellValue('U' . $row, $contract->date);
-                $creditSheet->setCellValue('W' . $row, $contract->delay_days ?? 0);
-                $creditSheet->setCellValue('X' . $row, now()->format('Y-m-d'));
-                $row++;
-            }
-        }
+        // 3. Credit
+        $this->fillCredit($spreadsheet->getSheetByName('Credit'));
 
-        // 4. SHEET: Collateral
-        $collateralSheet = $spreadsheet->getSheetByName('Collateral');
-        if ($collateralSheet) {
-            $row = 2;
-            foreach ($this->contracts as $contract) {
-                foreach ($contract->items as $item) {
-                    $collateralSheet->setCellValue('A' . $row, $contract->num);
-                    $collateralSheet->setCellValue('B' . $row, $item->provided_amount);
-                    $collateralSheet->setCellValue('C' . $row, '1'); // Արժույթ
-                    $collateralSheet->setCellValue('D' . $row, $item->subcategory . ' ' . $item->description);
-                    $row++;
-                }
-            }
-        }
+        // 4. Collateral
+        $this->fillCollateral($spreadsheet->getSheetByName('Collateral'));
 
-        // 5. SHEET: Guarantor
-        $guarantorSheet = $spreadsheet->getSheetByName('Guarantor');
-        if ($guarantorSheet) {
-            $row = 2;
-            foreach ($this->contracts as $contract) {
-                foreach ($contract->guarantors as $g) {
-                    $guarantorSheet->setCellValue('A' . $row, $contract->num);
-                    $guarantorSheet->setCellValue('B' . $row, $g->id);
-                    $guarantorSheet->setCellValue('C' . $row, '1');
-                    $guarantorSheet->setCellValue('D' . $row, $g->name . ' ' . $g->surname);
-                    $guarantorSheet->setCellValue('E' . $row, $g->passport);
-                    $guarantorSheet->setCellValue('F' . $row, $g->birth_date);
-                    $guarantorSheet->setCellValue('G' . $row, $g->passport_date);
-                    $guarantorSheet->setCellValue('H' . $row, $g->passport_by);
-                    $guarantorSheet->setCellValue('I' . $row, $g->ssn);
-                    $guarantorSheet->setCellValue('J' . $row, $g->gender == 'male' ? '1' : '2');
-                    $guarantorSheet->setCellValue('L' . $row, '10');
-                    $guarantorSheet->setCellValue('M' . $row, $g->address);
-                    $guarantorSheet->setCellValue('T' . $row, '1'); // Արժույթ
-                    $guarantorSheet->setCellValue('U' . $row, $g->id_card);
-                    $guarantorSheet->setCellValue('V' . $row, $g->id_card_date);
-                    $guarantorSheet->setCellValue('W' . $row, $g->id_card_by);
-                    $row++;
-                }
-            }
-        }
+        // 5. Guarantor
+        $this->fillGuarantor($spreadsheet->getSheetByName('Guarantor'));
 
-        // Ֆայլի անվանման ձևավորում ըստ ուղեցույցի: XYZ_01_01_YYYYMMDDHHMMSS.xlsx [cite: 47]
+        // Ֆայլի անվանումը ըստ ուղեցույցի 2.2 կետի
         $packageId = now()->format('YmdHis');
         $fileName = "{$this->customerCode}_01_01_{$packageId}.xlsx";
         $filePath = storage_path('app/public/' . $fileName);
@@ -178,5 +83,121 @@ class AcraExport
         $writer->save($filePath);
 
         return $filePath;
+    }
+
+    private function fillPackageInfo($sheet)
+    {
+        if (!$sheet) return;
+        $sheet->setCellValue('B1', $this->customerCode);
+        $sheet->setCellValue('B2', $this->from);
+        $sheet->setCellValue('B3', $this->to);
+        $sheet->setCellValue('B4', now()->format('Y-m-d H:i:s'));
+        $sheet->setCellValue('B5', 1);
+        $sheet->setCellValue('B6', 1);
+    }
+
+    private function fillDebtor($sheet)
+    {
+        if (!$sheet) return;
+        $clients = $this->contracts->map->client->unique('id');
+        $row = 2;
+        foreach ($clients as $client) {
+            $sheet->setCellValue('A' . $row, $client->id);
+            $sheet->setCellValue('B' . $row, $client->is_legal_entity ? '2' : '1'); // 1-ֆիզ, 2-իրավ
+            $sheet->setCellValue('C' . $row, $client->name . ' ' . $client->surname);
+            $sheet->setCellValue('D' . $row, $client->passport_series);
+            $sheet->setCellValue('E' . $row, $client->birth_date);
+            $sheet->setCellValue('F' . $row, $client->passport_date);
+            $sheet->setCellValue('G' . $row, $client->passport_by);
+            $sheet->setCellValue('H' . $row, $client->ssn);
+            $sheet->setCellValue('I' . $row, $client->gender == 'male' ? '1' : '2');
+            $sheet->setCellValue('J' . $row, '1'); // 1-Ռեզիդենտ
+            $sheet->setCellValue('K' . $row, '10'); // 10-Մասնավոր
+            $sheet->setCellValue('L' . $row, $client->address);
+            $sheet->setCellValue('M' . $row, '8'); // Ոլորտ
+            $sheet->setCellValue('R' . $row, $client->id_card);
+            $sheet->setCellValue('S' . $row, $client->id_card_date);
+            $sheet->setCellValue('T' . $row, $client->id_card_by);
+            $row++;
+        }
+    }
+
+    private function fillCredit($sheet)
+    {
+        if (!$sheet) return;
+        $row = 2;
+        foreach ($this->contracts as $contract) {
+            // Հաշվարկում ենք մնացորդը և ժամկետանց օրերը ըստ ձեր ContractTrait-ի կամ մոդելի
+            $overdueDays = 0;
+            if ($contract->is_overdue) {
+                $earliestOverduePayment = $contract->payments()
+                    ->where('status', 'initial')
+                    ->whereDate('date', '<', today())
+                    ->orderBy('date', 'asc')
+                    ->first();
+                if ($earliestOverduePayment) {
+                    $overdueDays = now()->diffInDays(Carbon::parse($earliestOverduePayment->date));
+                }
+            }
+
+            $sheet->setCellValue('A' . $row, $contract->client_id);
+            $sheet->setCellValue('B' . $row, $contract->num);
+            $sheet->setCellValue('C' . $row, $contract->date);
+            $sheet->setCellValue('D' . $row, $contract->deadline);
+            $sheet->setCellValue('E' . $row, $contract->closed_at);
+            $sheet->setCellValue('F' . $row, '15'); // Լոմբարդային վարկ
+            $sheet->setCellValue('G' . $row, $contract->contract_amount);
+            $sheet->setCellValue('H' . $row, $contract->provided_amount);
+            $sheet->setCellValue('I' . $row, $contract->provided_amount - $contract->mother); // Մարված մայր գումար
+            $sheet->setCellValue('J' . $row, $contract->mother); // Մայր գումարի մնացորդ
+            $sheet->setCellValue('K' . $row, $contract->penalty_amount ?? 0); // Ժամկետանց մնացորդ
+            $sheet->setCellValue('L' . $row, 0); // Ժամկետանց տոկոս
+            $sheet->setCellValue('N' . $row, '1'); // AMD
+            $sheet->setCellValue('O' . $row, '1'); // Ստանդարտ ռիսկ
+            $sheet->setCellValue('P' . $row, $contract->status == 'completed' ? '2' : '1'); // 1-գործող, 2-մարված
+            $sheet->setCellValue('Q' . $row, $contract->interest_rate);
+            $sheet->setCellValue('R' . $row, '8'); // Սպառողական ոլորտ
+            $sheet->setCellValue('S' . $row, '1'); // Երևան (կամ ըստ pawnshop-ի)
+            $sheet->setCellValue('W' . $row, $overdueDays);
+            $sheet->setCellValue('X' . $row, now()->format('Y-m-d'));
+            $row++;
+        }
+    }
+
+    private function fillCollateral($sheet)
+    {
+        if (!$sheet) return;
+        $row = 2;
+        foreach ($this->contracts as $contract) {
+            foreach ($contract->items as $item) {
+                $sheet->setCellValue('A' . $row, $contract->num);
+                $sheet->setCellValue('B' . $row, $item->pivot->estimated_amount ?? $contract->estimated_amount);
+                $sheet->setCellValue('C' . $row, '1'); // AMD
+                $sheet->setCellValue('D' . $row, $item->subcategory . ' ' . $item->description);
+                $row++;
+            }
+        }
+    }
+
+    private function fillGuarantor($sheet)
+    {
+        if (!$sheet) return;
+        $row = 2;
+        foreach ($this->contracts as $contract) {
+            foreach ($contract->guarantors as $g) {
+                $sheet->setCellValue('A' . $row, $contract->num);
+                $sheet->setCellValue('B' . $row, $g->id);
+                $sheet->setCellValue('C' . $row, '1'); // Գործող
+                $sheet->setCellValue('D' . $row, $g->name . ' ' . $g->surname);
+                $sheet->setCellValue('E' . $row, $g->passport_series);
+                $sheet->setCellValue('F' . $row, $g->birth_date);
+                $sheet->setCellValue('I' . $row, $g->ssn);
+                $sheet->setCellValue('J' . $row, $g->gender == 'male' ? '1' : '2');
+                $sheet->setCellValue('M' . $row, $g->address);
+                $sheet->setCellValue('S' . $row, $contract->provided_amount); // Երաշխ. գումար
+                $sheet->setCellValue('T' . $row, '1'); // AMD
+                $row++;
+            }
+        }
     }
 }
