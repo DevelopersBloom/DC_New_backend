@@ -33,16 +33,17 @@
 //}
 namespace App\Exports\Acra;
 
+
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class AcraExport
 {
     protected $contracts;
     protected $from;
     protected $to;
+    protected $customerCode = 'XYZ'; // Փոխարինեք ձեր Հաճախորդի կոդով [cite: 44]
 
     public function __construct($contracts, $from, $to)
     {
@@ -53,28 +54,23 @@ class AcraExport
 
     public function export()
     {
-        // 1. Բացում ենք Template ֆայլը
-        $path = base_path('acra_template.xlsx');
-//        $path = storage_path('app/templates/acra_template.xlsx');
+        // Բացում ենք Template ֆայլը
+        $path = storage_path('app/templates/acra_template.xlsx');
         $reader = IOFactory::createReader('Xlsx');
         $spreadsheet = $reader->load($path);
 
-        // ---------------------------
-        // 1. SHEET: PackageInfo
-        // ---------------------------
+        // 1. SHEET: PackageInfo [cite: 50]
         $pInfo = $spreadsheet->getSheetByName('PackageInfo');
         if ($pInfo) {
-            $pInfo->setCellValue('B1', 'TMP');
-            $pInfo->setCellValue('B2', $this->from);
-            $pInfo->setCellValue('B3', $this->to);
-            $pInfo->setCellValue('B4', now()->format('Y-m-d H:i:s'));
-            $pInfo->setCellValue('B5', 1);
-            $pInfo->setCellValue('B6', 1);
+            $pInfo->setCellValue('B1', $this->customerCode); // SourceName [cite: 44]
+            $pInfo->setCellValue('B2', $this->from); // StartDate
+            $pInfo->setCellValue('B3', $this->to); // EndDate
+            $pInfo->setCellValue('B4', now()->format('Y-m-d H:i:s')); // CreatedDateTime
+            $pInfo->setCellValue('B5', 1); // FileCount [cite: 45]
+            $pInfo->setCellValue('B6', 1); // FileNum [cite: 46]
         }
 
-        // ---------------------------
         // 2. SHEET: Debtor
-        // ---------------------------
         $debtorSheet = $spreadsheet->getSheetByName('Debtor');
         if ($debtorSheet) {
             $clients = $this->contracts->map->client->unique('id');
@@ -83,26 +79,24 @@ class AcraExport
                 $debtorSheet->setCellValue('A' . $row, $client->id);
                 $debtorSheet->setCellValue('B' . $row, '1'); // Իրավաբանական կարգավիճակ
                 $debtorSheet->setCellValue('C' . $row, $client->name . ' ' . $client->surname);
-                $debtorSheet->setCellValue('D' . $row, $client->passport);
+                $debtorSheet->setCellValue('D' . $row, $client->passport); // ՀՎՀՀ / Անձնագիր
                 $debtorSheet->setCellValue('E' . $row, $client->birth_date);
                 $debtorSheet->setCellValue('F' . $row, $client->passport_date);
                 $debtorSheet->setCellValue('G' . $row, $client->passport_by);
-                $debtorSheet->setCellValue('H' . $row, $client->ssn);
+                $debtorSheet->setCellValue('H' . $row, $client->ssn); // ՀԾՀ
                 $debtorSheet->setCellValue('I' . $row, $client->gender == 'male' ? '1' : '2');
                 $debtorSheet->setCellValue('J' . $row, '1'); // Ռեզիդենտություն
                 $debtorSheet->setCellValue('K' . $row, '10'); // Սեփականության ձև
                 $debtorSheet->setCellValue('L' . $row, $client->address);
                 $debtorSheet->setCellValue('M' . $row, '8'); // Գործունեության ոլորտ
-                $debtorSheet->setCellValue('R' . $row, $client->id_card);
+                $debtorSheet->setCellValue('R' . $row, $client->id_card); // Նույնականացման քարտ
                 $debtorSheet->setCellValue('S' . $row, $client->id_card_date);
                 $debtorSheet->setCellValue('T' . $row, $client->id_card_by);
                 $row++;
             }
         }
 
-        // ---------------------------
         // 3. SHEET: Credit
-        // ---------------------------
         $creditSheet = $spreadsheet->getSheetByName('Credit');
         if ($creditSheet) {
             $row = 2;
@@ -132,9 +126,7 @@ class AcraExport
             }
         }
 
-        // ---------------------------
         // 4. SHEET: Collateral
-        // ---------------------------
         $collateralSheet = $spreadsheet->getSheetByName('Collateral');
         if ($collateralSheet) {
             $row = 2;
@@ -149,9 +141,7 @@ class AcraExport
             }
         }
 
-        // ---------------------------
         // 5. SHEET: Guarantor
-        // ---------------------------
         $guarantorSheet = $spreadsheet->getSheetByName('Guarantor');
         if ($guarantorSheet) {
             $row = 2;
@@ -178,8 +168,9 @@ class AcraExport
             }
         }
 
-        // Պահպանում ենք ֆայլը
-        $fileName = 'ACRA_' . now()->format('Ymd_His') . '.xlsx';
+        // Ֆայլի անվանման ձևավորում ըստ ուղեցույցի: XYZ_01_01_YYYYMMDDHHMMSS.xlsx [cite: 47]
+        $packageId = now()->format('YmdHis');
+        $fileName = "{$this->customerCode}_01_01_{$packageId}.xlsx";
         $filePath = storage_path('app/public/' . $fileName);
 
         $writer = new Xlsx($spreadsheet);
