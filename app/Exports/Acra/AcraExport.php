@@ -36,6 +36,7 @@ namespace App\Exports\Acra;
 
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use App\Models\Contract;
 
@@ -78,7 +79,15 @@ class AcraExport
         $packageId = now()->format('YmdHis');
         $fileName = "{$this->customerCode}_01_01_{$packageId}.xlsx";
         $filePath = storage_path('app/public/' . $fileName);
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            $sheet->getStyle($sheet->calculateWorksheetDimension())
+                ->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
+            foreach (range('A', $sheet->getHighestColumn()) as $columnID) {
+                $sheet->getColumnDimension($columnID)->setAutoSize(true);
+            }
+        }
         $writer = new Xlsx($spreadsheet);
         $writer->save($filePath);
 
