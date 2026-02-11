@@ -533,6 +533,7 @@ class FileController extends Controller
                     'i_reg'      => $firstItem->registration,
                     'i_own'      => $firstItem->ownership,
                     'i_ident'    => $firstItem->identification,
+                    'i_l_p'      => $firstItem->license_plate,
                     'i_est'      => $this->makeMoney((int)$contract->estimated_amount),
                     'i_prov'     => $this->makeMoney((int)$amount),
                     'i_desc'     => $contract->description ?? '',
