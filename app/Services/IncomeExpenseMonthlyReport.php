@@ -15,7 +15,7 @@ class IncomeExpenseMonthlyReport
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.debit_account_id')
             ->whereNotNull('a.income_expense')
-            ->whereDate('t.date', $date)
+            ->where('t.date', '<=', $date)
             ->selectRaw("
             a.income_expense as code,
             SUM(CASE WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd ELSE 0 END) as inflow,
@@ -28,7 +28,7 @@ class IncomeExpenseMonthlyReport
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.credit_account_id')
             ->whereNotNull('a.income_expense')
-            ->whereDate('t.date',$date)
+            ->where('t.date', '<=', $date)
             ->selectRaw("
             a.income_expense as code,
             SUM(CASE WHEN a.type IN ('passive','equity','income') THEN t.amount_amd ELSE 0 END) as inflow,
