@@ -295,7 +295,7 @@ class EffectiveRateService
 
         // Collect payments with dates and sort by date
         $paymentsWithDates = [];
-        dd($contract->payments);
+
         foreach ($contract->payments as $payment) {
             if (!$payment->date) {
                 Log::warning('Payment missing date, skipping', ['payment_id' => $payment->id]);
