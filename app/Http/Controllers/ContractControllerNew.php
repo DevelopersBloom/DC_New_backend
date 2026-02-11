@@ -245,11 +245,11 @@ class ContractControllerNew extends Controller
             }
             $contract->category_id = $category_id;
             $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
+            dd($effectiveRates);
             $contract->effective_annual_rate = $effectiveRates['annual'];
             $contract->effective_daily_rate = $effectiveRates['daily'];
             $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
             $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
-            $contract->save();
             $contract->save();
             $guarantors = $contractRequest->validated()['guarantors'] ?? [];
 
