@@ -21,11 +21,13 @@ class AcraExport implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            new PackageInfoSheet($this->startDate, $this->endDate),
-//            new DebtorSheet($this->contracts),
-            new CreditSheet($this->contracts),
-            new CollateralSheet($this->contracts),
-//            new GuarantorSheet($this->contracts),
+            'PackageInfo'  => new PackageInfoSheet($this->startDate, $this->endDate),
+            'Debtor'       => new DebtorSheet($this->contracts),
+            'Interrelated' => new InterrelatedSheet($this->contracts),
+            'Owner'        => new OwnerSheet($this->contracts),
+            'Credit'       => new CreditSheet($this->contracts),
+            'Collateral'   => new CollateralSheet($this->contracts),
+            'Guarantor'    => new OwnerSheet($this->contracts),
         ];
     }
 }
