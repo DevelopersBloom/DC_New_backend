@@ -232,7 +232,6 @@ class ContractControllerNew extends Controller
     {
         DB::beginTransaction();
         try {
-            dd(2);
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
             $pawnshop_id = \auth()->user()->pawnshop_id;
             $date = Carbon::now();
