@@ -22,10 +22,10 @@ class AcraExport implements WithMultipleSheets
     {
         return [
             new PackageInfoSheet($this->startDate, $this->endDate),
-            new DebtorSheet($this->contracts),
+//            new DebtorSheet($this->contracts),
             new CreditSheet($this->contracts),
             new CollateralSheet($this->contracts),
-            new GuarantorSheet($this->contracts),
+//            new GuarantorSheet($this->contracts),
         ];
     }
 }
