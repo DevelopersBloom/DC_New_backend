@@ -200,7 +200,7 @@ class MonthlyIncomeExpenseController extends Controller
 
         $current  = $this->svc->build($from, $to);
         $previous = $this->svc->build($prevFrom, $prevTo);
-dd($prevFrom, $prevTo,$current ,$previous);
+dd($prevFrom, $prevTo,$from, $to);
         $currBy = [];
         foreach ($current as $r) {
             $currBy[(string)$r['code']] = $r;
