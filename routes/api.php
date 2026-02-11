@@ -199,7 +199,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/download/{id}', [FileController::class, 'downloadContract'])->middleware('can:download_contract_file');
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles'])->middleware('can:download_all_contract_files');
         Route::get('/export', [FileController::class, 'exportZip'])->middleware('can:export_contracts_zip');
-        Route::get('export-acra',[ContractControllerNew::class,'exportAcra']);
+        Route::get('/export-acra',[ContractControllerNew::class,'exportAcra']);
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts'])->middleware('can:export_contracts');
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware('can:make_contract_payment');
