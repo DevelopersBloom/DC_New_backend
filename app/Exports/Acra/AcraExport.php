@@ -74,6 +74,7 @@ class AcraExport
         $debtorSheet = $spreadsheet->getSheetByName('Debtor');
         if ($debtorSheet) {
             $clients = $this->contracts->map->client->unique('id');
+            dd($clients);
             $row = 2;
             foreach ($clients as $client) {
                 $debtorSheet->setCellValue('A' . $row, $client->id);
