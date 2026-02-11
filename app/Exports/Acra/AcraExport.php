@@ -55,7 +55,7 @@ class AcraExport
     public function export()
     {
         // Բացում ենք Template ֆայլը
-        $path = storage_path('app/templates/acra_template.xlsx');
+        $path = base_path('acra_template.xlsx');
         $reader = IOFactory::createReader('Xlsx');
         $spreadsheet = $reader->load($path);
 
