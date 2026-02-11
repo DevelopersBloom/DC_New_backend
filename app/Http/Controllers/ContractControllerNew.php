@@ -904,16 +904,27 @@ class ContractControllerNew extends Controller
 
         return Excel::download(new ContractsCalcExport($contracts), $fileName);
     }
-    public function exportAcra(Request $request) {
+//    public function exportAcra(Request $request) {
+//        $filters = $request->all();
+//        $data = $this->contractService->getContracts($filters);
+//        $contracts = $data['contracts']->getCollection();
+//
+//        $fileName = 'TMP_' . now()->format('d_m_Y_His') . '.xlsx';
+//
+//        return Excel::download(
+//            new AcraExport($contracts, $request->date_from, $request->date_to),
+//            $fileName
+//        );
+//    }
+
+
+    public function downloadAcra(Request $request) {
         $filters = $request->all();
-        $data = $this->contractService->getContracts($filters);
-        $contracts = $data['contracts']->getCollection();
+        $contracts = $this->contractService->getContracts($filters)['contracts']->getCollection();
 
-        $fileName = 'TMP_' . now()->format('d_m_Y_His') . '.xlsx';
+        $exporter = new AcraExport($contracts, $request->date_from, $request->date_to);
+        $path = $exporter->export();
 
-        return Excel::download(
-            new AcraExport($contracts, $request->date_from, $request->date_to),
-            $fileName
-        );
+        return response()->download($path)->deleteFileAfterSend(true);
     }
 }
