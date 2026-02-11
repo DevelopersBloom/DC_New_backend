@@ -256,7 +256,6 @@
 namespace App\Services;
 
 use App\Models\Contract;
-use App\Models\LumpRate;
 use App\Models\Order;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -269,12 +268,9 @@ class EffectiveRateService
             ->where('filter', Order::REFUND_LUMP_FILTER)
             ->select('amount')
             ->first();
-        $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
-        $lump_amount_original = $contract->provided_amount * ($lump_rate->lump_rate / 100);
+
         $kaskoAmount = $contract->kasko_amount ?? 0;
-        $fees = $lumpAmount?->amount ?? ($lump_amount_original >= 1375)
-            ? ceil($lump_amount_original / 10) * 10
-            : floor($lump_amount_original / 10) * 10;
+        $fees = $lumpAmount?->amount ?? $contract->provided_amount * ($contract->lump_rate / 100);
         $principal = $contract->mother;
 
         $netAmount = $principal - $fees;
