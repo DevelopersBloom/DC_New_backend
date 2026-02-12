@@ -933,7 +933,6 @@ class ContractControllerNew extends Controller
             ->where('date', '<', $to)
             ->pluck('contract_id')
             ->toArray();
-dd($contractsWithInitialPayments,$to);
         $mainContractJournals = DocumentJournal::where('journalable_type', Contract::class)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->select('id', 'journalable_id')
