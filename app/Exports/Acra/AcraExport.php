@@ -164,7 +164,7 @@ class AcraExport
             $sheet->setCellValue('D' . $row, $contract->deadline ? $this->formatDate($contract->deadline) : '01.01.2999');
 
             $lastPaymentDate = null;
-
+            $totalPaid = 0;
             $mainJournal = DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $contract->id)
                 ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
@@ -184,7 +184,6 @@ class AcraExport
                     $lastPaymentDate = $lastMotherPayment->date;
                 }
 
-                // Կուտակային մարված մայր գումարը
                 $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
                     ->where('journalable_id', $mainJournal->id)
                     ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
@@ -202,11 +201,6 @@ class AcraExport
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
 
-            $totalPaid =  DocumentJournal::where('journalable_type',DocumentJournal::class)
-                ->where('journalable_id',$journalId->id)
-                ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                ->where('date','<=', $this->to)
-                ->sum('amount_amd');
             $sheet->setCellValue('I' . $row, $totalPaid);
 
             $sheet->setCellValue('J' . $row, max(0, $contract->provided_amount));
