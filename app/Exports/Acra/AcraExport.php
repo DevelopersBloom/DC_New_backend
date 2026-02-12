@@ -44,7 +44,6 @@ class AcraExport
         $this->fillCollateral($spreadsheet->getSheetByName('Collateral'));
         $this->fillGuarantor($spreadsheet->getSheetByName('Guarantor'));
 
-        // Կիրառում ենք միանման հավասարեցում բոլոր էջերի համար
         $this->applyGlobalStyles($spreadsheet);
 
         $packageId = now()->format('YmdHis');
@@ -267,9 +266,9 @@ class AcraExport
         foreach ($this->contracts as $contract) {
             foreach ($contract->items as $item) {
                 $sheet->setCellValue('A' . $row, $contract->num);
-                $sheet->setCellValue('B' . $row, $item->pivot->estimated_amount ?? $contract->estimated_amount);
-                $sheet->setCellValue('C' . $row, ($contract->currency === 'USD' ? '002' : '001'));
-                $sheet->setCellValue('D' . $row, $item->subcategory . ' ' . $item->description);
+                $sheet->setCellValue('B' . $row, $item->provided_amount ?? $contract->provided_amount);
+                $sheet->setCellValue('C' . $row, '001');
+                $sheet->setCellValue('D' . $row, $item->category->title . ' ' . $item->subcategory . ' ' . $item->model . ' ' . $item->description);
                 $row++;
             }
         }
@@ -291,7 +290,7 @@ class AcraExport
 
                 $sheet->setCellValue('D' . $row, $gName);
                 $sheet->setCellValue('E' . $row, ($g->type === 'legal' ? $g->tax_number : $g->passport_series));
-                $sheet->setCellValue('T' . $row, ($contract->currency === 'USD' ? '002' : '001'));
+                $sheet->setCellValue('T' . $row, '001');
                 $row++;
             }
         }
