@@ -203,15 +203,15 @@ class AcraExport
             if ($contract->payment_type == 'amortized') {
                 $overdueMother = $contract->payments()
                     ->where('status', 'initial')
-                    ->where('date', '<', $this->from)
+                    ->where('date', '<', $this->to)
                     ->sum('principal_payment');
 
                 $overdueInterest = $contract->payments()
                     ->where('status', 'initial')
-                    ->where('date', '<', $this->from)
+                    ->where('date', '<', $this->to)
                     ->sum('interest_payment');
             } else {
-                if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->from))) {
+                if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->to))) {
                     $overdueMother = max(0, $contract->provided_amount);
                 }
                 $overdueInterest = $contract->payments()
