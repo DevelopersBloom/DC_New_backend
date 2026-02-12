@@ -165,19 +165,32 @@ class AcraExport
 
             $lastPaymentDate = null;
 
-            $journalId = DocumentJournal::where('journalable_type', Contract::class)
+            $mainJournal = DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $contract->id)
                 ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
                 ->select('id')
                 ->first();
 
-            $lastMotherPayment = DocumentJournal::where('journalable_type',DocumentJournal::class)
-                ->where('journalable_id',$journalId->id)
-                ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                ->where('date','>=', $this->from)
-                ->where('date','<=', $this->to)
-                ->latest('date')
-                ->first();
+            if ($mainJournal) {
+                $lastMotherPayment = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $mainJournal->id)
+                    ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+                    ->where('date', '>=', $this->from)
+                    ->where('date', '<=', $this->to)
+                    ->latest('date')
+                    ->first();
+
+                if ($lastMotherPayment) {
+                    $lastPaymentDate = $lastMotherPayment->date;
+                }
+
+                // Կուտակային մարված մայր գումարը
+                $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $mainJournal->id)
+                    ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+                    ->where('date', '<=', $this->to)
+                    ->sum('amount_amd');
+            }
             if ($lastMotherPayment) {
                 $lastPaymentDate = $lastMotherPayment->date;
             } elseif ($contract->status === 'completed' || $contract->status === 'executed') {
