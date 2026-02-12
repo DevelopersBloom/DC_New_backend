@@ -114,23 +114,21 @@ class AcraExport
         foreach ($clients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
 
-            // Սյուն B: Կարգավիճակ
             $type = ($client->type === 'legal') ? 'իրավաբանական անձ' : 'ֆիզիկական անձ';
             $sheet->setCellValue('B' . $row, $type);
 
-            // Սյուն C: Անվանում
             $name = ($client->type === 'legal')
                 ? ($client->company_name . ' ' . $client->legal_form)
                 : trim($client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : ''));
             $sheet->setCellValue('C' . $row, $name);
 
-            // Սյուն D: ՀՎՀՀ կամ Անձնագիր
             $sheet->setCellValue('D' . $row, ($client->type === 'legal') ? $client->tax_number : $client->passport_series);
 
             if ($client->type !== 'legal') {
-//                $sheet->setCellValue('E' . $row, $client->date_of_birth ? Carbon::parse($client->date_of_birth)->format('d.m.Y') : '');
-                $sheet->setCellValue('F' . $row, $client->passport_issued ? Carbon::parse($client->passport_issued)->format('d.m.Y') : '');
-                $sheet->setCellValue('G' . $row, $client->passport_given_by ?? ''); // Օրինակ 011
+                // Ավելացնում ենք ստուգում նախքան parse անելը
+                $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
+                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_issued));
+                $sheet->setCellValue('G' . $row, $client->passport_given_by ?? '');
             }
 
             $sheet->setCellValue('H' . $row, $client->social_card_number);
@@ -139,6 +137,24 @@ class AcraExport
         }
     }
 
+    /**
+     * Օժանդակ մեթոդ ամսաթվերի անվտանգ ֆորմատավորման համար
+     */
+    private function formatDate($date)
+    {
+        if (!$date) return '';
+
+        try {
+            // Եթե արդեն Carbon օբյեկտ է (Laravel casts-ի շնորհիվ)
+            if ($date instanceof \Carbon\Carbon) {
+                return $date->format('d.m.Y');
+            }
+            // Եթե տեքստ է, փորձում ենք parse անել
+            return \Carbon\Carbon::parse($date)->format('d.m.Y');
+        } catch (\Exception $e) {
+            return ''; // Սխալ տվյալի դեպքում վերադարձնում ենք դատարկ
+        }
+    }
     private function fillOwner($sheet)
     {
         if (!$sheet) return;
