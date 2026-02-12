@@ -128,7 +128,7 @@ class AcraExport
             $sheet->setCellValue('D' . $row, ($client->type === 'legal') ? $client->tax_number : $client->passport_series);
 
             if ($client->type !== 'legal') {
-                $sheet->setCellValue('E' . $row, $client->date_of_birth ? Carbon::parse($client->date_of_birth)->format('d.m.Y') : '');
+//                $sheet->setCellValue('E' . $row, $client->date_of_birth ? Carbon::parse($client->date_of_birth)->format('d.m.Y') : '');
                 $sheet->setCellValue('F' . $row, $client->passport_issued ? Carbon::parse($client->passport_issued)->format('d.m.Y') : '');
                 $sheet->setCellValue('G' . $row, $client->passport_given_by ?? ''); // Օրինակ 011
             }
