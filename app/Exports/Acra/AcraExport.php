@@ -195,8 +195,7 @@ class AcraExport
                 ->sum('amount_amd');
             $sheet->setCellValue('I' . $row, $totalPaid);
 
-            $remainder = (float)$contract->mother - (float)$totalPaid;
-            $sheet->setCellValue('J' . $row, max(0, $remainder));
+            $sheet->setCellValue('J' . $row, max(0, $contract->provided_amount));
 
             $overdueMother = 0;
             $overdueInterest = 0;
@@ -213,7 +212,7 @@ class AcraExport
                     ->sum('interest_payment');
             } else {
                 if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->from))) {
-                    $overdueMother = max(0, $remainder);
+                    $overdueMother = max(0, $contract->provided_amount);
                 }
                 $overdueInterest = $contract->payments()
                     ->where('status', 'initial')
