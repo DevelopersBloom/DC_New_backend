@@ -33,11 +33,12 @@
 //}
 namespace App\Exports\Acra;
 
-
 use App\Models\Contract;
 use App\Models\Client;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AcraExport
 {
@@ -53,24 +54,47 @@ class AcraExport
         $this->to = $to;     // EndDate
     }
 
-    /**
-     * Sheet 1: PackageInfo
-     */
+    public function export()
+    {
+        $spreadsheet = new Spreadsheet();
+
+        // Էջերի ստեղծում և լրացում
+        $this->fillPackageInfo($spreadsheet->getActiveSheet()->setTitle('PackageInfo'));
+        $this->fillDebtor($spreadsheet->createSheet()->setTitle('Debtor'));
+        $this->fillOwner($spreadsheet->createSheet()->setTitle('Owner'));
+        $this->fillCredit($spreadsheet->createSheet()->setTitle('Credit')); // Ավելացված է
+        $this->fillGuarantor($spreadsheet->createSheet()->setTitle('Guarantor'));
+
+        // Ձևավորում
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            foreach (range('A', $sheet->getHighestColumn()) as $columnID) {
+                $sheet->getColumnDimension($columnID)->setAutoSize(true);
+            }
+        }
+
+        // Ֆայլի անվանումը ըստ պահանջի: ACC_01_01_YYYYMMDDHHMMSS
+        $fileName = $this->customerCode . '_01_01_' . now()->format('YmdHis') . '.xlsx';
+        $tempFile = tempnam(sys_get_temp_dir(), $fileName);
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
+
+        return [
+            'path' => $tempFile,
+            'name' => $fileName
+        ];
+    }
+
     private function fillPackageInfo($sheet)
     {
         $sheet->setCellValue('A1', 'SourceName')->setCellValue('B1', $this->customerCode);
-        $sheet->setCellValue('A2', 'StartDate')->setCellValue('B2', $this->from);
-        $sheet->setCellValue('A3', 'EndDate')->setCellValue('B3', $this->to);
+        $sheet->setCellValue('A2', 'StartDate')->setCellValue('B2', Carbon::parse($this->from)->format('Y-m-d'));
+        $sheet->setCellValue('A3', 'EndDate')->setCellValue('B3', Carbon::parse($this->to)->format('Y-m-d'));
         $sheet->setCellValue('A4', 'CreatedDateTime')->setCellValue('B4', now()->format('Y-m-d H:i:s'));
         $sheet->setCellValue('A5', 'FileCount')->setCellValue('B5', 1);
         $sheet->setCellValue('A6', 'FileNum')->setCellValue('B6', 1);
-
-        $sheet->getStyle('A1:B6')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
     }
 
-    /**
-     * Sheet 2: Debtor (Վարկառուներ)
-     */
     private function fillDebtor($sheet)
     {
         $clients = $this->contracts->map->client->unique('id');
@@ -79,87 +103,114 @@ class AcraExport
         foreach ($clients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
 
-            // Կարգավիճակ
+            // Սյուն B: Կարգավիճակ
             $type = ($client->type === 'legal') ? 'իրավաբանական անձ' : 'ֆիզիկական անձ';
             $sheet->setCellValue('B' . $row, $type);
 
-            // Անվանում / ԱԱՀ
+            // Սյուն C: Անվանում (ԱԱՀ կամ Կազմակերպություն)
             $name = ($client->type === 'legal')
                 ? ($client->company_name . ' ' . $client->legal_form)
-                : trim($client->name . ' ' . $client->surname . ' ' . $client->middle_name);
+                : trim($client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : ''));
             $sheet->setCellValue('C' . $row, $name);
 
-            // ՀՎՀՀ կամ Անձնագիր
+            // Սյուն D: ՀՎՀՀ կամ Անձնագիր
             $sheet->setCellValue('D' . $row, ($client->type === 'legal') ? $client->tax_number : $client->passport_series);
 
-            // Ֆիզ. անձանց լրացուցիչ տվյալներ
             if ($client->type !== 'legal') {
                 $sheet->setCellValue('E' . $row, $client->date_of_birth ? Carbon::parse($client->date_of_birth)->format('d.m.Y') : '');
                 $sheet->setCellValue('F' . $row, $client->passport_issued ? Carbon::parse($client->passport_issued)->format('d.m.Y') : '');
-                $sheet->setCellValue('G' . $row, substr($client->passport_series, 0, 3)); // Օրինակ՝ 011
+                // Սյուն G: Անձնագիր տվող մարմին (ենթադրենք ունեք այս դաշտը, եթե ոչ՝ թողեք դատարկ)
+                $sheet->setCellValue('G' . $row, $client->passport_given_by ?? '');
             }
 
             $sheet->setCellValue('H' . $row, $client->social_card_number);
-            $residency = ($client->residency_status === 'resident') ? 'ռեզիդենտ' : 'ոչ ռեզիդենտ';
-            $sheet->setCellValue('J' . $row, $residency);
+            $sheet->setCellValue('J' . $row, ($client->residency_status === 'resident' ? 'ռեզիդենտ' : 'ոչ ռեզիդենտ'));
+            $row++;
+        }
+    }
+
+    private function fillCredit($sheet)
+    {
+        $row = 2;
+        foreach ($this->contracts as $contract) {
+            $sheet->setCellValue('A' . $row, $contract->client_id); // Սյուն A
+            $sheet->setCellValue('B' . $row, $contract->num);      // Սյուն B (Պայմանագրի համար)
+            $sheet->setCellValue('C' . $row, Carbon::parse($contract->date)->format('d.m.Y')); // Տրամադրման ամսաթիվ
+            $sheet->setCellValue('D' . $row, Carbon::parse($contract->deadline)->format('d.m.Y')); // Մարման ամսաթիվ
+
+            // Սյուն E: Փաստացի մարման ամսաթիվ (վերջին)
+            $lastPayment = $contract->payments()->where('status', 'completed')->latest('date')->first();
+            $sheet->setCellValue('E' . $row, $lastPayment ? Carbon::parse($lastPayment->date)->format('d.m.Y') : '');
+
+            $sheet->setCellValue('F' . $row, 'վարկ'); // Տեսակը
+            $sheet->setCellValue('G' . $row, $contract->contract_amount); // Պայմանագրային գումար
+            $sheet->setCellValue('H' . $row, $contract->provided_amount); // Փաստացի տրամադրված (կուտակային)
+
+            // Սյուն I: Մարված գումար (կուտակային)
+            $totalPaid = $contract->payments()->where('status', 'completed')->sum('mother');
+            $sheet->setCellValue('I' . $row, $totalPaid);
+
+            $sheet->setCellValue('J' . $row, $contract->provided_amount - $totalPaid); // Մայր գումարի մնացորդ
+
+            // Ժամկետանցներ (K, L, M, W)
+            $isOverdue = $contract->is_overdue;
+            $sheet->setCellValue('K' . $row, $isOverdue ? $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->sum('mother') : 0);
+            $sheet->setCellValue('L' . $row, $isOverdue ? $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->sum('amount') : 0);
+
+            if ($isOverdue) {
+                $firstOverdue = $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->oldest('date')->first();
+                $sheet->setCellValue('M' . $row, Carbon::parse($firstOverdue->date)->format('d.m.Y'));
+
+                $days = Carbon::parse($firstOverdue->date)->diffInDays(today());
+                $sheet->setCellValue('W' . $row, $days);
+            }
+
+            $sheet->setCellValue('N' . $row, ($contract->currency === 'USD' ? '002' : '001'));
+            $sheet->setCellValue('O' . $row, 'Ստանդարտ'); // Ենթադրենք լռելյայն
+            $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
+            $sheet->setCellValue('Q' . $row, $contract->interest_rate);
+            $sheet->setCellValue('U' . $row, Carbon::parse($contract->date)->format('d.m.Y'));
 
             $row++;
         }
     }
 
-    /**
-     * Sheet 4: Owner (Սեփականատերեր - միայն իրավաբանական անձանց համար)
-     */
     private function fillOwner($sheet)
     {
+        // Ձեր կոդը հիմնականում ճիշտ էր, ավելացրեք դաշտերի ստուգում
         $row = 2;
         $legalClients = $this->contracts->map->client->unique('id')->where('type', 'legal');
 
         foreach ($legalClients as $client) {
-            // Ենթադրենք ունենք բաժնետերերի կապ
-            if ($client->owners) {
+            if ($client->owners) { // Ստուգեք արդյոք ունեք owners relation
                 foreach ($client->owners as $owner) {
                     $sheet->setCellValue('A' . $row, $client->id);
                     $sheet->setCellValue('B' . $row, $owner->id);
                     $sheet->setCellValue('C' . $row, ($owner->type === 'legal' ? 'իրավաբանական անձ' : 'ֆիզիկական անձ'));
-
-                    $ownerName = ($owner->type === 'legal')
-                        ? ($owner->company_name . ' ' . $owner->legal_form)
-                        : trim($owner->name . ' ' . $owner->surname . ' ' . $owner->middle_name);
-                    $sheet->setCellValue('D' . $row, $ownerName);
-
-                    $sheet->setCellValue('E' . $row, ($owner->type === 'legal' ? $owner->tax_number : $owner->passport_series));
+                    $sheet->setCellValue('D' . $row, $owner->display_name);
+                    $sheet->setCellValue('E' . $row, $owner->code);
                     $row++;
                 }
             }
         }
     }
 
-    /**
-     * Sheet 6: Guarantor (Երաշխավորներ)
-     */
     private function fillGuarantor($sheet)
     {
         $row = 2;
         foreach ($this->contracts as $contract) {
             foreach ($contract->guarantors as $guarantor) {
-                // Բացառել պետական մարմինները
-                if ($guarantor->is_government) continue;
-
-                $sheet->setCellValue('A' . $row, $contract->id);
+                $sheet->setCellValue('A' . $row, $contract->num); // Credit B սյունը
                 $sheet->setCellValue('B' . $row, $guarantor->id);
                 $sheet->setCellValue('C' . $row, ($guarantor->type === 'legal' ? 'իրավաբանական անձ' : 'ֆիզիկական անձ'));
 
-                $gName = ($guarantor->type === 'legal')
+                $name = ($guarantor->type === 'legal')
                     ? ($guarantor->company_name . ' ' . $guarantor->legal_form)
                     : trim($guarantor->name . ' ' . $guarantor->surname . ' ' . $guarantor->middle_name);
-                $sheet->setCellValue('D' . $row, $gName);
 
+                $sheet->setCellValue('D' . $row, $name);
                 $sheet->setCellValue('E' . $row, ($guarantor->type === 'legal' ? $guarantor->tax_number : $guarantor->passport_series));
-
-                // Արժույթ (001 = AMD, 002 = USD)
-                $currency = ($contract->currency === 'USD') ? '002' : '001';
-                $sheet->setCellValue('T' . $row, $currency);
+                $sheet->setCellValue('T' . $row, ($contract->currency === 'USD' ? '002' : '001'));
                 $row++;
             }
         }

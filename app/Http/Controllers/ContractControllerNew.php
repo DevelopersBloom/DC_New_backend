@@ -918,13 +918,32 @@ class ContractControllerNew extends Controller
 //    }
 
 
-    public function downloadAcra(Request $request) {
-        $filters = $request->all();
-        $contracts = $this->contractService->getContracts($filters)['contracts']->getCollection();
+    public function downloadAcra(Request $request)
+    {
+        // 1. Վալիդացիա և ամսաթվերի ստացում
+        $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date',
+        ]);
 
-        $exporter = new AcraExport($contracts, $request->date_from, $request->date_to);
-        $path = $exporter->export();
+        $from = $request->from_date;
+        $to = $request->to_date;
 
-        return response()->download($path)->deleteFileAfterSend(true);
+        // 2. Ֆիլտրում ենք պայմանագրերը, որոնք ակտիվ են եղել այդ շրջանում
+        // Ներառում ենք client և guarantors հարաբերությունները (Eager Loading) օպտիմիզացիայի համար
+        $contracts = Contract::with(['client', 'guarantors'])
+            ->whereBetween('date', [$from, $to])
+            ->get();
+
+        if ($contracts->isEmpty()) {
+            return back()->with('error', 'Նշված ժամանակահատվածի համար տվյալներ չեն գտնվել:');
+        }
+
+        // 3. Կանչում ենք էքսպորտը
+        $acraExport = new AcraExport($contracts, $from, $to);
+        $fileData = $acraExport->export();
+
+        // 4. Վերադարձնում ենք ֆայլը ներբեռնման (Download)
+        return response()->download($fileData['path'], $fileData['name'])->deleteFileAfterSend(true);
     }
 }
