@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AcraController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BusinessEventController;
@@ -129,6 +130,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         });
 
         Route::get('/contracts', [AdminControllerNew::class, 'getContracts'])->middleware('can:admin_view_contracts');
+        Route::get('/export-acra-report',[AcraController::class,'downloadAcraReport']);
         Route::get('/logs', [ActivityLogController::class,'getLogs'])->middleware('can:view_logs');
 
         Route::get('/accounts/balances', [ChartOfAccountController::class, 'accountBalances'])->middleware('can:view_account_balances');
@@ -199,7 +201,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/download/{id}', [FileController::class, 'downloadContract'])->middleware('can:download_contract_file');
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles'])->middleware('can:download_all_contract_files');
         Route::get('/export', [FileController::class, 'exportZip'])->middleware('can:export_contracts_zip');
-        Route::get('/export-acra',[ContractControllerNew::class,'downloadAcra']);
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts'])->middleware('can:export_contracts');
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware('can:make_contract_payment');
