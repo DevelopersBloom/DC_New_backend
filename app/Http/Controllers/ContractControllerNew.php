@@ -961,14 +961,15 @@ class ContractControllerNew extends Controller
                 $query->whereBetween('date', [$from, $to])
                     ->orWhereIn('id', $contractsWithInitialPayments)
                     ->orWhereIn('id', $contractsWithJournalActions);
-            })
-            ->get();
+            })->get();
 
-        if ($contracts->isEmpty()) {
-            return back()->with('error', 'Նշված ժամանակահատվածի համար տվյալներ չեն գտնվել:');
-        }
+        $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();
+        $contractClientIds = $contracts->pluck('client_id')->toArray();
 
-        $acraExport = new AcraExport($contracts, $from, $to);
+        $allClientIds = array_unique(array_merge($contractClientIds, $updatedClientIds));
+        $allClients = Client::whereIn('id', $allClientIds)->get();
+
+        $acraExport = new AcraExport($contracts, $allClients, $from, $to);
         $fileData = $acraExport->export();
 
         return response()->download($fileData['path'], $fileData['name'])->deleteFileAfterSend(true);

@@ -14,13 +14,15 @@ use PhpParser\Comment\Doc;
 class AcraExport
 {
     protected $contracts;
+    protected $allClients;
     protected $from;
     protected $to;
     protected $customerCode = 'ACC';
 
-    public function __construct($contracts, $from, $to)
+    public function __construct($contracts, $allClients, $from, $to)
     {
         $this->contracts = $contracts;
+        $this->allClients = $allClients;
         $this->from = $from;
         $this->to = $to;
     }
@@ -102,7 +104,7 @@ class AcraExport
         if (!$sheet) return;
         $clients = $this->contracts->map->client->unique('id');
         $row = 2;
-        foreach ($clients as $client) {
+        foreach ($this->allClients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
             $sheet->setCellValue('B' . $row, ($client->type === 'legal' ? 'իրավաբանական անձ' : 'ֆիզիկական անձ'));
 
@@ -190,7 +192,6 @@ class AcraExport
             $totalPaid =  DocumentJournal::where('journalable_type',DocumentJournal::class)
                 ->where('journalable_id',$journalId->id)
                 ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                ->where('date','>=', $this->from)
                 ->where('date','<=', $this->to)
                 ->sum('amount_amd');
             $sheet->setCellValue('I' . $row, $totalPaid);
@@ -226,7 +227,7 @@ class AcraExport
             //  M , W
             $firstOverdue = $contract->payments()
                 ->where('status', 'initial')
-                ->where('date', '<', $this->from)
+                ->where('date', '<', $this->to)
                 ->oldest('date')
                 ->first();
 
