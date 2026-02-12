@@ -1,41 +1,11 @@
 <?php
 
-//namespace App\Exports\Acra;
-//
-//use Maatwebsite\Excel\Concerns\FromCollection;
-//use Maatwebsite\Excel\Concerns\WithMultipleSheets;
-//
-//class AcraExport implements WithMultipleSheets
-//{
-//    protected $contracts;
-//    protected $startDate;
-//    protected $endDate;
-//
-//    public function __construct($contracts, $startDate, $endDate)
-//    {
-//        $this->contracts = $contracts;
-//        $this->startDate = $startDate;
-//        $this->endDate = $endDate;
-//    }
-//
-//    public function sheets(): array
-//    {
-//        return [
-//            'PackageInfo'  => new PackageInfoSheet($this->startDate, $this->endDate),
-//            'Debtor'       => new DebtorSheet($this->contracts),
-//            'Interrelated' => new InterrelatedSheet($this->contracts),
-//            'Owner'        => new OwnerSheet($this->contracts),
-//            'Credit'       => new CreditSheet($this->contracts),
-//            'Collateral'   => new CollateralSheet($this->contracts),
-//            'Guarantor'    => new OwnerSheet($this->contracts),
-//        ];
-//    }
-//}
 namespace App\Exports\Acra;
 
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use App\Models\Contract;
 
 class AcraExport
@@ -54,7 +24,6 @@ class AcraExport
 
     public function export()
     {
-        // Բեռնում ենք template-ը storage-ից
         $path = base_path('acra_template.xlsx');
         if (!file_exists($path)) {
             throw new \Exception("Template file not found at: " . $path);
@@ -63,25 +32,17 @@ class AcraExport
         $reader = IOFactory::createReader('Xlsx');
         $spreadsheet = $reader->load($path);
 
-        // 1. PackageInfo
+        // Լրացնում ենք էջերը
         $this->fillPackageInfo($spreadsheet->getSheetByName('PackageInfo'));
-
-        // 2. Debtor
         $this->fillDebtor($spreadsheet->getSheetByName('Debtor'));
-
-        // 3. Owner (Մասնակիցներ)
         $this->fillOwner($spreadsheet->getSheetByName('Owner'));
-
-        // 4. Credit
         $this->fillCredit($spreadsheet->getSheetByName('Credit'));
-
-        // 5. Collateral
         $this->fillCollateral($spreadsheet->getSheetByName('Collateral'));
-
-        // 6. Guarantor
         $this->fillGuarantor($spreadsheet->getSheetByName('Guarantor'));
 
-        // Ֆայլի անվանումը ըստ պահանջի: ACC_01_01_YYYYMMDDHHMMSS
+        // Կիրառում ենք միանման հավասարեցում բոլոր էջերի համար
+        $this->applyGlobalStyles($spreadsheet);
+
         $packageId = now()->format('YmdHis');
         $fileName = "{$this->customerCode}_01_01_{$packageId}.xlsx";
         $filePath = storage_path('app/public/' . $fileName);
@@ -95,12 +56,43 @@ class AcraExport
         ];
     }
 
+    /**
+     * Բոլոր սյունակները հավասարեցնում է ձախից և սահմանում ուղղությունը
+     */
+    private function applyGlobalStyles($spreadsheet)
+    {
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            $sheet->setRightToLeft(false); // Ապահովում ենք Ձախից-Աջ ուղղությունը
+
+            $highestRow = $sheet->getHighestRow();
+            $highestCol = $sheet->getHighestColumn();
+
+            $sheet->getStyle("A1:{$highestCol}{$highestRow}")
+                ->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                ->setVertical(Alignment::VERTICAL_CENTER);
+        }
+    }
+
+    private function formatDate($date, $format = 'd.m.Y')
+    {
+        if (!$date) return '';
+        try {
+            if ($date instanceof Carbon) {
+                return $date->format($format);
+            }
+            return Carbon::parse($date)->format($format);
+        } catch (\Exception $e) {
+            return '';
+        }
+    }
+
     private function fillPackageInfo($sheet)
     {
         if (!$sheet) return;
         $sheet->setCellValue('B1', $this->customerCode);
-        $sheet->setCellValue('B2', Carbon::parse($this->from)->format('Y-m-d'));
-        $sheet->setCellValue('B3', Carbon::parse($this->to)->format('Y-m-d'));
+        $sheet->setCellValue('B2', $this->formatDate($this->from, 'Y-m-d'));
+        $sheet->setCellValue('B3', $this->formatDate($this->to, 'Y-m-d'));
         $sheet->setCellValue('B4', now()->format('Y-m-d H:i:s'));
         $sheet->setCellValue('B5', 1);
         $sheet->setCellValue('B6', 1);
@@ -113,19 +105,16 @@ class AcraExport
         $row = 2;
         foreach ($clients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
-
-            $type = ($client->type === 'legal') ? 'իրավաբանական անձ' : 'ֆիզիկական անձ';
-            $sheet->setCellValue('B' . $row, $type);
+            $sheet->setCellValue('B' . $row, ($client->type === 'legal' ? 'իրավաբանական անձ' : 'ֆիզիկական անձ'));
 
             $name = ($client->type === 'legal')
                 ? ($client->company_name . ' ' . $client->legal_form)
                 : trim($client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : ''));
-            $sheet->setCellValue('C' . $row, $name);
 
-            $sheet->setCellValue('D' . $row, ($client->type === 'legal') ? $client->tax_number : $client->passport_series);
+            $sheet->setCellValue('C' . $row, $name);
+            $sheet->setCellValue('D' . $row, ($client->type === 'legal' ? $client->tax_number : $client->passport_series));
 
             if ($client->type !== 'legal') {
-                // Ավելացնում ենք ստուգում նախքան parse անելը
                 $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
                 $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_issued));
                 $sheet->setCellValue('G' . $row, $client->passport_given_by ?? '');
@@ -137,24 +126,6 @@ class AcraExport
         }
     }
 
-    /**
-     * Օժանդակ մեթոդ ամսաթվերի անվտանգ ֆորմատավորման համար
-     */
-    private function formatDate($date)
-    {
-        if (!$date) return '';
-
-        try {
-            // Եթե արդեն Carbon օբյեկտ է (Laravel casts-ի շնորհիվ)
-            if ($date instanceof \Carbon\Carbon) {
-                return $date->format('d.m.Y');
-            }
-            // Եթե տեքստ է, փորձում ենք parse անել
-            return \Carbon\Carbon::parse($date)->format('d.m.Y');
-        } catch (\Exception $e) {
-            return ''; // Սխալ տվյալի դեպքում վերադարձնում ենք դատարկ
-        }
-    }
     private function fillOwner($sheet)
     {
         if (!$sheet) return;
@@ -162,7 +133,6 @@ class AcraExport
         $legalClients = $this->contracts->map->client->unique('id')->where('type', 'legal');
 
         foreach ($legalClients as $client) {
-            // Եթե ունեք owners հարաբերություն Client մոդելում
             if ($client->owners && count($client->owners) > 0) {
                 foreach ($client->owners as $owner) {
                     $sheet->setCellValue('A' . $row, $client->id);
@@ -188,38 +158,37 @@ class AcraExport
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
-            $sheet->setCellValue('C' . $row, Carbon::parse($contract->date)->format('d.m.Y'));
-            $sheet->setCellValue('D' . $row, $contract->deadline ? Carbon::parse($contract->deadline)->format('d.m.Y') : '01.01.2999');
-            $sheet->setCellValue('E' . $row, $contract->closed_at ? Carbon::parse($contract->closed_at)->format('d.m.Y') : '');
+            $sheet->setCellValue('C' . $row, $this->formatDate($contract->date));
+            $sheet->setCellValue('D' . $row, $contract->deadline ? $this->formatDate($contract->deadline) : '01.01.2999');
+            $sheet->setCellValue('E' . $row, $this->formatDate($contract->closed_at));
 
             $sheet->setCellValue('F' . $row, 'վարկ');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->provided_amount);
 
-            // Մարված մայր գումար (կուտակային)
             $totalPaid = $contract->payments()->where('status', 'completed')->sum('mother');
             $sheet->setCellValue('I' . $row, $totalPaid);
             $sheet->setCellValue('J' . $row, $contract->provided_amount - $totalPaid);
 
-            // Ժամկետանցներ
             if ($contract->is_overdue) {
                 $overdueMother = $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->sum('mother');
                 $overdueInterest = $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->sum('amount');
                 $firstOverdue = $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->oldest('date')->first();
 
-                $sheet->setCellValue('K' . $row, $overdueMother);
-                $sheet->setCellValue('L' . $row, $overdueInterest);
-                $sheet->setCellValue('M' . $row, Carbon::parse($firstOverdue->date)->format('d.m.Y'));
-
-                $days = Carbon::parse($firstOverdue->date)->diffInDays(today());
-                $sheet->setCellValue('W' . $row, $days);
+                if ($firstOverdue) {
+                    $sheet->setCellValue('K' . $row, $overdueMother);
+                    $sheet->setCellValue('L' . $row, $overdueInterest);
+                    $sheet->setCellValue('M' . $row, $this->formatDate($firstOverdue->date));
+                    $days = Carbon::parse($firstOverdue->date)->diffInDays(today());
+                    $sheet->setCellValue('W' . $row, $days);
+                }
             }
 
             $sheet->setCellValue('N' . $row, ($contract->currency === 'USD' ? '002' : '001'));
             $sheet->setCellValue('O' . $row, 'Ստանդարտ');
             $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
             $sheet->setCellValue('Q' . $row, $contract->interest_rate);
-            $sheet->setCellValue('U' . $row, Carbon::parse($contract->date)->format('d.m.Y'));
+            $sheet->setCellValue('U' . $row, $this->formatDate($contract->date));
 
             $row++;
         }
