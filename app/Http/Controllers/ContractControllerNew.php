@@ -920,7 +920,6 @@ class ContractControllerNew extends Controller
 
     public function downloadAcra(Request $request)
     {
-        // 1. Վալիդացիա և ամսաթվերի ստացում
         $request->validate([
             'from_date' => 'required|date',
             'to_date' => 'required|date',
@@ -929,8 +928,6 @@ class ContractControllerNew extends Controller
         $from = $request->from_date;
         $to = $request->to_date;
 
-        // 2. Ֆիլտրում ենք պայմանագրերը, որոնք ակտիվ են եղել այդ շրջանում
-        // Ներառում ենք client և guarantors հարաբերությունները (Eager Loading) օպտիմիզացիայի համար
         $contracts = Contract::with(['client', 'guarantors'])
             ->whereBetween('date', [$from, $to])
             ->get();
@@ -939,11 +936,9 @@ class ContractControllerNew extends Controller
             return back()->with('error', 'Նշված ժամանակահատվածի համար տվյալներ չեն գտնվել:');
         }
 
-        // 3. Կանչում ենք էքսպորտը
         $acraExport = new AcraExport($contracts, $from, $to);
         $fileData = $acraExport->export();
 
-        // 4. Վերադարձնում ենք ֆայլը ներբեռնման (Download)
         return response()->download($fileData['path'], $fileData['name'])->deleteFileAfterSend(true);
     }
 }

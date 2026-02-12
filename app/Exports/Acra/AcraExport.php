@@ -32,7 +32,6 @@ class AcraExport
         $reader = IOFactory::createReader('Xlsx');
         $spreadsheet = $reader->load($path);
 
-        // Լրացնում ենք էջերը
         $this->fillPackageInfo($spreadsheet->getSheetByName('PackageInfo'));
         $this->fillDebtor($spreadsheet->getSheetByName('Debtor'));
         $this->fillOwner($spreadsheet->getSheetByName('Owner'));
@@ -56,13 +55,10 @@ class AcraExport
         ];
     }
 
-    /**
-     * Բոլոր սյունակները հավասարեցնում է ձախից և սահմանում ուղղությունը
-     */
     private function applyGlobalStyles($spreadsheet)
     {
         foreach ($spreadsheet->getAllSheets() as $sheet) {
-            $sheet->setRightToLeft(false); // Ապահովում ենք Ձախից-Աջ ուղղությունը
+            $sheet->setRightToLeft(false);
 
             $highestRow = $sheet->getHighestRow();
             $highestCol = $sheet->getHighestColumn();
@@ -116,11 +112,11 @@ class AcraExport
 
             if ($client->type !== 'legal') {
                 $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
-                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_issued));
-                $sheet->setCellValue('G' . $row, $client->passport_given_by ?? '');
-            }
+                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_validiyu));
+                $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
+                $sheet->setCellValue('H' . $row, $client->social_card_number);
 
-            $sheet->setCellValue('H' . $row, $client->social_card_number);
+            }
             $sheet->setCellValue('J' . $row, ($client->residency_status === 'resident' ? 'ռեզիդենտ' : 'ոչ ռեզիդենտ'));
             $row++;
         }
