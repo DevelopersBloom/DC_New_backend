@@ -187,8 +187,8 @@ class AcraExport
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
 
-            $totalPaid = DocumentJournal::where('journalable_type', Contract::class)
-                ->where('journalable_id', $contract->id)
+            $totalPaid =  DocumentJournal::where('journalable_type',DocumentJournal::class)
+                ->where('journalable_id',$journalId->id)
                 ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
                 ->where('date','>=', $this->from)
                 ->where('date','<=', $this->to)
