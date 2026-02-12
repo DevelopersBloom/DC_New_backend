@@ -168,7 +168,7 @@ class AcraExport
                 ->where('date','<=', $this->to)
                 ->latest('date')
                 ->first();
-
+dd($lastPaymentDate,$contract->id);
             if ($lastMotherPayment) {
                 $lastPaymentDate = $lastMotherPayment->date;
             } elseif ($contract->status === 'completed' || $contract->status === 'executed') {
