@@ -31,7 +31,6 @@
 //        ];
 //    }
 //}
-<?php
 namespace App\Exports\Acra;
 
 use Carbon\Carbon;
