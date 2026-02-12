@@ -164,7 +164,8 @@ class AcraExport
             $lastMotherPayment = DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $contract->id)
                 ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                ->where('date', $this->from)
+                ->where('date','>=', $this->from)
+                ->where('date','<=', $this->to)
                 ->latest('date')
                 ->first();
 
@@ -182,7 +183,8 @@ class AcraExport
             $totalPaid = DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $contract->id)
                 ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                ->where('date', $this->from)
+                ->where('date','>=', $this->from)
+                ->where('date','<=', $this->to)
                 ->sum('amount_amd');
             $sheet->setCellValue('I' . $row, $totalPaid);
 
