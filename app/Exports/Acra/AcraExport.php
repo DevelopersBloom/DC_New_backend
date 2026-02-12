@@ -2,6 +2,8 @@
 
 namespace App\Exports\Acra;
 
+use App\Models\DocumentJournal;
+use App\Models\Transaction;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -112,7 +114,7 @@ class AcraExport
 
             if ($client->type !== 'legal') {
                 $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
-                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_validiyu));
+                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_validity));
                 $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
                 $sheet->setCellValue('H' . $row, $client->social_card_number);
 
@@ -154,34 +156,86 @@ class AcraExport
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
+
             $sheet->setCellValue('C' . $row, $this->formatDate($contract->date));
             $sheet->setCellValue('D' . $row, $contract->deadline ? $this->formatDate($contract->deadline) : '01.01.2999');
-            $sheet->setCellValue('E' . $row, $this->formatDate($contract->closed_at));
+
+            $lastPaymentDate = null;
+            $lastMotherPayment = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contract->id)
+                ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+                ->where('date', '<', $this->to)
+                ->latest('date')
+                ->first();
+
+            if ($lastMotherPayment) {
+                $lastPaymentDate = $lastMotherPayment->date;
+            } elseif ($contract->status === 'completed' || $contract->status === 'executed') {
+                $lastPaymentDate = $contract->closed_at;
+            }
+            $sheet->setCellValue('E' . $row, $this->formatDate($lastPaymentDate));
 
             $sheet->setCellValue('F' . $row, 'վարկ');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
-            $sheet->setCellValue('H' . $row, $contract->provided_amount);
+            $sheet->setCellValue('H' . $row, $contract->mother);
 
-            $totalPaid = $contract->payments()->where('status', 'completed')->sum('mother');
+            $totalPaid = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contract->id)
+                ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+                ->where('date', '<=', $this->to)
+                ->sum('amount_amd');
             $sheet->setCellValue('I' . $row, $totalPaid);
-            $sheet->setCellValue('J' . $row, $contract->provided_amount - $totalPaid);
 
-            if ($contract->is_overdue) {
-                $overdueMother = $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->sum('mother');
-                $overdueInterest = $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->sum('amount');
-                $firstOverdue = $contract->payments()->where('status', 'initial')->whereDate('date', '<', today())->oldest('date')->first();
+            $remainder = (float)$contract->mother - (float)$totalPaid;
+            $sheet->setCellValue('J' . $row, max(0, $remainder));
 
-                if ($firstOverdue) {
-                    $sheet->setCellValue('K' . $row, $overdueMother);
-                    $sheet->setCellValue('L' . $row, $overdueInterest);
-                    $sheet->setCellValue('M' . $row, $this->formatDate($firstOverdue->date));
-                    $days = Carbon::parse($firstOverdue->date)->diffInDays(today());
-                    $sheet->setCellValue('W' . $row, $days);
+            $overdueMother = 0;
+            $overdueInterest = 0;
+
+            if ($contract->payment_type == 'amortized') {
+                $overdueMother = $contract->payments()
+                    ->where('status', 'initial')
+                    ->where('date', '<', $this->from)
+                    ->sum('principal_payment');
+
+                $overdueInterest = $contract->payments()
+                    ->where('status', 'initial')
+                    ->where('date', '<', $this->from)
+                    ->sum('interest_payment');
+            } else {
+                if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->from))) {
+                    $overdueMother = max(0, $remainder);
                 }
+                $overdueInterest = $contract->payments()
+                    ->where('status', 'initial')
+                    ->where('date', '<', $this->from)
+                    ->sum('amount');
             }
 
-            $sheet->setCellValue('N' . $row, ($contract->currency === 'USD' ? '002' : '001'));
-            $sheet->setCellValue('O' . $row, 'Ստանդարտ');
+            $sheet->setCellValue('K' . $row, $overdueMother);
+            $sheet->setCellValue('L' . $row, $overdueInterest);
+
+            //  M , W
+            $firstOverdue = $contract->payments()
+                ->where('status', 'initial')
+                ->where('date', '<', $this->from)
+                ->oldest('date')
+                ->first();
+
+            if ($firstOverdue && ($overdueMother > 0 || $overdueInterest > 0)) {
+                $sheet->setCellValue('M' . $row, $this->formatDate($firstOverdue->date));
+                $days = Carbon::parse($firstOverdue->date)->diffInDays(Carbon::parse($this->from));
+                $sheet->setCellValue('W' . $row, $days);
+            } else {
+                $sheet->setCellValue('W' . $row, 0);
+            }
+
+            // N, O, P, Q, U
+            $sheet->setCellValue('N' . $row, '001');
+
+            $riskClass = $contract->client->classification->title ?? 'Ստանդարտ';
+            $sheet->setCellValue('O' . $row, $riskClass);
+
             $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
             $sheet->setCellValue('Q' . $row, $contract->interest_rate);
             $sheet->setCellValue('U' . $row, $this->formatDate($contract->date));
