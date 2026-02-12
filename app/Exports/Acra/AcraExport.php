@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use App\Models\Contract;
+use PhpParser\Comment\Doc;
 
 class AcraExport
 {
@@ -161,8 +162,15 @@ class AcraExport
             $sheet->setCellValue('D' . $row, $contract->deadline ? $this->formatDate($contract->deadline) : '01.01.2999');
 
             $lastPaymentDate = null;
-            $lastMotherPayment = DocumentJournal::where('journalable_type', Contract::class)
+
+            $journalId = DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $contract->id)
+                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+                ->select('id')
+                ->first();
+
+            $lastMotherPayment = DocumentJournal::where('journalable_type',DocumentJournal::class)
+                ->where('journalable_id',$journalId)
                 ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
                 ->where('date','>=', $this->from)
                 ->where('date','<=', $this->to)
