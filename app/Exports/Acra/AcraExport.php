@@ -170,13 +170,12 @@ class AcraExport
                 ->first();
 
             $lastMotherPayment = DocumentJournal::where('journalable_type',DocumentJournal::class)
-                ->where('journalable_id',$journalId)
+                ->where('journalable_id',$journalId->id)
                 ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
                 ->where('date','>=', $this->from)
                 ->where('date','<=', $this->to)
                 ->latest('date')
                 ->first();
-dd($journalId->id,$lastPaymentDate,$contract->id);
             if ($lastMotherPayment) {
                 $lastPaymentDate = $lastMotherPayment->date;
             } elseif ($contract->status === 'completed' || $contract->status === 'executed') {
