@@ -28,13 +28,17 @@ class CategoryAndRateSeeder extends Seeder
                 'name' => 'car',
                 'title' => 'Մեքենա'
             ],
+            [
+                'name' => 'car-purchase',
+                'title' => 'Մեքենայի ձեռք բերման վարկ'
+            ],
         ]);
 
         // Retrieve the category IDs
         $goldId = DB::table('categories')->where('name', 'gold')->value('id');
         $electronicsId = DB::table('categories')->where('name', 'electronics')->value('id');
         $carId = DB::table('categories')->where('name', 'car')->value('id');
-
+        $carPurchaseId = DB::table('categories')->where('name', 'car-purchase')->value('id');
         // Seed the category_rates table
         DB::table('category_rates')->insert([
             // Gold rates
@@ -232,5 +236,6 @@ class CategoryAndRateSeeder extends Seeder
                 'max_amount' => 10000000,
             ],
         ]);
+
     }
 }

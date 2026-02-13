@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Traits\CalculationTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ReminderOrderController
 {
@@ -232,44 +233,116 @@ class ReminderOrderController
     }
 
 
+//    public function update(UpdateReminderOrderRequest $request, ReminderOrder $reminderOrder): JsonResponse
+//    {
+//        if (!$reminderOrder->is_draft) {
+//            return response()->json([
+//                'message' => 'Թույլատրելի չէ․ միայն սևագիր օրդերը կարող են թարմացվել։'
+//            ], 409);
+//        }
+//
+//        $data = $request->validated();
+//        if (array_key_exists('is_draft', $data) && $reminderOrder->is_draft === true) {
+//            $data['is_draft'] = (bool)$data['is_draft'];
+//        } else {
+//            unset($data['is_draft']);
+//        }
+//
+//        $reminderOrder->fill($data)->save();
+//
+//        return response()->json([
+//            'message' => 'Հիշարար օրդերը թարմացվեց',
+//            'data'    => $reminderOrder->load(['currency','debitAccount','creditAccount']),
+//        ]);
+//    }
+
     public function update(UpdateReminderOrderRequest $request, ReminderOrder $reminderOrder): JsonResponse
     {
         if (!$reminderOrder->is_draft) {
             return response()->json([
-                'message' => 'Թույլատրելի չէ․ միայն սևագիր օրդերը կարող են թարմացվել։'
+                'message' => 'Not allowed: only draft orders can be updated'
             ], 409);
         }
 
-        $data = $request->validated();
-        if (array_key_exists('is_draft', $data) && $reminderOrder->is_draft === true) {
-            $data['is_draft'] = (bool)$data['is_draft'];
-        } else {
-            unset($data['is_draft']);
-        }
+        $validated = $request->validated();
 
-        $reminderOrder->fill($data)->save();
+        return DB::transaction(function () use ($reminderOrder, $validated) {
+            $reminderOrder->update($validated);
 
-        return response()->json([
-            'message' => 'Հիշարար օրդերը թարմացվեց',
-            'data'    => $reminderOrder->load(['currency','debitAccount','creditAccount']),
-        ]);
-    }
+            $reminderOrder->load(['debitPartner', 'creditPartner']);
 
-    /**
+            $displayName = function ($p) {
+                if (!$p) return null;
+                if (!empty($p->company_name)) return $p->company_name;
+                $full = trim(($p->name ?? '') . ' ' . ($p->surname ?? ''));
+                return $full !== '' ? $full : null;
+            };
+
+            $debitCode = $reminderOrder->debitPartner
+                ? ($reminderOrder->debitPartner->type === 'individual' ? $reminderOrder->debitPartner->social_card_number : $reminderOrder->debitPartner->tax_number)
+                : null;
+
+            $creditCode = $reminderOrder->creditPartner
+                ? ($reminderOrder->creditPartner->type === 'individual' ? $reminderOrder->creditPartner->social_card_number : $reminderOrder->creditPartner->tax_number)
+                : null;
+
+            $documentJournal = DocumentJournal::where('journalable_type', ReminderOrder::class)
+                ->where('journalable_id', $reminderOrder->id)
+                ->first();
+
+            if ($documentJournal) {
+                $documentJournal->update([
+                    'date'                => $reminderOrder->order_date,
+                    'document_number'     => $reminderOrder->num,
+                    'debit_account_id'    => $reminderOrder->debit_account_id,
+                    'debit_partner_id'    => $reminderOrder->debit_partner_id,
+                    'debit_partner_code'  => $debitCode,
+                    'debit_partner_name'  => $displayName($reminderOrder->debitPartner),
+                    'credit_account_id'   => $reminderOrder->credit_account_id,
+                    'credit_partner_id'   => $reminderOrder->credit_partner_id,
+                    'credit_partner_code' => $creditCode,
+                    'credit_partner_name' => $displayName($reminderOrder->creditPartner),
+                    'amount_amd'          => round((float)$reminderOrder->amount),
+                    'comment'             => $reminderOrder->comment,
+                ]);
+
+                $documentJournal->transactions()->update([
+                    'date'                => $reminderOrder->order_date,
+                    'document_number'     => $reminderOrder->num,
+                    'debit_account_id'    => $reminderOrder->debit_account_id,
+                    'debit_partner_id'    => $reminderOrder->debit_partner_id,
+                    'debit_partner_code'  => $debitCode,
+                    'debit_partner_name'  => $displayName($reminderOrder->debitPartner),
+                    'debit_currency_id'   => $reminderOrder->currency_id,
+                    'credit_account_id'   => $reminderOrder->credit_account_id,
+                    'credit_partner_id'   => $reminderOrder->credit_partner_id,
+                    'credit_partner_code' => $creditCode,
+                    'credit_partner_name' => $displayName($reminderOrder->creditPartner),
+                    'credit_currency_id'  => $reminderOrder->currency_id,
+                    'amount_amd'          => round((float)$reminderOrder->amount),
+                    'comment'             => $reminderOrder->comment,
+                ]);
+            }
+
+            return response()->json([
+                'message' => 'Reminders and related documents updated',
+            ]);
+        });
+    }    /**
      * Delete only if is_draft = true.
      */
     public function destroy(ReminderOrder $reminderOrder): JsonResponse
     {
         if (!$reminderOrder->is_draft) {
             return response()->json([
-                'message' => 'Թույլատրելի չէ․ միայն սևագիր օրդերը կարող են ջնջվել։'
+                'message' => 'Not allowed: only draft orders can be deleted'
             ], 409);
         }
 
         $reminderOrder->delete();
 
         return response()->json([
-            'message' => 'Հիշարար օրդերը ջնջվեց',
+            'message' => 'Reminder order deleted',
         ]);
     }
 }
