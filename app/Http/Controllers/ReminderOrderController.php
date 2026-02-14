@@ -258,11 +258,11 @@ class ReminderOrderController
 
     public function update(UpdateReminderOrderRequest $request, ReminderOrder $reminderOrder): JsonResponse
     {
-        if (!$reminderOrder->is_draft) {
-            return response()->json([
-                'message' => 'Not allowed: only draft orders can be updated'
-            ], 409);
-        }
+//        if (!$reminderOrder->is_draft) {
+//            return response()->json([
+//                'message' => 'Not allowed: only draft orders can be updated'
+//            ], 409);
+//        }
 
         $validated = $request->validated();
 

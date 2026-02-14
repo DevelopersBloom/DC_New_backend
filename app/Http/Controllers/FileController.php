@@ -505,6 +505,7 @@ class FileController extends Controller
             'account_number' => $client->account_number,
             'card_number' => $client->card_number,
             'user_name' => $userName,
+            'lump_rate' => $contract->lump_rate,
         ]);
 
         $paymentRows = [];
