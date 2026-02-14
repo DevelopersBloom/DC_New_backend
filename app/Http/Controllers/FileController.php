@@ -484,7 +484,7 @@ class FileController extends Controller
         $userName = $user ? ($user->name . ' ' . $user->surname) : '---';
         $yearlyRate = round($contract->interest_rate * 365, 5);
         $effectiveRate = round($contract->effective_annual_rate, 5);
-
+        $lumpRate = round($contract->lump_rate, 5);
         $templateProcessor->setValues([
             'num' => $contract->num,
             'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
@@ -505,7 +505,7 @@ class FileController extends Controller
             'account_number' => $client->account_number,
             'card_number' => $client->card_number,
             'user_name' => $userName,
-            'lump_rate' => $contract->lump_rate,
+            'lump_rate' => $lumpRate,
         ]);
 
         $paymentRows = [];
