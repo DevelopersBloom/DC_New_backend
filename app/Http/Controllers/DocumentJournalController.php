@@ -93,6 +93,7 @@ class DocumentJournalController
                 'user_id'             => $j->user_id,
                 'user'                => $j->user,
                 'disbursement_date'   => optional($j->created_at)->format('Y-m-d H:i:s'),
+                'journalable_id'      => $j->journalable_id,
             ];
         });
 
