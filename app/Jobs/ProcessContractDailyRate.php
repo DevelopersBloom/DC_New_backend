@@ -136,51 +136,90 @@ class ProcessContractDailyRate implements ShouldQueue
     {
     }
 
+//    private function calculateCurrentAmortizedBalance(Contract $contract): float
+//    {
+//        $balance = $contract->mother;
+//
+//        $journal = DocumentJournal::where('journalable_type', Contract::class)
+//            ->where('journalable_id', $contract->id)
+//            ->first();
+//
+//        $journalId = $journal->id;
+//
+//        $lumpAmount = Order::where('contract_id', $contract->id)
+//            ->where('filter', Order::REFUND_LUMP_FILTER)
+//            ->select('amount')
+//            ->first();
+//        $fees = $lumpAmount?->amount ?? $contract->mother * ($contract->lump_rate / 100);
+//
+//
+//        $initialProvided = (float) DocumentJournal::where('journalable_type', Contract::class)
+//            ->where('journalable_id', $contract->id)
+//            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+//            ->value('amount_amd') ?? (float) $contract->mother;
+//        $netAmount = $initialProvided - $fees;
+//
+//        $motherPaymentsSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
+//            ->where('journalable_id', $journalId)
+//            ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+//            ->sum('amount_amd');
+//
+//        $interestPaymentsSum =  DocumentJournal::where('journalable_type', DocumentJournal::class)
+//            ->where('journalable_id', $journalId)
+//            ->where('document_type', DocumentJournal::PAY_INTEREST_AMOUNT)
+//            ->sum('amount_amd');
+//
+//        $effectiveAccrualsSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
+//            ->where('journalable_id', $journalId)
+//            ->where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
+//            ->sum('amount_amd');
+//
+//        $amortizedBalance = $netAmount + $effectiveAccrualsSum - $motherPaymentsSum - $interestPaymentsSum;
+//        Log::info("initialProvided: {$initialProvided}, motherPaymentsSum:{$motherPaymentsSum}");
+//        Log::info("interestPaymentsSum: {$interestPaymentsSum}, effectiveAccrualsSum:{$effectiveAccrualsSum}");
+//
+//        return $amortizedBalance;
+//    }
     private function calculateCurrentAmortizedBalance(Contract $contract): float
     {
-        $balance = $contract->provided_amount;
+        $initialProvided = (float) DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->value('amount_amd') ?? (float) $contract->mother;
+
+        $lumpOrder = Order::where('contract_id', $contract->id)
+            ->where('filter', Order::REFUND_LUMP_FILTER)
+            ->first();
+
+        $fees = $lumpOrder ? $lumpOrder->amount : ($initialProvided * ($contract->lump_rate / 100));
+
+        $netAmount = $initialProvided - $fees;
 
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
             ->first();
 
-        $journalId = $journal->id;
+        if (!$journal) return $netAmount;
 
-        $lumpAmount = Order::where('contract_id', $contract->id)
-            ->where('filter', Order::REFUND_LUMP_FILTER)
-            ->select('amount')
-            ->first();
-        $fees = $lumpAmount?->amount ?? $contract->provided_amount * ($contract->lump_rate / 100);
-
-
-        $initialProvided = (float) DocumentJournal::where('journalable_type', Contract::class)
-            ->where('journalable_id', $contract->id)
-            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->value('amount_amd') ?? (float) $contract->provided_amount;
-        $netAmount = $initialProvided - $fees;
-
-        $motherPaymentsSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
-            ->where('journalable_id', $journalId)
-            ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-            ->sum('amount_amd');
-
-        $interestPaymentsSum =  DocumentJournal::where('journalable_type', DocumentJournal::class)
-            ->where('journalable_id', $journalId)
-            ->where('document_type', DocumentJournal::PAY_INTEREST_AMOUNT)
-            ->sum('amount_amd');
-
-        $effectiveAccrualsSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
-            ->where('journalable_id', $journalId)
+        $effectiveAccrualsSum = DocumentJournal::where('journalable_id', $journal->id)
+            ->where('journalable_type', DocumentJournal::class)
             ->where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
             ->sum('amount_amd');
 
-        $amortizedBalance = $netAmount + $effectiveAccrualsSum - $motherPaymentsSum - $interestPaymentsSum;
-        Log::info("initialProvided: {$initialProvided}, motherPaymentsSum:{$motherPaymentsSum}");
-        Log::info("interestPaymentsSum: {$interestPaymentsSum}, effectiveAccrualsSum:{$effectiveAccrualsSum}");
+        $nominalAccrualsSum = DocumentJournal::where('journalable_id', $journal->id)
+            ->where('journalable_type', DocumentJournal::class)
+            ->where('document_type', DocumentJournal::INTEREST_RATE_AMOUNT)
+            ->sum('amount_amd');
+
+        $motherPaymentsSum = DocumentJournal::where('journalable_id', $journal->id)
+            ->where('journalable_type', DocumentJournal::class)
+            ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+            ->sum('amount_amd');
+
+        $amortizedBalance = $netAmount + $effectiveAccrualsSum - $nominalAccrualsSum - $motherPaymentsSum;
 
         return $amortizedBalance;
     }
-
     private function getDailyEffectiveRate(float $xirr): float
     {
         if ($xirr <= 0) return 0.0;
@@ -223,8 +262,9 @@ class ProcessContractDailyRate implements ShouldQueue
                 Log::info("openingAmount: {$openingAmount}, dailyEffectiveRate:{$dailyEffectiveRate}");
                 $days = 1;
                 if ($openingAmount > 0 && $dailyEffectiveRate > 0) {
+                    $effectiveAmount = $openingAmount * $dailyEffectiveRate / 100;
 
-                    $effectiveAmount = $openingAmount * (pow((1 + $dailyEffectiveRate/100), $days) - 1);
+//                    $effectiveAmount = $openingAmount * (pow((1 + $dailyEffectiveRate/100), $days) - 1);
 //                    $calculatedEffectiveAmount = intval(ceil($effectiveAmount / 10) * 10);
                     Log::info("effectiveAmount: {$effectiveAmount}");
 
