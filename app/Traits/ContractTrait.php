@@ -476,12 +476,11 @@ trait ContractTrait
 
         if ($overdue_payments->isNotEmpty()) {
             foreach ($overdue_payments as $payment) {
-                $payment_date = Carbon::parse($payment->date);
+                $payment_date = Carbon::parse($payment->date);  //2026-01-13
 
                 $lastPaidPenalty = Payment::where('contract_id', $contract->id)
                     ->where('type', 'penalty')
                     ->where('parent_id', $payment->id)
-                    ->where('is_completed', true)
                     ->orderBy('date', 'desc')
                     ->first();
 
@@ -497,9 +496,9 @@ trait ContractTrait
                     $current_delay_days = $now->diffInDays($penalty_start_date);
 
                     if ($current_delay_days > $max_delay_days) {
-                        $max_delay_days = $current_delay_days;
-                        $first_penalty_start_date = $penalty_start_date;
-                        $primary_parent_id = $payment->id;
+                        $max_delay_days = $current_delay_days; //33
+                        $first_penalty_start_date = $penalty_start_date; //2026-01-13
+                        $primary_parent_id = $payment->id; //659
                     }
 
                     $current_penalty = $this->calcAmount($payment->amount, $current_delay_days, $contract->penalty);

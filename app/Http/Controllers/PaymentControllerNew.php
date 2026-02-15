@@ -107,6 +107,7 @@ class PaymentControllerNew extends Controller
                 'user_id'            => auth()->id(),
                 'journalable_type'   => DocumentJournal::class,
                 'journalable_id'     => $journal->id,
+                'deal_id'            => $deal->id,
             ]);
 
 
@@ -160,6 +161,7 @@ class PaymentControllerNew extends Controller
                 'user_id' => auth()->id(),
                 'journalable_type' => DocumentJournal::class,
                 'journalable_id' => $journal->id,
+                'deal_id' => $deal->id,
             ]);
             Transaction::create([
                 'date' => $date,
@@ -248,35 +250,77 @@ class PaymentControllerNew extends Controller
 
         $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
 
-        $result = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
-        $deal->payment_id = $result['payment_id'];
-        $deal->interest_amount = $result['interest_amount'];
-        $deal->penalty = $result['penalty'];
-        $deal->delay_days = $result['delay_days'];
-        $deal->save();
+         $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
+//        $deal->payment_id = $result['payment_id'];
+//        $deal->interest_amount = $result['interest_amount'];
+//        $deal->penalty = $result['penalty'];
+//        $deal->delay_days = $result['delay_days'];
+//        $deal->save();
 
-        $history->interest_amount = $result['interest_amount'];
-        $history->penalty = $result['penalty'];
-        $history->delay_days = $result['delay_days'];
-        $history->save();
+//        $history->interest_amount = $result['interest_amount'];
+//        $history->penalty = $result['penalty'];
+//        $history->delay_days = $result['delay_days'];
+//        $history->save();
 
         $contract->closed_at = now();
         $contract->save();
-//        $acc1100 = ChartOfAccount::idByCode('1100');
-//        $acc2220 = ChartOfAccount::idByCode('2220');
-//       $deal->transactions()->create([
-//            'date'              => $deal->date,
-//            'document_type'     => Transaction::FULL_PAYMENT,
-//            'document_number'   => Transaction::getNextDocumentNumber(),
-//            'debit_account_id'  => $acc1100,
-//            'credit_account_id' => $acc2220,
-//            'currency_id'       => 1, //testing
-//            'amount_amd'        => $amount,
-//            'comment'           => 'full_payment',
-//            'debit_partner_id' => 2,//testing
-//            'credit_partner_id' => $contract->client_id,
-//        ]);
-        // Check if early payment is eligible for a refund
+        $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
+            ->first();
+
+        if (!$ruleMotherAmount) {
+            throw new \RuntimeException('Posting rule for pay_mother_amount not found');
+        }
+
+        $debitMother = $ruleMotherAmount->debit_account_id;
+        $creditMother = $ruleMotherAmount->credit_account_id;
+
+
+        $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
+        $creditPartnerId = $contract->client_id;
+        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+
+        $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
+        $date = \Illuminate\Support\Carbon::now()->format('Y-m-d');
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->first();
+        $journalDoc = DocumentJournal::create([
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type,
+            'amount_amd' => $amount,
+            'partner_id' => $debetPartnerId,
+            'credit_partner_id' => $creditPartnerId,
+            'comment' => 'mother_amount_payment',
+            'debit_account_id' => $debitMother,
+            'credit_account_id' => $creditMother,
+            'user_id' => auth()->id(),
+            'journalable_type' => DocumentJournal::class,
+            'journalable_id' => $journal->id,
+        ]);
+        Transaction::create([
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $document_type,
+
+            'debit_account_id' => $debitMother,
+            'debit_partner_id' => $debetPartnerId,
+            'debit_currency_id' => 1,
+
+            'credit_account_id' => $creditMother,
+            'credit_currency_id' => 1,
+            'credit_partner_id' => $creditPartnerId,
+
+            'amount_amd' => $amount,
+
+            'comment' => 'mother_amount_payment',
+            'user_id' => auth()->id(),
+            'is_system' => false,
+
+            'disbursement_date' => $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id' => $journalDoc->id
+        ]);
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
             $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
             if ($refundAmount > 0) {
@@ -294,7 +338,7 @@ class PaymentControllerNew extends Controller
                 $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
                 DealAction::create([
                     'deal_id' => $deal->id,
-                    'actionable_id' => $result['payment_id'],
+//                    'actionable_id' => $result['payment_id'],
                     'actionable_type' => Payment::class,
                     'amount' => $refundAmount,
                     'type' => 'refund',

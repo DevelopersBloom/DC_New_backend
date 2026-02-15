@@ -75,6 +75,9 @@ class Deal extends Model
             if ($deal->order) {
                 $deal->order->delete();
             }
+            $deal->documents()->get()->each(function ($document) {
+                $document->delete();
+            });
         });
     }
     public function order(): BelongsTo

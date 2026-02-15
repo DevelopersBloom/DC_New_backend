@@ -411,6 +411,7 @@ class ContractControllerNew extends Controller
                 'user_id'            => auth()->id(),
                 'journalable_type'   => Contract::class,
                 'journalable_id'     => $contract->id,
+                'deal_id'            => $deal_id,
             ]);
 
             Transaction::create([

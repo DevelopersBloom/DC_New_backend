@@ -64,6 +64,7 @@ class DocumentJournal extends Model
 
         'journalable_type',
         'journalable_id',
+        'deal_id'
     ];
 
     protected $casts = [
@@ -76,7 +77,9 @@ class DocumentJournal extends Model
     {
         static::deleting(function (DocumentJournal $journal) {
             DB::transaction(function () use ($journal) {
-
+                if ($journal->deal_id && $journal->deal) {
+                    $journal->deal->delete();
+                }
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
 
                     $ndmId   = $journal->journalable_id;
@@ -165,7 +168,9 @@ class DocumentJournal extends Model
 
         static::restoring(function (DocumentJournal $journal) {
             DB::transaction(function () use ($journal) {
-
+                if ($journal->deal_id) {
+                    $journal->deal()->withTrashed()->restore();
+                }
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
 
                     $ndmId   = $journal->journalable_id;
@@ -270,7 +275,10 @@ class DocumentJournal extends Model
         });
     }
 
-
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(Deal::class, 'deal_id');
+    }
     public function journalable(): MorphTo
     {
         return $this->morphTo();
