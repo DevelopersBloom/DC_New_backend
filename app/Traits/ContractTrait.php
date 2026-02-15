@@ -376,189 +376,6 @@ trait ContractTrait
 
     }
 
-    public function calculateCurrentPayment1($contract): array
-    {
-        $penalty_amount = $this->countPenalty($contract->id);
-        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->date);
-
-        $current_date = Carbon::now();
-        $days_passed = $contract_creation_date->diffInDays($current_date);
-        $calculatedAmount = $this->calcAmount($contract->left, $days_passed, $contract->interest_rate);
-        $total_paid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')->sum('paid');
-//        $penalty_paid = Payment::with('contract_id',$contract->id)
-//            ->where('type','penalty')->sum('paid');
-        $penalty = $penalty_amount;
-        $current_amount = $calculatedAmount - $total_paid + $penalty['penalty_amount'];
-        return ["current_amount" => $current_amount > 0 ? $current_amount : 0,
-            "penalty_amount" => $penalty['penalty_amount']];
-    }
-
-    public function calculateCurrentPayment2($contract): array
-    {
-        $penalty_amount = $this->countPenalty($contract->id);
-        $contract_creation_date = \Illuminate\Support\Carbon::parse($contract->date);
-        $current_date = Carbon::now();
-        $days_passed = $contract_creation_date->diffInDays($current_date);
-
-        // Calculate the total amount based on the days passed since contract creation
-        $calculatedAmount = $this->calcAmount($contract->left, $days_passed, $contract->interest_rate);
-
-        // Get the total amount paid so far
-        $total_paid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')
-            ->sum('paid');
-
-        // Calculate the penalty, if any
-        $penalty = $penalty_amount;
-
-        // Recalculate the future payment amounts (with dates greater than now)
-        $futurePayments = Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')
-            ->where('date', '>', $current_date)
-            ->get();
-
-        foreach ($futurePayments as $futurePayment) {
-            // Coeff to recalculate based on the remaining balance after partial payment
-            $coeff = $contract->left / ($contract->left + $total_paid);  // Use remaining amount coefficient
-            $futurePayment->amount = intval(ceil($futurePayment->amount * $coeff / 10) * 10);
-            $futurePayment->save();
-        }
-
-        // Calculate the current amount due (considering total paid, penalties, and recalculations)
-        $current_amount = $calculatedAmount - $total_paid + $penalty;
-
-        return [
-            "current_amount" => $current_amount > 0 ? $current_amount : 0,
-            "penalty_amount" => $penalty
-        ];
-    }
-
-    public function countPenalty1($contract_id, $import_date = null)
-    {
-        $contract = Contract::where('id', $contract_id)
-            ->with('payments')->first();
-        $penalty_paid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'penalty')
-            ->sum('paid');
-        $now = $import_date ?? \Carbon\Carbon::now();
-        $total_penalty_amount = 0;
-        $total_delay_days = 0;
-        if ($contract) {
-            $penalty_calculated = false;
-            foreach ($contract->payments as $payment) {
-                // Parse the payment date
-                $payment_date = \Carbon\Carbon::parse($payment->date);
-                // Check if the payment is overdue and has 'initial' status
-                if ($now->gt($payment_date) && $payment->status === 'initial') {
-                    // Calculate the overdue days
-                    $delay_days = $now->diffInDays($payment_date);
-
-                    // Calculate the penalty for this overdue payment
-                    $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                    if ($penalty_amount > 0 && !$penalty_calculated) {
-                        $total_penalty_amount = $penalty_amount;
-                        $penalty_calculated = true; // Set flag to true after first calculation
-                    }
-                    // Add to the total penalty and delay days
-                    //   $total_penalty_amount += $penalty_amount;
-                    $total_delay_days += $delay_days;
-                }
-            }
-
-            // Subtract already paid penalties
-            $total_penalty_amount -= $penalty_paid;
-
-            // Save the penalty amount to the contract
-            $contract->penalty_amount = $total_penalty_amount > 0 ? $total_penalty_amount : 0;
-            $contract->save();
-
-            return [
-                'penalty_amount' => $total_penalty_amount,
-                'delay_days' => $delay_days,
-            ];
-        }
-
-        return [
-            'penalty_amount' => 0,
-            'delay_days' => 0,
-        ];
-    }
-    public function countPenalty($contract_id, $import_date = null)
-    {
-        $contract = Contract::with('payments')->find($contract_id);
-
-        if (!$contract) {
-            return [
-                'penalty_amount' => 0,
-                'delay_days' => 0,
-            ];
-        }
-
-        $now = $import_date ? \Carbon\Carbon::parse($import_date) : now();
-        $parent_id = null;
-
-        $first_unpayed_payment = Payment::where('contract_id',$contract->id)
-            ->where('status','initial')
-            ->where('amount','>','0')
-            ->orderBy('date','asc')
-            ->first();
-
-        $lasPayedPenalty = Payment::where('contract_id',$contract->id)
-            ->where('type','penalty')
-            ->where('is_completed',true)
-            ->orderBy('date','desc')
-            ->orderBy('id','desc')
-            ->first();
-
-        $penalty_amount = 0;
-        $delay_days = 0;
-
-        if ($first_unpayed_payment) {
-            $penalty_start_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
-            $parent_id = $first_unpayed_payment->id;
-            if ($lasPayedPenalty) {
-                $lastPayedPenaltyDate = \Carbon\Carbon::parse($lasPayedPenalty->date);
-//                $isLastPenaltyCompeted = $lasPayedPenalty->is_completed;
-//                $penalty_start_date = $lastPayedPenaltyDate->gt($penalty_start_date) ? $lastPayedPenaltyDate : $penalty_start_date;
-                if ($lastPayedPenaltyDate->gt($penalty_start_date)) {
-//
-                    $penalty_start_date = $lastPayedPenaltyDate;
-////                        ? $lastPayedPenaltyDate
-////                        : \Carbon\Carbon::parse(
-////                            Payment::where('id', $lasPayedPenalty->parent_id)->value('date')
-////                        );
-                    $parent_id = $lasPayedPenalty->id;
-                }
-            }
-            if ($now->gt($penalty_start_date)) {
-                $delay_days = $now->diffInDays($penalty_start_date);
-                $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-                if ($parent_id) {
-                    $penalty_paid =  Payment::where('contract_id', $contract->id)
-                        ->where('type', 'penalty')
-                        ->where('parent_id', $parent_id)
-                        ->sum('paid') ?? 0;
-                } else {
-                    $penalty_paid = 0;
-                }
-
-
-                $penalty_amount -= $penalty_paid;
-            }
-        }
-        // Set the result to contract
-        $contract->penalty_amount = $penalty_amount;
-        $contract->save();
-
-        return [
-            'payment_date' => $penalty_start_date ?? null,
-            'penalty_amount' =>$penalty_amount,
-            'delay_days' => $delay_days,
-            'parent_id' => $parent_id
-        ];
-    }
-
 
 //    public function countPenalty($contract_id, $import_date = null)
 //    {
@@ -571,91 +388,142 @@ trait ContractTrait
 //            ];
 //        }
 //
-//        $now = $import_date ? \Carbon\Carbon::parse($import_date) : now();
-//        // Get the last penalty payment date
-////        $last_penalty = Payment::where('contract_id', $contract->id)
-////            ->where('type', 'penalty')
-////            ->where('paid', '>', 0)
-////            ->where('parent_id',0)
-////            ->orderByDesc('date')
-////            ->orderByDesc('id')
-////            ->first();
-//
-////        $last_penalty_date = $last_penalty ? \Carbon\Carbon::parse($last_penalty->date) : null;
-////        $last_penalty_completed = $last_penalty->is_completed ?? false;
-//        $total_penalty_amount = 0;
-//        $total_delay_days = 0;
-//        $penalty_calculated = false;
-//        $penalty_date_adjusted = false;
-//        $parent_id = 0;
+//        $now = $import_date ? Carbon::parse($import_date) : now();
 //        $parent_id = null;
+//
 //        $first_unpayed_payment = Payment::where('contract_id',$contract->id)
 //            ->where('status','initial')
+//            ->where('type', '!=', 'penalty')
 //            ->where('amount','>','0')
 //            ->orderBy('date','asc')
 //            ->first();
 //
+//        $lasPayedPenalty = Payment::where('contract_id',$contract->id)
+//            ->where('type','penalty')
+//            ->where('is_completed',true)
+//            ->orderBy('date','desc')
+//            ->orderBy('id','desc')
+//            ->first();
 //
-////        foreach ($contract->payments as $payment) {
-////            // Only consider unpaid payments
-////            if ($payment->status !== 'initial') {
-////                continue;
-////            }
 //        $penalty_amount = 0;
 //        $delay_days = 0;
+//
 //        if ($first_unpayed_payment) {
-//
-//            $payment_date = \Carbon\Carbon::parse($first_unpayed_payment->date);
-//
-//            // If payment date is before last penalty payment date, adjust it
-////            if ($last_penalty_date && $payment_date->lt($last_penalty_date) && $last_penalty_completed) {
-////                // Only adjust once
-////                if (!$penalty_date_adjusted) {
-////                    $payment_date = $last_penalty_date;
-////                    $parent_id = $last_penalty->id;
-////                    $penalty_date_adjusted  = true;
-////                } else {
-////                    // Skip this payment, already adjusted for one
-////                    continue;
-////                }
-////            }
-//
-//            // Only calculate if overdue
-//            if ($now->gt($payment_date)) {
-//                $delay_days = $now->diffInDays($payment_date);
-//
-//                // Calculate the penalty once
-////                if (!$penalty_calculated) {
-//                $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-//
-////                    $penalty_calculated = true;
-////                    $total_penalty_amount += $penalty_amount;
-//                $parent_id = $first_unpayed_payment->id;
-////                }
-//
-////                $total_delay_days += $delay_days;
+//            $penalty_start_date = Carbon::parse($first_unpayed_payment->date);
+//            $parent_id = $first_unpayed_payment->id;
+//            if ($lasPayedPenalty) {
+//                $lastPayedPenaltyDate = Carbon::parse($lasPayedPenalty->date);
+//                if ($lastPayedPenaltyDate->gt($penalty_start_date)) {
+////
+//                    $penalty_start_date = $lastPayedPenaltyDate;
+//                    $parent_id = $lasPayedPenalty->id;
+//                }
 //            }
+//            if ($now->gt($penalty_start_date)) {
+//                $delay_days = $now->diffInDays($penalty_start_date);
+////                $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
+//                $overdue_amount = $first_unpayed_payment->amount;
+//                $penalty_amount = $this->calcAmount($overdue_amount, $delay_days, $contract->penalty);
+//                if ($parent_id) {
+//                    $penalty_paid =  Payment::where('contract_id', $contract->id)
+//                        ->where('type', 'penalty')
+//                        ->where('parent_id', $parent_id)
+//                        ->sum('paid') ?? 0;
+//                } else {
+//                    $penalty_paid = 0;
+//                }
 //
 //
-//            $penalty_paid = Payment::where('contract_id', $contract->id)
-//                ->where('type', 'penalty')
-//                ->where('parent_id', $first_unpayed_payment->id)
-//                ->sum('paid') ?? 0;
-//
-//            $penalty_amount -= $penalty_paid;
+//                $penalty_amount -= $penalty_paid;
+//            }
 //        }
-//        // Set the result to contract
 //        $contract->penalty_amount = $penalty_amount;
 //        $contract->save();
 //
 //        return [
-//            'penalty_amount' => $penalty_amount,
+//            'payment_date' => $penalty_start_date ?? null,
+//            'penalty_amount' =>$penalty_amount,
 //            'delay_days' => $delay_days,
 //            'parent_id' => $parent_id
 //        ];
 //    }
 
+    public function countPenalty($contract_id, $import_date = null)
+    {
+        $contract = Contract::find($contract_id);
 
+        if (!$contract) {
+            return [
+                'penalty_amount' => 0,
+                'delay_days' => 0,
+            ];
+        }
+
+        $now = $import_date ? Carbon::parse($import_date) : now();
+
+        $overdue_payments = Payment::where('contract_id', $contract->id)
+            ->where('status', 'initial')
+            ->where('type', '!=', 'penalty')
+            ->where('amount', '>', '0')
+            ->where('date', '<', $now->toDateTimeString())
+            ->orderBy('date', 'asc')
+            ->get();
+
+        $total_penalty_amount = 0;
+        $max_delay_days = 0;
+        $first_penalty_start_date = null;
+        $primary_parent_id = null;
+
+        if ($overdue_payments->isNotEmpty()) {
+            foreach ($overdue_payments as $payment) {
+                $payment_date = Carbon::parse($payment->date);
+
+                $lastPaidPenalty = Payment::where('contract_id', $contract->id)
+                    ->where('type', 'penalty')
+                    ->where('parent_id', $payment->id)
+                    ->where('is_completed', true)
+                    ->orderBy('date', 'desc')
+                    ->first();
+
+                $penalty_start_date = $payment_date;
+                if ($lastPaidPenalty) {
+                    $lastPaidDate = Carbon::parse($lastPaidPenalty->date);
+                    if ($lastPaidDate->gt($penalty_start_date)) {
+                        $penalty_start_date = $lastPaidDate;
+                    }
+                }
+
+                if ($now->gt($penalty_start_date)) {
+                    $current_delay_days = $now->diffInDays($penalty_start_date);
+
+                    if ($current_delay_days > $max_delay_days) {
+                        $max_delay_days = $current_delay_days;
+                        $first_penalty_start_date = $penalty_start_date;
+                        $primary_parent_id = $payment->id;
+                    }
+
+                    $current_penalty = $this->calcAmount($payment->amount, $current_delay_days, $contract->penalty);
+
+                    $penalty_paid = Payment::where('contract_id', $contract->id)
+                        ->where('type', 'penalty')
+                        ->where('parent_id', $payment->id)
+                        ->sum('paid') ?? 0;
+
+                    $total_penalty_amount += ($current_penalty - $penalty_paid);
+                }
+            }
+        }
+
+        $contract->penalty_amount = max(0, $total_penalty_amount);
+        $contract->save();
+
+        return [
+            'payment_date' => $first_penalty_start_date,
+            'penalty_amount' => max(0, $total_penalty_amount),
+            'delay_days' => $max_delay_days,
+            'parent_id' => $primary_parent_id
+        ];
+    }
     public function createImportPayment(Contract $contract)
     {
         $fromDate = Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan');
