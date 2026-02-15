@@ -351,8 +351,10 @@ class   ContractService
 
             // Determine the next payment date, or use the deadline if it's the last payment
             $nextPaymentDate = (clone $currentDate)->addMonths();
-            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+//            $paymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+             $rawPaymentDate = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
 
+            $paymentDate = $this->getNextWorkingDay(clone $rawPaymentDate);
             $diffDays = $paymentDate->diffInDays($currentDate);
             $payment['mother'] = 0;
 
@@ -394,68 +396,6 @@ class   ContractService
         $contract->payment_schedule = $schedule;
         $contract->save();
     }
-//    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null)
-//    {
-//        $principal = $contract->provided_amount;
-//        $months = $contract->deadline_days;
-//        $annualRate = $contract->interest_rate * 365;
-////        $annualRate = $contract->interest_rate;
-//        $monthlyRate = $annualRate / 100 / 12;
-//        $effectiveAnnualRate = $contract->effective_annual_rate;
-//
-//        $effectiveMonthlyRate = pow(1 + $effectiveAnnualRate, 1/12) - 1;
-//
-//        $annuityPayment = ($principal * $monthlyRate) / (1 - pow(1 + $monthlyRate, -$months));
-//
-//        $remaining = $principal;
-//        $schedule = [];
-//        $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
-//        $pgi_id = 1;
-//
-//        $currentDate = $import_date ? \Carbon\Carbon::parse($import_date) : \Carbon\Carbon::parse($contract->date);
-//
-//        for ($i = 1; $i <= $months; $i++) {
-//            $interest = $remaining * $monthlyRate;
-//            $effective = $remaining * $effectiveMonthlyRate;
-//            $principalPayment = $annuityPayment - $interest;
-//            $remaining -= $principalPayment;
-//
-//            $paymentDate = (clone $currentDate)->addMonths($i);
-//            $kaskoAmount = 0;
-//
-//            $isLastMonth = ($i == $months);
-//
-//            if ($contract->kasko_amount &&
-//                $paymentDate->month == $currentDate->month &&
-//                !$isLastMonth) {
-//                    $kaskoAmount = $contract->kasko_amount;
-//            }
-//            $payment = [
-//                'contract_id' => $contract->id,
-//                'date' => $paymentDate->format('Y-m-d'),
-//                'to_date' => $paymentDate->format('Y-m-d'),
-//                'amount' => round($annuityPayment, 10),
-//                'principal_payment' => round($principalPayment, 10),
-//                'interest_payment' => round($interest, 10),
-//                'effective_payment' => round($effective,10),
-//                'remaining' => round(max($remaining, 0), 10),
-//                'kasko_amount' => $kaskoAmount,
-//                'pawnshop_id' => $pawnshop_id,
-//                'PGI_ID' => $pgi_id,
-//            ];
-//
-//            Payment::create($payment);
-//            $pgi_id++;
-//
-//            $schedule[] = [
-//                'date' => $paymentDate->format('Y-m-d'),
-//                'amount' => round($annuityPayment, 3),
-//            ];
-//        }
-//
-//        $contract->payment_schedule = $schedule;
-//        $contract->save();
-//    }
 
 
     public function calcAmount($amount, $days, $rate): float
@@ -547,8 +487,9 @@ class   ContractService
             $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
             $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate,      $i, $months, $loanAmount);
 
-            $paymentDate = (clone $currentDate)->addMonths($i);
-
+//            $paymentDate = (clone $currentDate)->addMonths($i);
+            $rawPaymentDate = (clone $currentDate)->addMonths($i);
+            $paymentDate = $this->getNextWorkingDay(clone $rawPaymentDate);
             $kaskoAmount = 0;
             $isLastMonth = ($i === $months);
             if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastMonth) {
@@ -589,6 +530,35 @@ class   ContractService
         $contract->payment_schedule = $schedule;
         $contract->save();
     }
+    private function getNextWorkingDay(Carbon $date)
+    {
+        $holidays = [
+            '01-01', // Ամանոր
+            '01-02', // Ամանոր
+            '01-06', // Սուրբ Ծնունդ
+            '01-27', // Հիշատակի օր
+            '01-28', // Բանակի օր
+            '03-08', // Կանանց տոն
+            '04-24', // Ցեղասպանության զոհերի հիշատակի օր
+            '05-01', // Աշխատանքի օր
+            '05-09', // Հաղթանակի և խաղաղության տոն
+            '05-28', // Հանրապետության տոն
+            '07-05', // Սահմանադրության օր
+            '09-21', // Անկախության տոն
+            '12-31', // Ամանոր
+        ];
 
+        while (true) {
+            $monthDay = $date->format('m-d');
+
+            if (in_array($monthDay, $holidays) || $date->isWeekend()) {
+                $date->addDay();
+            } else {
+                break;
+            }
+        }
+
+        return $date;
+    }
 
 }
