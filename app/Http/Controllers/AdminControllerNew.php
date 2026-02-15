@@ -788,7 +788,7 @@ class AdminControllerNew extends Controller
         $dealActions = DealAction::where('deal_id', $deal->id)->orderByDesc('id')->get();
 
         if ($dealActions->isEmpty()) {
-            return response()->json(['message' => 'Sorry, you cannot delete this deal.'], 403);
+            return response()->json(['message' => 'You cannot delete this deal.'], 403);
         }
 
         foreach ($dealActions as $dealAction) {
