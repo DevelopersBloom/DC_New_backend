@@ -851,6 +851,8 @@ class AdminControllerNew extends Controller
                         'amount' => $item['old_amount'],
                         'paid' => $item['old_paid'],
                         'date' => $item['old_date'],
+                        'principal_payment' => $item['old_principal'],
+                        'interest_payment' => $item['old_interest'],
                         'status' => 'initial',
 //                        'mother' => $item['old_mother'] ?? 0
                     ])
