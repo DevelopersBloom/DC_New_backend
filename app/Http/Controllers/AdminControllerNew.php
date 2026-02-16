@@ -766,24 +766,60 @@ class AdminControllerNew extends Controller
 
     }
 
+//    private function handleFullPaymentDeal(Deal $deal)
+//    {
+//        $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
+//        foreach ($dealActions as $dealAction) {
+//            if ($dealAction->type === 'full') {
+//                Payment::where('contract_id', $deal->contract_id)
+//                    ->where('status', 'initial')
+//                    ->restore();
+//                $this->restoreHistory($dealAction->history);
+//            } elseif ($dealAction->type === 'refund') {
+//                Deal::where('id', $dealAction->deal_id)->delete();
+//            }
+//            Payment::where('id',$dealAction->actionable_id)->delete();
+//            $dealAction->delete();
+//        }
+//        ContractAmountHistory::where('deal_id', $deal->id)->delete();
+//        $deal->delete();
+//        return response()->json(['message' => 'Deal deleted successfully'], 200);
+//    }
     private function handleFullPaymentDeal(Deal $deal)
     {
-        $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
-        foreach ($dealActions as $dealAction) {
-            if ($dealAction->type === 'full') {
-                Payment::where('contract_id', $deal->contract_id)
-                    ->where('status', 'initial')
-                    ->restore();
-                $this->restoreHistory($dealAction->history);
-            } elseif ($dealAction->type === 'refund') {
-                Deal::where('id', $dealAction->deal_id)->delete();
+        return DB::transaction(function () use ($deal) {
+            $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
+
+            foreach ($dealActions as $dealAction) {
+                if ($dealAction->type === 'full') {
+
+                    Payment::where('contract_id', $deal->contract_id)
+                        ->where('status', 'initial')
+                        ->whereNotNull('deleted_at')
+                        ->restore();
+
+                    if ($dealAction->history) {
+                        $this->restoreHistory($dealAction->history);
+                    }
+
+                } elseif ($dealAction->type === 'refund') {
+                    $refundDeal = Deal::find($dealAction->deal_id);
+                    if ($refundDeal) {
+                        $refundDeal->delete();
+                    }
+                }
+
+                Payment::where('id', $dealAction->actionable_id)->forceDelete();
+
+                $dealAction->delete();
             }
-            Payment::where('id',$dealAction->actionable_id)->delete();
-            $dealAction->delete();
-        }
-        ContractAmountHistory::where('deal_id', $deal->id)->delete();
-        $deal->delete();
-        return response()->json(['message' => 'Deal deleted successfully'], 200);
+
+            ContractAmountHistory::where('deal_id', $deal->id)->delete();
+
+            $deal->delete();
+
+            return response()->json(['message' => 'Full payment deal fully reverted successfully'], 200);
+        });
     }
 
     private function handlePartialPaymentDeal(Deal $deal)
@@ -813,16 +849,25 @@ class AdminControllerNew extends Controller
         if (!$history)  return;
         foreach ($history as $key => $historyItem) {
             match ($key) {
-            'payment_changes' => collect($historyItem)->each(fn($item) =>
-                Payment::where('id', $item['payment_id'])
-                    ->update([
-                        'amount' => $item['old_amount'],
-                        'paid' => $item['old_paid'],
-                        'date' => $item['old_date'],
-                        'status' => 'initial',
-//                        'mother' => $item['old_mother'] ?? 0
-                    ])
-                ),
+//            'payment_changes' => collect($historyItem)->each(fn($item) =>
+//                Payment::where('id', $item['payment_id'])
+//                    ->update([
+//                        'amount' => $item['old_amount'],
+//                        'paid' => $item['old_paid'],
+//                        'date' => $item['old_date'],
+//                        'status' => 'initial',
+////                        'mother' => $item['old_mother'] ?? 0
+//                    ])
+//                ),
+                'payment_changes' => collect($historyItem)->each(function ($item) {
+                    Payment::where('id', $item['payment_id'])->update([
+                        'amount' => $item['old_amount'] ?? DB::raw('amount'),
+                        'paid'   => $item['old_paid'] ?? DB::raw('paid'),
+                        'date'   => $item['old_date'] ?? DB::raw('date'),
+                        'mother' => $item['old_mother'] ?? DB::raw('mother'),
+                        'status' => 'initial'
+                    ]);
+                }),
                 'contract_changes' => Contract::where('id', $historyItem['contract_id'])
                     ->update([
                         'left' => $historyItem['old_left'],
