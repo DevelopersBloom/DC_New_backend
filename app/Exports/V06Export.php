@@ -612,7 +612,7 @@ class V06Export
         $sheet->setCellValue('X125', $balance19400PC);
         $sheet->getStyle('X125')->getNumberFormat()->setFormatCode('#,##0');
 
-        $sheet->setCellValueExplicit('D5', 'Ակրեդիտ', DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('D5', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
         $sheet->setCellValue('D7', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
         $sheet->getStyle('D7')->getNumberFormat()->setFormatCode('dd/mm/yy');
 

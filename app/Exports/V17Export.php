@@ -22,7 +22,7 @@
 
             // ---------- sheet 1 ----------
             $sheet1 = $spreadsheet->getSheetByName('Sheet1');
-            $sheet1->setCellValueExplicit('C9', 'Ակրեդիտ', DataType::TYPE_STRING);
+            $sheet1->setCellValueExplicit('C9', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
             $sheet1->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
             $sheet1->getStyle('C10')->getNumberFormat()->setFormatCode('dd/mm/yy');
 

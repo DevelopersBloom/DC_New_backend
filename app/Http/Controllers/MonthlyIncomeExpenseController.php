@@ -244,6 +244,7 @@ class MonthlyIncomeExpenseController extends Controller
         }
 
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
+        $sheet->setCellValueExplicit('C8', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
 
         // Fill dates
         $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));

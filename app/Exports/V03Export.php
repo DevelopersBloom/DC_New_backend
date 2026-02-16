@@ -22,7 +22,7 @@ class V03Export
         // SHEET 1
         // ---------------------------
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
-        $sheet1->setCellValue('D10', 'Ակրեդիտ');
+        $sheet1->setCellValue('D10', '«Ակրեդիտ» ՎՄ ՍՊԸ');
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
