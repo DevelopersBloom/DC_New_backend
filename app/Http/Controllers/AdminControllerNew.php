@@ -811,7 +811,7 @@ class AdminControllerNew extends Controller
     private function restoreHistory($history)
     {
         if (!$history)  return;
-
+dd($history);
         foreach ($history as $key => $historyItem) {
             match ($key) {
             'payment_changes' => collect($historyItem)->each(fn($item) =>
