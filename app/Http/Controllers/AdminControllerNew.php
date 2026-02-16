@@ -796,10 +796,10 @@ class AdminControllerNew extends Controller
 
         foreach ($dealActions as $dealAction) {
             $this->restoreHistory($dealAction->history);
-dd(3);
             if (in_array($dealAction->type, ['partial', 'penalty']) && $dealAction->actionable) {
                 $dealAction->actionable->delete();
             }
+            dd(4);
 
             $dealAction->delete();
         }
