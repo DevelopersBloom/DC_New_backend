@@ -813,6 +813,7 @@ class AdminControllerNew extends Controller
         if (!$history)  return;
 
         foreach ($history as $key => $historyItem) {
+            dd($history);
             match ($key) {
             'payment_changes' => collect($historyItem)->each(fn($item) =>
                 Payment::where('id', $item['payment_id'])
