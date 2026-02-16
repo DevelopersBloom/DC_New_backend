@@ -849,25 +849,25 @@ class AdminControllerNew extends Controller
         if (!$history)  return;
         foreach ($history as $key => $historyItem) {
             match ($key) {
-//            'payment_changes' => collect($historyItem)->each(fn($item) =>
-//                Payment::where('id', $item['payment_id'])
-//                    ->update([
-//                        'amount' => $item['old_amount'],
-//                        'paid' => $item['old_paid'],
-//                        'date' => $item['old_date'],
-//                        'status' => 'initial',
-////                        'mother' => $item['old_mother'] ?? 0
-//                    ])
-//                ),
-                'payment_changes' => collect($historyItem)->each(function ($item) {
-                    Payment::where('id', $item['payment_id'])->update([
-                        'amount' => $item['old_amount'] ?? DB::raw('amount'),
-                        'paid'   => $item['old_paid'] ?? DB::raw('paid'),
-                        'date'   => $item['old_date'] ?? DB::raw('date'),
-                        'mother' => $item['old_mother'] ?? DB::raw('mother'),
-                        'status' => 'initial'
-                    ]);
-                }),
+            'payment_changes' => collect($historyItem)->each(fn($item) =>
+                Payment::where('id', $item['payment_id'])
+                    ->update([
+                        'amount' => $item['old_amount'],
+                        'paid' => $item['old_paid'],
+                        'date' => $item['old_date'],
+                        'status' => 'initial',
+//                        'mother' => $item['old_mother'] ?? 0
+                    ])
+                ),
+//                'payment_changes' => collect($historyItem)->each(function ($item) {
+//                    Payment::where('id', $item['payment_id'])->update([
+//                        'amount' => $item['old_amount'] ?? DB::raw('amount'),
+//                        'paid'   => $item['old_paid'] ?? DB::raw('paid'),
+//                        'date'   => $item['old_date'] ?? DB::raw('date'),
+//                        'mother' => $item['old_mother'] ?? DB::raw('mother'),
+//                        'status' => 'initial'
+//                    ]);
+//                }),
                 'contract_changes' => Contract::where('id', $historyItem['contract_id'])
                     ->update([
                         'left' => $historyItem['old_left'],
