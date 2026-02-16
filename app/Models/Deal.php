@@ -77,9 +77,9 @@ class Deal extends Model
                 $deal->order->delete();
             }
             $deal->documents()->get()->each(function ($document) {
-                dd($document);
                 $document->delete();
             });
+            dd(44);
         });
     }
     public function documents(): HasMany
