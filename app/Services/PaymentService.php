@@ -260,7 +260,11 @@ class PaymentService
 //            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
 //
 //        }
+        $principalPayment = null;
+        $interestPayment = null;
            if ($contract->payment_type == 'amortized') {
+                    $principalPayment = $payment->principal_payment;
+                    $interestPayment = $payment->interest_payment;
 
                    $remainingInterestPlan = $payment->interest_payment;
 
@@ -283,7 +287,7 @@ class PaymentService
 
         $totalRequiredForThisLine = $payment->amount + $penalty;
         if ($amount >= $totalRequiredForThisLine) {
-            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
+            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id,$principalPayment,$interestPayment);
         } else {
             $this->partiallyCompletePayment($payment, $amount, $deal_id);
         }
@@ -298,13 +302,11 @@ class PaymentService
             'amount'           => $remainingAmount
         ];
     }
-    private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null): void
+    private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null,$principal_payment = null,$interest_payment = null): void
     {
         $oldAmount = $payment['amount'];
         $oldPaid = $payment['paid'];
         $oldDate = $payment['date'];
-        $oldPrincipal = $payment['principal_payment'];
-        $oldInterest = $payment['interest_payment'];
         $payment->paid += $payment['amount'] + $payment['penalty'];
         //$payment->paid_date = Carbon::now()->format('Y.m.d');
         if ($payment->last_payment == 0) {
@@ -331,8 +333,8 @@ class PaymentService
             'new_paid' => $payment->paid,
             'old_date' => $oldDate,
             'old_mother' => $payment->mother,
-            'old_principal' => $oldPrincipal,
-            'old_interest' => $oldInterest,
+            'old_principal' => $principal_payment,
+            'old_interest' => $interest_payment,
             'updated_at' => now()->toDateTimeString()
         ];
         DealAction::create([
@@ -347,13 +349,11 @@ class PaymentService
         ]);
     }
 
-    private function partiallyCompletePayment($payment, $paid, $deal_id = null, $history = []): void
+    private function partiallyCompletePayment($payment, $paid, $deal_id = null, $history = [],$principal_payment = null,$interest_payment = null): void
     {
         $oldPaid = $payment->paid;
         $oldAmount = $payment->amount;
         $oldDate = $payment->date;
-        $oldPrincipal = $payment->principal_payment;
-        $oldInterest = $payment->interest_payment;
         $payment->amount -= $paid;
         $payment->paid += $paid;
         if ($payment->last_payment && $payment->amount == 0) {
@@ -367,8 +367,8 @@ class PaymentService
             'old_paid' => $oldPaid,
             'new_paid' => $payment->paid,
             'old_date' => $oldDate,
-            'old_principal' => $oldPrincipal,
-            'old_interest' => $oldInterest,
+            'old_principal' => $principal_payment,
+            'old_interest' => $interest_payment,
             'updated_at' => now()->toDateTimeString()
         ];
         DealAction::create([
