@@ -117,6 +117,7 @@ class   ContractService
                     break;
 
                 case 'car':
+                case 'car-purchase':
                     $subcategory = Subcategory::firstOrCreate(
                         [
                             'name'        => $data['model'],
