@@ -338,7 +338,7 @@ class PaymentControllerNew extends Controller
                 $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
                 DealAction::create([
                     'deal_id' => $deal->id,
-//                    'actionable_id' => $result['payment_id'],
+                    'actionable_id' => 0,
                     'actionable_type' => Payment::class,
                     'amount' => $refundAmount,
                     'type' => 'refund',
