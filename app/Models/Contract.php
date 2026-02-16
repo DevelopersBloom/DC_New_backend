@@ -74,7 +74,8 @@ class Contract extends Model
         'kasko_amount',
         'effective_rate_kasko',
         'effective_rate_annual_kasko',
-        'fee_annual_rate'
+        'fee_annual_rate',
+        'seller_id'
     ];
 
     protected $casts = [
@@ -117,7 +118,10 @@ class Contract extends Model
     {
         return $this->belongsTo(Client::class);
     }
-
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'seller_id');
+    }
     public function history(): HasMany
     {
         return $this->hasMany(History::class);

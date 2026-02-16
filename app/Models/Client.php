@@ -111,7 +111,10 @@ class Client extends Model
     public function activeContracts(){
         return $this->contracts()->where('status','initial');
     }
-
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'seller_id');
+    }
     public function files(){
         return $this->morphMany(File::class,'fileable');
     }

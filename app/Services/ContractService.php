@@ -288,6 +288,7 @@ class   ContractService
             'user_id' => auth()->user()->id ?? 1,
             'category_id' => $categoryId ,
             'payment_type' => $data['payment_type'],
+            'seller_id' => $data['seller_id'] ?? null,
 //            'kasko_amount' => $data['kasko_amount'] ?? null,
         ];
 

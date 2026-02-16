@@ -103,6 +103,11 @@ class ContractDetailResource extends JsonResource
                     'passport_series' => $guarantor->passport_series,
                 ];
             }),
+            'seller' => $this->seller ? [
+                'id'              => $this->seller->id,
+                'name'            => $this->seller->name,
+                'surname'         => $this->seller->surname,
+            ] : null,
 
             'payments' => $this->payments->map(function ($payment) {
                 return [

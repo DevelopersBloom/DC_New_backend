@@ -124,6 +124,7 @@ class ContractControllerNew extends Controller
 
         $contract = Contract::with([
             'client',
+            'seller',
             'guarantors',
             'payments' => function ($query) { $query->orderBy('to_date', 'ASC'); },
             'history' => function ($query) {
