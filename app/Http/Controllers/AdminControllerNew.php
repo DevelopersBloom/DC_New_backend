@@ -742,25 +742,28 @@ class AdminControllerNew extends Controller
         if (!$deal) {
             return response()->json(['message' => 'Deal not found'], 404);
         }
+        return DB::transaction(function () use ($deal) {
+            try {
+                if ($deal->filter_type === 'full_payment') {
+                    return $this->handleFullPaymentDeal($deal);
+                }
 
-        if ($deal->filter_type === 'full_payment') {
-            return $this->handleFullPaymentDeal($deal);
-        }
+                if (in_array($deal->filter_type, ['payment', 'partial_payment'])) {
+                    return $this->handlePartialPaymentDeal($deal);
+                }
 
-        if (in_array($deal->filter_type, ['payment', 'partial_payment'])) {
-            return $this->handlePartialPaymentDeal($deal);
-        }
-//        if ($deal->type === 'in') {
-//            $deal->cash ? $pawnshop->cashbox -= $deal->amount : $pawnshop->bank_cashbox -= $deal->amount;
-//        } else {
-//            $deal->cash ? $pawnshop->cashbox += $deal->amount : $pawnshop->bank_cashbox += $deal->amount;
-//        }
-//
-//        $pawnshop->save();
+                $deal->delete();
 
-        $deal->delete();
+                return response()->json(['message' => 'Deal deleted successfully']);
 
-        return response()->json(['message' => 'Deal deleted successfully']);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'Error while deleting data',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        });
+
     }
 
     private function handleFullPaymentDeal(Deal $deal)
@@ -794,7 +797,7 @@ class AdminControllerNew extends Controller
         foreach ($dealActions as $dealAction) {
             $this->restoreHistory($dealAction->history);
 
-            if (($dealAction->type === 'partial' || $dealAction->type === 'penalty') && $dealAction->actionable) {
+            if (in_array($dealAction->type, ['partial', 'penalty']) && $dealAction->actionable) {
                 $dealAction->actionable->delete();
             }
 
@@ -807,9 +810,8 @@ class AdminControllerNew extends Controller
 
     private function restoreHistory($history)
     {
-        if (!$history) {
-            return;
-        }
+        if (!$history)  return;
+
         foreach ($history as $key => $historyItem) {
             match ($key) {
             'payment_changes' => collect($historyItem)->each(fn($item) =>
