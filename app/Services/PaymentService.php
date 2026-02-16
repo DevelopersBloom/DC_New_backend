@@ -718,6 +718,8 @@ class PaymentService
                         'new_left' => $contract->left - $partialAmount,
                         'old_provided' => $contract->provided_amount,
                         'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+                        'old_collected' => $contract->collected,
+                        'contract_id' => $contract->id,
                     ];
 
                     $contract->left = max(0, $contract->left - $partialAmount);
@@ -733,6 +735,8 @@ class PaymentService
                     'new_left' => $contract->left - $partialAmount,
                     'old_provided' => $contract->provided_amount,
                     'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+                    'old_collected' => $contract->collected,
+                    'contract_id' => $contract->id,
                 ];
 
                 $contract->left = max(0, $contract->left - $partialAmount);
@@ -749,6 +753,8 @@ class PaymentService
                 'new_left' => $contract->left - $partialAmount,
                 'old_provided' => $contract->provided_amount,
                 'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+                'old_collected' => $contract->collected,
+                'contract_id' => $contract->id,
             ];
 
             $contract->left = max(0, $contract->left - $partialAmount);
