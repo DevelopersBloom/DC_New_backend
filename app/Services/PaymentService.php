@@ -812,8 +812,9 @@ class PaymentService
 
             $dateToCheck = Carbon::parse($payment->date);
             if ($dateToCheck->gt($now)) {
+                $oldPaid = $payment->paid;
                 $oldAmount = $payment->amount;
-
+                $oldDate = $payment->date;
                 if ($startedToChange) {
                     $coeff = ($contract->left - $partialAmount) / $contract->left;
                     $newAmount = intval(ceil($oldAmount * $coeff / 10) * 10);
@@ -834,6 +835,8 @@ class PaymentService
                     'payment_id' => $payment->id,
                     'old_amount' => $oldAmount,
                     'new_amount' => $payment->amount,
+                    'old_paid' =>  $oldPaid,
+                    'old_date' => $oldDate,
                     'updated_at' => $now->toDateTimeString()
                 ];
             }

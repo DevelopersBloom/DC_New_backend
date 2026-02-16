@@ -814,37 +814,16 @@ class AdminControllerNew extends Controller
 
         foreach ($history as $key => $historyItem) {
             match ($key) {
-//            'payment_changes' => collect($historyItem)->each(fn($item) =>
-//                Payment::where('id', $item['payment_id'])
-//                    ->update([
-//                        'amount' => $item['old_amount'],
-//                        'paid' => $item['old_paid'],
-//                        'date' => $item['old_date'],
-//                        'status' => 'initial',
-////                        'mother' => $item['old_mother'] ?? 0
-//                    ])
-//                ),
-                'payment_changes' => (function() use ($historyItem) {
-                    // Եթե սա մեկ հատիկ փոփոխություն է (ունի payment_id բանալին),
-                    // փաթաթում ենք այն զանգվածի մեջ, որպեսզի ստացվի ցուցակ:
-                    $items = isset($historyItem['payment_id']) ? [$historyItem] : $historyItem;
-
-                    collect($items)->each(function ($item) {
-                        // Այստեղ $item-ը միշտ կլինի զանգված
-                        $updateData = [
-                            'status' => 'initial',
-                        ];
-
-                        if (isset($item['old_amount'])) $updateData['amount'] = $item['old_amount'];
-                        if (isset($item['old_paid']))   $updateData['paid']   = $item['old_paid'];
-                        if (isset($item['old_date']))   $updateData['date']   = $item['old_date'];
-                        if (isset($item['old_mother'])) $updateData['mother'] = $item['old_mother'];
-
-                        if (isset($item['payment_id'])) {
-                            Payment::where('id', $item['payment_id'])->update($updateData);
-                        }
-                    });
-                })(),
+            'payment_changes' => collect($historyItem)->each(fn($item) =>
+                Payment::where('id', $item['payment_id'])
+                    ->update([
+                        'amount' => $item['old_amount'],
+                        'paid' => $item['old_paid'],
+                        'date' => $item['old_date'],
+                        'status' => 'initial',
+//                        'mother' => $item['old_mother'] ?? 0
+                    ])
+                ),
                 'contract_changes' => Contract::where('id', $historyItem['contract_id'])
                     ->update([
                         'left' => $historyItem['old_left'],
