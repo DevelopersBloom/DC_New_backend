@@ -796,7 +796,7 @@ class AdminControllerNew extends Controller
 
         foreach ($dealActions as $dealAction) {
             $this->restoreHistory($dealAction->history);
-
+dd(3);
             if (in_array($dealAction->type, ['partial', 'penalty']) && $dealAction->actionable) {
                 $dealAction->actionable->delete();
             }
@@ -805,7 +805,6 @@ class AdminControllerNew extends Controller
         }
         ContractAmountHistory::where('deal_id', $deal->id)->delete();
         $deal->delete();
-        dd(2);
         return response()->json(['message' => 'Deal deleted successfully'], 200);
     }
 
