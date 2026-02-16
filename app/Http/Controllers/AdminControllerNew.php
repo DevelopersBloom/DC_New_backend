@@ -804,6 +804,9 @@ class AdminControllerNew extends Controller
             ContractAmountHistory::where('deal_id', $deal->id)->delete();
 
             $paymentIdToDelete = $deal->payment_id;
+            if ($paymentIdToDelete) {
+                $deal->update(['payment_id' => null]);
+            }
 
             $deal->delete();
 
