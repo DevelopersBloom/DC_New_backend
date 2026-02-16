@@ -788,31 +788,26 @@ class AdminControllerNew extends Controller
     private function handleFullPaymentDeal(Deal $deal)
     {
         return DB::transaction(function () use ($deal) {
-            $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
+//            $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
 
-            foreach ($dealActions as $dealAction) {
-                if ($dealAction->type === 'full') {
+//            foreach ($dealActions as $dealAction) {
+                if ($deal->filter_type === 'full') {
 
                     Payment::where('contract_id', $deal->contract_id)
                         ->where('status', 'initial')
                         ->whereNotNull('deleted_at')
                         ->restore();
 
-                    if ($dealAction->history) {
-                        $this->restoreHistory($dealAction->history);
-                    }
+//                    if ($dealAction->history) {
+//                        $this->restoreHistory($dealAction->history);
+//                    }
 
-                } elseif ($dealAction->type === 'refund') {
-                    $refundDeal = Deal::find($dealAction->deal_id);
-                    if ($refundDeal) {
-                        $refundDeal->delete();
-                    }
+                }
+                if ( $deal->payment_id) {
+
+                    Payment::where('id', $deal->payment_id)->forceDelete();
                 }
 
-                Payment::where('id', $dealAction->actionable_id)->forceDelete();
-
-                $dealAction->delete();
-            }
 
             ContractAmountHistory::where('deal_id', $deal->id)->delete();
 

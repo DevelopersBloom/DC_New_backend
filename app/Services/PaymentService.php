@@ -1083,5 +1083,6 @@ class PaymentService
         $contract->collected += $amount;
         $contract->provided_amount = 0;
         $contract->save();
+        return $payment;
     }
 }
