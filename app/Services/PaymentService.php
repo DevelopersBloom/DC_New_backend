@@ -851,7 +851,7 @@ class PaymentService
     {
         $history = [
             'payments' => [],
-            'mother_amount' => null;
+            'mother_amount' => null
         ];
         $startedToChange = false;
 
