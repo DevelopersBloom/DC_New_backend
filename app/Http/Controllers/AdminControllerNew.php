@@ -813,18 +813,34 @@ class AdminControllerNew extends Controller
         if (!$history)  return;
 
         foreach ($history as $key => $historyItem) {
-            dd($history);
             match ($key) {
-            'payment_changes' => collect($historyItem)->each(fn($item) =>
-                Payment::where('id', $item['payment_id'])
-                    ->update([
+//            'payment_changes' => collect($historyItem)->each(fn($item) =>
+//                Payment::where('id', $item['payment_id'])
+//                    ->update([
+//                        'amount' => $item['old_amount'],
+//                        'paid' => $item['old_paid'],
+//                        'date' => $item['old_date'],
+//                        'status' => 'initial',
+////                        'mother' => $item['old_mother'] ?? 0
+//                    ])
+//                ),
+                'payment_changes' => collect($historyItem)->each(function ($item) {
+                    $updateData = [
                         'amount' => $item['old_amount'],
-                        'paid' => $item['old_paid'],
-                        'date' => $item['old_date'],
+                        'date'   => $item['old_date'],
                         'status' => 'initial',
-//                        'mother' => $item['old_mother'] ?? 0
-                    ])
-                ),
+                    ];
+
+                    if (isset($item['old_paid'])) {
+                        $updateData['paid'] = $item['old_paid'];
+                    }
+
+                    if (isset($item['old_mother'])) {
+                        $updateData['mother'] = $item['old_mother'];
+                    }
+
+                    Payment::where('id', $item['payment_id'])->update($updateData);
+                }),
                 'contract_changes' => Contract::where('id', $historyItem['contract_id'])
                     ->update([
                         'left' => $historyItem['old_left'],
