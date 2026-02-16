@@ -744,6 +744,7 @@ class AdminControllerNew extends Controller
         }
         return DB::transaction(function () use ($deal) {
             try {
+                dd($deal->filter_type);
                 if ($deal->filter_type === 'full_payment') {
                     return $this->handleFullPaymentDeal($deal);
                 }
