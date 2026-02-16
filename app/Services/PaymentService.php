@@ -802,9 +802,57 @@ class PaymentService
         return $changes;
     }
 
+//    protected function processClassicPayments($payments, $contract, $partialAmount, $now)
+//    {
+//        $changes = [];
+//        $startedToChange = false;
+//
+//        foreach ($payments as $index => $payment) {
+//            if ($payment->amount <= 0) continue;
+//
+//            $dateToCheck = Carbon::parse($payment->date);
+//            if ($dateToCheck->gt($now)) {
+//                $oldPaid = $payment->paid;
+//                $oldAmount = $payment->amount;
+//                $oldDate = $payment->date;
+//                if ($startedToChange) {
+//                    $coeff = ($contract->left - $partialAmount) / $contract->left;
+//                    $newAmount = intval(ceil($oldAmount * $coeff / 10) * 10);
+//                } else {
+//                    $startedToChange = true;
+//                    $prevDate = $index === 0 ? $contract->date : $payments[$index - 1]->date;
+//                    $daysLeft = $payment->days - $now->diffInDays(Carbon::parse($prevDate));
+//
+//                    $newAmount = $oldAmount
+//                        - $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate)
+//                        + $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
+//                }
+//
+//                $payment->amount = max(0, $newAmount);
+//                $payment->save();
+//
+//                $changes[] = [
+//                    'payment_id' => $payment->id,
+//                    'old_amount' => $oldAmount,
+//                    'new_amount' => $payment->amount,
+//                    'old_paid' =>  $oldPaid,
+//                    'old_date' => $oldDate,
+//                    'updated_at' => $now->toDateTimeString()
+//                ];
+//            }
+//
+//            if ($payment->last_payment) {
+//                $this->updateLastPayment($payment, $contract->left - $partialAmount, $changes);
+//            }
+//        }
+//        return $changes;
+//    }
     protected function processClassicPayments($payments, $contract, $partialAmount, $now)
     {
-        $changes = [];
+        $history = [
+            'payments' => [],
+            'mother_amount' => null;
+        ];
         $startedToChange = false;
 
         foreach ($payments as $index => $payment) {
@@ -815,6 +863,7 @@ class PaymentService
                 $oldPaid = $payment->paid;
                 $oldAmount = $payment->amount;
                 $oldDate = $payment->date;
+
                 if ($startedToChange) {
                     $coeff = ($contract->left - $partialAmount) / $contract->left;
                     $newAmount = intval(ceil($oldAmount * $coeff / 10) * 10);
@@ -831,23 +880,23 @@ class PaymentService
                 $payment->amount = max(0, $newAmount);
                 $payment->save();
 
-                $changes[] = [
+                $history['payments'][] = [
                     'payment_id' => $payment->id,
                     'old_amount' => $oldAmount,
                     'new_amount' => $payment->amount,
-                    'old_paid' =>  $oldPaid,
-                    'old_date' => $oldDate,
+                    'old_paid'   => $oldPaid,
+                    'old_date'   => $oldDate,
                     'updated_at' => $now->toDateTimeString()
                 ];
             }
 
             if ($payment->last_payment) {
-                $this->updateLastPayment($payment, $contract->left - $partialAmount, $changes);
+                $this->updateLastPayment($payment, $contract->left - $partialAmount, $history);
             }
         }
-        return $changes;
-    }
 
+        return $history;
+    }
     protected function recordContractHistory($contract, $amount, $deal_id)
     {
         ContractAmountHistory::create([
@@ -869,6 +918,7 @@ class PaymentService
             'old_mother' => $payment->mother,
             'new_mother' => $newMother,
         ];
+
         $payment->mother = $newMother;
         if ($payment->mother <= 0) $payment->status = 'completed';
         $payment->save();
