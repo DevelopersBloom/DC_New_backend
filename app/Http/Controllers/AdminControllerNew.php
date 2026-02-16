@@ -778,6 +778,7 @@ class AdminControllerNew extends Controller
             } elseif ($dealAction->type === 'refund') {
                 Deal::where('id', $dealAction->deal_id)->delete();
             }
+            dd(34);
             Payment::where('id',$dealAction->actionable_id)->delete();
             $dealAction->delete();
         }
@@ -811,7 +812,6 @@ class AdminControllerNew extends Controller
     private function restoreHistory($history)
     {
         if (!$history)  return;
-dd($history);
         foreach ($history as $key => $historyItem) {
             match ($key) {
             'payment_changes' => collect($historyItem)->each(fn($item) =>
