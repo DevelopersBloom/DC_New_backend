@@ -805,6 +805,7 @@ class AdminControllerNew extends Controller
         }
         ContractAmountHistory::where('deal_id', $deal->id)->delete();
         $deal->delete();
+        dd(2);
         return response()->json(['message' => 'Deal deleted successfully'], 200);
     }
 
@@ -813,7 +814,6 @@ class AdminControllerNew extends Controller
         if (!$history)  return;
 
         foreach ($history as $key => $historyItem) {
-            dd($historyItem,$key);
             match ($key) {
             'payment_changes' => collect($historyItem)->each(fn($item) =>
                 Payment::where('id', $item['payment_id'])
