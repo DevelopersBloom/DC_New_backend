@@ -250,8 +250,8 @@ class PaymentControllerNew extends Controller
 
         $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
 
-         $payment = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
-         $deal->payment_id = $payment->id;
+         $paymentId = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
+         $deal->payment_id = $paymentId;
 //        $deal->payment_id = $result['payment_id'];
 //        $deal->interest_amount = $result['interest_amount'];
 //        $deal->penalty = $result['penalty'];
@@ -339,7 +339,7 @@ class PaymentControllerNew extends Controller
                 $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
                 DealAction::create([
                     'deal_id' => $deal->id,
-                    'actionable_id' => $payment->id,
+                    'actionable_id' => $paymentId,
                     'actionable_type' => Payment::class,
                     'amount' => $refundAmount,
                     'type' => 'refund',
