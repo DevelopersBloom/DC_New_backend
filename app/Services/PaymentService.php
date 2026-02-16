@@ -303,6 +303,8 @@ class PaymentService
         $oldAmount = $payment['amount'];
         $oldPaid = $payment['paid'];
         $oldDate = $payment['date'];
+        $oldPrincipal = $payment['principal_payment'];
+        $oldInterest = $payment['interest_payment'];
         $payment->paid += $payment['amount'] + $payment['penalty'];
         //$payment->paid_date = Carbon::now()->format('Y.m.d');
         if ($payment->last_payment == 0) {
@@ -329,6 +331,8 @@ class PaymentService
             'new_paid' => $payment->paid,
             'old_date' => $oldDate,
             'old_mother' => $payment->mother,
+            'old_principal' => $oldPrincipal,
+            'old_interest' => $oldInterest,
             'updated_at' => now()->toDateTimeString()
         ];
         DealAction::create([
@@ -348,6 +352,8 @@ class PaymentService
         $oldPaid = $payment->paid;
         $oldAmount = $payment->amount;
         $oldDate = $payment->date;
+        $oldPrincipal = $payment->principal_payment;
+        $oldInterest = $payment->interest_payment;
         $payment->amount -= $paid;
         $payment->paid += $paid;
         if ($payment->last_payment && $payment->amount == 0) {
@@ -361,6 +367,8 @@ class PaymentService
             'old_paid' => $oldPaid,
             'new_paid' => $payment->paid,
             'old_date' => $oldDate,
+            'old_principal' => $oldPrincipal,
+            'old_interest' => $oldInterest,
             'updated_at' => now()->toDateTimeString()
         ];
         DealAction::create([
@@ -390,6 +398,8 @@ class PaymentService
             $oldAmount = $nextPayment->amount;
             $oldDate = $nextPayment->date;
             $oldPaid = $nextPayment->paid;
+            $oldInterest = $nextPayment->interest_payment;
+            $oldPrincipal = $nextPayment->principal_payment;
         }
         if ($nextPayment && $decrease > 0) {
             $nextPayment->amount -= $decrease;
@@ -402,6 +412,8 @@ class PaymentService
                 'old_paid' => $oldPaid,
                 'new_paid' => $nextPayment->paid,
                 'old_date' => $oldDate,
+                'old_interest' => $oldInterest,
+                'old_principal' => $oldPrincipal,
                 'updated_at' => now()->toDateTimeString()
             ];
             DealAction::create([
@@ -1024,6 +1036,7 @@ class PaymentService
         $lastPayment = Payment::where('contract_id', $contract->id)
             ->where('last_payment', 1)->first();
         $oldMother = $lastPayment->mother;
+
         $lastPayment->mother = 0;
         $lastPayment->save();
         Payment::where('contract_id', $contract->id)
@@ -1035,7 +1048,9 @@ class PaymentService
             'old_paid' => $lastPayment->paid,
             'old_date' => $lastPayment->date,
             'old_amount' => $lastPayment->amount,
-            'old_mother' => $oldMother
+            'old_mother' => $oldMother,
+            'old_principal' => $lastPayment->principal,
+            'old_interest' => $lastPayment->interest,
         ];
 
         $history['contract_changes'] = [
