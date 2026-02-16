@@ -741,7 +741,9 @@ class PaymentService
                 $contract->save();
             }
         } else {
-            $history['payment_changes'] = $this->processClassicPayments($payments, $contract, $partialAmount, $now);
+            $paymentResult = $this->processClassicPayments($payments, $contract, $partialAmount, $now);
+            $history['payment_changes'] = $paymentResult['payments'];
+            $history['mother_amount']   = $paymentResult['mother_amount'];
             $history['contract_changes'] = [
                 'old_left' => $contract->left,
                 'new_left' => $contract->left - $partialAmount,
