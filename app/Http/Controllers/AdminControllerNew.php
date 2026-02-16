@@ -744,7 +744,6 @@ class AdminControllerNew extends Controller
         }
         return DB::transaction(function () use ($deal) {
             try {
-                dd($deal->filter_type);
                 if ($deal->filter_type === 'full_payment') {
                     return $this->handleFullPaymentDeal($deal);
                 }
@@ -814,6 +813,7 @@ class AdminControllerNew extends Controller
         if (!$history)  return;
 
         foreach ($history as $key => $historyItem) {
+            dd($historyItem);
             match ($key) {
             'payment_changes' => collect($historyItem)->each(fn($item) =>
                 Payment::where('id', $item['payment_id'])
