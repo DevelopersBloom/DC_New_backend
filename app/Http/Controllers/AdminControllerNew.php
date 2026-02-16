@@ -791,7 +791,7 @@ class AdminControllerNew extends Controller
 //            $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
 
 //            foreach ($dealActions as $dealAction) {
-                if ($deal->filter_type === 'full') {
+                if ($deal->filter_type === 'full_payment') {
 
                     Payment::where('contract_id', $deal->contract_id)
                         ->where('status', 'initial')
