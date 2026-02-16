@@ -252,6 +252,7 @@ class PaymentControllerNew extends Controller
 
          $paymentId = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
          $deal->payment_id = $paymentId;
+         $deal->save();
 //        $deal->payment_id = $result['payment_id'];
 //        $deal->interest_amount = $result['interest_amount'];
 //        $deal->penalty = $result['penalty'];
@@ -298,6 +299,7 @@ class PaymentControllerNew extends Controller
             'user_id' => auth()->id(),
             'journalable_type' => DocumentJournal::class,
             'journalable_id' => $journal->id,
+            'deal_id' => $deal->id,
         ]);
         Transaction::create([
             'date' => $date,
