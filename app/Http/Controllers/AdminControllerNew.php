@@ -799,9 +799,9 @@ class AdminControllerNew extends Controller
             if (in_array($dealAction->type, ['partial', 'penalty']) && $dealAction->actionable) {
                 $dealAction->actionable->delete();
             }
-            dd(4);
 
             $dealAction->delete();
+
         }
         ContractAmountHistory::where('deal_id', $deal->id)->delete();
         $deal->delete();

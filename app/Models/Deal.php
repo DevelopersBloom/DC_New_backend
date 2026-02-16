@@ -76,6 +76,7 @@ class Deal extends Model
             if ($deal->order) {
                 $deal->order->delete();
             }
+            dd(34);
             $deal->documents()->get()->each(function ($document) {
                 $document->delete();
             });
