@@ -827,7 +827,6 @@ class AdminControllerNew extends Controller
                 'payment_changes' => collect($historyItem)->each(function ($item) {
                     $updateData = [
                         'amount' => $item['old_amount'],
-                        'date'   => $item['old_date'],
                         'status' => 'initial',
                     ];
 
@@ -837,6 +836,9 @@ class AdminControllerNew extends Controller
 
                     if (isset($item['old_mother'])) {
                         $updateData['mother'] = $item['old_mother'];
+                    }
+                    if (isset($item['old_date'])) {
+                        $updateData['date'] = $item['old_date'];
                     }
 
                     Payment::where('id', $item['payment_id'])->update($updateData);
