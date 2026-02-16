@@ -825,6 +825,7 @@ class AdminControllerNew extends Controller
 //                    ])
 //                ),
                 'payment_changes' => collect($historyItem)->each(function ($item) {
+                    dd($historyItem);
                     $updateData = [
                         'amount' => $item['old_amount'],
                         'status' => 'initial',
