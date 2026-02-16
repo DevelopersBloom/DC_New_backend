@@ -76,10 +76,7 @@ class Deal extends Model
             if ($deal->order) {
                 $deal->order->delete();
             }
-            $deal->documents()->get()->each(function ($document) {
-                $document->delete();
-            });
-            dd(44);
+            $deal->documents()->delete();
         });
     }
     public function documents(): HasMany
