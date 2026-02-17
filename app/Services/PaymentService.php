@@ -270,7 +270,7 @@ class PaymentService
         if ($amount >= $totalRequiredForThisLine) {
             $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id,$principalPayment,$interestPayment);
         } else {
-            $this->partiallyCompletePayment($payment, $amount, $deal_id,$principalPayment,$interestPayment);
+            $this->partiallyCompletePayment($payment, $amount, $deal_id,[],$principalPayment,$interestPayment);
         }
 
         $contract->collected += $amount;
