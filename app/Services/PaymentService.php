@@ -61,6 +61,27 @@ class PaymentService
             }
 
         }
+        if ($principal_amount > 0) {
+            $history = [];
+            $history['contract_changes'] = [
+                'old_left' => $contract->left,
+                'new_left' => $contract->left - $principal_amount,
+                'old_provided' => $contract->provided_amount,
+                'new_provided' => max(0, $contract->provided_amount - $principal_amount),
+                'old_collected' => $contract->collected,
+                'contract_id' => $contract->id,
+            ];
+            DealAction::create([
+                'deal_id' => $deal_id,
+                'actionable_id' => $contract->id,
+                'actionable_type' => Contract::class,
+                'amount' => $principal_amount,
+                'type' => 'partial',
+                'description' => 'Partial payment contract changes',
+                'date' => $date ?? Carbon::now()->format('Y-m-d'),
+                'history' => $history
+            ]);
+        }
 
         return [
             'payments_sum' => $payments_sum,
@@ -93,96 +114,6 @@ class PaymentService
             ];
         }
     }
-    private function processSinglePayment1($contract, $payment, $amount, $payer, $cash, $deal_id)
-    {
-        $paymentFinal = ($payment['amount'] + $payment['penalty']);
-        if ($amount >= $paymentFinal) {
-            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
-            $contract->collected += $paymentFinal;
-
-            if ($contract->payment_type == 'amortized') {
-                $contract->left = max(0, $contract->left - $payment->principal_payment);
-                $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
-
-            }
-
-            $contract->save();
-            return ['interest_amount' => $paymentFinal,
-                'amount' => $amount - $paymentFinal];
-        } else {
-            $this->partiallyCompletePayment($payment, $amount, $deal_id);
-            $contract->collected += $amount;
-
-
-            $contract->save();
-
-            return ['interest_amount' => $amount,
-                'amount' => 0];
-        }
-    }
-//    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id)
-//    {
-//        $paymentFinal = ($payment['amount'] + $payment['penalty']);
-//
-//        if ($amount >= $paymentFinal) {
-//            $interest_amount = $payment->amount;
-//
-//            if ($contract->payment_type == 'amortized') {
-//                $contract->left = max(0, $contract->left - $payment->principal_payment);
-//                $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
-//                $paidDeal = DealAction::where('actionable_type', Payment::class)
-//                    ->where('actionable_id', $payment->id)
-//                    ->orderBy('id', 'desc')
-//                    ->first();
-//                $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
-////                $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
-//                $remainingInterest = $payment->interest_payment - $paidAmount;
-//                $isInterestPaid = $remainingInterest <= 0;
-//
-//                if ($isInterestPaid) {
-//                    $interest_amount = 0;
-//                    $principal_amount = min($amount,$payment->principal_payment);
-//                } else {
-//                    $interest_amount = min($amount, $remainingInterest);
-//                    $principal_amount = min($amount-$interest_amount, $payment->principal_payment);
-//                }
-//            }
-//
-//            $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id);
-//            $contract->collected += $paymentFinal;
-//            $contract->save();
-//            return ['interest_amount' => $interest_amount,
-//                'amount' => $amount - $paymentFinal];
-//        } else {
-//
-//
-//            $paidDeal = DealAction::where('actionable_type', Payment::class)
-//                ->where('actionable_id', $payment->id)
-//                ->orderBy('id', 'desc')
-//                ->first();
-//            $paidAmount = data_get($paidDeal, 'history.payment_changes.0.new_paid', 0);
-//
-////            $remainingInterest = $payment->interest_payment - $paidAmount - $amount;
-//            $remainingInterest = $payment->interest_payment - $paidAmount;
-//            $isInterestPaid = $remainingInterest <= 0;
-//            if ($contract->payment_type == 'amortized') {
-//                if ($isInterestPaid) {
-//                    $interest_amount = 0;
-//                } else {
-//                    $interest_amount = min($amount, $remainingInterest);
-//                }
-//            } else {
-//                $interest_amount = $amount;
-//            }
-//            $this->partiallyCompletePayment($payment, $amount, $deal_id);
-//            $contract->collected += $amount;
-//            $contract->save();
-//
-//
-//            return ['interest_amount' => $interest_amount,
-//                'amount' => 0];
-//        }
-//    }
 
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id,)
     {
@@ -273,6 +204,7 @@ class PaymentService
             'old_interest' => $interest_payment,
             'updated_at' => now()->toDateTimeString()
         ];
+
         DealAction::create([
             'deal_id' => $deal_id,
             'actionable_id' => $payment->id,
@@ -445,14 +377,14 @@ class PaymentService
                         ->delete();
 
                     $targetDate = $date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
-                    $history['contract_changes'] = [
-                        'old_left' => $contract->left,
-                        'new_left' => $contract->left - $partialAmount,
-                        'old_provided' => $contract->provided_amount,
-                        'new_provided' => max(0, $contract->provided_amount - $partialAmount),
-                        'old_collected' => $contract->collected,
-                        'contract_id' => $contract->id,
-                    ];
+//                    $history['contract_changes'] = [
+//                        'old_left' => $contract->left,
+//                        'new_left' => $contract->left - $partialAmount,
+//                        'old_provided' => $contract->provided_amount,
+//                        'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+//                        'old_collected' => $contract->collected,
+//                        'contract_id' => $contract->id,
+//                    ];
 
                     $contract->left = max(0, $contract->left - $partialAmount);
                     $contract->collected += $partialAmount;
@@ -462,14 +394,14 @@ class PaymentService
                 }
             } else {
                 $history['payment_changes'] = $this->processAmortizedPayments($payments, $partialAmount, $now);
-                $history['contract_changes'] = [
-                    'old_left' => $contract->left,
-                    'new_left' => $contract->left - $partialAmount,
-                    'old_provided' => $contract->provided_amount,
-                    'new_provided' => max(0, $contract->provided_amount - $partialAmount),
-                    'old_collected' => $contract->collected,
-                    'contract_id' => $contract->id,
-                ];
+//                $history['contract_changes'] = [
+//                    'old_left' => $contract->left,
+//                    'new_left' => $contract->left - $partialAmount,
+//                    'old_provided' => $contract->provided_amount,
+//                    'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+//                    'old_collected' => $contract->collected,
+//                    'contract_id' => $contract->id,
+//                ];
 
                 $contract->left = max(0, $contract->left - $partialAmount);
                 $contract->collected += $partialAmount;
