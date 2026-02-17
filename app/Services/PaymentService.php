@@ -380,14 +380,14 @@ class PaymentService
                         ->delete();
 
                     $targetDate = $date ?? Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d');
-//                    $history['contract_changes'] = [
-//                        'old_left' => $contract->left,
-//                        'new_left' => $contract->left - $partialAmount,
-//                        'old_provided' => $contract->provided_amount,
-//                        'new_provided' => max(0, $contract->provided_amount - $partialAmount),
-//                        'old_collected' => $contract->collected,
-//                        'contract_id' => $contract->id,
-//                    ];
+                    $history['contract_changes'] = [
+                        'old_left' => $contract->left,
+                        'new_left' => $contract->left - $partialAmount,
+                        'old_provided' => $contract->provided_amount,
+                        'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+                        'old_collected' => $contract->collected,
+                        'contract_id' => $contract->id,
+                    ];
 
                     $contract->left = max(0, $contract->left - $partialAmount);
                     $contract->collected += $partialAmount;
@@ -397,14 +397,14 @@ class PaymentService
                 }
             } else {
                 $history['payment_changes'] = $this->processAmortizedPayments($payments, $partialAmount, $now);
-//                $history['contract_changes'] = [
-//                    'old_left' => $contract->left,
-//                    'new_left' => $contract->left - $partialAmount,
-//                    'old_provided' => $contract->provided_amount,
-//                    'new_provided' => max(0, $contract->provided_amount - $partialAmount),
-//                    'old_collected' => $contract->collected,
-//                    'contract_id' => $contract->id,
-//                ];
+                $history['contract_changes'] = [
+                    'old_left' => $contract->left,
+                    'new_left' => $contract->left - $partialAmount,
+                    'old_provided' => $contract->provided_amount,
+                    'new_provided' => max(0, $contract->provided_amount - $partialAmount),
+                    'old_collected' => $contract->collected,
+                    'contract_id' => $contract->id,
+                ];
 
                 $contract->left = max(0, $contract->left - $partialAmount);
                 $contract->collected += $partialAmount;
