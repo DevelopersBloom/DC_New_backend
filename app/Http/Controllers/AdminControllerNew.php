@@ -766,25 +766,6 @@ class AdminControllerNew extends Controller
 
     }
 
-//    private function handleFullPaymentDeal(Deal $deal)
-//    {
-//        $dealActions = DealAction::where('actionable_id', $deal->payment_id)->get();
-//        foreach ($dealActions as $dealAction) {
-//            if ($dealAction->type === 'full') {
-//                Payment::where('contract_id', $deal->contract_id)
-//                    ->where('status', 'initial')
-//                    ->restore();
-//                $this->restoreHistory($dealAction->history);
-//            } elseif ($dealAction->type === 'refund') {
-//                Deal::where('id', $dealAction->deal_id)->delete();
-//            }
-//            Payment::where('id',$dealAction->actionable_id)->delete();
-//            $dealAction->delete();
-//        }
-//        ContractAmountHistory::where('deal_id', $deal->id)->delete();
-//        $deal->delete();
-//        return response()->json(['message' => 'Deal deleted successfully'], 200);
-//    }
     private function handleFullPaymentDeal(Deal $deal)
     {
         return DB::transaction(function () use ($deal) {
@@ -829,8 +810,9 @@ class AdminControllerNew extends Controller
         foreach ($dealActions as $dealAction) {
             $this->restoreHistory($dealAction->history);
             if (in_array($dealAction->type, ['partial', 'penalty']) && $dealAction->actionable) {
-                $dealAction->actionable->delete();
-            }
+                if (!($dealAction->actionable instanceof \App\Models\Contract)) {
+                    $dealAction->actionable->delete();
+                }            }
 
             $dealAction->delete();
 
