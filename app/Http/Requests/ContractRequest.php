@@ -39,6 +39,7 @@ class ContractRequest extends FormRequest
             'guarantors' => 'nullable|array',
             'guarantors.*.id' => 'nullable|exists:clients,id',
             'seller_id' => 'nullable|exists:clients,id',
+            'category_id' => 'required|exists:categories,id',
 //            'files' => 'nullable|array',
 //            'files.*.file' => 'required|file',
 //            'files.*.file_type' => 'required|string',
