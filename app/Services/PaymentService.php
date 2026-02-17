@@ -32,6 +32,9 @@ class PaymentService
         $interest_amount = 0;
         $principal_amount = 0;
         $initial_amount = $amount;
+        $old_provided = $contract->provided_amount;
+        $old_left = $contract->left;
+        $old_collected = $contract->collected;
 
         $result_penalty = $this->countPenalty($contract->id);
         $penalty = $result_penalty['penalty_amount'];
@@ -64,11 +67,11 @@ class PaymentService
         if ($principal_amount > 0 && $contract->payment_type == 'amortized') {
             $history = [];
             $history['contract_changes'] = [
-                'old_left' => $contract->left,
+                'old_left' => $old_left,
                 'new_left' => $contract->left - $principal_amount,
-                'old_provided' => $contract->provided_amount,
+                'old_provided' => $old_provided,
                 'new_provided' => max(0, $contract->provided_amount - $principal_amount),
-                'old_collected' => $contract->collected,
+                'old_collected' => $old_collected,
                 'contract_id' => $contract->id,
             ];
             DealAction::create([
