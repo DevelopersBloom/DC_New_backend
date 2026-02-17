@@ -61,7 +61,7 @@ class PaymentService
             }
 
         }
-        if ($principal_amount > 0) {
+        if ($principal_amount > 0 && $contract->payment_type == 'amortized') {
             $history = [];
             $history['contract_changes'] = [
                 'old_left' => $contract->left,
