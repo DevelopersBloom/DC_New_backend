@@ -59,7 +59,7 @@ class PaymentService
 
             if ($amount > 0) {
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id);
-                $principal_amount += $amount;
+                //$principal_amount += $amount;
                 $amount = 0;
             }
 
