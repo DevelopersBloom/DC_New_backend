@@ -529,6 +529,7 @@ class PaymentService
                 'old_amount' => $payment->amount,
                 'old_paid' => $payment->paid,
                 'old_principal' => $payment->principal_payment,
+                'old_date' => $payment->date,
             ];
 
             $payment->amount -= $reduction;
