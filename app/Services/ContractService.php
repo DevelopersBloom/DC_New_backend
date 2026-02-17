@@ -260,10 +260,10 @@ class   ContractService
     public function createContract(int $client_id, array $data, $deadline)
     {
 
-        $categoryId = $data['category_id'] ?? 1;
-
-        $contractNumber = $this->generateContractNumber($categoryId);
-
+        $categoryId = $data['category_id'];
+        $category = Category::find($categoryId);
+        $categoryName = $category ? $category->name : 'default';
+        $contractNumber = $this->generateContractNumber($categoryName);
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
 
         $values = [
@@ -293,36 +293,32 @@ class   ContractService
 //            'kasko_amount' => $data['kasko_amount'] ?? null,
         ];
 
-        // Create and return the contract
         return Contract::create($values);
     }
-    private function generateContractNumber(int $categoryId): string
+    private function generateContractNumber(string $categoryName): string
     {
-
-        $map = [
-            1 => 'G', // ոսկի
-            2 => 'H', // անշարժ
-            3 => 'A', // մեքենա
-            4 => 'C', // սպառողական
-        ];
-
-        $prefix = $map[$categoryId] ?? 'X';
+        $prefix = match ($categoryName) {
+            'gold'           => 'G',
+            'electronics'    => 'H',
+            'car', 'car-purchase' => 'A',
+            default          => 'C',
+        };
 
         $year = now()->format('y');
 
-        $last = Contract::orderByDesc('id')->value('num');
+        $lastContract = Contract::where('num', 'LIKE', "{$prefix}-%")
+            ->orderBy('id', 'desc')
+            ->first();
 
-        if ($last) {
-            $lastNumber = (int) substr($last, -5);
+        if ($lastContract) {
+            $lastNumber = (int) substr($lastContract->num, -5);
         } else {
             $lastNumber = 0;
         }
 
-        $newNumber = $lastNumber + 1;
+        $newNumber = str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
 
-        $formatted = str_pad($newNumber, 5, '0', STR_PAD_LEFT);
-
-        return "{$prefix}-{$year}-{$formatted}";
+        return "{$prefix}-{$year}-{$newNumber}";
     }
 
     public function createPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null,$months = null)
