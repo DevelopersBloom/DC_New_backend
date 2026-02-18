@@ -368,11 +368,21 @@ class PaymentService
 
         if ($contract->payment_type == 'amortized') {
             if ($is_recount) {
-                $remainingMonths = Payment::where('contract_id', $contract->id)
+                $remainingPayments = Payment::where('contract_id', $contract->id)
                     ->where('type', 'regular')
                     ->where('status', 'initial')
-                    ->count();
+                    ->get();
+                $history['deleted_payment_ids'] = $remainingPayments->pluck('id')->toArray();
+                $history['payment_changes'] = $remainingPayments->map(fn($p) => [
+                    'payment_id' => $p->id,
+                    'old_amount' => $p->amount,
+                    'old_paid' => $p->paid,
+                    'old_date' => $p->date,
+                    'old_principal' => $p->principal_payment,
+                    'old_interest' => $p->interest_payment,
+                ])->toArray();
 
+                $remainingMonths = $remainingPayments->count();
                 if ($remainingMonths > 0) {
                     Payment::where('contract_id', $contract->id)
                         ->where('type', 'regular')

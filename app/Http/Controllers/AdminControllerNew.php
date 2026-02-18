@@ -808,6 +808,14 @@ class AdminControllerNew extends Controller
         }
 
         foreach ($dealActions as $dealAction) {
+            if ($deal->is_recount && isset($history['deleted_payment_ids'])) {
+                Payment::where('contract_id', $deal->contract_id)
+                    ->where('status', 'initial')
+                    ->where('created_at', '>=', $deal->created_at)
+                    ->forceDelete();
+
+                Payment::whereIn('id', $history['deleted_payment_ids'])->restore();
+            }
             $this->restoreHistory($dealAction->history);
             if (in_array($dealAction->type, ['partial', 'penalty']) && $dealAction->actionable) {
                 if (!($dealAction->actionable instanceof \App\Models\Contract)) {
@@ -839,22 +847,12 @@ class AdminControllerNew extends Controller
 //                        'mother' => $item['old_mother'] ?? 0
                     ])
                 ),
-//                'payment_changes' => collect($historyItem)->each(function ($item) {
-//                    Payment::where('id', $item['payment_id'])->update([
-//                        'amount' => $item['old_amount'] ?? DB::raw('amount'),
-//                        'paid'   => $item['old_paid'] ?? DB::raw('paid'),
-//                        'date'   => $item['old_date'] ?? DB::raw('date'),
-//                        'mother' => $item['old_mother'] ?? DB::raw('mother'),
-//                        'status' => 'initial'
-//                    ]);
-//                }),
                 'contract_changes' => Contract::where('id', $historyItem['contract_id'])
                     ->update([
                         'left' => $historyItem['old_left'],
                         'collected' => $historyItem['old_collected'],
                         'status' => 'initial',
                         'provided_amount' => $historyItem['old_provided'],
-//                        'estimated_amount' => $historyItem['old_estimated'],
                         'closed_at' => null,
                     ]),
                 'mother_amount' => Payment::where('id', $historyItem['payment_id'])
@@ -870,7 +868,7 @@ class AdminControllerNew extends Controller
     {
         $discount = Discount::where('id', $id)->firstOrFail();
 
-        $history = json_decode($discount->history, true); // decode as associative array
+        $history = json_decode($discount->history, true);
         DB::beginTransaction();
         try {
             foreach ($history as $item) {

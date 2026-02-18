@@ -45,12 +45,14 @@ class Deal extends Model
         'created_by',
         'updated_by',
         'filter_type',
+        'is_recount',
         'payment_id',
         'history_id',
         'category_id'
     ];
     protected $casts = [
-        'cash' => 'boolean'
+        'cash' => 'boolean',
+        'is_recount' => 'boolean'
     ];
     protected static function boot()
     {

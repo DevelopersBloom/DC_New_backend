@@ -450,6 +450,11 @@ class PaymentControllerNew extends Controller
         ]);
         $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id);
 
+        if ($is_recount) {
+            $deal->is_recount = $is_recount;
+            $deal->save();
+        }
+
         $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash,$deal->id,null,$is_recount);
 
         $deal->payment_id = $payment_id;
