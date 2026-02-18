@@ -711,25 +711,29 @@ class PaymentService
         $penalty = $result['penalty_amount'];
         $delayDays = $result['delay_days'];
         $interestAmount = $this->calculateCurrentPayment($contract)['current_amount'];
-        $lastPayment = Payment::where('contract_id', $contract->id)
-            ->where('last_payment', 1)->first();
-        $oldMother = $lastPayment->mother;
+//        $oldMother = 0;
+//        if ($contract->payment_type == 'classic') {
+//            $lastPayment = Payment::where('contract_id', $contract->id)
+//                ->where('last_payment', 1)->first();
+//            $oldMother = $lastPayment->mother;
+//
+//            $lastPayment->mother = 0;
+//            $lastPayment->save();
+//        }
 
-        $lastPayment->mother = 0;
-        $lastPayment->save();
         Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
 
 
-        $history['payment_changes'][] = [
-            'payment_id' => $lastPayment->id,
-            'old_paid' => $lastPayment->paid,
-            'old_date' => $lastPayment->date,
-            'old_amount' => $lastPayment->amount,
-            'old_mother' => $oldMother,
-            'old_principal' => $lastPayment->principal,
-            'old_interest' => $lastPayment->interest,
-        ];
+//        $history['payment_changes'][] = [
+//            'payment_id' => $lastPayment->id,
+//            'old_paid' => $lastPayment->paid,
+//            'old_date' => $lastPayment->date,
+//            'old_amount' => $lastPayment->amount,
+////            'old_mother' => $oldMother,
+//            'old_principal' => $lastPayment->principal,
+//            'old_interest' => $lastPayment->interest,
+//        ];
 
         $history['contract_changes'] = [
             'contract_id' => $contract->id,
