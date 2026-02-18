@@ -808,6 +808,7 @@ class AdminControllerNew extends Controller
         }
 
         foreach ($dealActions as $dealAction) {
+            $history = $dealAction->history;
             if ($deal->is_recount && isset($history['deleted_payment_ids'])) {
                 Payment::where('contract_id', $deal->contract_id)
                     ->where('status', 'initial')
