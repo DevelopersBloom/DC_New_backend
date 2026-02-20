@@ -131,7 +131,7 @@ class V03Export
             ];
 
             foreach ($accountIds as $accId) {
-                $account = \App\Models\ChartOfAccount::find($accId);
+                $account = ChartOfAccount::find($accId);
                 if (!$account) continue;
 
                 $riskWeight = $account->risk_weight;
