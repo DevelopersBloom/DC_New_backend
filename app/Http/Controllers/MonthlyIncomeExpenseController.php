@@ -156,6 +156,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -194,12 +195,8 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => '`from` must be <= `to`'], 422);
         }
 
-//        $daysInclusive = $to->copy()->startOfDay()->diffInDays($from->copy()->startOfDay()) + 1;
-//        $prevTo   = $from->copy()->subDay()->endOfDay();
-//        $prevFrom = $prevTo->copy()->subDays($daysInclusive - 1)->startOfDay();
-
-        $current  = $this->svc->build($from);
-        $previous = $this->svc->build($to);
+        $previous = $this->svc->build($from);
+        $current  = $this->svc->build($to);
         $currBy = [];
         foreach ($current as $r) {
             $currBy[(string)$r['code']] = $r;
@@ -220,24 +217,6 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // --- Unmerge ---
-//        foreach ($sheet->getMergeCells() as $range) {
-        //          $sheet->unmergeCells($range);
-        //    }
-
-        // --- Remove $ from formulas ---
-//        foreach ($sheet->getCoordinates() as $coord) {
-        //          $cell = $sheet->getCell($coord);
-        //        if (!$cell) continue;
-        //      $value = $cell->getValue();
-
-        //    if (is_string($value) && str_contains($value, '$')) {
-        //      $value = str_replace('$', '', $value);
-        //    $cell->setValue($value);
-        // }
-        // }
-
-        // Load map
         $mapPath = storage_path('app/templates/v05_map.json');
         if (!is_file($mapPath)) {
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
@@ -246,11 +225,10 @@ class MonthlyIncomeExpenseController extends Controller
         $rowCodeMap = json_decode(file_get_contents($mapPath), true) ?: [];
         $sheet->setCellValueExplicit('C8', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
 
-        // Fill dates
-        $sheet->setCellValue('C9', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
+        $sheet->setCellValue('C9', Date::PHPToExcel($from));
         $sheet->getStyle('C9')->getNumberFormat()->setFormatCode('dd/mm/yy');
 
-        $sheet->setCellValue('C10', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($to));
+        $sheet->setCellValue('C10', Date::PHPToExcel($to));
         $sheet->getStyle('C10')->getNumberFormat()->setFormatCode('dd/mm/yy');
 
         $maxRow = $sheet->getHighestRow();
@@ -276,7 +254,6 @@ class MonthlyIncomeExpenseController extends Controller
             }
         }
 
-        // Log formula before save
         Log::debug('D161 before save = ' . var_export($sheet->getCell('D161')->getValue(), true));
 
         $writer = new XlsWriter($spreadsheet);
@@ -294,16 +271,6 @@ class MonthlyIncomeExpenseController extends Controller
         while (ob_get_level() > 0) {
             @ob_end_clean();
         }
-
-        Log::debug('D161 just after load = ' . var_export($sheet->getCell('D161')->getValue(), true));
-        //$d136 = $sheet->getCell('D136')->getCalculatedValue();
-        //$d160 = $sheet->getCell('D160')->getCalculatedValue();
-
-        //$sheet->setCellValueExplicit(
-                //  'D161',
-                // $d136 - $d160,
-                // DataType::TYPE_NUMERIC
-        //);
 
         $writer->save($path);
 
