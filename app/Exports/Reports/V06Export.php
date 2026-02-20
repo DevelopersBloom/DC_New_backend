@@ -596,10 +596,10 @@ class V06Export
         $acc15300 = ChartOfAccount::idByCode('15300');
         $balance15300 = 0;
         if ($acc15300) {
-            $balance15300 =  DocumentJournal::whereIn('debit_account_id', $acc15300)
+            $balance15300 =  DocumentJournal::where('debit_account_id', $acc15300)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd')
-                - DocumentJournal::whereIn('credit_account_id', $acc15300)
+                - DocumentJournal::where('credit_account_id', $acc15300)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd');
 //            $balance15300 = DocumentJournal::where('credit_account_id', $acc15300)
@@ -616,14 +616,10 @@ class V06Export
             $balance19331 = DocumentJournal::where('debit_account_id', $acc19331)
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
-//            $debitPartnersCount = DocumentJournal::where('debit_account_id', $acc19331)
-//                ->whereDate('date', '<=', $date)
-//                ->distinct('partner_id')
-//                ->count('partner_id');
             $debitPartnersCount = DocumentJournal::where('debit_account_id', $acc19331)
                 ->whereDate('date', '<=', $date)
                 ->distinct('partner_id')
-                ->count();
+                ->count('partner_id');
         }
         $sheet->setCellValue('R125', $debitPartnersCount);
         $sheet->getStyle('R125')->getNumberFormat()->setFormatCode('#,##0');
