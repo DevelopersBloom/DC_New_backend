@@ -111,11 +111,14 @@ class V03Export
 
             foreach ($journals as $j) {
 
-                $risk = optional(
-                    $j->journalable->client->classification
-                )->risk_weight;
-                $riskKey = (int) $risk;
+//                $risk = optional(
+//                    $j->journalable->client->classification
+//                )->risk_weight;
+//                $riskKey = (int) $risk;
+                $risk = optional(optional($j->journalable)->client)->classification;
 
+                $riskWeight = $risk ? $risk->risk_weight : null;
+                $riskKey = ($riskWeight !== null) ? (int) $riskWeight : null;
                 if ($riskKey === null) {
                     continue;
                 }
