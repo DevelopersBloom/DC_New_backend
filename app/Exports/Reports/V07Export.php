@@ -29,22 +29,22 @@ class V07Export
             $account50000 = ChartOfAccount::idByCode('50000');
 
             $debit52000 = DocumentJournal::where('debit_account_id', $account52000)
-                ->whereDate('date', $date)
+                ->where('date','<=', $date)
                 ->sum('amount_amd');
 
             $credit52000 = DocumentJournal::where('credit_account_id', $account52000)
-                ->whereDate('date', $date)
+                ->where('date','<=', $date)
                 ->sum('amount_amd');
 
             $balance52000 =$credit52000 - $debit52000;
 
             // 50000 balance
             $debit50000 = DocumentJournal::where('debit_account_id', $account50000)
-                ->whereDate('date', $date)
+                ->where('date','<=', $date)
                 ->sum('amount_amd');
 
             $credit50000 = DocumentJournal::where('credit_account_id', $account50000)
-                ->whereDate('date', $date)
+                ->where('date','<=', $date)
                 ->sum('amount_amd');
 
             $balance50000 = $credit50000 - $debit50000;

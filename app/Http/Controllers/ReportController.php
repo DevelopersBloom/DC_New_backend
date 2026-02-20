@@ -49,8 +49,8 @@ class ReportController
         $export = new V03Export();
 
         $path = $export->export($request->from, $request->to);
-        return $this->downloadWithPrefix($path, 'v06');
-//        return response()->download($path)->deleteFileAfterSend();
+//        return $this->downloadWithPrefix($path, 'v06');
+        return response()->download($path)->deleteFileAfterSend();
     }
 
 
