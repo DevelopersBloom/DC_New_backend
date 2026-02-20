@@ -100,7 +100,7 @@ class V03Export
             $journals = DocumentJournal::with([
                 'journalable.client.classification'
             ])
-                ->whereDate('date', $current->format('Y-m-d'))
+                ->where('date','<=', $current->format('Y-m-d'))
                 ->where('document_type',DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
                 ->get();
             $dailyAmounts = [
