@@ -564,10 +564,10 @@ class V06Export
         if ($acc10210) {
             $accCount++;
             $balance10210 = DocumentJournal::where('debit_account_id', $acc10210)
-                    ->whereDate('date', '<', $date)
+                    ->whereDate('date', '<=', $date)
                     ->sum('amount_amd')
                 - DocumentJournal::where('credit_account_id', $acc10210)
-                    ->whereDate('date', '<', $date)
+                    ->whereDate('date', '<=', $date)
                     ->sum('amount_amd');
         }
         $sheet->setCellValue('J125', $accCount);
@@ -579,7 +579,7 @@ class V06Export
         $balance15300 = 0;
         if ($acc15300) {
             $balance15300 = DocumentJournal::where('credit_account_id', $acc15300)
-                ->whereDate('date', '<', $date)
+                ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
         }
         $sheet->setCellValue('N125', $balance15300);
