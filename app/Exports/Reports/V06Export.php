@@ -432,7 +432,7 @@ class V06Export
             $q->where('status', 'initial');
         }])
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereDate('date', '<', $date)
+            ->whereDate('date', '<=', $date)
             ->get();
 
         $groupsOnTime = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
@@ -596,9 +596,15 @@ class V06Export
         $acc15300 = ChartOfAccount::idByCode('15300');
         $balance15300 = 0;
         if ($acc15300) {
-            $balance15300 = DocumentJournal::where('credit_account_id', $acc15300)
-                ->whereDate('date', '<=', $date)
-                ->sum('amount_amd');
+            $balance15300 =  DocumentJournal::whereIn('debit_account_id', $acc15300)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd')
+                - DocumentJournal::whereIn('credit_account_id', $acc15300)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd');
+//            $balance15300 = DocumentJournal::where('credit_account_id', $acc15300)
+//                ->whereDate('date', '<=', $date)
+//                ->sum('amount_amd');
         }
         $sheet->setCellValue('N125', $balance15300);
         $sheet->getStyle('N125')->getNumberFormat()->setFormatCode('#,##0');
@@ -608,10 +614,10 @@ class V06Export
         $debitPartnersCount = 0;
         if ($acc19331) {
             $balance19331 = DocumentJournal::where('debit_account_id', $acc19331)
-                ->whereDate('date', '<', $date)
+                ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
             $debitPartnersCount = DocumentJournal::where('debit_account_id', $acc19331)
-                ->whereDate('date', '<', $date)
+                ->whereDate('date', '<=', $date)
                 ->distinct('partner_id')
                 ->count('partner_id');
         }
@@ -624,7 +630,7 @@ class V06Export
         $balance19400PC = 0;
         if ($acc19400PC) {
             $balance19400PC = DocumentJournal::where('debit_account_id', $acc19400PC)
-                ->whereDate('date', '<', $date)
+                ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
         }
         $sheet->setCellValue('X125', $balance19400PC);
@@ -703,7 +709,7 @@ class V06Export
                     $q3->where('name', $categoryName);
                 });
             })
-            ->whereDate('date', '<', $dateFrom)
+            ->whereDate('date', '<=', $dateFrom)
             ->sum('amount_amd');
     }
 
@@ -732,7 +738,7 @@ class V06Export
     {
         if (!$accountId) return 0;
         return DocumentJournal::where($column, $accountId)
-            ->whereDate('date', '<', $dateFrom)
+            ->whereDate('date', '<=', $dateFrom)
             ->sum('amount_amd');
     }
 
