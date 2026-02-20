@@ -49,8 +49,8 @@ class ReportController
         $export = new V03Export();
 
         $path = $export->export($request->from, $request->to);
-
-        return response()->download($path)->deleteFileAfterSend();
+        return $this->downloadWithPrefix($path, 'v06');
+//        return response()->download($path)->deleteFileAfterSend();
     }
 
 
@@ -178,4 +178,10 @@ class ReportController
         return '';
     }
 
+    private function downloadWithPrefix(string $path, string $reportNumber)
+    {
+        $filename = "66100-{$reportNumber}.xls";
+
+        return response()->download($path, $filename)->deleteFileAfterSend();
+    }
 }
