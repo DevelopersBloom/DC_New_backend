@@ -45,24 +45,24 @@ class V03Export
 
         while ($current->lte($end)) {
             $balance50000 = DocumentJournal::where('debit_account_id', $acc50000)
-                    ->whereDate('date', $current)
+                    ->where('date', '<=', $current)
                     ->sum('amount_amd') * -1
                 + DocumentJournal::where('credit_account_id', $acc50000)
-                    ->whereDate('date', $current)
+                    ->where('date', '<=', $current)
                     ->sum('amount_amd');
 
             $balance52000 = DocumentJournal::where('debit_account_id', $acc52000)
-                    ->whereDate('date', $current)
+                    ->where('date', '<=', $current)
                     ->sum('amount_amd') * -1
                 + DocumentJournal::where('credit_account_id', $acc52000)
-                    ->whereDate('date', $current)
+                    ->where('date', '<=', $current)
                     ->sum('amount_amd');
 
             $balance52001 = DocumentJournal::where('debit_account_id', $acc52001)
-                    ->whereDate('date', $current)
+                    ->where('date', '<=', $current)
                     ->sum('amount_amd') * -1
                 + DocumentJournal::where('credit_account_id', $acc52001)
-                    ->whereDate('date', $current)
+                    ->where('date', '<=', $current)
                     ->sum('amount_amd');
 
             $finalSum = $balance50000 + $balance52000 + $balance52001;
@@ -141,10 +141,10 @@ class V03Export
                 if ($riskWeight === null) continue;
 
                 $balance = DocumentJournal::where('debit_account_id', $accId)
-                        ->whereDate('date', $current)
+                        ->where('date', '<=', $current)
                         ->sum('amount_amd')
                     + DocumentJournal::where('credit_account_id', $accId)
-                        ->whereDate('date', $current)
+                        ->where('date', '<=', $current)
                         ->sum('amount_amd') * -1;
 
                 $riskKey = (int) $riskWeight;
