@@ -192,10 +192,10 @@ class V06Export
 
         $balance15300 = 0;
         if ($acc15300Ids) {
-            $balance15300 =  DocumentJournal::whereIn('debit_account_id', $acc15300Ids)
+            $balance15300 =  DocumentJournal::whereIn('credit_account_id', $acc15300Ids)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd')
-                - DocumentJournal::whereIn('credit_account_id', $acc15300Ids)
+                - DocumentJournal::whereIn('debit_account_id', $acc15300Ids)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd');
 //            $balance15300 = DocumentJournal::where('credit_account_id', $acc15300)
