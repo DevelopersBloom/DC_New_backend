@@ -18,7 +18,6 @@ class GuarantorSheet implements FromCollection, WithHeadings, WithMapping, WithT
         $guarantorsData = collect();
         foreach ($this->contracts as $contract) {
             foreach ($contract->guarantors as $guarantor) {
-                // Կցում ենք վարկի համարը երաշխավորին, որպեսզի map-ի մեջ օգտագործենք
                 $guarantor->temp_contract_num = $contract->num;
                 $guarantorsData->push($guarantor);
             }

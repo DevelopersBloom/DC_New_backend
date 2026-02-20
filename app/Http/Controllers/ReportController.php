@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\ReportsJournalExport;
-use App\Exports\V03Export;
-use App\Exports\V06Export;
-use App\Exports\V07Export;
-use App\Exports\V17Export;
+use App\Exports\Reports\ReportsJournalExport;
+use App\Exports\Reports\V03Export;
+use App\Exports\Reports\V06Export;
+use App\Exports\Reports\V07Export;
+use App\Exports\Reports\V13Export;
+use App\Exports\Reports\V17Export;
 use App\Services\ActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -90,17 +91,23 @@ class ReportController
 
     public function getV013Report(Request $request)
     {
-        return $this->downloadTemplate('v13.XLS', $request);
+        $request->validate([
+            'from' => 'nullable|date',
+            'to'   => 'nullable|date'
+        ]);
+
+        $export = new V13Export();
+        $path = $export->export($request->from, $request->to);
+
+        return response()->download($path)->deleteFileAfterSend();
     }
+
     public function getV17Report(Request $request)
     {
         $request->validate([
             'from' => 'nullable|date',
             'to'   => 'nullable|date'
         ]);
-
-//        $from = now()->subDays(7)->startOfDay();
-//        $to   = now()->endOfDay();
 
         $from = $request->from
             ? Carbon::parse($request->from)->startOfDay()

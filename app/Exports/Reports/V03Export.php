@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Exports;
+namespace App\Exports\Reports;
 
 use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class V03Export
 {

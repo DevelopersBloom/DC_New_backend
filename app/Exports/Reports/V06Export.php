@@ -405,11 +405,11 @@
 //}
 
 
-namespace App\Exports;
+namespace App\Exports\Reports;
 
 use App\Models\ChartOfAccount;
-use App\Models\DocumentJournal;
 use App\Models\Contract;
+use App\Models\DocumentJournal;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;

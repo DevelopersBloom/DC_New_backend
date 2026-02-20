@@ -17,7 +17,6 @@ class OwnerSheet implements FromCollection, WithHeadings, WithMapping, WithTitle
     public function title(): string { return 'Owner'; }
 
     public function collection() {
-        // Սովորաբար դատարկ է ֆիզ. անձանց դեպքում, բայց headings-ը պարտադիր է
         return new Collection([]);
     }
 

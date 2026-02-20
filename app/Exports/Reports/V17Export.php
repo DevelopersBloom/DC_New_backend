@@ -1,8 +1,6 @@
 <?php
-    namespace App\Exports;
+    namespace App\Exports\Reports;
 
-    use App\Models\Category;
-    use App\Models\LoanNdm;
     use App\Models\DocumentJournal;
     use Carbon\Carbon;
     use PhpOffice\PhpSpreadsheet\Cell\DataType;

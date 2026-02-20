@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exports;
+namespace App\Exports\Reports;
 
 use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
