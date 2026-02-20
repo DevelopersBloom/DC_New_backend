@@ -616,10 +616,14 @@ class V06Export
             $balance19331 = DocumentJournal::where('debit_account_id', $acc19331)
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
+//            $debitPartnersCount = DocumentJournal::where('debit_account_id', $acc19331)
+//                ->whereDate('date', '<=', $date)
+//                ->distinct('partner_id')
+//                ->count('partner_id');
             $debitPartnersCount = DocumentJournal::where('debit_account_id', $acc19331)
                 ->whereDate('date', '<=', $date)
                 ->distinct('partner_id')
-                ->count('partner_id');
+                ->count();
         }
         $sheet->setCellValue('R125', $debitPartnersCount);
         $sheet->getStyle('R125')->getNumberFormat()->setFormatCode('#,##0');
