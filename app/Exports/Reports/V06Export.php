@@ -558,23 +558,41 @@ class V06Export
             $sheet->getStyle('F' . $row)->getNumberFormat()->setFormatCode('#,##0');
         }
 
-        $acc10210 = ChartOfAccount::idByCode('10210');
-        $accCount = 0;
+//        $acc10210 = ChartOfAccount::idByCode('10210');
+//        $accCount = 0;
+//        $balance10210 = 0;
+//        if ($acc10210) {
+//            $accCount++;
+//            $balance10210 = DocumentJournal::where('debit_account_id', $acc10210)
+//                    ->whereDate('date', '<=', $date)
+//                    ->sum('amount_amd')
+//                - DocumentJournal::where('credit_account_id', $acc10210)
+//                    ->whereDate('date', '<=', $date)
+//                    ->sum('amount_amd');
+//        }
+//        $sheet->setCellValue('J125', $accCount);
+//        $sheet->getStyle('J125')->getNumberFormat()->setFormatCode('#,##0');
+//        $sheet->setCellValue('L125', $balance10210);
+//        $sheet->getStyle('L125')->getNumberFormat()->setFormatCode('#,##0');
+        $acc10210Ids = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
+
+        $accCount = $acc10210Ids->count();
         $balance10210 = 0;
-        if ($acc10210) {
-            $accCount++;
-            $balance10210 = DocumentJournal::where('debit_account_id', $acc10210)
+
+        if ($accCount > 0) {
+            $balance10210 = DocumentJournal::whereIn('debit_account_id', $acc10210Ids)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd')
-                - DocumentJournal::where('credit_account_id', $acc10210)
+                - DocumentJournal::whereIn('credit_account_id', $acc10210Ids)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd');
         }
+
         $sheet->setCellValue('J125', $accCount);
         $sheet->getStyle('J125')->getNumberFormat()->setFormatCode('#,##0');
+
         $sheet->setCellValue('L125', $balance10210);
         $sheet->getStyle('L125')->getNumberFormat()->setFormatCode('#,##0');
-
         $acc15300 = ChartOfAccount::idByCode('15300');
         $balance15300 = 0;
         if ($acc15300) {
