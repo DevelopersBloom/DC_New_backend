@@ -96,7 +96,7 @@ class V06Export
         $rowsOnTime = [15, 16];
         foreach ($rowsOnTime as $row) {
             foreach ($groupsOnTime as $col => $value) {
-                $sheet->setCellValue($col . $row, $value);
+                $sheet->setCellValue($col . $row, $value/1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
@@ -104,7 +104,7 @@ class V06Export
         $rowsExpired = [21, 22];
         foreach ($rowsExpired as $row) {
             foreach ($groupsExpired as $col => $value) {
-                $sheet->setCellValue($col . $row, $value);
+                $sheet->setCellValue($col . $row, $value/1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
@@ -120,14 +120,14 @@ class V06Export
 
         foreach ($groupsCar as $col => $value) {
             foreach ($rowsCar as $row) {
-                $sheet->setCellValue($col . $row, $value);
+                $sheet->setCellValue($col . $row, $value / 1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
 
         foreach ($groupsGold as $col => $value) {
             foreach ($rowsGold as $row) {
-                $sheet->setCellValue($col . $row, $value);
+                $sheet->setCellValue($col . $row, $value / 1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
@@ -135,7 +135,7 @@ class V06Export
         foreach ($groupsCar as $col => $value) {
             $goldValue = $groupsGold[$col] ?? 0;
             foreach ($rowsTotal as $row) {
-                $sheet->setCellValue($col . $row, $value + $goldValue);
+                $sheet->setCellValue($col . $row, ($value + $goldValue)/1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
@@ -145,8 +145,8 @@ class V06Export
         foreach ($rows as $index => $row) {
             $key = $classificationKeys[$index];
             $sheet->setCellValue('B' . $row, ($classificationCounts[$key] ?? 0));
-            $sheet->setCellValue('D' . $row, ($amountsByClassification[$key] ?? 0) + ($weightedByClassification[$key] ?? 0));
-            $sheet->setCellValue('F' . $row, ($reserveByClassification[$key] ?? 0));
+            $sheet->setCellValue('D' . $row, (($amountsByClassification[$key] ?? 0) + ($weightedByClassification[$key] ?? 0)) / 1000);
+            $sheet->setCellValue('F' . $row, ($reserveByClassification[$key] ?? 0) / 1000);
             $sheet->getStyle('B' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0');
@@ -186,7 +186,7 @@ class V06Export
         $sheet->setCellValue('J125', $accCount);
         $sheet->getStyle('J125')->getNumberFormat()->setFormatCode('#,##0');
 
-        $sheet->setCellValue('L125', $balance10210);
+        $sheet->setCellValue('L125', $balance10210 / 1000);
         $sheet->getStyle('L125')->getNumberFormat()->setFormatCode('#,##0');
         $acc15300Ids = ChartOfAccount::where('code', 'like', '15300%')->pluck('id');
 
@@ -202,7 +202,7 @@ class V06Export
 //                ->whereDate('date', '<=', $date)
 //                ->sum('amount_amd');
         }
-        $sheet->setCellValue('N125', $balance15300);
+        $sheet->setCellValue('N125', $balance15300 / 1000);
         $sheet->getStyle('N125')->getNumberFormat()->setFormatCode('#,##0');
 
         $acc19331 = ChartOfAccount::idByCode('19331');
@@ -219,7 +219,7 @@ class V06Export
         }
         $sheet->setCellValue('R125', $debitPartnersCount);
         $sheet->getStyle('R125')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('T125', $balance19331);
+        $sheet->setCellValue('T125', $balance19331 / 1000);
         $sheet->getStyle('T125')->getNumberFormat()->setFormatCode('#,##0');
 
         $acc19400PC = ChartOfAccount::idByCode('19400PC');
@@ -229,7 +229,7 @@ class V06Export
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
         }
-        $sheet->setCellValue('X125', $balance19400PC);
+        $sheet->setCellValue('X125', $balance19400PC / 1000);
         $sheet->getStyle('X125')->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->setCellValueExplicit('D5', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
@@ -249,13 +249,13 @@ class V06Export
         $goldAmountBetween = $this->sumByCategoryBetween('gold', $dateFrom, $date);
         $carAmountBetween = $this->sumByCategoryBetween('car', $dateFrom, $date);
 
-        $sheet2->setCellValue("B{$rowCar}", $carAmountBefore);
-        $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore);
-        $sheet2->setCellValue("B87", $carAmountBefore + $goldAmountBefore);
+        $sheet2->setCellValue("B{$rowCar}", $carAmountBefore /1000);
+        $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore/1000);
+        $sheet2->setCellValue("B87", ($carAmountBefore + $goldAmountBefore) / 1000);
 
-        $sheet2->setCellValue("D{$rowCar}", $carAmountBetween);
-        $sheet2->setCellValue("D{$rowGold}", $goldAmountBetween);
-        $sheet2->setCellValue("D87", $carAmountBetween + $goldAmountBetween);
+        $sheet2->setCellValue("D{$rowCar}", $carAmountBetween / 1000);
+        $sheet2->setCellValue("D{$rowGold}", $goldAmountBetween / 1000);
+        $sheet2->setCellValue("D87", ($carAmountBetween + $goldAmountBetween) / 1000);
 
         $acc89860001 = ChartOfAccount::idByCode('89860001');
         $acc91860001 = ChartOfAccount::idByCode('91860001');
@@ -263,9 +263,9 @@ class V06Export
         $balance89860001 = $this->sumAccountBefore($acc89860001, 'debit_account_id', $dateFrom);
         $balance91860001 = $this->sumAccountBefore($acc91860001, 'debit_account_id', $dateFrom);
 
-        $sheet2->setCellValue("H89", $balance89860001);
-        $sheet2->setCellValue("H91", $balance91860001);
-        $sheet2->setCellValue("H87", $balance89860001 + $balance91860001);
+        $sheet2->setCellValue("H89", $balance89860001 / 1000);
+        $sheet2->setCellValue("H91", $balance91860001 / 1000);
+        $sheet2->setCellValue("H87", ($balance89860001 + $balance91860001) / 1000);
 
         $balance89860001_J = $this->sumAccountBetween($acc89860001, 'debit_account_id', $dateFrom, $date);
         $balance91860001_J = $this->sumAccountBetween($acc91860001, 'debit_account_id', $dateFrom, $date);
@@ -273,13 +273,13 @@ class V06Export
         $credit89860001_J = $this->sumAccountBetween($acc89860001, 'credit_account_id', $dateFrom, $date);
         $credit91860001_J = $this->sumAccountBetween($acc91860001, 'credit_account_id', $dateFrom, $date);
 
-        $sheet2->setCellValue("J89", $balance89860001_J);
-        $sheet2->setCellValue("J91", $balance91860001_J);
-        $sheet2->setCellValue("J87", $balance89860001_J + $balance91860001_J);
+        $sheet2->setCellValue("J89", $balance89860001_J / 1000);
+        $sheet2->setCellValue("J91", $balance91860001_J / 1000);
+        $sheet2->setCellValue("J87", ($balance89860001_J + $balance91860001_J) / 1000);
 
-        $sheet2->setCellValue("L89", $credit89860001_J);
-        $sheet2->setCellValue("L91", $credit91860001_J);
-        $sheet2->setCellValue("L87", $credit89860001_J + $credit91860001_J);
+        $sheet2->setCellValue("L89", $credit89860001_J / 1000);
+        $sheet2->setCellValue("L91", $credit91860001_J / 1000);
+        $sheet2->setCellValue("L87", ($credit89860001_J + $credit91860001_J) / 1000);
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
