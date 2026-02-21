@@ -113,7 +113,10 @@ class ReportV01Controller extends Controller
         while (ob_get_level() > 0) {
             @ob_end_clean();
         }
+        $sheet->getStyle('A1')->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+
         $sheet->setCellValueExplicit('A1', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+//        $sheet->setCellValueExplicit('A1', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
 
         $timestamp = strtotime($toStr);
         $pureDate = date('Y-m-d', $timestamp);
