@@ -5,6 +5,7 @@ namespace App\Exports\Reports;
 use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -22,7 +23,7 @@ class V03Export
         // SHEET 1
         // ---------------------------
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
-        $sheet1->setCellValue('D10', '«Ակրեդիտ» ՎՄ ՍՊԸ');
+        $sheet1->setCellValueExplicit('D10', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
