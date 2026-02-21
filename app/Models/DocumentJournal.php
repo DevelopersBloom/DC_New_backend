@@ -75,7 +75,30 @@ class DocumentJournal extends Model
     ];
     protected static function booted(): void
     {
-        static::deleting(function (DocumentJournal $journal) {
+        parent::booted();
+        static::created(function (DocumentJournal $journal) {
+            $isDebitBank = str_starts_with($journal->debitAccount->code ?? '', '10210');
+            $isCreditBank = str_starts_with($journal->creditAccount->code ?? '', '10210');
+
+            if ($isDebitBank || $isCreditBank) {
+                $bankAccountIds = \App\Models\ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
+
+                $debitSum = Transaction::whereIn('debit_account_id', $bankAccountIds)->sum('amount_amd');
+                $creditSum = Transaction::whereIn('credit_account_id', $bankAccountIds)->sum('amount_amd');
+
+                $currentBalance = $debitSum - $creditSum;
+
+                $provisionAmount = $currentBalance * 0.01;
+
+                if ($provisionAmount > 0) {
+                    if ($isDebitBank) {
+                        self::createProvisionEntry($journal, $provisionAmount, 'Պահուստավորում', '730041', '15300PC');
+                    } else {
+                        self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102');
+                    }
+                }
+            }
+        });        static::deleting(function (DocumentJournal $journal) {
             DB::transaction(function () use ($journal) {
                 if ($journal->deal_id && $journal->deal) {
                     $journal->deal->delete();
@@ -243,14 +266,14 @@ class DocumentJournal extends Model
 
                         $journal->transactions()->onlyTrashed()->restore();
 
-                        \App\Models\Transaction::onlyTrashed()
+                        Transaction::onlyTrashed()
                             ->where('transactionable_id',  $ndmId)
                             ->where('transactionable_type', $ndmType)
                             ->restore();
 
                         $calcTypes = ['Արդյունավետ տոկոսի հաշվարկում', 'Տոկոսի հաշվարկում'];
 
-                        $lastCalcDate = \App\Models\Transaction::query()
+                        $lastCalcDate = Transaction::query()
                             ->where('transactionable_id',  $ndmId)
                             ->where('transactionable_type', $ndmType)
                             ->whereIn('document_type', $calcTypes)
@@ -371,5 +394,39 @@ class DocumentJournal extends Model
         return max($remainingBalance,0);
     }
 
+    protected static function createProvisionEntry(DocumentJournal $parent, $amount, $label, $debitCode, $creditCode)
+    {
+        $debitAcc = ChartOfAccount::where('code', $debitCode)->first();
+        $creditAcc = ChartOfAccount::where('code', $creditCode)->first();
+        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
 
+        if (!$debitAcc || !$creditAcc) return;
+
+        $childJournal = DocumentJournal::create([
+            'date'               => $parent->date,
+            'document_type'      => $label,
+            'document_number'    => $nextDocNum,
+            'amount_amd'         => $amount,
+            'debit_account_id'   => $debitAcc->id,
+            'credit_account_id'  => $creditAcc->id,
+            'user_id'            => $parent->user_id,
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => $parent->id,
+            'comment'            => $label . ' (Անկանխիկի 1%)',
+        ]);
+
+        Transaction::create([
+            'date'                 => $parent->date,
+            'document_type'        => $label,
+            'document_number'    => $nextDocNum,
+
+            'debit_account_id'     => $debitAcc->id,
+            'credit_account_id'    => $creditAcc->id,
+            'amount_amd'           => $amount,
+            'user_id'              => $parent->user_id,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $childJournal->id,
+            'is_system'            => true,
+        ]);
+    }
 }
