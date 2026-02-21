@@ -77,8 +77,13 @@ class DocumentJournal extends Model
     {
         parent::booted();
         static::created(function (DocumentJournal $journal) {
-            $isDebitBank = str_starts_with($journal->debitAccount->code ?? '', '10210');
-            $isCreditBank = str_starts_with($journal->creditAccount->code ?? '', '10210');
+            $journal->loadMissing(['debitAccount', 'creditAccount']);
+
+            $debitCode = $journal->debitAccount->code ?? '';
+            $creditCode = $journal->creditAccount->code ?? '';
+
+            $isDebitBank = str_starts_with($debitCode, '10210');
+            $isCreditBank = str_starts_with($creditCode, '10210');
 
             if ($isDebitBank || $isCreditBank) {
                 $bankAccountIds = \App\Models\ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
