@@ -281,7 +281,7 @@ DealController extends Controller
 
     public function addCashbox(Request $request)
     {
-        $amount = $request->amount;
+        $amount = str_replace(',', '', $request->amount);
         $name = $request->name;
         $receiver = $request->receiver;
 
