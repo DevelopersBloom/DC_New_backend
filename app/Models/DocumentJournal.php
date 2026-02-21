@@ -93,7 +93,7 @@ class DocumentJournal extends Model
                 $currentBalance = $debitSum - $creditSum;
 
                 $provisionAmount = $currentBalance * 0.01;
-                if ($provisionAmount != 0) {
+                if ($provisionAmount > 0) {
                     if ($isDebitBank) {
                         self::createProvisionEntry($journal, $provisionAmount, 'Պահուստավորում', '730041', '15300PC');
                     } else {
