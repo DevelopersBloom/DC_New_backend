@@ -49,6 +49,7 @@ class AcraController
             ->toArray();
 
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
+            ->whereNotNull('provided_at')
             ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions) {
                 $query->whereBetween('date', [$from, $to])
                     ->orWhereIn('id', $contractsWithInitialPayments)

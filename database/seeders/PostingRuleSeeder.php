@@ -80,7 +80,7 @@ class PostingRuleSeeder extends Seeder
             [
                 'business_event_filter' => 'provide_contract_amount',
                 'debit_account_id'  => $acc16200NV,
-                'credit_account_id' => $acc10210,
+                'credit_account_id' => $acc102101,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
