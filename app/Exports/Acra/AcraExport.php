@@ -116,7 +116,11 @@ class AcraExport
 
             if ($client->type !== 'legal') {
                 $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
-                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_validity));
+                $issuedAt = null;
+                if ($client->passport_validity) {
+                    $issuedAt = Carbon::parse($client->passport_validity)->subYears(10);
+                }
+                $sheet->setCellValue('F' . $row, $this->formatDate($issuedAt));
                 $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
                 $sheet->setCellValue('H' . $row, $client->social_card_number);
 
