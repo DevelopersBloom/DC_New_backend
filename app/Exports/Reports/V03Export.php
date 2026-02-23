@@ -38,6 +38,9 @@ class V03Export
         $acc52000 = ChartOfAccount::idByCode('52000');
         $acc52001 = ChartOfAccount::idByCode('52001');
 
+        $class6Ids = ChartOfAccount::where('code', 'like', '6%')->pluck('id')->toArray();
+        $class7Ids = ChartOfAccount::where('code', 'like', '7%')->pluck('id')->toArray();
+
         $startDay = Carbon::parse($from)->day;
         $row = 9 + ($startDay - 1);
 
@@ -51,13 +54,26 @@ class V03Export
                 + DocumentJournal::where('credit_account_id', $acc50000)
                     ->where('date', '<=', $current)
                     ->sum('amount_amd');
-
-            $balance52000 = DocumentJournal::where('debit_account_id', $acc52000)
+            $sum6 = DocumentJournal::whereIn('credit_account_id', $class6Ids)
                     ->where('date', '<=', $current)
-                    ->sum('amount_amd') * -1
-                + DocumentJournal::where('credit_account_id', $acc52000)
+                    ->sum('amount_amd')
+                - DocumentJournal::whereIn('debit_account_id', $class6Ids)
                     ->where('date', '<=', $current)
                     ->sum('amount_amd');
+
+            $sum7 = DocumentJournal::whereIn('debit_account_id', $class7Ids)
+                    ->where('date', '<=', $current)
+                    ->sum('amount_amd')
+                - DocumentJournal::whereIn('credit_account_id', $class7Ids)
+                    ->where('date', '<=', $current)
+                    ->sum('amount_amd');
+            $balance52000 = $sum6 - $sum7;
+//            $balance52000 = DocumentJournal::where('debit_account_id', $acc52000)
+//                    ->where('date', '<=', $current)
+//                    ->sum('amount_amd') * -1
+//                + DocumentJournal::where('credit_account_id', $acc52000)
+//                    ->where('date', '<=', $current)
+//                    ->sum('amount_amd');
 
             $balance52001 = DocumentJournal::where('debit_account_id', $acc52001)
                     ->where('date', '<=', $current)
@@ -77,91 +93,7 @@ class V03Export
         // ---------------------------
         // SHEET 3
         // ---------------------------
-//        $sheet3 = $spreadsheet->getSheetByName('Sheet3');
 
-//        $riskColumns = [
-//            0   => 'B',
-//            10  => 'D',
-//            20  => 'F',
-//            30  => 'H',
-//            50  => 'J',
-//            75  => 'L',
-//            100 => 'N',
-//            110 => 'P',
-//            150 => 'R',
-//            225 => 'T',
-//        ];
-//
-//        $startDay = Carbon::parse($from)->day;
-//        $row = 8 + ($startDay - 1);
-//        $current = Carbon::parse($from);
-//
-//        while ($current->lte($end)) {
-//
-//            $journals = DocumentJournal::with([
-//                'journalable.client.classification'
-//            ])
-//                ->where('date','<=', $current->format('Y-m-d'))
-//                ->where('document_type',DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-//                ->get();
-//            $dailyAmounts = [
-//                0 => 0, 10 => 0, 20 => 0, 30 => 0,
-//                50 => 0, 75 => 0, 100 => 0, 110 => 0,
-//                150 => 0, 225 => 0
-//            ];
-//
-//            foreach ($journals as $j) {
-//
-//
-//                $risk = optional(optional($j->journalable)->client)->classification;
-//
-//                $riskWeight = $risk ? $risk->risk_weight : null;
-//                $riskKey = ($riskWeight !== null) ? (int) $riskWeight : null;
-//                if ($riskKey === null) {
-//                    continue;
-//                }
-//                if (!isset($dailyAmounts[$riskKey])) {
-//                    continue;
-//                }
-//
-//                $dailyAmounts[$riskKey] += $j->amount_amd;
-//            }
-//            $accountIds = [
-//                ChartOfAccount::idByCode('2101'),
-//                ChartOfAccount::idByCode('2211')
-//            ];
-//
-//            foreach ($accountIds as $accId) {
-//                $account = ChartOfAccount::find($accId);
-//                if (!$account) continue;
-//
-//                $riskWeight = $account->risk_weight;
-//                if ($riskWeight === null) continue;
-//
-//                $balance = DocumentJournal::where('debit_account_id', $accId)
-//                        ->where('date', '<=', $current)
-//                        ->sum('amount_amd')
-//                    + DocumentJournal::where('credit_account_id', $accId)
-//                        ->where('date', '<=', $current)
-//                        ->sum('amount_amd') * -1;
-//
-//                $riskKey = (int) $riskWeight;
-//                if (!isset($dailyAmounts[$riskKey])) continue;
-//
-//                $dailyAmounts[$riskKey] -= $balance;
-//            }
-//
-//            foreach ($dailyAmounts as $risk => $value) {
-//                $col = $riskColumns[$risk];
-//                $sheet3->setCellValue($col . $row, $value);
-//            }
-//
-//            $current->addDay();
-//            $row++;
-//        }
-        // ---------------------------
-        // SHEET 3
-        // ---------------------------
         $sheet3 = $spreadsheet->getSheetByName('Sheet3');
 
         $riskColumns = [
