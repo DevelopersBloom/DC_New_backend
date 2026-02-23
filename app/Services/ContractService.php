@@ -306,11 +306,9 @@ class   ContractService
 
         $year = now()->format('y');
 
-        $lastContract = Contract::where('num', 'LIKE', "{$prefix}-%")
-            ->orderBy('id', 'desc')
-            ->first();
+        $lastContract = Contract::orderBy('id', 'desc')->first();
 
-        if ($lastContract) {
+        if ($lastContract && $lastContract->num) {
             $lastNumber = (int) substr($lastContract->num, -5);
         } else {
             $lastNumber = 0;
