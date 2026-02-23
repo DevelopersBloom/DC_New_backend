@@ -264,7 +264,7 @@ class AcraExport
             $sheet->setCellValue('O' . $row, $riskClass);
 
             $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
-            $sheet->setCellValue('Q' . $row, $contract->interest_rate);
+            $sheet->setCellValue('Q' . $row, (int)$contract->interest_rate * 365);
             $sheet->setCellValue('U' . $row, $this->formatDate($contract->date));
 
             $row++;
