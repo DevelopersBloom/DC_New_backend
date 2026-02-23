@@ -195,8 +195,16 @@ class AcraExport
                 $lastPaymentDate = $contract->closed_at;
             }
             $sheet->setCellValue('E' . $row, $this->formatDate($lastPaymentDate));
+            $categoryName = $contract->category->name ?? '';
 
-            $sheet->setCellValue('F' . $row, 'վարկ');
+            $creditType = match ($categoryName) {
+                'car'           => 'Մեքենայի գրավով վարկ',
+                'gold'          => 'Ոսկու գրավով վարկ',
+                'car-purchase'  => 'ավտովարկ',
+                'electronics'   => 'Անշարժ գույքի գրավով վարկ',
+                default         => 'վարկ',
+            };
+            $sheet->setCellValue('F' . $row, $creditType);
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
 
