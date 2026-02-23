@@ -343,9 +343,10 @@ class ContractControllerNew extends Controller
             $contract->deadline = Carbon::now('Asia/Yerevan')
                 ->addMonths((int) $contract->deadline_days)
                 ->format('Y-m-d');
-            $contract->date = Carbon::now();
+            $now = Carbon::now();
+            $contract->date = $now;
+            $contract->provided_at = $now;
             $contract->save();
-//            $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
             $oldClassification = $client->classification;
 
             if (!$oldClassification) {
@@ -362,12 +363,6 @@ class ContractControllerNew extends Controller
             $this->contractService->createPayment($contract);
 
             $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
-//            $effectiveRates = (new \App\Services\EffectiveRateService())->calculateEffectiveRate($contract);
-//            $contract->effective_annual_rate = $effectiveRates['annual']; // 24.00 (%)
-//            $contract->effective_daily_rate = $effectiveRates['daily'];   // 0.064321 (%)
-//            $contract->effective_rate_kasko = $effectiveRates['kasko_daily'];
-//            $contract->effective_rate_annual_kasko = $effectiveRates['kasko_annual'];
-//            $contract->save();
 
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
@@ -525,17 +520,6 @@ class ContractControllerNew extends Controller
 
             }
 
-
-            auth()->user()->pawnshop->given = auth()->user()->pawnshop->given + $contract->provided_amount;
-            auth()->user()->pawnshop->worth = auth()->user()->pawnshop->worth + $contract->estimated_amount;
-            auth()->user()->pawnshop->save();
-
-            $this->activityService->log(
-                'pay_contract_amount',
-                "Paid contract amount for contract #{$contract->num}",
-                Contract::class,
-                $contract->id
-            );
             DB::commit();
             return response()->json([
                 'message' => 'Contract amount paid successfully',
