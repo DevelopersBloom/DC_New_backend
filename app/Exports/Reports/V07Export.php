@@ -20,34 +20,50 @@ class V07Export
 
         $start = Carbon::parse($from)->startOfMonth();
         $end   = Carbon::parse($to)->endOfMonth();
-
+        $account50000 = ChartOfAccount::idByCode('50000');
+        $class6Ids = ChartOfAccount::where('code', 'like', '6%')->pluck('id')->toArray();
+        $class7Ids = ChartOfAccount::where('code', 'like', '7%')->pluck('id')->toArray();
         $row = 21;
 
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+//
+//            $account52000 = ChartOfAccount::idByCode('52000');
+//            $account50000 = ChartOfAccount::idByCode('50000');
 
-            $account52000 = ChartOfAccount::idByCode('52000');
-            $account50000 = ChartOfAccount::idByCode('50000');
+//            $debit52000 = DocumentJournal::where('debit_account_id', $account52000)
+//                ->where('date','<=', $date)
+//                ->sum('amount_amd');
+//
+//            $credit52000 = DocumentJournal::where('credit_account_id', $account52000)
+//                ->where('date','<=', $date)
+//                ->sum('amount_amd');
+//
+//            $balance52000 =$credit52000 - $debit52000;
+            $sum6 = DocumentJournal::whereIn('credit_account_id', $class6Ids)
+                    ->where('date', '<=', $date)
+                    ->sum('amount_amd')
+                - DocumentJournal::whereIn('debit_account_id', $class6Ids)
+                    ->where('date', '<=', $date)
+                    ->sum('amount_amd');
 
-            $debit52000 = DocumentJournal::where('debit_account_id', $account52000)
-                ->where('date','<=', $date)
-                ->sum('amount_amd');
+            $sum7 = DocumentJournal::whereIn('debit_account_id', $class7Ids)
+                    ->where('date', '<=', $date)
+                    ->sum('amount_amd')
+                - DocumentJournal::whereIn('credit_account_id', $class7Ids)
+                    ->where('date', '<=', $date)
+                    ->sum('amount_amd');
 
-            $credit52000 = DocumentJournal::where('credit_account_id', $account52000)
-                ->where('date','<=', $date)
-                ->sum('amount_amd');
-
-            $balance52000 =$credit52000 - $debit52000;
-
+            $balance52000 = $sum6 - $sum7;
             // 50000 balance
-            $debit50000 = DocumentJournal::where('debit_account_id', $account50000)
-                ->where('date','<=', $date)
-                ->sum('amount_amd');
-
-            $credit50000 = DocumentJournal::where('credit_account_id', $account50000)
-                ->where('date','<=', $date)
-                ->sum('amount_amd');
-
-            $balance50000 = $credit50000 - $debit50000;
+            $balance50000 = 0;
+            if ($account50000) {
+                $balance50000 = DocumentJournal::where('credit_account_id', $account50000)
+                        ->where('date', '<=', $date)
+                        ->sum('amount_amd')
+                    - DocumentJournal::where('debit_account_id', $account50000)
+                        ->where('date', '<=', $date)
+                        ->sum('amount_amd');
+            }
 
             $final = ($balance52000 + $balance50000) * 0.05 / 1000;
 
