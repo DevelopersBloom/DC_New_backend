@@ -168,6 +168,18 @@ class V03Export
 
             foreach ($dailyAmounts as $risk => $value) {
                 $col = $riskColumns[$risk];
+                $finalValue = $value / 1000;
+
+                // Լրացնում ենք հիմնական սյունը (B, D, F, H և այլն)
+                $sheet3->setCellValue($col . $row, $finalValue);
+
+                // Եթե այս պահին F սյունն է (risk weight 20), ապա G-ում հաշվում ենք 1%
+                if ($col === 'F') {
+                    // Հաջորդ սյունը G-ն է
+                    $targetCol = 'G';
+                    $percentValue = $finalValue * 0.01; // 1%
+                    $sheet3->setCellValue($targetCol . $row, $percentValue);
+                }
                 $sheet3->setCellValue($col . $row, $value / 1000);
             }
 

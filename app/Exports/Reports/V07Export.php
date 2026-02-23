@@ -21,6 +21,8 @@ class V07Export
         $start = Carbon::parse($from)->startOfMonth();
         $end   = Carbon::parse($to)->endOfMonth();
         $account50000 = ChartOfAccount::idByCode('50000');
+        $account52001 = ChartOfAccount::idByCode('52001');
+
         $class6Ids = ChartOfAccount::where('code', 'like', '6%')->pluck('id')->toArray();
         $class7Ids = ChartOfAccount::where('code', 'like', '7%')->pluck('id')->toArray();
         $row = 21;
@@ -64,8 +66,18 @@ class V07Export
                         ->where('date', '<=', $date)
                         ->sum('amount_amd');
             }
+            $balance52001 = 0;
 
-            $final = ($balance52000 + $balance50000) * 0.05 / 1000;
+            if ($account52001) {
+                $balance52001 = DocumentJournal::where('credit_account_id', $account52001)
+                        ->where('date', '<=', $date)
+                        ->sum('amount_amd')
+                    - DocumentJournal::where('debit_account_id', $account52001)
+                        ->where('date', '<=', $date)
+                        ->sum('amount_amd');
+            }
+
+            $final = ($balance52000 + $balance50000 + $balance52001) * 0.05 / 1000;
 
             $sheet->setCellValue('D' . $row, $final);
 
