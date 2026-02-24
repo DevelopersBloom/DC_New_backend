@@ -237,21 +237,9 @@ class ContractControllerNew extends Controller
         try {
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
             $pawnshop_id = \auth()->user()->pawnshop_id;
-//            $deadline = Carbon::now('Asia/Yerevan')->addMonths($contractRequest->validated()['deadline'])->format('Y-m-d');
-            $validatedContract = $contractRequest->validated();
-            $deadlineValue = $validatedContract['deadline'];
-            $deadlineType = $validatedContract['deadline_type'] ?? 'month';
-
-            $date = Carbon::now('Asia/Yerevan');
-
-            $deadline = match ($deadlineType) {
-                'year'  => $date->copy()->addYears($deadlineValue),
-                'day'   => $date->copy()->addDays($deadlineValue),
-                default => $date->copy()->addMonths($deadlineValue),
-            };
-
-            $deadlineFormat = $deadline->format('Y-m-d');
-            $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadlineFormat);
+            $date = Carbon::now();
+            $deadline = Carbon::now('Asia/Yerevan')->addMonths($contractRequest->validated()['deadline'])->format('Y-m-d');
+            $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
             $category_id = null;
             $items = $itemRequest->validated()['items'];
             foreach ($items as $item_data) {
