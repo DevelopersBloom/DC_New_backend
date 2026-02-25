@@ -31,8 +31,9 @@ trait ContractTrait
 
         $historyTypes = HistoryType::whereIn('name', $historyTypeNames)->get();
 
-        $lump_rate = (float)$contract->lump_rate ?? LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
-        $lump_amount_original = $contract->provided_amount * ($lump_rate->lump_rate / 100);
+        $lump_rate = $contract->lump_rate;
+//        ?? LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
+        $lump_amount_original = $contract->provided_amount * ($lump_rate / 100);
 
         $lump_amount = floor($lump_amount_original / 10) * 10;
 
