@@ -31,12 +31,10 @@ trait ContractTrait
 
         $historyTypes = HistoryType::whereIn('name', $historyTypeNames)->get();
 
-        $lump_rate = LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
+        $lump_rate = $contract->lump_rate ?? LumpRate::getRateByCategoryAndAmount($contract->provided_amount);
         $lump_amount_original = $contract->provided_amount * ($lump_rate->lump_rate / 100);
 
-        $lump_amount = ($lump_amount_original >= 1375)
-            ? ceil($lump_amount_original / 10) * 10
-            : floor($lump_amount_original / 10) * 10;
+        $lump_amount = floor($lump_amount_original / 10) * 10;
 
         $lastNumber = $this->getLastOrderNumber();
 
@@ -52,14 +50,17 @@ trait ContractTrait
             );
         }
         $numInOneTime = $this->formatOrderNumber(++$lastNumber, 'in', $cash);
-        $this->createOrderHistoryEntry(
-            $contract, $client_id, $client_name,
-            'in', 'one_time_payment',
-            $lump_amount, $cash,
-            Contract::LUMP_PAYMENT,
-            $numInOneTime, $pawnshop_id, $date,
-            Order::ONE_TIME_PAYMENT_FILTER
-        );
+        if ($lump_amount > 0) {
+            $this->createOrderHistoryEntry(
+                $contract, $client_id, $client_name,
+                'in', 'one_time_payment',
+                $lump_amount, $cash,
+                Contract::LUMP_PAYMENT,
+                $numInOneTime, $pawnshop_id, $date,
+                Order::ONE_TIME_PAYMENT_FILTER
+            );
+        }
+
 
         $numOutMother = $this->formatOrderNumber(++$lastNumber, 'out', $cash);
         return $this->createOrderHistoryEntry(
