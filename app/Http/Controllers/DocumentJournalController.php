@@ -99,7 +99,7 @@ class DocumentJournalController
 
         return response()->json($page);
     }
-    public function show(int $id): JsonResponse
+    public function show($id): JsonResponse
     {
         $j = DocumentJournal::with([
             'currency:id,code',
