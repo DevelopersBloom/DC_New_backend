@@ -26,9 +26,8 @@ class   ContractService
                 },
                 'category',
                 'items'
-            ])
-            ->orderBy('num', 'DESC');
-
+            ]);
+        $query->orderByRaw('CAST(RIGHT(num, 5) AS UNSIGNED) DESC');
         // Apply filters
         $query->filterStatus($filters['status'] ?? 'all')
             ->filterByDate('date', $filters['date_from'] ?? null, $filters['date_to'] ?? null)
