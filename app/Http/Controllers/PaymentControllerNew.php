@@ -17,6 +17,7 @@ use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
 use App\Services\PaymentService;
+use App\Traits\CalculatesAccountBalancesTrait;
 use App\Traits\ContractTrait;
 use App\Traits\FileTrait;
 use App\Traits\HistoryTrait;
@@ -29,6 +30,7 @@ class PaymentControllerNew extends Controller
 {
     use ContractTrait, HistoryTrait;
     use FileTrait;
+    use CalculatesAccountBalancesTrait;
 
     protected PaymentService $paymentService;
     protected ActivityService $activityService;
@@ -408,10 +410,22 @@ class PaymentControllerNew extends Controller
             );
         }
 
-        $this->createAccountingTransaction(
-            $contract, $totalAmount, 'close_contract_rule', 'contract_closure', $deal->id
-        );
+        $balanceRow = $this->partnerAccountBalancesSubquery(now()->format('Y-m-d'))
+            ->where('u.partner_id', $contract->client_id)
+            ->where('ca.code', '16200')
+            ->first();
 
+        $account16200Balance = $balanceRow ? $balanceRow->balance : 0;
+
+        if (abs($account16200Balance) > 0) {
+            $this->createAccountingTransaction(
+                $contract,
+                abs($account16200Balance),
+                'close_contract_rule',
+                'contract_closure',
+                $deal->id
+            );
+        }
         $contract->closed_at = now();
         $contract->save();
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
