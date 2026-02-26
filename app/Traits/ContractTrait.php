@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Item;
@@ -13,8 +14,10 @@ use App\Models\LumpRate;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\PostingRule;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
+use App\Models\Transaction;
 use Carbon\Carbon;
 
 trait ContractTrait
@@ -564,4 +567,48 @@ trait ContractTrait
         }
     }
 
+    private function createAccountingTransaction($contract, $amount, $ruleKey, $comment, $dealId)
+    {
+        $rule = PostingRule::where('business_event_filter', $ruleKey)->first();
+        if (!$rule) return;
+
+        $date = Carbon::now()->format('Y-m-d');
+        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+
+        $debitAccountId = $rule->debit_account_id;
+        $creditAccountId = $rule->credit_account_id;
+
+        $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
+
+        $journalDoc = DocumentJournal::create([
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $ruleKey,
+            'amount_amd' => $amount,
+            'partner_id' => $debetPartnerId,
+            'credit_partner_id' => $contract->client_id,
+            'comment' => $comment,
+            'debit_account_id' => $debitAccountId,
+            'credit_account_id' => $creditAccountId,
+            'user_id' => auth()->id(),
+            'journalable_type' => Contract::class,
+            'journalable_id' => $contract->id,
+            'deal_id' => $dealId,
+        ]);
+
+        Transaction::create([
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $ruleKey,
+            'debit_account_id' => $debitAccountId,
+            'debit_partner_id' => $debetPartnerId,
+            'credit_account_id' => $creditAccountId,
+            'credit_partner_id' => $contract->client_id,
+            'amount_amd' => $amount,
+            'comment' => $comment,
+            'user_id' => auth()->id(),
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id' => $journalDoc->id
+        ]);
+    }
 }

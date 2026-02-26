@@ -214,123 +214,213 @@ class PaymentControllerNew extends Controller
         }
         $contract->save();
     }
-    public function makeFullPayment(Request $request): JsonResponse
-    {
-//        $has_penalty_amount = $this->countPenalty($request->contract_id);
-//        if ($has_penalty_amount['penalty_amount'] > 0) {
+//    public function makeFullPayment(Request $request): JsonResponse
+//    {
+//        $contract = Contract::findOrFail($request->contract_id);
+//        $amount = $request->amount;
+//        $payer = $request->payer;
+//        $cash = $request->cash;
+//        if (!$contract) {
 //            return response()->json([
-//                'message' => 'You have an unpaid penalty amount! ',
+//                'success' => 'error',
+//                'message' => 'Contract not found',
 //            ], 404);
 //        }
+//        $interestAmount = $this->calculateCurrentPayment($contract)['current_amount'];
+//
+//        $motherAmount = $contract->provided_amount;
+//
+//        $type = HistoryType::where('name', 'full_payment')->first();
+//        $purpose = 'Վարկի մարում՝ տոկոսագւմար և մայր գումար';
+//        if ($request->hasPenalty) {
+//            $purpose .= ', տուգանք';
+//        }
+//        $newOrder = $this->generateOrder($contract, $amount, $purpose, 'in', $cash,Order::FULL_FILTER);
+//
+//        $history = History::create([
+//            'amount' => $amount,
+//            'type_id' => $type->id,
+//            'user_id' => auth()->user()->id,
+//            'order_id' => $newOrder->id,
+//            'contract_id' => $contract->id,
+//            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+//        ]);
+//
+//        $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
+//
+//         $paymentId = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
+//         $deal->payment_id = $paymentId;
+//         $deal->save();
+//
+//        $contract->closed_at = now();
+//        $contract->save();
+//        $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
+//            ->first();
+//
+//        if (!$ruleMotherAmount) {
+//            throw new \RuntimeException('Posting rule for pay_mother_amount not found');
+//        }
+//
+//        $debitMother = $ruleMotherAmount->debit_account_id;
+//        $creditMother = $ruleMotherAmount->credit_account_id;
+//
+//
+//        $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
+//        $creditPartnerId = $contract->client_id;
+//        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+//
+//        $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
+//        $date = \Illuminate\Support\Carbon::now()->format('Y-m-d');
+//        $journal = DocumentJournal::where('journalable_type', Contract::class)
+//            ->where('journalable_id', $contract->id)
+//            ->first();
+//        $journalDoc = DocumentJournal::create([
+//            'date' => $date,
+//            'document_number' => $nextDocNum,
+//            'document_type' => $document_type,
+//            'amount_amd' => $amount,
+//            'partner_id' => $debetPartnerId,
+//            'credit_partner_id' => $creditPartnerId,
+//            'comment' => 'mother_amount_payment',
+//            'debit_account_id' => $debitMother,
+//            'credit_account_id' => $creditMother,
+//            'user_id' => auth()->id(),
+//            'journalable_type' => DocumentJournal::class,
+//            'journalable_id' => $journal->id,
+//            'deal_id' => $deal->id,
+//        ]);
+//        Transaction::create([
+//            'date' => $date,
+//            'document_number' => $nextDocNum,
+//            'document_type' => $document_type,
+//
+//            'debit_account_id' => $debitMother,
+//            'debit_partner_id' => $debetPartnerId,
+//            'debit_currency_id' => 1,
+//
+//            'credit_account_id' => $creditMother,
+//            'credit_currency_id' => 1,
+//            'credit_partner_id' => $creditPartnerId,
+//
+//            'amount_amd' => $amount,
+//
+//            'comment' => 'mother_amount_payment',
+//            'user_id' => auth()->id(),
+//            'is_system' => false,
+//
+//            'disbursement_date' => $date,
+//            'transactionable_type' => DocumentJournal::class,
+//            'transactionable_id' => $journalDoc->id
+//        ]);
+//        if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
+//            $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
+//            if ($refundAmount > 0) {
+//                $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash,Order::REFUND_LUMP_FILTER);
+//                $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
+//
+//                $history = History::create([
+//                    'amount' => $refundAmount,
+//                    'type_id' => $refund_type->id,
+//                    'user_id' => auth()->user()->id,
+//                    'order_id' => $refundOrder->id,
+//                    'contract_id' => $contract->id,
+//                    'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
+//                ]);
+//                $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
+//                DealAction::create([
+//                    'deal_id' => $deal->id,
+//                    'actionable_id' => $paymentId,
+//                    'actionable_type' => Payment::class,
+//                    'amount' => $refundAmount,
+//                    'type' => 'refund',
+//                    'description' => 'Refund payment',
+//                    'date' => \Illuminate\Support\Carbon::now()->format('Y-m-d'),
+//                ]);
+//                $this->activityService->log(
+//                    'refund_lump',
+//                    "Refund lump sum: {$refundAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",
+//                    Contract::class,
+//                    $contract->id
+//                );
+//
+//                return response()->json([
+//                    'success' => 'success',
+//                    'message' => 'Full payment created successfully with a lump sum refund',
+//                    'refund_amount' => $refundAmount
+//                ]);
+//            }
+//        }
+//        $this->activityService->log(
+//            'full_payment',
+//            "Full payment of {$amount} AMD for contract #{$contract->id} and deal #{$deal->id}",
+//            Contract::class,
+//            $contract->id
+//        );
+//
+//        return response()->json([
+//            'success' => 'success',
+//            'message' => 'Full payment created successfully',
+//        ]);
+//    }
+    public function makeFullPayment(Request $request): JsonResponse
+    {
         $contract = Contract::findOrFail($request->contract_id);
-        $amount = $request->amount;
+        $totalAmount = $request->amount;
         $payer = $request->payer;
         $cash = $request->cash;
-        if (!$contract) {
-            return response()->json([
-                'success' => 'error',
-                'message' => 'Contract not found',
-            ], 404);
-        }
+        $date = Carbon::now()->format('Y-m-d');
+
+        $interestAmount = $this->calculateCurrentPayment($contract)['current_amount'];
+
+        $motherAmount = $contract->provided_amount;
+
         $type = HistoryType::where('name', 'full_payment')->first();
-        $purpose = 'Վարկի մարում՝ տոկոսագւմար և մայր գումար';
-        if ($request->hasPenalty) {
-            $purpose .= ', տուգանք';
-        }
-        $newOrder = $this->generateOrder($contract, $amount, $purpose, 'in', $cash,Order::FULL_FILTER);
+        $purpose = 'Վարկի մարում՝ տոկոսագումար և մայր գումար';
+
+        $newOrder = $this->generateOrder($contract, $totalAmount, $purpose, 'in', $cash, Order::FULL_FILTER);
 
         $history = History::create([
-            'amount' => $amount,
+            'amount' => $totalAmount,
             'type_id' => $type->id,
-            'user_id' => auth()->user()->id,
+            'user_id' => auth()->id(),
             'order_id' => $newOrder->id,
             'contract_id' => $contract->id,
             'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
         ]);
 
-        $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
+        $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null);
 
-         $paymentId = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
-         $deal->payment_id = $paymentId;
-         $deal->save();
-//        $deal->payment_id = $result['payment_id'];
-//        $deal->interest_amount = $result['interest_amount'];
-//        $deal->penalty = $result['penalty'];
-//        $deal->delay_days = $result['delay_days'];
-//        $deal->save();
+        $paymentId = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id);
+        $deal->payment_id = $paymentId;
+        $deal->save();
 
-//        $history->interest_amount = $result['interest_amount'];
-//        $history->penalty = $result['penalty'];
-//        $history->delay_days = $result['delay_days'];
-//        $history->save();
+        if ($motherAmount > 0) {
+            $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_cash';
+            $this->createAccountingTransaction(
+                $contract, $motherAmount, $ruleKey, 'mother_amount_payment', $deal->id
+            );
+        }
+
+        if (($interestAmount) > 0) {
+            $ruleKey = $cash ? 'pay_interest_amount_cash' : 'pay_interest_amount';
+            $this->createAccountingTransaction(
+                $contract, ($interestAmount), $ruleKey, 'interest_payment', $deal->id
+            );
+        }
+
+        $this->createAccountingTransaction(
+            $contract, $totalAmount, 'close_contract_rule', 'contract_closure', $deal->id
+        );
 
         $contract->closed_at = now();
         $contract->save();
-        $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
-            ->first();
-
-        if (!$ruleMotherAmount) {
-            throw new \RuntimeException('Posting rule for pay_mother_amount not found');
-        }
-
-        $debitMother = $ruleMotherAmount->debit_account_id;
-        $creditMother = $ruleMotherAmount->credit_account_id;
-
-
-        $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
-        $creditPartnerId = $contract->client_id;
-        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-
-        $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
-        $date = \Illuminate\Support\Carbon::now()->format('Y-m-d');
-        $journal = DocumentJournal::where('journalable_type', Contract::class)
-            ->where('journalable_id', $contract->id)
-            ->first();
-        $journalDoc = DocumentJournal::create([
-            'date' => $date,
-            'document_number' => $nextDocNum,
-            'document_type' => $document_type,
-            'amount_amd' => $amount,
-            'partner_id' => $debetPartnerId,
-            'credit_partner_id' => $creditPartnerId,
-            'comment' => 'mother_amount_payment',
-            'debit_account_id' => $debitMother,
-            'credit_account_id' => $creditMother,
-            'user_id' => auth()->id(),
-            'journalable_type' => DocumentJournal::class,
-            'journalable_id' => $journal->id,
-            'deal_id' => $deal->id,
-        ]);
-        Transaction::create([
-            'date' => $date,
-            'document_number' => $nextDocNum,
-            'document_type' => $document_type,
-
-            'debit_account_id' => $debitMother,
-            'debit_partner_id' => $debetPartnerId,
-            'debit_currency_id' => 1,
-
-            'credit_account_id' => $creditMother,
-            'credit_currency_id' => 1,
-            'credit_partner_id' => $creditPartnerId,
-
-            'amount_amd' => $amount,
-
-            'comment' => 'mother_amount_payment',
-            'user_id' => auth()->id(),
-            'is_system' => false,
-
-            'disbursement_date' => $date,
-            'transactionable_type' => DocumentJournal::class,
-            'transactionable_id' => $journalDoc->id
-        ]);
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
             $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
             if ($refundAmount > 0) {
                 $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash,Order::REFUND_LUMP_FILTER);
                 $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
 
-                $history = History::create([
+                History::create([
                     'amount' => $refundAmount,
                     'type_id' => $refund_type->id,
                     'user_id' => auth()->user()->id,
@@ -338,7 +428,9 @@ class PaymentControllerNew extends Controller
                     'contract_id' => $contract->id,
                     'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
                 ]);
+
                 $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
+
                 DealAction::create([
                     'deal_id' => $deal->id,
                     'actionable_id' => $paymentId,
@@ -348,13 +440,6 @@ class PaymentControllerNew extends Controller
                     'description' => 'Refund payment',
                     'date' => \Illuminate\Support\Carbon::now()->format('Y-m-d'),
                 ]);
-                $this->activityService->log(
-                    'refund_lump',
-                    "Refund lump sum: {$refundAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",
-                    Contract::class,
-                    $contract->id
-                );
-
                 return response()->json([
                     'success' => 'success',
                     'message' => 'Full payment created successfully with a lump sum refund',
@@ -362,19 +447,10 @@ class PaymentControllerNew extends Controller
                 ]);
             }
         }
-        $this->activityService->log(
-            'full_payment',
-            "Full payment of {$amount} AMD for contract #{$contract->id} and deal #{$deal->id}",
-            Contract::class,
-            $contract->id
-        );
 
-        return response()->json([
-            'success' => 'success',
-            'message' => 'Full payment created successfully',
-        ]);
+
+        return response()->json(['success' => 'success', 'message' => 'Full payment created successfully with all accounting entries']);
     }
-
     /**
      * Calculate the refund amount for early full payment
      */

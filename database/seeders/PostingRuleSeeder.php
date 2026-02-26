@@ -28,6 +28,7 @@ class PostingRuleSeeder extends Seeder
         $acc16605PC = ChartOfAccount::idByCode('16605PC');
         $acc16605PS = ChartOfAccount::idByCode('16605PS');
         $acc63015 = ChartOfAccount::idByCode('63015');
+        $acc10000 =  ChartOfAccount::idByCode('10000');
 
         DB::table('posting_rules')->insert([
             [
@@ -163,15 +164,36 @@ class PostingRuleSeeder extends Seeder
             ],
             [
                 'business_event_filter' => 'pay_mother_amount',
-                'debit_account_id'  => $acc10210,
+                'debit_account_id'  => $acc102101,
+                'credit_account_id' => $acc16200NV,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'pay_mother_amount_cash',
+                'debit_account_id'  => $acc10000,
                 'credit_account_id' => $acc16200NV,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'business_event_filter' => 'pay_interest_amount',
-                'debit_account_id'  => $acc10210,
+                'debit_account_id'  => $acc102101,
                 'credit_account_id' => $acc16200,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'pay_interest_amount_cash',
+                'debit_account_id'  => $acc10000,
+                'credit_account_id' => $acc16200,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'close_contract_rule',
+                'debit_account_id'  => $acc16200,
+                'credit_account_id' => $acc60120,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
