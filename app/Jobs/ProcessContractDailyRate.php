@@ -208,7 +208,7 @@ class ProcessContractDailyRate implements ShouldQueue
 
         $nominalAccrualsSum = DocumentJournal::where('journalable_id', $journal->id)
             ->where('journalable_type', DocumentJournal::class)
-            ->where('document_type', DocumentJournal::INTEREST_RATE_AMOUNT)
+            ->where('document_type', DocumentJournal::INTEREST_REPAYMENT)
             ->sum('amount_amd');
 
         $motherPaymentsSum = DocumentJournal::where('journalable_id', $journal->id)
