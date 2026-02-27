@@ -632,7 +632,7 @@ class PaymentService
             ->first();
 
         $ruleMother = PostingRule::where('business_event_filter', 'pay_mother_amount')->first();
-        if ($ruleMother) {
+        if ($ruleMother && $partialAmount > 0) {
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
             $journalDoc = DocumentJournal::create([
                 'date' => $date,
