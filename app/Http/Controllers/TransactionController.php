@@ -72,7 +72,7 @@ class TransactionController
     }
     public function exportAccountBalances(Request $request)
     {
-        $to = $request->query('to');
+        $to = $request->query('to') ?? now()->format('Y-m-d');
         return Excel::download(new AccountsBalancesExport($to), 'account_balances.xlsx');
     }
     public function export(Request $request)
