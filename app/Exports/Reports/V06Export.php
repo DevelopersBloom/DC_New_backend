@@ -62,26 +62,28 @@ class V06Export
                 ->diffInDays(Carbon::parse($contract->date));
 
             $col = $this->getColumnByDays($days);
+            $providedAmount = Contract::where('id',$doc->journalable->id)->select('provided_amount')->first()->provided_amount;
 
             if ($contract->category && $contract->category->name === 'car') {
-                $groupsCar[$col] += $doc->amount_amd;
+                $groupsCar[$col] += $providedAmount;
+//                    $doc->amount_amd;
             }
 
             if ($contract->category && $contract->category->name === 'gold') {
-                $groupsGold[$col] += $doc->amount_amd;
+                $groupsGold[$col] += $providedAmount;//$doc->amount_amd;
             }
 
             if ($hasExpiredPayment) {
-                $groupsExpired[$col] += $doc->amount_amd;
+                $groupsExpired[$col] += $providedAmount;//$doc->amount_amd;
             } else {
-                $groupsOnTime[$col] += $doc->amount_amd;
+                $groupsOnTime[$col] += $providedAmount;//$doc->amount_amd;
             }
 
             $name = $contract->client->classification->name;
             if (!isset($amountsByClassification[$name])) continue;
 
             $classificationCounts[$name]++;
-            $amountsByClassification[$name] += $doc->amount_amd;
+            $amountsByClassification[$name] += $providedAmount;//$doc->amount_amd;
 
             $interest = DocumentJournal::where('journalable_id', $doc->id)
                 ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
