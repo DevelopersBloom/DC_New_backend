@@ -256,7 +256,6 @@ class PaymentService
 
     private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
     {
-
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)->first();
         $decrease = null;
@@ -300,7 +299,7 @@ class PaymentService
             //$contract->collected += $decrease;
 
         }
-        if ($amount > 0) {
+        if ($amount > 10) {
             $this->payPartial($contract, $amount, false, $cash, $deal_id);
         }
         return $decrease;
@@ -624,7 +623,6 @@ class PaymentService
 
     private function handleAccountingForPartial($contract, $partialAmount, $date,$deal_id=null)
     {
-        dd($partialAmount);
         $diamondId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
         $clientId = $contract->client_id;
         $date = $date ?? Carbon::now()->format('Y-m-d');
