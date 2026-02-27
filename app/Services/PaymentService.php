@@ -624,6 +624,7 @@ class PaymentService
 
     private function handleAccountingForPartial($contract, $partialAmount, $date,$deal_id=null)
     {
+        dd($partialAmount);
         $diamondId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
         $clientId = $contract->client_id;
         $date = $date ?? Carbon::now()->format('Y-m-d');
