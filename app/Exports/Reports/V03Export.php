@@ -247,6 +247,7 @@ class V03Export
                 }
 
                 $dailyData[$riskKey]['amount'] += $balance;
+                $dailyData[$riskKey]['reserve'] += ($balance * 0.01);
             }
 
             $journals = DocumentJournal::with(['journalable.client.classification'])
