@@ -217,7 +217,6 @@ class ProcessContractDailyRate implements ShouldQueue
             ->sum('amount_amd');
 
         $amortizedBalance = $netAmount + $effectiveAccrualsSum - $nominalAccrualsSum - $motherPaymentsSum;
-
         return $amortizedBalance;
     }
     private function getDailyEffectiveRate(float $xirr): float
