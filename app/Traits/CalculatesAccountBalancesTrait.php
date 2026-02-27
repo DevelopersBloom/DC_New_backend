@@ -54,26 +54,6 @@ trait CalculatesAccountBalancesTrait
     }
 
 
-//    protected function balancesSubquery(?string $dateTo)
-//    {
-//        $union = $this->debitMovements($dateTo)->unionAll(
-//            $this->creditMovements($dateTo)
-//        );
-//
-//        return DB::query()
-//            ->fromSub($union, 'u')
-//            ->join('chart_of_accounts as ca', 'ca.id', '=', 'u.account_id')
-//            ->whereNull('ca.deleted_at')
-//            ->select([
-//                'u.account_id',
-//                'ca.code',
-//                'ca.name',
-//                'ca.type',
-//                DB::raw('SUM(u.delta) as balance'),
-//            ])
-//            ->groupBy('u.account_id', 'ca.code', 'ca.name', 'ca.type');
-//
-//    }
     protected function balancesSubquery(?string $dateTo)
     {
         $union = $this->debitMovements($dateTo)->unionAll(
