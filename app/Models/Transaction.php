@@ -58,10 +58,10 @@ class Transaction extends Model
         'amount_currency' => 'decimal:2',
     ];
     protected $appends = [
-        'debit_partner_code',
-        'debit_partner_name',
-        'credit_partner_code',
-        'credit_partner_name',
+//        'debit_partner_code',
+//        'debit_partner_name',
+//        'credit_partner_code',
+//        'credit_partner_name',
     ];
 
 
