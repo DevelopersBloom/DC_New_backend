@@ -154,6 +154,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/loan-ndm/by-journal/{journal}', [LoanNdmController::class, 'get'])->middleware('can:view_loan_by_journal');
         Route::get('/transactions', [TransactionController::class, 'index'])->middleware('can:view_transactions');
         Route::get('/transactions/export', [TransactionController::class, 'export'])->middleware('can:export_transactions');
+        Route::get('/account-transactions', [TransactionController::class, 'getAccountTransactions']);
 
         Route::get('/transactions/loan-ndms', [DocumentJournalController::class, 'index'])->middleware('can:view_document_journals');
         Route::get('/documents-journal/trashed', [DocumentJournalController::class, 'trashed'])->middleware('can:view_document_journals');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\AccountsBalanceReportExport;
 use App\Exports\AccountsBalancesExport;
 use App\Exports\TransactionsExport;
+use App\Models\ChartOfAccount;
 use App\Models\Transaction;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
@@ -59,7 +60,44 @@ class TransactionController
 
         return response()->json($transactions);
     }
+    public function getAccountTransactions(Request $request)
+    {
+        $from        = $request->query('from_date');
+        $to          = $request->query('to_date');
+        $accountCode = $request->query('account');
 
+        $account = ChartOfAccount::where('code', $accountCode)->first();
+
+        if (!$account) {
+            return response()->json(['error' => 'Հաշիվը չի գտնվել'], 404);
+        }
+
+        $accountId = $account->id;
+
+        $query = Transaction::query()->select([
+            'id',
+            'amount_amd',
+            'debit_account_id',
+            'credit_account_id'
+        ]);
+
+        $query->where(function ($q) use ($accountId) {
+            $q->where('debit_account_id', $accountId)
+                ->orWhere('credit_account_id', $accountId);
+        });
+
+        if ($from && $to) {
+            $query->whereBetween('date', [$from, $to]);
+        } elseif ($from) {
+            $query->where('date', '>=', $from);
+        } elseif ($to) {
+            $query->where('date', '<=', $to);
+        }
+
+        $transactions = $query->orderBy('date', 'desc')->paginate(20);
+
+        return response()->json($transactions);
+    }
     public function exportAccountBalanceReport(Request $request)
     {
         $from = $request->query('from_date');
