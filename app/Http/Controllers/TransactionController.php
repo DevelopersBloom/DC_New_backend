@@ -62,9 +62,9 @@ class TransactionController
     }
     public function getAccountTransactions(Request $request)
     {
-        $from        = $request->input('from_date');
-        $to          = $request->input('to_date');
-        $accountCode = $request->input('account');
+        $from        = $request->query('from_date');
+        $to          = $request->query('to_date');
+        $accountCode = $request->query('account');
 
         $account = ChartOfAccount::where('code', $accountCode)->first();
 
