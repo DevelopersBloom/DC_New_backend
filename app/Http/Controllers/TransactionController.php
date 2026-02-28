@@ -66,8 +66,9 @@ class TransactionController
         $to          = $request->query('to_date');
         $accountCode = $request->query('account');
 
-        $account = ChartOfAccount::where('code', $accountCode)->first();
 
+        $account = ChartOfAccount::where('code', $accountCode)->first();
+dd($accountCode,$account);
         if (!$account) {
             return response()->json(['error' => 'Հաշիվը չի գտնվել'], 404);
         }
