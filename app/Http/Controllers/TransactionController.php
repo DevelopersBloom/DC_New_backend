@@ -68,7 +68,6 @@ class TransactionController
 
 
         $account = ChartOfAccount::where('code', $accountCode)->first();
-dd($accountCode,$account);
         if (!$account) {
             return response()->json(['error' => 'Հաշիվը չի գտնվել'], 404);
         }
