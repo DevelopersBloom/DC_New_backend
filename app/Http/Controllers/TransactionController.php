@@ -62,12 +62,12 @@ class TransactionController
     }
     public function getAccountTransactions(Request $request)
     {
-        $from        = $request->query('from_date');
-        $to          = $request->query('to_date');
-        $accountCode = $request->query('account');
-
+        $from        = $request->input('from_date');
+        $to          = $request->input('to_date');
+        $accountCode = $request->input('account');
 
         $account = ChartOfAccount::where('code', $accountCode)->first();
+
         if (!$account) {
             return response()->json(['error' => 'Հաշիվը չի գտնվել'], 404);
         }
@@ -94,11 +94,26 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
 
-        $transactions = $query->orderBy('date', 'desc')->paginate(20);
+        $transactionsPagination = $query->orderBy('id', 'desc')->paginate(20);
 
-        return response()->json($transactions);
-    }
-    public function exportAccountBalanceReport(Request $request)
+        $items = $transactionsPagination->getCollection();
+
+        $debits = $items->where('debit_account_id', $accountId)->values()->map(function($item) {
+            return ['id' => $item->id, 'amount' => $item->amount_amd];
+        });
+
+        $credits = $items->where('credit_account_id', $accountId)->values()->map(function($item) {
+            return ['id' => $item->id, 'amount' => $item->amount_amd];
+        });
+
+        $response = $transactionsPagination->toArray();
+        $response['data'] = [
+            'debits' => $debits,
+            'credits' => $credits
+        ];
+
+        return response()->json($response);
+    }    public function exportAccountBalanceReport(Request $request)
     {
         $from = $request->query('from_date');
         $to   = $request->query('to_date');
