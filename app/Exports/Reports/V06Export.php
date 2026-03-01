@@ -44,6 +44,22 @@ class V06Export
         $expiredCount = 0;
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
+
+        $balance16200NV = DocumentJournal::where('debit_account_id', $acc16200NV)
+                ->whereDate('date', '<=', $date)
+                ->sum('amount_amd')
+            -
+            DocumentJournal::where('credit_account_id', $acc16200NV)
+                ->whereDate('date', '<=', $date)
+                ->sum('amount_amd');
+        $balance16201NI = DocumentJournal::where('debit_account_id', $acc16201NI)
+                ->whereDate('date', '<=', $date)
+                ->sum('amount_amd')
+            -
+            DocumentJournal::where('credit_account_id', $acc16201NI)
+                ->whereDate('date', '<=', $date)
+                ->sum('amount_amd');
+
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || !$contract->client || !$contract->client->classification || $contract->status != 'initial') continue;
@@ -129,7 +145,6 @@ class V06Export
 //                    ->whereDate('date', '<=', $date)
 //                    ->sum('amount_amd');
 
-            dd($net16200NV, $net16201NI);
             $amountsByClassification[$name] += ($net16200NV + $net16201NI);
             $interest = DocumentJournal::where('journalable_id', $doc->id)
                 ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
@@ -148,7 +163,7 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
-        $sheet->setCellValue('P15',($net16200NV + $net16201NI)/1000);
+        $sheet->setCellValue('P15',($balance16200NV + $balance16200NV)/1000);
         $sheet->getStyle('P15')->getNumberFormat()->setFormatCode('#,##0');
         $rowsExpired = [21, 22];
         foreach ($rowsExpired as $row) {
