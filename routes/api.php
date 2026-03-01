@@ -216,6 +216,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::put('/update-items', [ContractControllerNew::class, 'updateContractItems']);
 
     });
+    Route::post('/upload-file', [FileController::class, 'upload'])->middleware('can:upload_file');
+    Route::get('/files/{id}/download', [FileController::class, 'download'])->middleware('can:download_file');
+    Route::delete('/files/{id}', [FileController::class, 'destroy']);
 
     Route::prefix('tasks')->group(function () {
         Route::get('/', [TaskController::class, 'index']);

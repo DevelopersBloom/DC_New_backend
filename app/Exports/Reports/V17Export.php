@@ -243,7 +243,7 @@
             if ($days <= 90) return 'K';
             if ($days <= 180) return 'M';
             if ($days <= 365) return 'O';
-            if ($days <= 1805) return 'Q';
+            if ($days <= 1827) return 'Q';
             return 'S';
         }
     }
