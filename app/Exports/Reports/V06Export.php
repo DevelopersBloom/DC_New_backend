@@ -110,7 +110,7 @@ class V06Export
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd');
 
-            $amountsByClassification[$name] += ($providedAmount + $net16200NV + $net16201NI);
+            $amountsByClassification[$name] += ($net16200NV + $net16201NI);
             $interest = DocumentJournal::where('journalable_id', $doc->id)
                 ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
                 ->where('date', '<', $date)
