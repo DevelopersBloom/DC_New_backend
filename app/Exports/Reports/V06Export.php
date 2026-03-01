@@ -173,7 +173,7 @@ class V06Export
         foreach ($rows as $index => $row) {
             $key = $classificationKeys[$index];
             $sheet->setCellValue('B' . $row, ($classificationCounts[$key] ?? 0));
-            $sheet->setCellValue('D' . $row, ($amountsByClassification[$key] ?? 0));
+            $sheet->setCellValue('D' . $row, ($amountsByClassification[$key] ?? 0)/1000);
 //            $sheet->setCellValue('D' . $row, (($amountsByClassification[$key] ?? 0) + ($weightedByClassification[$key] ?? 0)) / 1000);
             $sheet->setCellValue('F' . $row, ($reserveByClassification[$key] ?? 0) / 1000);
             $sheet->getStyle('B' . $row)->getNumberFormat()->setFormatCode('#,##0');
