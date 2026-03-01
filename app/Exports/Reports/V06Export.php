@@ -128,8 +128,8 @@ class V06Export
 //                    ->where('credit_account_id', $acc16201NI)
 //                    ->whereDate('date', '<=', $date)
 //                    ->sum('amount_amd');
-            $netBalance = $net16201NI + $net16200NV;
-            $amountsByClassification[$name] += ($netBalance);
+
+            $amountsByClassification[$name] += ($net16200NV + $net16201NI);
             $interest = DocumentJournal::where('journalable_id', $doc->id)
                 ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
                 ->where('date', '<', $date)
@@ -148,7 +148,6 @@ class V06Export
             }
         }
 
-        $sheet->setCellValue("P15", $netBalance / 1000);
         $rowsExpired = [21, 22];
         foreach ($rowsExpired as $row) {
             foreach ($groupsExpired as $col => $value) {
