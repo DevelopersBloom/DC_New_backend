@@ -102,7 +102,7 @@ class V06Export
             $net16200NV = $doc->amount_amd - $net16200NVCredit;
 
 
-            $amount16201NI = DocumentJournal::where(function ($query) use ($contract, $doc) {
+            $net16201NI = DocumentJournal::where(function ($query) use ($contract, $doc) {
                 $query->where(function ($q) use ($contract) {
                     $q->where('journalable_type', Contract::class)
                         ->where('journalable_id', $contract->id);
