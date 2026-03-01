@@ -116,7 +116,7 @@ class V06Export
                 ->selectRaw("SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) -
                  SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
                     [$acc16201NI, $acc16201NI])
-                ->value('balance') ?? 0;
+                ->value('balance');
 dd($acc16201NI,$net16201NI,$net16201NI,$doc->id,$contract->id);
             $amountsByClassification[$name] += ($net16200NV + $net16201NI);
             $interest = DocumentJournal::where('journalable_id', $doc->id)
