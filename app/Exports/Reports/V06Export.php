@@ -147,7 +147,8 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
-
+        $sheet->setCellValue('P15',($net16200NV + $net16201NI)/1000);
+        $sheet->getStyle('P15')->getNumberFormat()->setFormatCode('#,##0');
         $rowsExpired = [21, 22];
         foreach ($rowsExpired as $row) {
             foreach ($groupsExpired as $col => $value) {
