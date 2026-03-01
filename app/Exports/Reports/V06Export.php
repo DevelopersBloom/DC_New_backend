@@ -143,11 +143,12 @@ class V06Export
         $rowsOnTime = [15, 16];
         foreach ($rowsOnTime as $row) {
             foreach ($groupsOnTime as $col => $value) {
-                $sheet->setCellValue($col . $row, $netBalance/1000);
+                $sheet->setCellValue($col . $row, $value/1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
 
+        $sheet->setCellValue("P15", $netBalance / 1000);
         $rowsExpired = [21, 22];
         foreach ($rowsExpired as $row) {
             foreach ($groupsExpired as $col => $value) {
