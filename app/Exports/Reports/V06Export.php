@@ -356,8 +356,8 @@ class V06Export
         if ($days <= 90) return 'B';
         if ($days <= 180) return 'D';
         if ($days <= 270) return 'F';
-        if ($days <= 365) return 'H';
-        if ($days <= 1825) return 'J';
+        if ($days <= 366) return 'H';
+        if ($days <= 1826) return 'J';
         return 'L';
     }
 }
