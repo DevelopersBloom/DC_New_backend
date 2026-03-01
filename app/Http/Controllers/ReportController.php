@@ -60,7 +60,7 @@ class ReportController
             'from' => 'required|date',
             'to'   => 'required|date',
         ]);
-
+dd($request->from, $request->to);
         $this->activity->log(
             'export_v06',
             "Export V06 from {$request->from} to {$request->to}"
