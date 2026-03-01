@@ -45,7 +45,6 @@ class V06Export
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
         foreach ($docs as $doc) {
-            dd($doc);
             $contract = $doc->journalable;
             if (!$contract || !$contract->client || !$contract->client->classification || $contract->status != 'initial') continue;
 
