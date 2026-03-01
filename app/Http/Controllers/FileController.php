@@ -854,8 +854,12 @@ class FileController extends Controller
 
     public function downloadOrderIn($id)
     {
-        $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_template.docx'));
         $order = Order::where('id', $id)->first();
+        if ($order->cash) {
+            $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_cash_template.docx'));
+        } else {
+            $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_template.docx'));
+        }
         $contract = Contract::where('id', $order->contract_id)->first();
 
         if ($order->filter == Order::FULL_FILTER) {
@@ -876,11 +880,12 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'receiver' => $order->receiver,
-            'client' => $order->client_name,
+            'client' => $contract?->client->name . ' ' . $contract->client->surname,
             'contract_id' => $contract->num ?? null,
             'purpose' => $order->purpose,
             'amount1_text' => $this->numberToText((float) str_replace([' ', ',','.'], ['', '',''], $amount1)),
             'amount2_text' => $this->numberToText($order->amount),
+            'phone' => $contract?->client->phone,
         ]);
         $filename = time() . 'order_in.docx';
         $pathToSave = public_path('/files/download/' . $filename);
@@ -912,7 +917,9 @@ class FileController extends Controller
                 ? Carbon::parse($contract->client->date_of_birth)->format('d.m.Y')
                 : null,
             'cl_pas' => $contract?->client?->passport_series ?? null,
-            'cl_giv' => $contract?->client?->passport_issued ?? null,
+            'cl_val' => $contract?->client?->passport_validity ?? null,
+            'cl_iss' => $contract?->client?->passport_issued ?? null,
+            'account_number' => $contract?->client?->account_number ?? $contract->client?->card_number ?? null,
             'amount_text' => isset($order->amount) ? $this->numberToText($order->amount) : null,
         ]);
 
