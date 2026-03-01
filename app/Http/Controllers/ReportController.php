@@ -65,7 +65,7 @@ class ReportController
             'export_v06',
             "Export V06 from {$request->from} to {$request->to}"
         );
-
+dd(23);
         $export = new V06Export();
 
         $path = $export->export($request->from, $request->to);
