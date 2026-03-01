@@ -187,9 +187,9 @@
                 $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
 //                $carCategory = Category::where('name','car')->first();
 //                if (!$contract || ($contract->category_id && $contract->category_id !== $carCategory->id)) continue;
-
+                $date = $doc->created_at->format('Y-m-d');
                 $days = Carbon::parse($contract->deadline)
-                    ->diffInDays(Carbon::parse($contract->date));
+                    ->diffInDays(Carbon::parse($date));
 
                 $col = $this->getColumnByDays($days);
                 $amount = $doc->amount_amd;
