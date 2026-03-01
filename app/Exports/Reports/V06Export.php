@@ -57,9 +57,9 @@ class V06Export
             } else {
                 $onTimeCount++;
             }
-
+            $date = $doc->created_at->format('Y-m-d');
             $days = Carbon::parse($contract->deadline)
-                ->diffInDays(Carbon::parse($contract->date));
+                ->diffInDays(Carbon::parse($date));
 
             $col = $this->getColumnByDays($days);
             $providedAmount = Contract::where('id',$doc->journalable->id)->select('provided_amount')->first()->provided_amount;
