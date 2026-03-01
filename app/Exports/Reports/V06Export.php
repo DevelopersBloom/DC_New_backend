@@ -60,7 +60,6 @@ class V06Export
             Transaction::where('credit_account_id', $acc16201NI)
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
-dd($balance16200NV,$balance16201NI);
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || !$contract->client || !$contract->client->classification || $contract->status != 'initial') continue;
