@@ -462,9 +462,10 @@ class FileController extends Controller
     }
     public function downloadContract($id)
     {
-        $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments', 'user'])->findOrFail($id);
+        $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments', 'user','seller'])->findOrFail($id);
 
         $client = $contract->client;
+        $seller = $contract->seller;
         $user = $contract->user;
         $filesToZip = [];
 
@@ -481,10 +482,16 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor($templatePath);
 
         $clientName = $client->name . ' ' . $client->surname;
-        $userName = $user ? ($user->name . ' ' . $user->surname) : '---';
+        $userName = $user ? ($user->name . ' ' . $user->surname) : '';
+        $sellerName = $seller ? ($seller->name . ' ' . $seller->surname) : '';
         $yearlyRate = round($contract->interest_rate * 365, 5);
         $effectiveRate = round($contract->effective_annual_rate, 5);
         $lumpRate = round($contract->lump_rate, 3);
+        $sellerCode = $seller
+            ? ($seller->type === 'individual'
+                ? ($seller->social_card_number ?? '')
+                : ($seller->tax_number ?? ''))
+            : '';
         $templateProcessor->setValues([
             'num' => $contract->num,
             'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
@@ -506,6 +513,12 @@ class FileController extends Controller
             'card_number' => $client->card_number,
             'user_name' => $userName,
             'lump_rate' => $lumpRate,
+            'seller' => $sellerName,
+            'seller_email' => $seller?->email,
+            'seller_bank_name' => $seller?->bank_name,
+            'seller_account_number' => $seller?->account_number,
+            'seller_address' => $seller?->city . ',' . $seller?->street,
+            'seller_code' => $sellerCode,
         ]);
 
         $paymentRows = [];
