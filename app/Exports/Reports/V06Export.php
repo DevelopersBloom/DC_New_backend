@@ -42,10 +42,11 @@ class V06Export
 
         $onTimeCount = 0;
         $expiredCount = 0;
-
+        $acc16200NV = ChartOfAccount::idByCode('16200NV');
+        $acc16201NI = ChartOfAccount::idByCode('16201NI');
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
-            if (!$contract || !$contract->client || !$contract->client->classification) continue;
+            if (!$contract || !$contract->client || !$contract->client->classification || $contract->status != 'initial') continue;
 
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
@@ -83,8 +84,33 @@ class V06Export
             if (!isset($amountsByClassification[$name])) continue;
 
             $classificationCounts[$name]++;
-            $amountsByClassification[$name] += $providedAmount;//$doc->amount_amd;
+            $providedAmount = Contract::where('id', $contract->id)->value('provided_amount') ?? 0;
 
+            $net16200NV = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $doc->id)
+                    ->where('debit_account_id', $acc16200NV)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd')
+                -
+                DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $doc->id)
+                    ->where('credit_account_id', $acc16200NV)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd');
+
+            $net16201NI = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $doc->id)
+                    ->where('debit_account_id', $acc16201NI)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd')
+                -
+                DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $doc->id)
+                    ->where('credit_account_id', $acc16201NI)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd');
+
+            $amountsByClassification[$name] += ($providedAmount + $net16200NV + $net16201NI);
             $interest = DocumentJournal::where('journalable_id', $doc->id)
                 ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
                 ->where('date', '<', $date)
@@ -147,7 +173,8 @@ class V06Export
         foreach ($rows as $index => $row) {
             $key = $classificationKeys[$index];
             $sheet->setCellValue('B' . $row, ($classificationCounts[$key] ?? 0));
-            $sheet->setCellValue('D' . $row, (($amountsByClassification[$key] ?? 0) + ($weightedByClassification[$key] ?? 0)) / 1000);
+            $sheet->setCellValue('D' . $row, ($amountsByClassification[$key] ?? 0));
+//            $sheet->setCellValue('D' . $row, (($amountsByClassification[$key] ?? 0) + ($weightedByClassification[$key] ?? 0)) / 1000);
             $sheet->setCellValue('F' . $row, ($reserveByClassification[$key] ?? 0) / 1000);
             $sheet->getStyle('B' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
