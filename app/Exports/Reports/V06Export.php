@@ -163,7 +163,7 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
-        $sheet->setCellValue('P15',($balance16200NV + $balance16200NV)/1000);
+        $sheet->setCellValue('P15',($balance16200NV + $balance16201NI)/1000);
         $sheet->getStyle('P15')->getNumberFormat()->setFormatCode('#,##0');
         $rowsExpired = [21, 22];
         foreach ($rowsExpired as $row) {
