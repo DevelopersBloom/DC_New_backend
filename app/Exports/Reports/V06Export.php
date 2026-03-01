@@ -19,6 +19,7 @@ class V06Export
         $spreadsheet = $reader->load($path);
 
         $date = Carbon::parse($to)->format('Y-m-d');
+        dd($date,$to);
         $dateFrom = Carbon::parse($from)->format('Y-m-d');
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
