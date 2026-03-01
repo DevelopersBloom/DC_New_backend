@@ -86,17 +86,12 @@ class V06Export
             $classificationCounts[$name]++;
             $providedAmount = Contract::where('id', $contract->id)->value('provided_amount') ?? 0;
 
-            $net16200NV = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                    ->where('journalable_id', $doc->id)
-                    ->where('debit_account_id', $acc16200NV)
-                    ->whereDate('date', '<=', $date)
-                    ->sum('amount_amd')
-                -
-                DocumentJournal::where('journalable_type', DocumentJournal::class)
-                    ->where('journalable_id', $doc->id)
+            $net16200NVCredit = DocumentJournal::where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id)
                     ->where('credit_account_id', $acc16200NV)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd');
+            $net16200NV = $doc->amount_amd - $net16200NVCredit;
 
             $net16201NI = DocumentJournal::where('journalable_type', DocumentJournal::class)
                     ->where('journalable_id', $doc->id)
