@@ -128,8 +128,8 @@ class V06Export
 //                    ->where('credit_account_id', $acc16201NI)
 //                    ->whereDate('date', '<=', $date)
 //                    ->sum('amount_amd');
-
-            $amountsByClassification[$name] += ($net16200NV + $net16201NI);
+            $netBalance = $net16201NI + $net16200NV;
+            $amountsByClassification[$name] += ($netBalance);
             $interest = DocumentJournal::where('journalable_id', $doc->id)
                 ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
                 ->where('date', '<', $date)
@@ -143,7 +143,7 @@ class V06Export
         $rowsOnTime = [15, 16];
         foreach ($rowsOnTime as $row) {
             foreach ($groupsOnTime as $col => $value) {
-                $sheet->setCellValue($col . $row, $value/1000);
+                $sheet->setCellValue($col . $row, $netBalance/1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
