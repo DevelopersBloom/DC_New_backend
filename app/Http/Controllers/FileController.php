@@ -876,6 +876,7 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => Carbon::parse($order->date)->format('d.m.Y'),
             'receiver' => $order->receiver,
+            'client' => $order->client_name,
             'contract_id' => $contract->num ?? null,
             'purpose' => $order->purpose,
             'amount1_text' => $this->numberToText((float) str_replace([' ', ',','.'], ['', '',''], $amount1)),
