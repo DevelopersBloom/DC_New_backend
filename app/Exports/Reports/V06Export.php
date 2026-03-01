@@ -102,32 +102,32 @@ class V06Export
             $net16200NV = $doc->amount_amd - $net16200NVCredit;
 
 
-//            $net16201NI = DocumentJournal::where(function ($query) use ($contract, $doc) {
-//                $query->where(function ($q) use ($contract) {
-//                    $q->where('journalable_type', Contract::class)
-//                        ->where('journalable_id', $contract->id);
-//                })
-//                    ->orWhere(function ($q) use ($doc) {
-//                        $q->where('journalable_type', DocumentJournal::class)
-//                            ->where('journalable_id', $doc->id);
-//                    });
-//            })
-//                ->whereDate('date', '<=', $date)
-//                ->selectRaw("SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) -
-//                 SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
-//                    [$acc16201NI, $acc16201NI])
-//                ->value('balance');
-            $net16201NI = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                    ->where('journalable_id', $doc->id)
-                    ->where('debit_account_id', $acc16201NI)
-                    ->whereDate('date', '<=', $date)
-                    ->sum('amount_amd')
-                -
-                DocumentJournal::where('journalable_type', DocumentJournal::class)
-                    ->where('journalable_id', $doc->id)
-                    ->where('credit_account_id', $acc16201NI)
-                    ->whereDate('date', '<=', $date)
-                    ->sum('amount_amd');
+            $net16201NI = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                $query->where(function ($q) use ($contract) {
+                    $q->where('journalable_type', Contract::class)
+                        ->where('journalable_id', $contract->id);
+                })
+                    ->orWhere(function ($q) use ($doc) {
+                        $q->where('journalable_type', DocumentJournal::class)
+                            ->where('journalable_id', $doc->id);
+                    });
+            })
+                ->whereDate('date', '<=', $date)
+                ->selectRaw("SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) -
+                 SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
+                    [$acc16201NI, $acc16201NI])
+                ->value('balance');
+//            $net16201NI = DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                    ->where('journalable_id', $doc->id)
+//                    ->where('debit_account_id', $acc16201NI)
+//                    ->whereDate('date', '<=', $date)
+//                    ->sum('amount_amd')
+//                -
+//                DocumentJournal::where('journalable_type', DocumentJournal::class)
+//                    ->where('journalable_id', $doc->id)
+//                    ->where('credit_account_id', $acc16201NI)
+//                    ->whereDate('date', '<=', $date)
+//                    ->sum('amount_amd');
 
 dd($acc16201NI,$net16201NI,$net16201NI,$doc->id,$contract->id,$date);
             $amountsByClassification[$name] += ($net16200NV + $net16201NI);
