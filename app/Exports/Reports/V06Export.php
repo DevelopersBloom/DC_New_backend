@@ -5,6 +5,7 @@ namespace App\Exports\Reports;
 use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
+use App\Models\Transaction;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -45,18 +46,18 @@ class V06Export
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
 
-        $balance16200NV = DocumentJournal::where('debit_account_id', $acc16200NV)
+        $balance16200NV = Transaction::where('debit_account_id', $acc16200NV)
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd')
             -
-            DocumentJournal::where('credit_account_id', $acc16200NV)
+            Transaction::where('credit_account_id', $acc16200NV)
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
-        $balance16201NI = DocumentJournal::where('debit_account_id', $acc16201NI)
+        $balance16201NI = Transaction::where('debit_account_id', $acc16201NI)
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd')
             -
-            DocumentJournal::where('credit_account_id', $acc16201NI)
+            Transaction::where('credit_account_id', $acc16201NI)
                 ->whereDate('date', '<=', $date)
                 ->sum('amount_amd');
 dd($balance16200NV,$balance16201NI);
