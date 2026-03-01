@@ -19,7 +19,6 @@ class V06Export
         $spreadsheet = $reader->load($path);
 
         $date = Carbon::parse($to)->format('Y-m-d');
-        dd($date,$to);
         $dateFrom = Carbon::parse($from)->format('Y-m-d');
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
@@ -59,9 +58,9 @@ class V06Export
             } else {
                 $onTimeCount++;
             }
-            $date = $doc->created_at->format('Y-m-d');
+            $dateProvided = $doc->created_at->format('Y-m-d');
             $days = Carbon::parse($contract->deadline)
-                ->diffInDays(Carbon::parse($date));
+                ->diffInDays(Carbon::parse($dateProvided));
 
             $col = $this->getColumnByDays($days);
             $providedAmount = Contract::where('id',$doc->journalable->id)->select('provided_amount')->first()->provided_amount;
