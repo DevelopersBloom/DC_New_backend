@@ -191,7 +191,7 @@
                 $days = Carbon::parse($contract->deadline)
                     ->diffInDays(Carbon::parse($date));
 
-                $col = $this->getColumnByDays($days);
+                $col = $this->getFiveSheetColumnByDays($days);
                 $amount = $doc->amount_amd;
                 $rate = $contract->effective_rate_kasko ?? $contract->effective_annual_rate;
 
@@ -219,7 +219,7 @@
             if ($days <= 60) return 'I';
             if ($days <= 90) return 'K';
             if ($days <= 180) return 'M';
-            if ($days <= 365) return 'O';
+            if ($days <= 366) return 'O';
             return 'Q';
         }
 
@@ -231,7 +231,7 @@
             if ($days <= 60) return 'H';
             if ($days <= 90) return 'J';
             if ($days <= 180) return 'L';
-            if ($days <= 365) return 'N';
+            if ($days <= 366) return 'N';
             return 'P';
         }
         private function getForthSheetColumnByDays($days)
@@ -245,5 +245,16 @@
             if ($days <= 365) return 'O';
             if ($days <= 1827) return 'Q';
             return 'S';
+        }
+        private function getFiveSheetColumnByDays($days)
+        {
+            if ($days <= 15) return 'C';
+            if ($days <= 30) return 'E';
+            if ($days <= 60) return 'G';
+            if ($days <= 90) return 'I';
+            if ($days <= 180) return 'K';
+            if ($days <= 365) return 'M';
+            if ($days <= 1827) return 'O';
+            return 'Q';
         }
     }
