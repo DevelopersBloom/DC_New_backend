@@ -146,7 +146,7 @@
             ];
             foreach ($docsContract as $doc) {
                 $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
-                if (!$contract) continue;
+                if (!$contract || $contract->status != 'initial') continue;
                 $date = $doc->created_at->format('Y-m-d');
                 $days = Carbon::parse($contract->deadline)
                     ->diffInDays(Carbon::parse($date));
@@ -185,6 +185,7 @@
             ];
             foreach ($docsContract as $doc) {
                 $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
+                if ($contract && $contract->status != 'initial') continue;
 //                $carCategory = Category::where('name','car')->first();
 //                if (!$contract || ($contract->category_id && $contract->category_id !== $carCategory->id)) continue;
                 $date = $doc->created_at->format('Y-m-d');
