@@ -354,4 +354,44 @@ class DocumentJournalController
             ], 500);
         }
     }
+    public function getContractDocsHistory(int $contractId): JsonResponse
+    {
+        $rootDoc = DocumentJournal::where('journalable_id', $contractId)
+            ->whereIn('journalable_type', ['Contract', 'App\Models\Contract'])
+            ->first();
+
+        if (!$rootDoc) {
+            return response()->json(['message' => 'Պայմանագրի հետ կապված փաստաթուղթ չի գտնվել'], 404);
+        }
+
+        $allIds = $this->collectAllRelatedIds($rootDoc);
+
+        $documents = DocumentJournal::whereIn('id', $allIds)
+            ->select([
+                'id',
+                'amount_amd',
+                'debit_account_id',
+                'credit_account_id',
+                'comment'
+            ])
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return response()->json($documents);
+    }
+
+    private function collectAllRelatedIds(DocumentJournal $doc, &$ids = []): array
+    {
+        $ids[] = $doc->id;
+
+        $children = DocumentJournal::where('journalable_id', $doc->id)
+            ->where('journalable_type', DocumentJournal::class)
+            ->get();
+
+        foreach ($children as $child) {
+            $this->collectAllRelatedIds($child, $ids);
+        }
+
+        return $ids;
+    }
 }

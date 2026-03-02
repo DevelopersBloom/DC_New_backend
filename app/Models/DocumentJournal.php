@@ -364,7 +364,10 @@ class DocumentJournal extends Model
     {
         return $this->morphTo(__FUNCTION__, 'journalable_type', 'journalable_id');
     }
-
+    public function children()
+    {
+        return $this->hasMany(DocumentJournal::class, 'parent_id');
+    }
     public function scopeBetweenDates($query, $from = null, $to = null)
     {
         if ($from && $to) {
