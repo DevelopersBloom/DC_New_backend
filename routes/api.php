@@ -214,7 +214,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount'])->middleware('can:request_contract_discount');
         Route::put('/update-number/{id}',[ContractControllerNew::class,'updateContractNumber'])->middleware('can:update_contract_number');
         Route::put('/update-items', [ContractControllerNew::class, 'updateContractItems']);
-        Route::get('/docs/{contractId}', [DocumentJournalController::class, 'getContractDocsHistory']);
+        Route::get('/{contractId}/docs', [DocumentJournalController::class, 'getContractDocsHistory']);
     });
     Route::post('/upload-file', [FileController::class, 'upload'])->middleware('can:upload_file');
     Route::get('/files/{id}/download', [FileController::class, 'download'])->middleware('can:download_file');

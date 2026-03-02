@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\DocumentsJournalExport;
+use App\Http\Resources\DocumentJournalResource;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use App\Services\ActivityService;
@@ -367,17 +368,11 @@ class DocumentJournalController
         $allIds = $this->collectAllRelatedIds($rootDoc);
 
         $documents = DocumentJournal::whereIn('id', $allIds)
-            ->select([
-                'id',
-                'amount_amd',
-                'debit_account_id',
-                'credit_account_id',
-                'comment'
-            ])
+            ->with(['debitAccount:id,code', 'creditAccount:id,code'])
             ->orderBy('id', 'asc')
             ->get();
 
-        return response()->json($documents);
+        return response()->json(DocumentJournalResource::collection($documents));
     }
 
     private function collectAllRelatedIds(DocumentJournal $doc, &$ids = []): array
