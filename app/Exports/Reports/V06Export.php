@@ -84,26 +84,21 @@ class V06Export
             $col = $this->getColumnByDays($days);
             $providedAmount = Contract::where('id',$doc->journalable->id)->select('provided_amount')->first()->provided_amount;
 
-            if ($contract->category && $contract->category->name === 'car') {
-                $groupsCar[$col] += $providedAmount;
-                $carContractCount++;
-//                    $doc->amount_amd;
-            }
+//            if ($contract->category && $contract->category->name === 'car') {
+//                $groupsCar[$col] += $providedAmount;
+//                $carContractCount++;
+////                    $doc->amount_amd;
+//            }
+//
+//            if ($contract->category && $contract->category->name === 'gold') {
+//                $groupsGold[$col] += $providedAmount;//$doc->amount_amd;
+//                $goldContractCount++;
+//            }
+//
+//            if ($contract->category && $contract->category->name === 'electronics') {
+//                $electronicsContractCount++;
+//            }
 
-            if ($contract->category && $contract->category->name === 'gold') {
-                $groupsGold[$col] += $providedAmount;//$doc->amount_amd;
-                $goldContractCount++;
-            }
-
-            if ($contract->category && $contract->category->name === 'electronics') {
-                $electronicsContractCount++;
-            }
-
-            if ($hasExpiredPayment) {
-                $groupsExpired[$col] += $providedAmount;//$doc->amount_amd;
-            } else {
-                $groupsOnTime[$col] += $providedAmount;//$doc->amount_amd;
-            }
 
             $name = $contract->client->classification->name;
             if (!isset($amountsByClassification[$name])) continue;
@@ -153,8 +148,26 @@ class V06Export
 //                    ->where('credit_account_id', $acc16201NI)
 //                    ->whereDate('date', '<=', $date)
 //                    ->sum('amount_amd');
+            $amount = $net16200NV + $net16201NI;
+            $amountsByClassification[$name] += $amount;
+            if ($contract->category){
+                if ($contract->category->name === 'car') {
+                    $groupsCar[$col] += $amount;
+                    $carContractCount++;
+                }
+                if ($contract->category->name === 'gold') {
+                    $groupsGold[$col] += $amount;
+                }
+                if ($contract->category->name === 'electronics') {
+                    $electronicsContractCount++;
+                }
+            }
+            if ($hasExpiredPayment) {
+                $groupsExpired[$col] += $amount;
+            } else {
+                $groupsOnTime[$col] += $amount;
+            }
 
-            $amountsByClassification[$name] += ($net16200NV + $net16201NI);
             $interest = DocumentJournal::where('journalable_id', $doc->id)
                 ->whereIn('document_type', [DocumentJournal::INTEREST_RATE_AMOUNT, DocumentJournal::EFFECTIVE_RATE_AMOUNT])
                 ->where('date', '<', $date)
