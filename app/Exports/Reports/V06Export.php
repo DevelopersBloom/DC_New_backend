@@ -225,6 +225,8 @@ class V06Export
         $sheet->getStyle('P111')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('P112', $goldContractCount);
         $sheet->getStyle('P112')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('P113', 0);
+        $sheet->getStyle('P113')->getNumberFormat()->setFormatCode('#,##0');
 
         $rows = [125, 126, 127, 128, 129];
         $classificationKeys = ['standard', 'monitored', 'substandard', 'suspicious', 'loss'];
