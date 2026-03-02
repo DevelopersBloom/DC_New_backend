@@ -30,6 +30,9 @@ class V06Export
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $date)
             ->get();
+        $carContractCount = 0;
+        $goldContractCount = 0;
+        $electronicsContractCount = 0;
 
         $groupsOnTime = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
         $groupsExpired = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
@@ -83,11 +86,17 @@ class V06Export
 
             if ($contract->category && $contract->category->name === 'car') {
                 $groupsCar[$col] += $providedAmount;
+                $carContractCount++;
 //                    $doc->amount_amd;
             }
 
             if ($contract->category && $contract->category->name === 'gold') {
                 $groupsGold[$col] += $providedAmount;//$doc->amount_amd;
+                $goldContractCount++;
+            }
+
+            if ($contract->category && $contract->category->name === 'electronics') {
+                $electronicsContractCount++;
             }
 
             if ($hasExpiredPayment) {
@@ -205,6 +214,17 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
+
+        $sheet->setCellValue('P108',($carContractCount + $goldContractCount + $electronicsContractCount));
+        $sheet->getStyle('P108')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('P109',0);
+        $sheet->getStyle('P109')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('P110',$carContractCount);
+        $sheet->getStyle('P110')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('P111', $electronicsContractCount);
+        $sheet->getStyle('P111')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('P112', $goldContractCount);
+        $sheet->getStyle('P112')->getNumberFormat()->setFormatCode('#,##0');
 
         $rows = [125, 126, 127, 128, 129];
         $classificationKeys = ['standard', 'monitored', 'substandard', 'suspicious', 'loss'];
