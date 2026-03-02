@@ -1,6 +1,8 @@
 <?php
     namespace App\Exports\Reports;
 
+    use App\Models\ChartOfAccount;
+    use App\Models\Contract;
     use App\Models\DocumentJournal;
     use Carbon\Carbon;
     use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -16,7 +18,9 @@
             $spreadsheet = $reader->load($path);
 
             $start = Carbon::parse($from)->startOfDay();
-            $end   = Carbon::parse($to)->endOfDay();
+            $date   = Carbon::parse($to)->endOfDay();
+            $acc16200NV = ChartOfAccount::idByCode('16200NV');
+            $acc16201NI = ChartOfAccount::idByCode('16201NI');
 
             // ---------- sheet 1 ----------
             $sheet1 = $spreadsheet->getSheetByName('Sheet1');
@@ -60,7 +64,7 @@
             // ---------- sheet 2 ----------
             $sheet2 = $spreadsheet->getSheetByName('Sheet2');
             $docsContract = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-                ->whereBetween('date', [$start, $end])
+                ->whereBetween('date', [$start, $date])
                 ->get();
 
             $groups2 = [
@@ -77,13 +81,46 @@
 
             foreach ($docsContract as $doc) {
                 $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
-                if (!$contract) continue;
-                $date = $doc->created_at->format('Y-m-d');
+                if (!$contract || $contract->status != 'initial') continue;
+                $dateProvided = $doc->created_at->format('Y-m-d');
                 $days = Carbon::parse($contract->deadline)
-                    ->diffInDays(Carbon::parse($date));
+                    ->diffInDays(Carbon::parse($dateProvided));
 
                 $col = $this->getSecondSheetColumnByDays($days);
-                $amount = $doc->amount_amd;
+//                $amount = $doc->amount_amd;
+                $net16200NVCredit = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                    $query->where(function ($q) use ($contract) {
+                        $q->where('journalable_type', Contract::class)
+                            ->where('journalable_id', $contract->id);
+                    })
+                        ->orWhere(function ($q) use ($doc) {
+                            $q->where('journalable_type', DocumentJournal::class)
+                                ->where('journalable_id', $doc->id);
+                        });
+                })
+                    ->where('credit_account_id', $acc16200NV)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd');
+
+                $net16200NV = $doc->amount_amd - $net16200NVCredit;
+
+
+                $net16201NI = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                    $query->where(function ($q) use ($contract) {
+                        $q->where('journalable_type', Contract::class)
+                            ->where('journalable_id', $contract->id);
+                    })
+                        ->orWhere(function ($q) use ($doc) {
+                            $q->where('journalable_type', DocumentJournal::class)
+                                ->where('journalable_id', $doc->id);
+                        });
+                })
+                    ->whereDate('date', '<=', $date)
+                    ->selectRaw("SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) -
+                 SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
+                        [$acc16201NI, $acc16201NI])
+                    ->value('balance');
+                $amount = $net16200NV + $net16201NI;
                 $rate = $contract->interest_rate ? $contract->interest_rate * 365 : 0;
 
                 $groups2[$col]['amount'] += $amount;
@@ -147,12 +184,45 @@
             foreach ($docsContract as $doc) {
                 $contract = $doc->journalable_type === 'App\Models\Contract' ? $doc->journalable : null;
                 if (!$contract || $contract->status != 'initial') continue;
-                $date = $doc->created_at->format('Y-m-d');
+                $dateProvided = $doc->created_at->format('Y-m-d');
                 $days = Carbon::parse($contract->deadline)
-                    ->diffInDays(Carbon::parse($date));
+                    ->diffInDays(Carbon::parse($dateProvided));
 
                 $col = $this->getForthSheetColumnByDays($days);
-                $amount = $doc->amount_amd;
+//                $amount = $doc->amount_amd;
+                $net16200NVCredit = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                    $query->where(function ($q) use ($contract) {
+                        $q->where('journalable_type', Contract::class)
+                            ->where('journalable_id', $contract->id);
+                    })
+                        ->orWhere(function ($q) use ($doc) {
+                            $q->where('journalable_type', DocumentJournal::class)
+                                ->where('journalable_id', $doc->id);
+                        });
+                })
+                    ->where('credit_account_id', $acc16200NV)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd');
+
+                $net16200NV = $doc->amount_amd - $net16200NVCredit;
+
+
+                $net16201NI = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                    $query->where(function ($q) use ($contract) {
+                        $q->where('journalable_type', Contract::class)
+                            ->where('journalable_id', $contract->id);
+                    })
+                        ->orWhere(function ($q) use ($doc) {
+                            $q->where('journalable_type', DocumentJournal::class)
+                                ->where('journalable_id', $doc->id);
+                        });
+                })
+                    ->whereDate('date', '<=', $date)
+                    ->selectRaw("SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) -
+                 SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
+                        [$acc16201NI, $acc16201NI])
+                    ->value('balance');
+                $amount = $net16200NV + $net16201NI;
                 $rate = $contract->effective_annual_rate ?? 0;
 
                 $groups4[$col]['amount'] += $amount;
@@ -188,12 +258,45 @@
                 if ($contract && $contract->status != 'initial') continue;
 //                $carCategory = Category::where('name','car')->first();
 //                if (!$contract || ($contract->category_id && $contract->category_id !== $carCategory->id)) continue;
-                $date = $doc->created_at->format('Y-m-d');
+                $dateProvided = $doc->created_at->format('Y-m-d');
                 $days = Carbon::parse($contract->deadline)
-                    ->diffInDays(Carbon::parse($date));
+                    ->diffInDays(Carbon::parse($dateProvided));
 
                 $col = $this->getFiveSheetColumnByDays($days);
-                $amount = $doc->amount_amd;
+//                $amount = $doc->amount_amd;
+                $net16200NVCredit = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                    $query->where(function ($q) use ($contract) {
+                        $q->where('journalable_type', Contract::class)
+                            ->where('journalable_id', $contract->id);
+                    })
+                        ->orWhere(function ($q) use ($doc) {
+                            $q->where('journalable_type', DocumentJournal::class)
+                                ->where('journalable_id', $doc->id);
+                        });
+                })
+                    ->where('credit_account_id', $acc16200NV)
+                    ->whereDate('date', '<=', $date)
+                    ->sum('amount_amd');
+
+                $net16200NV = $doc->amount_amd - $net16200NVCredit;
+
+
+                $net16201NI = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                    $query->where(function ($q) use ($contract) {
+                        $q->where('journalable_type', Contract::class)
+                            ->where('journalable_id', $contract->id);
+                    })
+                        ->orWhere(function ($q) use ($doc) {
+                            $q->where('journalable_type', DocumentJournal::class)
+                                ->where('journalable_id', $doc->id);
+                        });
+                })
+                    ->whereDate('date', '<=', $date)
+                    ->selectRaw("SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) -
+                 SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
+                        [$acc16201NI, $acc16201NI])
+                    ->value('balance');
+                $amount = $net16200NV + $net16201NI;
                 $rate = $contract->effective_rate_kasko ?? $contract->effective_annual_rate;
 
                 $groups5[$col]['amount'] += $amount;
