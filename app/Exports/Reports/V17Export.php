@@ -494,7 +494,8 @@ class V17Export
                 [$this->acc16201NI, $this->acc16201NI])
             ->first();
 
-        return ($doc->amount_amd - $net16200NVCredit) + ($balances->bal ?? 0);
+        return ($doc->amount_amd - $net16200NVCredit);
+//        + ($balances->bal ?? 0);
     }
 
     private function writeToSheet($sheet, $groups, $row, $from = null, $to = null)
