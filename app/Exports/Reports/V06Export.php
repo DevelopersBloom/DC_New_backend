@@ -207,27 +207,27 @@ class V06Export
             }
         }
 
-        $sheet->setCellValue('P108',($carContractCount + $goldContractCount + $electronicsContractCount));
+        $sheet->setCellValue('P108',($carContractAmount + $electronicsContractAmount + $goldContractAmount));
         $sheet->getStyle('P108')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('P109',0);
         $sheet->getStyle('P109')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P110',$ca);
+        $sheet->setCellValue('P110',$carContractAmount);
         $sheet->getStyle('P110')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P111', $electronicsContractCount);
+        $sheet->setCellValue('P111', $electronicsContractAmount);
         $sheet->getStyle('P111')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P112', $goldContractCount);
+        $sheet->setCellValue('P112', $goldContractAmount);
         $sheet->getStyle('P112')->getNumberFormat()->setFormatCode('#,##0');
 
-        $sheet->setCellValue('P108',($carContractCount + $goldContractCount + $electronicsContractCount));
-        $sheet->getStyle('P108')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P109',0);
-        $sheet->getStyle('P109')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P110',$carContractCount);
-        $sheet->getStyle('P110')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P111', $electronicsContractCount);
-        $sheet->getStyle('P111')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P112', $goldContractCount);
-        $sheet->getStyle('P112')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('R108',($carContractCount + $goldContractCount + $electronicsContractCount));
+        $sheet->getStyle('R108')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('R109',0);
+        $sheet->getStyle('R109')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('R110',$carContractCount);
+        $sheet->getStyle('R110')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('R111', $electronicsContractCount);
+        $sheet->getStyle('R111')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('R112', $goldContractCount);
+        $sheet->getStyle('R112')->getNumberFormat()->setFormatCode('#,##0');
 
         $rows = [125, 126, 127, 128, 129];
         $classificationKeys = ['standard', 'monitored', 'substandard', 'suspicious', 'loss'];
