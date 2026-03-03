@@ -130,10 +130,12 @@ class V06Export
             if ($contract->category){
                 if ($contract->category->name === 'car') {
                     $carContractAmount += $amount ;
+                    $groupsCar['col'] += $net16200NV;
                     $carContractCount++;
                 }
                 if ($contract->category->name === 'gold') {
                     $goldContractAmount += $amount ;
+                    $groupsGold['col'] += $net16200NV;
                     $goldContractCount++;
                 }
                 if ($contract->category->name === 'electronics') {
