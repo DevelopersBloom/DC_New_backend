@@ -249,11 +249,7 @@ class ProcessContractDailyRate implements ShouldQueue
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->value('amount_amd') ?? (float)$contract->mother;
 
-        $lumpOrder = Order::where('contract_id', $contract->id)
-            ->where('filter', Order::REFUND_LUMP_FILTER)
-            ->first();
-
-        $fees = $lumpOrder ? $lumpOrder->amount : ($initialProvided * ($contract->lump_rate / 100));
+        $fees = $initialProvided * ($contract->lump_rate / 100);
         $netAmount = $initialProvided - $fees;
 
         $journal = DocumentJournal::where('journalable_type', Contract::class)

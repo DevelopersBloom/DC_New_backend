@@ -55,21 +55,6 @@ class V06Export
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
 
-        $balance16200NV = Transaction::where('debit_account_id', $acc16200NV)
-                ->whereDate('date', '<=', $date)
-                ->sum('amount_amd')
-            -
-            Transaction::where('credit_account_id', $acc16200NV)
-                ->whereDate('date', '<=', $date)
-                ->sum('amount_amd');
-        $balance16201NI = Transaction::where('debit_account_id', $acc16201NI)
-                ->whereDate('date', '<=', $date)
-                ->sum('amount_amd')
-            -
-            Transaction::where('credit_account_id', $acc16201NI)
-                ->whereDate('date', '<=', $date)
-                ->sum('amount_amd');
-
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || !$contract->client || !$contract->client->classification || $contract->status != 'initial') continue;
