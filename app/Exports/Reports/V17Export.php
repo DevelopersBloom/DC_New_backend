@@ -493,8 +493,8 @@ class V17Export
                          SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as bal",
                 [$this->acc16201NI, $this->acc16201NI])
             ->first();
-
-        return ($doc->amount_amd - $net16200NVCredit);
+        return ($doc->amount_amd);
+//        return ($doc->amount_amd - $net16200NVCredit);
 //        + ($balances->bal ?? 0);
     }
 
