@@ -208,7 +208,9 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
-
+        $carContractAmount = $carContractAmount/1000;
+        $electronicsContractAmount = $electronicsContractAmount/1000;
+        $goldContractAmount = $goldContractAmount/1000;
         $sheet->setCellValue('P108',($carContractAmount + $electronicsContractAmount + $goldContractAmount));
         $sheet->getStyle('P108')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('P109',0);
