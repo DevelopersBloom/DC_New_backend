@@ -444,8 +444,8 @@ class V17Export
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
-            if (!$contract instanceof Contract || $contract->status !== 'initial') continue;
-
+            if (!$contract instanceof Contract) continue;
+// || $contract->status !== 'initial'
             $days = Carbon::parse($contract->deadline)->diffInDays($doc->created_at);
 
             $balance = $this->calculateContractBalance($contract, $doc, $endDate);
