@@ -120,7 +120,7 @@ class V06Export
                     [$acc16201NI, $acc16201NI])
                 ->value('balance');
             $amount = $net16200NV + $net16201NI;
-            $amountsByClassification[$name] += $amount;
+            $amountsByClassification[$name] +=  $amount;
             if ($contract->category){
                 if ($contract->category->name === 'car') {
                     $groupsCar[$col] += $net16200NV;
