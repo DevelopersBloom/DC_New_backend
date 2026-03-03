@@ -123,11 +123,11 @@ class V06Export
             $amountsByClassification[$name] += $amount;
             if ($contract->category){
                 if ($contract->category->name === 'car') {
-                    $groupsCar[$col] += $amount;
+                    $groupsCar[$col] += $net16200NV;
                     $carContractCount++;
                 }
                 if ($contract->category->name === 'gold') {
-                    $groupsGold[$col] += $amount;
+                    $groupsGold[$col] += $net16200NV;
                     $goldContractCount++;
                 }
                 if ($contract->category->name === 'electronics') {
@@ -135,9 +135,9 @@ class V06Export
                 }
             }
             if ($hasExpiredPayment) {
-                $groupsExpired[$col] += $amount;
+                $groupsExpired[$col] += $net16200NV;
             } else {
-                $groupsOnTime[$col] += $amount;
+                $groupsOnTime[$col] += $net16200NV;
             }
 
             $interest = DocumentJournal::where('journalable_id', $doc->id)
