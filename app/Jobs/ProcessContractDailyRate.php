@@ -244,11 +244,11 @@ class ProcessContractDailyRate implements ShouldQueue
 
     private function calculateCurrentAmortizedBalance(Contract $contract): float
     {
-        $initialProvided = (float)DocumentJournal::where('journalable_type', Contract::class)
-            ->where('journalable_id', $contract->id)
-            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->value('amount_amd') ?? (float)$contract->mother;
-
+        $initialProvided = (float)$contract->mother;
+//(float)DocumentJournal::where('journalable_type', Contract::class)
+//            ->where('journalable_id', $contract->id)
+//            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+//            ->value('amount_amd')
         $fees = $initialProvided * ($contract->lump_rate / 100);
         $netAmount = $initialProvided - $fees;
 
