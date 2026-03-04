@@ -167,7 +167,7 @@ class AcraExport
             } else {
                 $statusCode = 21;
             }
-            $sheet->setCellValue('B1', $statusCode);
+            $sheet->setCellValue('B1',$row, $statusCode);
 
             if ($client->gender) {
                 $genderCode = ($client->gender === 'F') ? 'իգական' : 'արական';
