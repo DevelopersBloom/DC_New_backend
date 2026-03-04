@@ -98,13 +98,46 @@ class AcraExport
         $sheet->setCellValue('B6', 1);
     }
 
+//    private function fillDebtor($sheet)
+//    {
+//        if (!$sheet) return;
+//        $clients = $this->contracts->map->client->unique('id');
+//        $row = 2;
+//        foreach ($this->allClients as $client) {
+//            $sheet->setCellValue('A' . $row, $client->id);
+//            $sheet->setCellValue('B' . $row, ($client->type === 'legal' ? 'իրավաբանական անձ' : 'ֆիզիկական անձ'));
+//
+//            $name = ($client->type === 'legal')
+//                ? ($client->company_name . ' ' . $client->legal_form)
+//                : trim($client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : ''));
+//
+//            $sheet->setCellValue('C' . $row, $name);
+//            $sheet->setCellValue('D' . $row, ($client->type === 'legal' ? $client->tax_number : $client->passport_series));
+//
+//            if ($client->type !== 'legal') {
+//                $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
+//                $issuedAt = null;
+//                if ($client->passport_validity) {
+//                    $issuedAt = Carbon::parse($client->passport_validity)->subYears(10);
+//                }
+//                $sheet->setCellValue('F' . $row, $this->formatDate($issuedAt));
+//                $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
+//                $sheet->setCellValue('H' . $row, $client->social_card_number);
+//
+//            }
+//            $sheet->setCellValue('J' . $row, ($client->residency_status === 'resident' ? 'ռեզիդենտ' : 'ոչ ռեզիդենտ'));
+//            $row++;
+//        }
+//    }
     private function fillDebtor($sheet)
     {
         if (!$sheet) return;
         $clients = $this->contracts->map->client->unique('id');
         $row = 2;
+
         foreach ($this->allClients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
+
             $sheet->setCellValue('B' . $row, ($client->type === 'legal' ? 'իրավաբանական անձ' : 'ֆիզիկական անձ'));
 
             $name = ($client->type === 'legal')
@@ -123,9 +156,28 @@ class AcraExport
                 $sheet->setCellValue('F' . $row, $this->formatDate($issuedAt));
                 $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
                 $sheet->setCellValue('H' . $row, $client->social_card_number);
-
             }
-            $sheet->setCellValue('J' . $row, ($client->residency_status === 'resident' ? 'ռեզիդենտ' : 'ոչ ռեզիդենտ'));
+
+
+            $statusCode = null;
+            if ($client->type === 'legal') {
+                $statusCode = 11;
+            } elseif ($client->type === 'individual_entrepreneur') {
+                $statusCode = 22;
+            } else {
+                $statusCode = 21;
+            }
+            $sheet->setCellValue('B1', $statusCode);
+
+            if ($client->gender) {
+                $genderCode = ($client->gender === 'F') ? 'իգական' : 'արական';
+                $sheet->setCellValue('I1', $genderCode);
+            }
+            if ($client->residency_status) {
+                $residencyStatusCode = ($client->residency_status === 'resident') ? 1 : 2;
+                $sheet->setCellValue('J', $residencyStatusCode);
+            }
+
             $row++;
         }
     }
@@ -199,16 +251,16 @@ class AcraExport
                 $lastPaymentDate = $contract->closed_at;
             }
             $sheet->setCellValue('E' . $row, $this->formatDate($lastPaymentDate));
-            $categoryName = $contract->category->name ?? '';
-
-            $creditType = match ($categoryName) {
-                'car'           => 'Մեքենայի գրավով վարկ',
-                'gold'          => 'Ոսկու գրավով վարկ',
-                'car-purchase'  => 'ավտովարկ',
-                'electronics'   => 'Անշարժ գույքի գրավով վարկ',
-                default         => 'վարկ',
-            };
-            $sheet->setCellValue('F' . $row, $creditType);
+//            $categoryName = $contract->category->name ?? '';
+//
+//            $creditType = match ($categoryName) {
+//                'car'           => 'Մեքենայի գրավով վարկ',
+//                'gold'          => 'Ոսկու գրավով վարկ',
+//                'car-purchase'  => 'ավտովարկ',
+//                'electronics'   => 'Անշարժ գույքի գրավով վարկ',
+//                default         => 'վարկ',
+//            };
+            $sheet->setCellValue('F' . $row, '001');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
 
@@ -258,12 +310,27 @@ class AcraExport
             }
 
             // N, O, P, Q, U
-            $sheet->setCellValue('N' . $row, '001');
+            $sheet->setCellValue('N' . $row, 'AMD հայկական դրամ');
 
-            $riskClass = $contract->client->classification->title ?? 'Ստանդարտ';
-            $sheet->setCellValue('O' . $row, $riskClass);
+            $riskClassTitle = $contract->client->classification->name;
 
-            $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
+            $riskClassCode = match (strtolower($riskClassTitle)) {
+                'standard'    => '01',
+                'monitored'   => '02',
+                'substandard' => '03',
+                'suspicious'  => '04',
+                'loss'        => '05',
+                default       => '',
+            };
+
+            $sheet->setCellValue('O' . $row, $riskClassCode);
+
+
+            if ($contract->status) {
+                $contractStatusCode = ($contract->status === 'completed') ? 1 : 2;
+                $sheet->setCellValue('P' . $row, $contractStatusCode);
+            }
+//            $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
             $sheet->setCellValue('Q' . $row, $contract->interest_rate * 365);
             $sheet->setCellValue('U' . $row, $this->formatDate($contract->date));
 
@@ -279,8 +346,32 @@ class AcraExport
             foreach ($contract->items as $item) {
                 $sheet->setCellValue('A' . $row, $contract->num);
                 $sheet->setCellValue('B' . $row, $item->provided_amount ?? $contract->provided_amount);
-                $sheet->setCellValue('C' . $row, '001');
-                $sheet->setCellValue('D' . $row, $item->category->title . ' ' . $item->subcategory . ' ' . $item->model . ' ' . $item->description);
+                $sheet->setCellValue('C' . $row, 'AMD հայկական դրամ');
+                $collateralCode = null;
+
+                switch (strtolower($item->category->name)) {
+                    case 'gold':
+                        $collateralCode = '01';
+                        break;
+                    case 'car':
+                        $collateralCode = '10';
+                        break;
+                    case 'other movable property':
+                        $collateralCode = '11';
+                        break;
+                    case 'real estate':
+                        $collateralCode = '12';
+                        break;
+                    case 'guarantee':
+                        $collateralCode = '13';
+                        break;
+                    default:
+                        $collateralCode = '';
+                        break;
+                }
+                $sheet->setCellValue('D' . $row, $collateralCode);
+
+//                $sheet->setCellValue('D' . $row, $item->category->title . ' ' . $item->subcategory . ' ' . $item->model . ' ' . $item->description);
                 $row++;
             }
         }
