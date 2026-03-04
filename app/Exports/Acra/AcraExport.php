@@ -175,7 +175,7 @@ class AcraExport
             }
             if ($client->residency_status) {
                 $residencyStatusCode = ($client->residency_status === 'resident') ? 1 : 2;
-                $sheet->setCellValue('J', $residencyStatusCode);
+                $sheet->setCellValue('J' . $row, $residencyStatusCode);
             }
 
             $row++;
