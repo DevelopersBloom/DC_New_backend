@@ -138,7 +138,17 @@ class AcraExport
         foreach ($this->allClients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
 
-            $sheet->setCellValue('B' . $row, ($client->type === 'legal' ? 'իրավաբանական անձ' : 'ֆիզիկական անձ'));
+            $statusCode = null;
+            if ($client->type === 'legal') {
+                $statusCode = 11;
+            }
+            if ($client->type === 'individual_entrepreneur') {
+                $statusCode = 22;
+            }
+            if ($client->type === 'individual'){
+                $statusCode = 21;
+            }
+            $sheet->setCellValue('B' . $row, $statusCode);
 
             $name = ($client->type === 'legal')
                 ? ($client->company_name . ' ' . $client->legal_form)
@@ -157,19 +167,6 @@ class AcraExport
                 $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
                 $sheet->setCellValue('H' . $row, $client->social_card_number);
             }
-
-
-            $statusCode = null;
-            if ($client->type === 'legal') {
-                $statusCode = 11;
-            }
-            if ($client->type === 'individual_entrepreneur') {
-                $statusCode = 22;
-            }
-            if ($client->type === 'individual'){
-                $statusCode = 21;
-            }
-            $sheet->setCellValue('B1' . $row, $statusCode);
 
             if ($client->gender) {
                 $genderCode = ($client->gender === 'F') ? 'իգական' : 'արական';
