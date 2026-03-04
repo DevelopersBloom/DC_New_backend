@@ -162,16 +162,18 @@ class AcraExport
             $statusCode = null;
             if ($client->type === 'legal') {
                 $statusCode = 11;
-            } elseif ($client->type === 'individual_entrepreneur') {
+            }
+            if ($client->type === 'individual_entrepreneur') {
                 $statusCode = 22;
-            } else {
+            }
+            if ($client->type === 'individual'){
                 $statusCode = 21;
             }
             $sheet->setCellValue('B1' . $row, $statusCode);
 
             if ($client->gender) {
                 $genderCode = ($client->gender === 'F') ? 'իգական' : 'արական';
-                $sheet->setCellValue('I1', $genderCode);
+                $sheet->setCellValue('I1' . $row, $genderCode);
             }
             if ($client->residency_status) {
                 $residencyStatusCode = ($client->residency_status === 'resident') ? 1 : 2;
