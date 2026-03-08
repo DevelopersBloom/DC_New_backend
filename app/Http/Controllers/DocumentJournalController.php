@@ -46,7 +46,9 @@ class DocumentJournalController
             ->when(!$from && $to, fn($q) => $q->where('date', '<=', $to))
             ->orderByDesc('id');
 
-        $page = $query->paginate(20);
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = $perPage > 0 ? min($perPage, 100) : 20;
+        $page = $query->paginate($perPage);
 
         $page->getCollection()->transform(function (DocumentJournal $j) {
             $partner = $j->partner;
@@ -155,7 +157,9 @@ class DocumentJournalController
             ->betweenDates($from, $to)
             ->orderByDesc('id');
 
-        $page = $query->paginate(20);
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = $perPage > 0 ? min($perPage, 100) : 20;
+        $page = $query->paginate($perPage);
 
         $page->getCollection()->transform(function (DocumentJournal $j) {
             $partner = $j->partner;

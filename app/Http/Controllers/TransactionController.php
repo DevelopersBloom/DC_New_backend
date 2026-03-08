@@ -56,7 +56,9 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
 
-        $transactions = $query->orderBy('id', 'desc')->paginate(20);
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = $perPage > 0 ? min($perPage, 100) : 20;
+        $transactions = $query->orderBy('id', 'desc')->paginate($perPage);
 
         return response()->json($transactions);
     }
@@ -94,7 +96,9 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
 
-        $transactionsPagination = $query->orderBy('id', 'desc')->paginate(20);
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = $perPage > 0 ? min($perPage, 100) : 20;
+        $transactionsPagination = $query->orderBy('id', 'desc')->paginate($perPage);
 
         $items = $transactionsPagination->getCollection();
 
@@ -170,7 +174,9 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
 
-        $transactions = $query->orderBy('id', 'desc')->paginate(20);
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = $perPage > 0 ? min($perPage, 100) : 20;
+        $transactions = $query->orderBy('id', 'desc')->paginate($perPage);
 
         return response()->json($transactions);
     }
