@@ -135,7 +135,7 @@ class AcraExport
         $clients = $this->contracts->map->client->unique('id');
         $row = 2;
 
-        foreach ($this->allClients as $client) {
+        foreach ($clients as $client) {
             $sheet->setCellValue('A' . $row, $client->id);
 
             $statusCode = null;
@@ -159,11 +159,7 @@ class AcraExport
 
             if ($client->type !== 'legal') {
                 $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
-                $issuedAt = null;
-                if ($client->passport_validity) {
-                    $issuedAt = Carbon::parse($client->passport_validity)->subYears(10);
-                }
-                $sheet->setCellValue('F' . $row, $this->formatDate($issuedAt));
+                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_validity));
                 $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
                 $sheet->setCellValue('H' . $row, $client->social_card_number);
             }
@@ -309,7 +305,7 @@ class AcraExport
             }
 
             // N, O, P, Q, U
-            $sheet->setCellValue('N' . $row, 'AMD հայկական դրամ');
+            $sheet->setCellValue('N' . $row, 'AMD');
 
             $riskClassTitle = $contract->client->classification->name;
 
@@ -326,7 +322,7 @@ class AcraExport
 
 
             if ($contract->status) {
-                $contractStatusCode = ($contract->status === 'completed') ? 1 : 2;
+                $contractStatusCode = ($contract->status === 'completed') ? 1 : 0;
                 $sheet->setCellValue('P' . $row, $contractStatusCode);
             }
 //            $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
@@ -345,7 +341,7 @@ class AcraExport
             foreach ($contract->items as $item) {
                 $sheet->setCellValue('A' . $row, $contract->num);
                 $sheet->setCellValue('B' . $row, $item->provided_amount ?? $contract->provided_amount);
-                $sheet->setCellValue('C' . $row, 'AMD հայկական դրամ');
+                $sheet->setCellValue('C' . $row, 'AMD');
                 $collateralCode = null;
 
                 switch (strtolower($item->category->name)) {
