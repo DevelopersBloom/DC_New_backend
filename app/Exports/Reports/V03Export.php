@@ -27,6 +27,9 @@ class V03Export
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
+        // D16: INT(((highest client total provided - that client total reserve) / 1000) * risk_weight)
+        $sheet1->setCellValue('D16', $this->computeD16Value($from, $to));
+
         // ---------------------------
         // SHEET 2
         // ---------------------------
@@ -203,5 +206,61 @@ class V03Export
         $writer->save($filePath);
 
         return $filePath;
+    }
+
+    /**
+     * D16 formula: client with highest total provided → INT(((provided - reserve) / 1000) * risk_weight).
+     * Uses PROVIDE_CONTRACT_AMOUNT journals in date range; status = initial; reserve = amount * classification.reserve_percent/100.
+     */
+    private function computeD16Value(string $from, string $to): int
+    {
+        $start = Carbon::parse($from)->startOfDay();
+        $end = Carbon::parse($to)->endOfDay();
+
+        $journals = DocumentJournal::with(['journalable.client.classification'])
+            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->whereBetween('date', [$start, $end])
+            ->get();
+
+        $byClient = [];
+        foreach ($journals as $j) {
+            $contract = $j->journalable;
+            if (!$contract || $contract->status !== 'initial') {
+                continue;
+            }
+            $clientId = $contract->client_id;
+            if (!$clientId) {
+                continue;
+            }
+            $classification = optional($contract->client)->classification;
+            $reservePercent = $classification ? (float)($classification->reserve_percent ?? 0) : 0;
+            $riskWeight = $classification ? (float)($classification->risk_weight ?? 0) : 0;
+
+            if (!isset($byClient[$clientId])) {
+                $byClient[$clientId] = ['provided' => 0, 'reserve' => 0, 'risk_weight' => $riskWeight];
+            }
+            $amount = (float) $j->amount_amd;
+            $byClient[$clientId]['provided'] += $amount;
+            $byClient[$clientId]['reserve'] += $amount * $reservePercent / 100;
+        }
+
+        $maxProvided = 0;
+        $best = null;
+        foreach ($byClient as $data) {
+            if ($data['provided'] > $maxProvided) {
+                $maxProvided = $data['provided'];
+                $best = $data;
+            }
+        }
+
+        if (!$best) {
+            return 0;
+        }
+
+        $provided = $best['provided'];
+        $reserve = $best['reserve'];
+        $riskWeight = $best['risk_weight'] / 100; // e.g. 75 → 0.75
+
+        return (int) round((($provided - $reserve) / 1000) * $riskWeight);
     }
 }
