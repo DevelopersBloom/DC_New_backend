@@ -469,6 +469,9 @@ class V17Export
 
         $this->writeToSheet($spreadsheet->getSheetByName('Sheet2'), $groups2, 19);
         $this->writeToSheet($spreadsheet->getSheetByName('Sheet4'), $groups4, 15);
+        $sheet4 = $spreadsheet->getSheetByName('Sheet4');
+        $sheet4->setCellValue('C87', '=SUM(C15,E15,G15,I15,K15,M15,O15,Q15,S15)');
+        $sheet4->getStyle('C87')->getNumberFormat()->setFormatCode('#,##0');
         $this->writeToSheet($spreadsheet->getSheetByName('Sheet5'), $groups5, 15);
     }
 
