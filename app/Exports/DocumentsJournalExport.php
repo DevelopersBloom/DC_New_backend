@@ -462,7 +462,7 @@ class DocumentsJournalExport implements
     {
         $q = DocumentJournal::with([
             'currency:id,code',
-            'partner:id,type,name,surname,company_name,social_card_number,tax_number',
+            'debitPartner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])
             ->when($this->from && $this->to, fn($q) => $q->whereBetween('date', [$this->from, $this->to]))
@@ -476,7 +476,7 @@ class DocumentsJournalExport implements
 
     public function map($j): array
     {
-        $partner = $j->partner;
+        $partner = $j->debitPartner;
 
         $partnerCode = $partner
             ? ($partner->type === 'individual'

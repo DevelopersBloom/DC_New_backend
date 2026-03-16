@@ -37,7 +37,7 @@ class DocumentJournalController
 
         $query = DocumentJournal::with([
             'currency:id,code',
-            'partner:id,type,name,surname,company_name,social_card_number,tax_number',
+            'debitPartner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])
             ->when($documentType,fn($q) => $q->where('document_type', $documentType))
@@ -51,7 +51,7 @@ class DocumentJournalController
         $page = $query->paginate($perPage);
 
         $page->getCollection()->transform(function (DocumentJournal $j) {
-            $partner = $j->partner;
+            $partner = $j->debitPartner;
             $creditPartner = $j->creditPartner;
 
             $partnerCode = $partner
@@ -106,11 +106,11 @@ class DocumentJournalController
     {
         $j = DocumentJournal::with([
             'currency:id,code',
-            'partner:id,type,name,surname,company_name,social_card_number,tax_number',
+            'debitPartner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])->findOrFail($id);
 
-        $partner = $j->partner;
+        $partner = $j->debitPartner;
 
         $partnerCode = $partner
             ? ($partner->type === 'individual'
@@ -151,7 +151,7 @@ class DocumentJournalController
         $query = DocumentJournal::onlyTrashed()
             ->with([
                 'currency:id,code',
-                'partner:id,type,name,surname,company_name,social_card_number,tax_number',
+                'debitPartner:id,type,name,surname,company_name,social_card_number,tax_number',
                 'user:id,name,surname',
             ])
             ->betweenDates($from, $to)
@@ -162,7 +162,7 @@ class DocumentJournalController
         $page = $query->paginate($perPage);
 
         $page->getCollection()->transform(function (DocumentJournal $j) {
-            $partner = $j->partner;
+            $partner = $j->debitPartner;
             $partnerCode = $partner
                 ? ($partner->type === 'individual'
                     ? ($partner->social_card_number ?? null)
@@ -269,7 +269,7 @@ class DocumentJournalController
             'currency_id'      => ['sometimes','nullable','integer','exists:currencies,id'],
             'amount_amd'       => ['sometimes','numeric'],
             'amount_currency'  => ['sometimes','nullable','numeric'],
-            'partner_id'       => ['sometimes','nullable','integer','exists:clients,id'],
+            'debit_partner_id' => ['sometimes','nullable','integer','exists:clients,id'],
             'comment'          => ['sometimes','nullable','string'],
              'user_id'         => ['sometimes','nullable','integer','exists:users,id'],
         ]);
@@ -292,7 +292,7 @@ class DocumentJournalController
                                 'document_number' => 'contract_number',
                                 'currency_id'     => 'currency_id',
                                 'amount_amd'      => 'amount',
-                                'partner_id'      => 'client_id',
+                                'debit_partner_id' => 'client_id',
                                 'comment'         => 'comment',
                         ];
                         foreach ($map as $jKey => $mKey) {

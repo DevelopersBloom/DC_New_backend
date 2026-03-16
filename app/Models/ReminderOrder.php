@@ -67,7 +67,7 @@ class ReminderOrder extends Model
             'currency_id'      => $this->currency_id,
             'amount_amd'       => $this->amount ?? 0,
 
-            'partner_id'       => $this->debit_partner_id,
+            'debit_partner_id' => $this->debit_partner_id,
 
             'comment'          => $this->comment,
             'user_id'          => $this->user_id ?? auth()->id(),
@@ -80,7 +80,7 @@ class ReminderOrder extends Model
             'document_number' => 'num',
             'currency_id'     => 'currency_id',
             'amount_amd'      => 'amount',
-            'partner_id'      => 'debit_partner_id',
+            'debit_partner_id' => 'debit_partner_id',
             'comment'         => 'comment',
         ];
         foreach ($map as $jKey => $mKey) {

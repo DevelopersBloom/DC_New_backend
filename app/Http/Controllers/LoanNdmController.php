@@ -332,7 +332,7 @@ class LoanNdmController extends Controller
                     'document_type'   => DocumentJournal::LOAN_ATTRACTION,
                     'currency_id'     => $loan->currency_id,
                     'amount_amd'      => $amount,
-                    'partner_id'      => $partnerId,
+                    'debit_partner_id'      => $partnerId,
                     'credit_partner_id' => $creditPartnerId,
                     'comment'         => $data['comment'] ?? null,
                     'debit_account_id' => $debitAccountId,
@@ -453,7 +453,7 @@ class LoanNdmController extends Controller
                     'document_type'      => DocumentJournal::LOAN_ATTRACTION,
                     'currency_id'        => $loan->currency_id,
                     'amount_amd'         => $amount,
-                    'partner_id'         => $partnerId,
+                    'debit_partner_id'   => $partnerId,
                     'credit_partner_id'  => $creditPartnerId,
                     'comment'            => $data['comment'] ?? null,
                     'debit_account_id'   => $loanAccountId,
@@ -760,7 +760,7 @@ class LoanNdmController extends Controller
                         'amount_amd'        => $interest,
                         'debit_account_id'  => $debitInterestPayment,
                         'credit_account_id' => $creditInterestPayment,
-                        'partner_id' => $clientId,
+                        'debit_partner_id' => $clientId,
                         'credit_partner_id' => $lombardId,
                     ]);
 
@@ -799,7 +799,7 @@ class LoanNdmController extends Controller
                         'amount_amd'        => $principal,
                         'debit_account_id'  => $debitLoanPayment,
                         'credit_account_id' => $creditLoanPayment,
-                        'partner_id' => $clientId,
+                        'debit_partner_id' => $clientId,
                         'credit_partner_id' => $lombardId,
                     ]);
 
@@ -837,7 +837,7 @@ class LoanNdmController extends Controller
                         'amount_amd'        => $taxInt,
                         'debit_account_id'  => $debitTax,
                         'credit_account_id' => $creditTax,
-                        'partner_id' => $clientId,
+                        'debit_partner_id' => $clientId,
                         'credit_partner_id' => $lombardId,
                     ]);
 

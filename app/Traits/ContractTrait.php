@@ -585,7 +585,7 @@ trait ContractTrait
             'document_number' => $nextDocNum,
             'document_type' => $ruleKey,
             'amount_amd' => $amount,
-            'partner_id' => $debetPartnerId,
+            'debit_partner_id' => $debetPartnerId,
             'credit_partner_id' => $contract->client_id,
             'comment' => $comment,
             'debit_account_id' => $debitAccountId,

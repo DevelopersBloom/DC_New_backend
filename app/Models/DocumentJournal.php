@@ -50,7 +50,7 @@ class DocumentJournal extends Model
         'currency_id',
         'amount_currency',
 
-        'partner_id',
+        'debit_partner_id',
         'credit_partner_id',
         'debit_account_id',
         'credit_account_id',
@@ -332,9 +332,9 @@ class DocumentJournal extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function partner(): BelongsTo
+    public function debitPartner(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'partner_id');
+        return $this->belongsTo(Client::class, 'debit_partner_id');
     }
 
     public function creditPartner(): BelongsTo

@@ -143,7 +143,7 @@ class LoanNdm extends Model
             'amount_amd'       => $this->amount ?? 0,
             'amount_currency'  => $this->amount_currency,
 
-            'partner_id'      => $this->client_id,
+            'debit_partner_id' => $this->client_id,
 
             'comment'          => $this->comment,
             'user_id'          => auth()->user()->id,

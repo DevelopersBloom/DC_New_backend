@@ -27,7 +27,7 @@ return new class extends Migration
             $table->foreignId('currency_id')->nullable()->constrained('currencies');
             $table->decimal('amount_currency', 20, 2)->nullable();
 
-            $table->foreignId('partner_id')
+            $table->foreignId('debit_partner_id')
                 ->nullable()
                 ->constrained('clients')
                 ->nullOnDelete();
