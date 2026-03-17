@@ -15,11 +15,11 @@ return new class extends Migration
     {
         Schema::table('clients', function (Blueprint $table) {
             /**
-             * Ապահովված չէ` բլանկային    0
-             * Ապահովված է` այլ ապահովվածությամբ    1
-             * Ապահովված է` երաշխավորությամբ    2
-             * Ապահովված է` երաշխիքով    3
-             * Ապահովված է` գրավով	4
+             * Վարկատուի կարգավիճակը
+             * Գործող է 0
+             * Գտնվում է սնանկության գործընթացում 1
+             * Գտնվում է լուծարման գործընթացում 2
+             * Լուծարված է 3
              */
             $table->integer('status')->default(0)->after('type');
             $table->string('region_code')->nullable()->after('status');
