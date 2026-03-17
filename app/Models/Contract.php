@@ -75,7 +75,12 @@ class Contract extends Model
         'effective_rate_kasko',
         'effective_rate_annual_kasko',
         'fee_annual_rate',
-        'seller_id'
+        'seller_id',
+        'currency_id',
+        'contract_kind',
+        'loan_type',
+        'interest_rate_type',
+        'security_type'
     ];
 
     protected $casts = [
@@ -107,7 +112,10 @@ class Contract extends Model
     {
         return $this->hasMany(Deal::class, 'contract_id');
     }
-
+    public function currency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class);
+    }
 
     public function user(): BelongsTo
     {

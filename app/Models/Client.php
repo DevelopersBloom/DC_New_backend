@@ -60,6 +60,8 @@ class Client extends Model
         'acra_classification_id',
         'is_linked_to_company',
         'is_company_employee',
+        'status',
+        'region_code',
     ];
     protected $casts = [
         'has_contract'      => 'boolean',

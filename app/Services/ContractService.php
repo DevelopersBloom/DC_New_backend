@@ -289,6 +289,11 @@ class   ContractService
             'category_id' => $categoryId ,
             'payment_type' => $data['payment_type'],
             'seller_id' => $data['seller_id'] ?? null,
+            'currency_id' => $data['currency_id'] ?? null,
+            'contract_kind'      => $data['contract_kind'] ?? 1,
+            'loan_type'          => $data['loan_type'] ?? null,
+            'interest_rate_type' => $data['interest_rate_type'] ?? 2,
+            'security_type'      => $data['security_type'] ?? 4,
 //            'kasko_amount' => $data['kasko_amount'] ?? null,
         ];
 
