@@ -108,11 +108,11 @@ class CreditRegistryL001Service
         $loanData->appendChild($dom->createElement('Currency', $this->escape($currencyCode)));
 
         // 10. ContractAmount = Պայմանագրով նախատեսված վարկի գումարը
-        $contractAmount = $contract->contract_amount ?? $contract->provided_amount ?? 0;
+        $contractAmount = $contract->contract_amount ?? 0;
         $loanData->appendChild($dom->createElement('ContractAmount', $this->formatAmount($contractAmount)));
 
         // 11. ContractModifiedAmount = Վարկի մայր գումարի մնացորդը (remaining principal)
-        $modifiedAmount = $contract->left ?? $contract->mother ?? 0;
+        $modifiedAmount = $contract->provided_amount ?? 0;
         $loanData->appendChild($dom->createElement('ContractModifiedAmount', $this->formatAmount($modifiedAmount)));
 
         // 12. AnnualInterestRate = Նոմինալ տոկոսադրույք
@@ -120,7 +120,7 @@ class CreditRegistryL001Service
         $loanData->appendChild($dom->createElement('AnnualInterestRate', $this->formatRate($annualRate)));
 
         // 13. ActualInterestRate = Էֆեկտիվ տոկոսադրույք
-        $actualRate = $contract->effective_rate ?? $contract->interest_rate ?? 0;
+        $actualRate = $contract->effective_rate ?? 0;
         $loanData->appendChild($dom->createElement('ActualInterestRate', $this->formatRate($actualRate)));
 
         // 14. InterestRateType = Վարկի անվանական տոկոսադրույքի տեսակը
