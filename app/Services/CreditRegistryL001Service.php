@@ -116,11 +116,11 @@ class CreditRegistryL001Service
         $loanData->appendChild($dom->createElement('ContractModifiedAmount', $this->formatAmount($modifiedAmount)));
 
         // 12. AnnualInterestRate = Նոմինալ տոկոսադրույք
-        $annualRate = $contract->interest_rate ?? 0;
+        $annualRate = $contract->interest_rate * 365 ?? 0;
         $loanData->appendChild($dom->createElement('AnnualInterestRate', $this->formatRate($annualRate)));
 
         // 13. ActualInterestRate = Էֆեկտիվ տոկոսադրույք
-        $actualRate = $contract->effective_rate ?? 0;
+        $actualRate = $contract->effective_annual_rate ?? 0;
         $loanData->appendChild($dom->createElement('ActualInterestRate', $this->formatRate($actualRate)));
 
         // 14. InterestRateType = Վարկի անվանական տոկոսադրույքի տեսակը
