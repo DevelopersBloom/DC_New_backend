@@ -129,12 +129,12 @@ class CreditRegistryL001Service
         // 15. IsInterestSubsidy = always N
         $loanData->appendChild($dom->createElement('IsInterestSubsidy', 'N'));
 
-        // 16. ProvisionOfCredit = required, Y/N (source/program flag)
-        $loanData->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
-
-        // 17. LoanUseField = required, loan use sector
-        $loanUseField = $client?->activity_field ?? '';
-        $loanData->appendChild($dom->createElement('LoanUseField', $this->escape($loanUseField)));
+//        // 16. ProvisionOfCredit = required, Y/N (source/program flag)
+//        $loanData->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
+//
+//        // 17. LoanUseField = required, loan use sector
+//        $loanUseField = $client?->activity_field ?? '';
+//        $loanData->appendChild($dom->createElement('LoanUseField', $this->escape($loanUseField)));
 
         // 18. LoanUseCountry = Վարկի օգտագործման երկիրը
         $loanUseCountry = $client?->country ?? 'AM';
