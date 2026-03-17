@@ -33,6 +33,7 @@ use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\TurnoverReportController;
+use App\Http\Controllers\CreditRegistryController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -206,6 +207,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles'])->middleware('can:download_all_contract_files');
         Route::get('/export', [FileController::class, 'exportZip'])->middleware('can:export_contracts_zip');
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts'])->middleware('can:export_contracts');
+        Route::get('/{id}/credit-registry/l001', [CreditRegistryController::class, 'downloadL001'])->middleware('can:download_contract_file');
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware('can:make_contract_payment');
         Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment'])->middleware('can:make_full_contract_payment');
