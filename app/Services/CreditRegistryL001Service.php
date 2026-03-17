@@ -137,7 +137,7 @@ class CreditRegistryL001Service
 //        $loanData->appendChild($dom->createElement('LoanUseField', $this->escape($loanUseField)));
 
         // 18. LoanUseCountry = Վարկի օգտագործման երկիրը
-        $loanUseCountry = $client?->country ?? 'ARM';
+        $loanUseCountry = 'ARM';
         $loanData->appendChild($dom->createElement('LoanUseCountry', $this->escape($loanUseCountry)));
 
         // 19. LoanUseRegion = Վարկի օգտագործման մարզը
@@ -159,6 +159,6 @@ class CreditRegistryL001Service
 
     private function formatRate($value): string
     {
-        return number_format((float) $value, 2, '.', '');
+        return number_format((float) $value, 1, '.', '');
     }
 }
