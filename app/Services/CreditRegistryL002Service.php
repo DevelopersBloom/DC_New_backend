@@ -95,7 +95,7 @@ class CreditRegistryL002Service
         // Strict XSD order
         $root->appendChild($this->createReportHeader($dom));
         $root->appendChild($this->createCreditCode($dom, $contract));
-        $root->appendChild($this->createModificationDateTime($dom));
+        $root->appendChild($this->createModificationDateTime($dom,$contract));
 
         $dataToDeleteEl = $this->createDataToDelete($dom, $dataToDelete);
         if ($dataToDeleteEl !== null) {
@@ -135,13 +135,13 @@ class CreditRegistryL002Service
         return $creditCode;
     }
 
-    private function createModificationDateTime(DOMDocument $dom): DOMElement
+    private function createModificationDateTime(DOMDocument $dom,$contract): DOMElement
     {
-        $now = Carbon::now();
+        $date = $contract->updated_at;
 
         $modificationDateTime = $dom->createElement('ModificationDateTime');
-        $modificationDateTime->appendChild($this->createElementWithText($dom, 'Date', $now->format('Y-m-d')));
-        $modificationDateTime->appendChild($this->createElementWithText($dom, 'Time', $now->format('H:i:s')));
+        $modificationDateTime->appendChild($this->createElementWithText($dom, 'Date', $date->format('Y-m-d')));
+        $modificationDateTime->appendChild($this->createElementWithText($dom, 'Time', $date->format('H:i:s')));
 
         return $modificationDateTime;
     }
@@ -157,47 +157,43 @@ class CreditRegistryL002Service
         $collaterals = $data['Collaterals'] ?? null;
         $deletedData = $data['DeletedData'] ?? null;
 
-        $hasAny =
-            $this->hasNonEmpty($persons) ||
+        $hasAny = $this->hasNonEmpty($persons) ||
             $this->hasNonEmpty($pawns) ||
             $this->hasNonEmpty($collaterals) ||
             $this->hasNonEmpty($deletedData);
 
-        if (! $hasAny) {
-            return null;
-        }
+        if (!$hasAny) return null;
 
         $dataToDeleteEl = $dom->createElement('DataToDelete');
 
+        // 1. Persons
         if ($this->hasNonEmpty($persons)) {
             $dataToDeleteEl->appendChild($this->createSectionElement($dom, 'Persons', $persons));
         }
+
+        // 2. Pawns
         if ($this->hasNonEmpty($pawns)) {
             $dataToDeleteEl->appendChild($this->createSectionElement($dom, 'Pawns', $pawns));
         }
+
+        // 3. Collaterals
         if ($this->hasNonEmpty($collaterals)) {
             $dataToDeleteEl->appendChild($this->createSectionElement($dom, 'Collaterals', $collaterals));
         }
 
         if ($this->hasNonEmpty($deletedData)) {
-            if (! is_array($deletedData)) {
-                throw new InvalidArgumentException('DataToDelete.DeletedData must be an array of field names.');
-            }
-
             $deletedDataEl = $dom->createElement('DeletedData');
-            foreach ($deletedData as $fieldName) {
-                if (! is_string($fieldName) || $fieldName === '') {
-                    throw new InvalidArgumentException('DataToDelete.DeletedData must contain non-empty field names.');
+
+            foreach (self::MODIFIED_DATA_ALLOWED_FIELDS as $fieldName) {
+                if (in_array($fieldName, $deletedData)) {
+                    $deletedDataEl->appendChild($dom->createElement($fieldName));
                 }
-                $this->assertValidElementName($fieldName);
-                $deletedDataEl->appendChild($dom->createElement($fieldName));
             }
             $dataToDeleteEl->appendChild($deletedDataEl);
         }
 
         return $dataToDeleteEl;
     }
-
     /**
      * ctLoanDataModify sequence:
      * Persons?, Pawns?, Collaterals?, ModifiedData*
@@ -364,11 +360,38 @@ class CreditRegistryL002Service
      * For now, we only generate DeletedData when we can confidently detect "cleared" values.
      * If nothing is to be deleted, returns [] which omits DataToDelete (minOccurs=0).
      */
+    /**
+     * Build schema-shaped DataToDelete from DB state.
+     * Հերթականությունը՝ Persons, Pawns, Collaterals, DeletedData
+     */
     private function buildDataToDeleteFromContract(Contract $contract): array
     {
-        // Placeholder: implement robust "cleared fields" detection when you have change tracking.
-        // Business-safe default: don't emit DataToDelete unless explicitly needed.
-        return [];
+        $deleteData = [];
+
+        // 1. Persons (եթե կան հեռացվող անձինք)
+        // $deleteData['Persons'] = [...];
+
+        // 2. Pawns (եթե կան հեռացվող գրավներ)
+        // $deleteData['Pawns'] = [...];
+
+        // 3. Collaterals (եթե կան հեռացվող ապահովվածության միջոցներ)
+        // $deleteData['Collaterals'] = [...];
+
+        // 4. DeletedData (բոլոր այն դաշտերը, որոնք պետք է դատարկվեն/ջնջվեն)
+        // Օգտագործում ենք նույն 35 դաշտերի ցանկը
+        $deletedFields = [];
+
+        /* Օրինակ՝ եթե որոշակի պայմանով պետք է հեռացնել Notes-ը կամ այլ դաշտ
+        if ($contract->should_delete_notes) {
+            $deletedFields[] = 'Notes';
+        }
+        */
+
+        if (!empty($deletedFields)) {
+            $deleteData['DeletedData'] = $deletedFields;
+        }
+
+        return $deleteData;
     }
 
     /**
