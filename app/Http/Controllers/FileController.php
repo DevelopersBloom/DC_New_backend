@@ -598,7 +598,13 @@ class FileController extends Controller
             }
         }
 
-        $typeSuffix = ($categoryName == 'car') ? 'մեքենայի' : 'ոսկու';
+        if ($categoryName == 'car') {
+            $typeSuffix = 'մեքենայի';
+        } elseif ($categoryName == 'gold') {
+            $typeSuffix = 'ոսկու';
+        } elseif ($categoryName == 'car-purchase') {
+            $typeSuffix = 'մեքենայի ձեռք բերման';
+        }
         $contractFilename = $contract->num . '_' . $typeSuffix . '_պայմանագիր.docx';
         $contractPath = storage_path('app/tmp/' . $contractFilename);
 
