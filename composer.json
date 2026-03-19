@@ -21,7 +21,8 @@
         "pusher/pusher-php-server": "^7.2",
         "spatie/laravel-permission": "^6.24",
         "tymon/jwt-auth": "^2.1",
-        "ext-dom": "*"
+        "ext-dom": "*",
+        "ext-soap": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

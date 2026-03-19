@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contract;
 use App\Services\CreditRegistryL001Service;
 use App\Services\CreditRegistryL002Service;
+use App\Services\CreditRegistrySoapClient;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -12,7 +13,8 @@ class CreditRegistryController extends Controller
 {
     public function __construct(
         private CreditRegistryL001Service $l001Service,
-        private CreditRegistryL002Service $l002Service
+        private CreditRegistryL002Service $l002Service,
+        private CreditRegistrySoapClient $soapClient,
     ) {
     }
 
@@ -64,5 +66,50 @@ class CreditRegistryController extends Controller
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             ]
         );
+    }
+
+    /**
+     * Send L001 XML for a single contract to CBA Credit Registry web service.
+     *
+     * Flow:
+     *  - Generate L001 XML from current Contract state
+     *  - Call SendRequest(AppName=LNREG3, DocType=L001, IsDelay=false, xml)
+     *  - Poll IsResponsePrepared
+     *  - If ready, call GetResponse and return response XML
+     */
+    public function sendL001(string $id): Response
+    {
+        $contract = Contract::find($id);
+
+        if (! $contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $xml = $this->l001Service->generateL001Xml($contract);
+
+        $requestId = $this->soapClient->sendL001($xml, false);
+
+        $maxTries = 10;
+        $sleepMs = 500;
+
+        $isReady = false;
+        for ($i = 0; $i < $maxTries; $i++) {
+            if ($this->soapClient->isResponsePrepared($requestId)) {
+                $isReady = true;
+                break;
+            }
+            usleep($sleepMs * 1000);
+        }
+
+        $responseXml = null;
+        if ($isReady) {
+            $responseXml = $this->soapClient->getResponse($requestId);
+        }
+
+        return response()->json([
+            'request_id' => $requestId,
+            'is_ready' => $isReady,
+            'response_xml' => $responseXml,
+        ]);
     }
 }
