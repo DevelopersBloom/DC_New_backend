@@ -472,7 +472,16 @@ class FileController extends Controller
         $firstItem = $contract->items->first();
         $categoryName = $firstItem->category->name ?? 'gold';
 
-        $templateFileName = ($categoryName == 'car') ? 'contract_car_template.docx' : 'contract_gold_template.docx';
+        if ($categoryName == 'car') {
+            $templateFileName = 'contract_car_template.docx';
+        } elseif ($categoryName == 'gold') {
+            $templateFileName = 'contract_gold_template.docx';
+        } elseif ($categoryName == 'car-purchase') {
+            $templateFileName = 'contract_buying_car_template.docx';
+        }
+        if (!$templateFileName) {
+            return 'Template file not found';
+        }
         $templatePath = public_path('files/' . $templateFileName);
 
         if (!file_exists($templatePath)) {
