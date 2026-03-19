@@ -642,7 +642,7 @@ class FileController extends Controller
         if ($providedAt) {
             $interestAmount = $contract->type == 'amortized' ? $contract->payments->where('status','initial')->sum('interest_payment')
                                                              : $contract->payments->where('status','initial')->sum('amount');
-            $providedAmount = $this->makeMoney((int)$contract->provided_amount;
+            $providedAmount = $this->makeMoney((int)$contract->provided_amount);
         }
         $templateProcessor->setValues([
             'name'               => $categoryTitle,
