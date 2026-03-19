@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contract;
+use App\Traits\ContractTrait;
 use Carbon\Carbon;
 use DOMDocument;
 use DOMElement;
@@ -16,6 +17,7 @@ use RuntimeException;
  */
 class CreditRegistryL002Service
 {
+    use ContractTrait;
     private const NS = 'urn:cba-am:lnreg3';
 
     /**
@@ -57,7 +59,6 @@ class CreditRegistryL002Service
         'Risk',
         'WithdrawalAmount',
     ];
-
     /** OrganisationCode: Վարկատու կազմակերպության գրանցման համարը */
     private const ORGANISATION_CODE = '66100';
 
@@ -280,72 +281,85 @@ class CreditRegistryL002Service
     private function buildDataToModifyFromContract(Contract $contract): array
     {
         $client = $contract->client;
-        $currencyCode = $contract->currency?->code;
-
-        // Only include elements we can reliably derive from DB.
         $modified = [];
 
-        if ($client) {
-            $modified['AffectionWithCreditor'] = $client->is_linked_to_company ? 'Y' : 'N';
-        }
+        $modified['ActualInterestRate'] = $this->formatRate($contract->effective_annual_rate ?? 0);
 
-        if (($contract->contract_kind ?? '') !== '') {
-            $modified['ContractType'] = (string) $contract->contract_kind;
-        }
+        $modified['AffectionWithCreditor'] = ($client && $client->is_linked_to_company) ? 'Y' : 'N';
 
-        if ($currencyCode !== null && $currencyCode !== '') {
-            $modified['Currency'] = (string) $currencyCode;
-        }
+        $modified['AmountsOf'] = $this->formatAmount($contract->mother ?? 0);
 
-        if ($contract->contract_amount !== null) {
-            $modified['ContractAmount'] = $this->formatAmount($contract->contract_amount);
-        }
+        $modified['AmountsPaid'] = $this->formatAmount($contract->collected ?? 0);
 
-        if ($contract->provided_amount !== null) {
-            $modified['ContractModifiedAmount'] = $this->formatAmount($contract->provided_amount);
-            $modified['PrincipalAmount'] = $this->formatAmount($contract->provided_amount);
-        }
+        $modified['AnnualInterestRate'] = $this->formatRate(((float)($contract->interest_rate ?? 0)) * 365);
 
-        if ($contract->interest_rate !== null) {
-            // Keep consistent with your L001 logic (daily * 365 => annual).
-            $modified['AnnualInterestRate'] = $this->formatRate(((float) $contract->interest_rate) * 365);
-        }
+        //?
+        $modified['CalculatedOtherObligations'] = $this->formatAmount($contract->calculated_other_obligations ?? 0);
 
-        if ($contract->effective_annual_rate !== null) {
-            $modified['ActualInterestRate'] = $this->formatRate((float) $contract->effective_annual_rate);
-        }
+        $penaltyAmount = $this->countPenalty($contract->id)['penalty_amount'] ?? 0;
+        $modified['CalculatedPenalties'] = $this->formatAmount($penaltyAmount);
 
-        if (($contract->interest_rate_type ?? '') !== '') {
-            $modified['InterestRateType'] = (string) $contract->interest_rate_type;
-        }
+        $modified['ComissionPaid'] = $this->formatAmount($contract->commissions_paid ?? 0);
 
-        // Your L001 hardcodes N; keep same unless you store subsidy in DB.
-        $modified['IsInterestSubsidy'] = 'N';
+        $modified['ConditionsChangeCount'] = (int)($contract->modifications_count ?? 0);
 
-        if (($contract->date ?? '') !== '') {
-            $grantingDate = $this->formatDate($contract->date);
-            if ($grantingDate !== '') {
-                $modified['GrantingDate'] = $grantingDate;
-            }
-        }
+        $modified['ContractAmount'] = $this->formatAmount($contract->contract_amount ?? 0);
 
-        if (($contract->deadline ?? '') !== '') {
-            $repaymentDate = $this->formatDate($contract->deadline);
-            if ($repaymentDate !== '') {
-                $modified['RepaymentDate'] = $repaymentDate;
-            }
-        }
+        $modified['ContractModifiedAmount'] = $this->formatAmount($contract->modified_contract_amount ?? 0);
 
-        if (($contract->status ?? '') !== '') {
-            // XSD expects Y=active, N=repaid. Map your statuses conservatively.
-            $status = (string) $contract->status;
-            $modified['LoanStatus'] = in_array($status, ['completed'], true) ? 'N' : 'Y';
-        }
+        $modified['ContractType'] = (string)($contract->contract_kind ?? '1');
 
-        return $modified === [] ? [] : ['ModifiedData' => $modified];
-    }
+        $modified['Currency'] = (string)($contract->currency?->code ?? 'AMD');
 
-    /**
+        $modified['GrantingDate'] = $this->formatDate($contract->date);
+
+        $modified['InterestRateType'] = (string)($contract->interest_rate_type ?? '1');
+
+        $modified['IsInterestSubsidy'] = ($contract->is_subsidized) ? 'Y' : 'N';
+
+
+        $modified['LastClassificationDate'] = $this->formatDate($contract?->last_classification_date);
+
+        $modified['LastExpirationDate'] = $this->formatDate($contract?->last_expiration_date);
+
+        $modified['LoanStatus'] = in_array($contract->status, ['completed', 'closed'], true) ? 'N' : 'Y';
+
+        $modified['Notes'] = $contract->notes ? mb_substr($contract->notes, 0, 500) : null;
+
+        $modified['OverdueDays'] = (int)($contract->overdue_days ?? 0);
+
+        $modified['OverduePercent'] = $this->formatAmount($contract->overdue_interest ?? 0);
+
+        $modified['OverduePrincipalAmount'] = $this->formatAmount($contract->overdue_principal ?? 0);
+
+        $modified['PenaltiesPaid'] = $this->formatAmount($contract->penalties_paid ?? 0);
+
+        $modified['PercentsPaid'] = $this->formatAmount($contract->percents_paid ?? 0);
+
+        $modified['PrincipalAmount'] = $this->formatAmount($contract->provided_amount ?? 0);
+
+        $modified['RepaymentActualDate'] = $this->formatDate($contract->actual_repayment_date);
+
+        // 28. RepaymentDate - Վերջնական մարման ամսաթիվը (ըստ պայմանագրի)
+        $modified['RepaymentDate'] = $this->formatDate($contract->deadline);
+
+        // 29. RepaymentSource - Վարկի մարման աղբյուրը
+        $modified['RepaymentSource'] = (string)($contract->repayment_source ?? '1');
+
+        // 30. RevisedDays - Վերանայված օրերի քանակը
+        $modified['RevisedDays'] = (int)($contract->revised_days ?? 0);
+
+        // 31. RevisionDate - Վերջին վերանայման ամսաթիվը
+        $modified['RevisionDate'] = $this->formatDate($contract->revision_date);
+
+        // 32. Risk - Վարկային ռիսկի դասը (0-7)
+        $modified['Risk'] = (string)($contract->risk_class ?? '0');
+
+        // 33. WithdrawalAmount - Մասհանման գումարը
+        $modified['WithdrawalAmount'] = $this->formatAmount($contract->withdrawal_amount ?? 0);
+
+        return ['ModifiedData' => $modified];
+    }    /**
      * Build schema-shaped DataToDelete from DB state.
      * For now, we only generate DeletedData when we can confidently detect "cleared" values.
      * If nothing is to be deleted, returns [] which omits DataToDelete (minOccurs=0).
