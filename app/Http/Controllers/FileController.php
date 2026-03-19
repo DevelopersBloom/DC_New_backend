@@ -624,7 +624,7 @@ class FileController extends Controller
     {
         $contract = Contract::with(['client', 'items.category', 'payments'])->findOrFail($id);
         $client = $contract->client;
-
+        $providedAt = $contract->provided_at;
         $templatePath = public_path('files/contract_individual.docx');
 
         if (!file_exists($templatePath)) {
@@ -637,12 +637,13 @@ class FileController extends Controller
         $fullAddress = $client->city . ', ' . $client->street;
         $firstPayment = $contract->payments->where('status','initial')->first();
         $categoryTitle = $contract->category->title;
-        if ($contract->type == 'amortized') {
-            $interestAmount = $contract->payments->where('status','initial')->sum('interest_payment');
-        } else {
-            $interestAmount = $contract->payments->where('status','initial')->sum('amount');
+        $interestAmount = 0;
+        $providedAmount = 0;
+        if ($providedAt) {
+            $interestAmount = $contract->type == 'amortized' ? $contract->payments->where('status','initial')->sum('interest_payment')
+                                                             : $contract->payments->where('status','initial')->sum('amount');
+            $providedAmount = $this->makeMoney((int)$contract->provided_amount;
         }
-
         $templateProcessor->setValues([
             'name'               => $categoryTitle,
             'amount'             => $this->makeMoney((int)$contract->contract_amount),
@@ -650,8 +651,8 @@ class FileController extends Controller
             'int_rate'           => round($contract->interest_rate * 365, 2),
             'eff_rate'           => round($contract->effective_annual_rate, 2),
 
-            'first_paid_date'    => $firstPayment ? \Carbon\Carbon::parse($firstPayment->date)->format('d.m.Y') : '',
-            'first_paid_amount'  => $firstPayment ? $this->makeMoney((int)$firstPayment->amount) : '0',
+            'first_paid_date'    => $providedAt && $firstPayment ? \Carbon\Carbon::parse($firstPayment->date)->format('d.m.Y') : '',
+            'first_paid_amount'  => $providedAt && $firstPayment ? $this->makeMoney((int)$firstPayment->amount) : '0',
 
             'client'             => $clientName,
             'address'            => $fullAddress,
@@ -660,7 +661,7 @@ class FileController extends Controller
             'date'               => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
             'category'           => $contract->items->first()?->category?->title ?? 'Վարկ',
 
-            'provided_amount' => $this->makeMoney((int)$contract->provided_amount ?? 0),
+            'provided_amount' => $providedAmount,
             'interest_amount'    => $this->makeMoney((int)$interestAmount),
         ]);
 
