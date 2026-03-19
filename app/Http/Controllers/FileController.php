@@ -660,7 +660,6 @@ class FileController extends Controller
             'date'               => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
             'category'           => $contract->items->first()?->category?->title ?? 'Վարկ',
 
-
             'provided_amount' => $this->makeMoney((int)$contract->provided_amount ?? 0),
             'interest_amount'    => $this->makeMoney((int)$interestAmount),
         ]);
