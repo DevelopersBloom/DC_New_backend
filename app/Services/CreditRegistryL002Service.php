@@ -247,6 +247,8 @@ class CreditRegistryL002Service
             $dataToModifyEl->appendChild($this->createSectionElement($dom, 'Collaterals', $collaterals));
         }
 
+        $modifiedFields = $this->orderModifiedFieldsByXsd($modifiedFields);
+
         foreach ($modifiedFields as $fieldName => $value) {
             if (! is_string($fieldName) || $fieldName === '') {
                 throw new InvalidArgumentException('DataToModify fields must be an associative array of fieldName => value.');
@@ -441,6 +443,38 @@ class CreditRegistryL002Service
         if (! in_array($fieldName, self::MODIFIED_DATA_ALLOWED_FIELDS, true)) {
             throw new InvalidArgumentException("ModifiedData choice element is not allowed by XSD: {$fieldName}");
         }
+    }
+
+    /**
+     * Ensures ModifiedData nodes are emitted in the exact XSD <choice> listing order.
+     *
+     * @param  array<string, mixed>  $modifiedFields
+     * @return array<string, mixed>
+     */
+    private function orderModifiedFieldsByXsd(array $modifiedFields): array
+    {
+        if ($modifiedFields === []) {
+            return [];
+        }
+
+        $ordered = [];
+
+        // 1) fields in XSD order
+        foreach (self::MODIFIED_DATA_ALLOWED_FIELDS as $fieldName) {
+            if (array_key_exists($fieldName, $modifiedFields)) {
+                $ordered[$fieldName] = $modifiedFields[$fieldName];
+                unset($modifiedFields[$fieldName]);
+            }
+        }
+
+        if ($modifiedFields !== []) {
+            ksort($modifiedFields);
+            foreach ($modifiedFields as $k => $v) {
+                $ordered[$k] = $v;
+            }
+        }
+
+        return $ordered;
     }
 
     private function formatAmount(mixed $value): string
