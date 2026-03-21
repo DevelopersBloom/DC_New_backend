@@ -62,6 +62,16 @@ class Client extends Model
         'is_company_employee',
         'status',
         'region_code',
+
+        'gender',
+        'document_type',
+
+        'legal_country', 'legal_province', 'legal_community',
+        'legal_settlement', 'legal_street_building', 'legal_zip_code',
+
+        'actual_country', 'actual_province', 'actual_community',
+        'actual_settlement', 'actual_street_building', 'actual_zip_code',
+
     ];
     protected $casts = [
         'has_contract'      => 'boolean',

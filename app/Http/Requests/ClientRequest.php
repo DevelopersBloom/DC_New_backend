@@ -1,4 +1,109 @@
 <?php
+//
+//namespace App\Http\Requests;
+//
+//use Illuminate\Foundation\Http\FormRequest;
+//use Illuminate\Validation\Rule;
+//
+//class ClientRequest extends FormRequest
+//{
+//    public function authorize(): bool
+//    {
+//        return true;
+//    }
+//
+//    public function rules(): array
+//    {
+//        $type = $this->input('type', 'individual');
+//
+//        $rules = [
+//            'type' => ['required', Rule::in(['individual', 'legal'])],
+//
+//            'email' => ['nullable','email','max:255'],
+//            'phone' => ['nullable','string','max:20'],
+//            'additional_phone' => ['nullable','string','max:20'],
+//            'country' => ['nullable','string','max:255'],
+//            'city' => ['nullable','string','max:255'],
+//            'street' => ['nullable','string','max:255'],
+//            'building' => ['nullable','string','max:50'],
+//            'website' => ['nullable','string','max:255'],
+////            'residency_status'  => ['required','in:resident,non_resident'],
+////            'residency_country' => ['nullable','string','max:255'],
+//
+//            'bank_name' => ['nullable','string','max:255'],
+//            'account_number' => ['nullable','string','max:50'],
+//            'card_number' => ['nullable','string','max:50'],
+//            'iban' => ['nullable','string','max:50'],
+//            'swift_code' => ['nullable','string','max:50'],
+//
+//            'date' => ['nullable','date'],
+//            'has_contract' => ['sometimes','boolean'],
+//            'is_linked_to_company' => ['sometimes','boolean'],
+//            'is_company_employee'  => ['sometimes','boolean'],
+//            'status' => ['nullable', 'integer'],
+//            'region_code' => ['nullable','string'],
+//        ];
+//
+//        if ($type === 'individual') {
+//            $rules = array_merge($rules, [
+//                'name' => ['required','string','max:255'],
+//                'surname' => ['required','string','max:255'],
+//                'middle_name' => ['nullable','string','max:255'],
+//                'social_card_number' => ['nullable','string','max:255'],
+//                'bank_client_id' => ['nullable','string','max:255'],
+//
+//                'passport_series' => ['required','string','max:50'],
+//                'passport_validity' => ['required','date'],
+//                'passport_issued' => ['required','string','max:255'],
+//                'date_of_birth' => ['required','date'],
+//                'residency_status'  => ['required','in:resident,non_resident'],
+//                'residency_country' => ['nullable','string','max:255'],
+//            ]);
+//        } else {
+//            $rules = array_merge($rules, [
+//                'company_name' => ['required','string','max:255'],
+//                'legal_form' => ['required','string','max:50'],
+//                'tax_number' => ['required','string','max:50'],
+//                'state_register_number' => ['nullable','string','max:50'],
+//                'activity_field' => ['nullable','string','max:255'],
+//                'director_name' => ['nullable','string','max:255'],
+//                'accountant_info' => ['nullable','string','max:255'],
+//                'internal_code' => ['nullable','string','max:50'],
+//
+//                'name' => ['nullable','string','max:255'],
+//                'surname' => ['nullable','string','max:255'],
+//                'middle_name' => ['nullable','string','max:255'],
+//                'passport_series' => ['nullable','string','max:50'],
+//                'passport_validity' => ['nullable','date'],
+//                'passport_issued' => ['nullable','string','max:255'],
+//                'date_of_birth' => ['nullable','date'],
+//            ]);
+//        }
+//
+//        return $rules;
+//    }
+//
+//    public function messages(): array
+//    {
+//        return [
+//            'type.required' => 'Տեսակը պարտադիր է։',
+//            'type.in' => 'Տեսակը պետք է լինի individual կամ legal։',
+//
+//            'name.required' => 'Անունը պարտադիր է (ֆիզիկական անձի դեպքում)։',
+//            'surname.required' => 'Ազգանունը պարտադիր է (ֆիզիկական անձի դեպքում)։',
+//            'passport_series.required' => 'Անձնագրի սերիան պարտադիր է (ֆիզիկական անձի դեպքում)։',
+//            'passport_validity.required' => 'Անձնագրի վավերականության վերջնաժամկետը պարտադիր է (ֆիզիկական անձի դեպքում)։',
+//            'passport_issued.required' => 'Տրված է դաշտը պարտադիր է (ֆիզիկական անձի դեպքում)։',
+//            'date_of_birth.required' => 'Ծննդյան օրը պարտադիր է (ֆիզիկական անձի դեպքում)։',
+//            'residency_status' => 'Ռեզիդենտության տեսակը պարտադիր է',
+//            'residency_status.in' => 'Տեսակը պետք է լինի resident,non_resident',
+//            'company_name.required' => 'Ընկերության անվանումը պարտադիր է (իրավաբանական անձի դեպքում)։',
+//            'legal_form.required' => 'Իրավական ձևը պարտադիր է (իրավաբանական անձի դեպքում)։',
+//            'tax_number.required' => 'ՀՎՀՀ/ՀՎՔ-ը պարտադիր է (իրավաբանական անձի դեպքում)։',
+//        ];
+//    }
+//}
+
 
 namespace App\Http\Requests;
 
@@ -19,64 +124,72 @@ class ClientRequest extends FormRequest
         $rules = [
             'type' => ['required', Rule::in(['individual', 'legal'])],
 
-            'email' => ['nullable','email','max:255'],
-            'phone' => ['nullable','string','max:20'],
-            'additional_phone' => ['nullable','string','max:20'],
-            'country' => ['nullable','string','max:255'],
-            'city' => ['nullable','string','max:255'],
-            'street' => ['nullable','string','max:255'],
-            'building' => ['nullable','string','max:50'],
-            'website' => ['nullable','string','max:255'],
-//            'residency_status'  => ['required','in:resident,non_resident'],
-//            'residency_country' => ['nullable','string','max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'additional_phone' => ['nullable', 'string', 'max:20'],
+            'country' => ['nullable', 'string', 'max:255'],
 
-            'bank_name' => ['nullable','string','max:255'],
-            'account_number' => ['nullable','string','max:50'],
-            'card_number' => ['nullable','string','max:50'],
-            'iban' => ['nullable','string','max:50'],
-            'swift_code' => ['nullable','string','max:50'],
+            'legal_country'         => ['nullable', 'string', 'max:255'],
+            'legal_province'        => ['nullable', 'string', 'max:255'],
+            'legal_community'       => ['nullable', 'string', 'max:255'],
+            'legal_settlement'      => ['nullable', 'string', 'max:255'],
+            'legal_street_building' => ['nullable', 'string', 'max:255'],
+            'legal_zip_code'        => ['nullable', 'string', 'max:20'],
 
-            'date' => ['nullable','date'],
-            'has_contract' => ['sometimes','boolean'],
-            'is_linked_to_company' => ['sometimes','boolean'],
-            'is_company_employee'  => ['sometimes','boolean'],
+            'actual_country'         => ['nullable', 'string', 'max:255'],
+            'actual_province'        => ['nullable', 'string', 'max:255'],
+            'actual_community'       => ['nullable', 'string', 'max:255'],
+            'actual_settlement'      => ['nullable', 'string', 'max:255'],
+            'actual_street_building' => ['nullable', 'string', 'max:255'],
+            'actual_zip_code'        => ['nullable', 'string', 'max:20'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+
+            'bank_name' => ['nullable', 'string', 'max:255'],
+            'account_number' => ['nullable', 'string', 'max:50'],
+            'card_number' => ['nullable', 'string', 'max:50'],
+            'iban' => ['nullable', 'string', 'max:50'],
+            'swift_code' => ['nullable', 'string', 'max:50'],
+
+            'date' => ['nullable', 'date'],
+            'has_contract' => ['sometimes', 'boolean'],
+            'is_linked_to_company' => ['sometimes', 'boolean'],
+            'is_company_employee' => ['sometimes', 'boolean'],
             'status' => ['nullable', 'integer'],
-            'region_code' => ['nullable','string'],
+            'region_code' => ['nullable', 'string'],
         ];
 
         if ($type === 'individual') {
             $rules = array_merge($rules, [
-                'name' => ['required','string','max:255'],
-                'surname' => ['required','string','max:255'],
-                'middle_name' => ['nullable','string','max:255'],
-                'social_card_number' => ['nullable','string','max:255'],
-                'bank_client_id' => ['nullable','string','max:255'],
+                'gender' => ['required', Rule::in(['MALE', 'FEMALE'])], // Պարտադիր սեռ
+                'document_type' => ['required', Rule::in([
+                    'NON_BIOMETRIC_PASSPORT', 'ID_CARD', 'BIOMETRIC_PASSPORT',
+                    'BIRTH_CERTIFICATE', 'RESIDENCE_CARD', 'TRAVEL_DOCUMENT',
+                    'FOREIGN_PASSPORT', 'OTHER'
+                ])],
+                'name' => ['required', 'string', 'max:255'],
+                'surname' => ['required', 'string', 'max:255'],
+                'middle_name' => ['nullable', 'string', 'max:255'],
+                'social_card_number' => ['nullable', 'string', 'max:255'],
+                'bank_client_id' => ['nullable', 'string', 'max:255'],
 
-                'passport_series' => ['required','string','max:50'],
-                'passport_validity' => ['required','date'],
-                'passport_issued' => ['required','string','max:255'],
-                'date_of_birth' => ['required','date'],
-                'residency_status'  => ['required','in:resident,non_resident'],
-                'residency_country' => ['nullable','string','max:255'],
+                'passport_series' => ['required', 'string', 'max:50'],
+                'passport_validity' => ['required', 'date'],
+                'passport_issued' => ['required', 'string', 'max:255'],
+                'date_of_birth' => ['required', 'date'],
+                'residency_status' => ['required', 'in:resident,non_resident'],
+                'residency_country' => ['nullable', 'string', 'max:255'],
             ]);
         } else {
             $rules = array_merge($rules, [
-                'company_name' => ['required','string','max:255'],
-                'legal_form' => ['required','string','max:50'],
-                'tax_number' => ['required','string','max:50'],
-                'state_register_number' => ['nullable','string','max:50'],
-                'activity_field' => ['nullable','string','max:255'],
-                'director_name' => ['nullable','string','max:255'],
-                'accountant_info' => ['nullable','string','max:255'],
-                'internal_code' => ['nullable','string','max:50'],
-
-                'name' => ['nullable','string','max:255'],
-                'surname' => ['nullable','string','max:255'],
-                'middle_name' => ['nullable','string','max:255'],
-                'passport_series' => ['nullable','string','max:50'],
-                'passport_validity' => ['nullable','date'],
-                'passport_issued' => ['nullable','string','max:255'],
-                'date_of_birth' => ['nullable','date'],
+                'company_name' => ['required', 'string', 'max:255'],
+                'legal_form' => ['required', 'string', 'max:50'],
+                'tax_number' => ['required', 'string', 'max:50'],
+                'state_register_number' => ['nullable', 'string', 'max:50'],
+                'activity_field' => ['nullable', 'string', 'max:255'],
+                'director_name' => ['nullable', 'string', 'max:255'],
+                'accountant_info' => ['nullable', 'string', 'max:255'],
+                'internal_code' => ['nullable', 'string', 'max:50'],
             ]);
         }
 
@@ -86,20 +199,14 @@ class ClientRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'type.required' => 'Տեսակը պարտադիր է։',
-            'type.in' => 'Տեսակը պետք է լինի individual կամ legal։',
-
-            'name.required' => 'Անունը պարտադիր է (ֆիզիկական անձի դեպքում)։',
-            'surname.required' => 'Ազգանունը պարտադիր է (ֆիզիկական անձի դեպքում)։',
-            'passport_series.required' => 'Անձնագրի սերիան պարտադիր է (ֆիզիկական անձի դեպքում)։',
-            'passport_validity.required' => 'Անձնագրի վավերականության վերջնաժամկետը պարտադիր է (ֆիզիկական անձի դեպքում)։',
-            'passport_issued.required' => 'Տրված է դաշտը պարտադիր է (ֆիզիկական անձի դեպքում)։',
-            'date_of_birth.required' => 'Ծննդյան օրը պարտադիր է (ֆիզիկական անձի դեպքում)։',
-            'residency_status' => 'Ռեզիդենտության տեսակը պարտադիր է',
-            'residency_status.in' => 'Տեսակը պետք է լինի resident,non_resident',
-            'company_name.required' => 'Ընկերության անվանումը պարտադիր է (իրավաբանական անձի դեպքում)։',
-            'legal_form.required' => 'Իրավական ձևը պարտադիր է (իրավաբանական անձի դեպքում)։',
-            'tax_number.required' => 'ՀՎՀՀ/ՀՎՔ-ը պարտադիր է (իրավաբանական անձի դեպքում)։',
+            'gender.required' => 'Սեռը պարտադիր է։',
+            'gender.in' => 'Սեռը պետք է լինի MALE կամ FEMALE։',
+            'document_type.required' => 'Փաստաթղթի տեսակը պարտադիր է։',
+            'name.required' => 'Անունը պարտադիր է։',
+            'surname.required' => 'Ազգանունը պարտադիր է։',
+            'passport_series.required' => 'Փաստաթղթի սերիան պարտադիր է։',
+            'company_name.required' => 'Ընկերության անվանումը պարտադիր է։',
+            'tax_number.required' => 'ՀՎՀՀ-ն պարտադիր է։',
         ];
     }
 }
