@@ -28,7 +28,7 @@ class CreditRegistryController extends Controller
         if (! $contract) {
             return response()->json(['message' => 'Contract not found'], 404);
         }
-
+dd(2);
         $xml = $this->l001Service->generateL001Xml($contract);
         dd($xml);
         $filename = 'L001_' . ($contract->num ?? $contract->id) . '_' . now()->format('Y-m-d_His') . '.xml';
