@@ -26,19 +26,18 @@ return new class extends Migration
                 'OTHER'
             ])->after('social_card_number')->nullable();
 
-            $table->string('legal_country')->nullable();
-            $table->string('legal_province')->nullable(); // Մարզ
-            $table->string('legal_community')->nullable();// Համայնք
-            $table->string('legal_settlement')->nullable();// Շրջան/բնակավայր
-            $table->string('legal_street_building')->nullable(); // Փողոց/շենք
-            $table->string('legal_zip_code')->nullable(); // Ծածկագիր
+            $table->string('legal_country')->nullable()->after('document_type');
+            $table->string('legal_province')->nullable()->after('legal_country');
+            $table->string('legal_community')->nullable()->after('legal_province');
+            $table->string('legal_settlement')->nullable()->after('legal_community');
+            $table->string('legal_street_building')->nullable()->after('legal_settlement');
+            $table->string('legal_zip_code')->nullable()->after('legal_street_building');
 
-            $table->string('actual_country')->nullable();
-            $table->string('actual_province')->nullable();
-            $table->string('actual_community')->nullable();
-            $table->string('actual_settlement')->nullable();
-            $table->string('actual_street_building')->nullable();
-            $table->string('actual_zip_code')->nullable();
+            $table->string('actual_country')->nullable()->after('legal_zip_code');
+            $table->string('actual_province')->nullable()->after('actual_country');
+            $table->string('actual_community')->nullable()->after('actual_province');
+            $table->string('actual_settlement')->nullable()->after('actual_community');
+            $table->string('actual_street_building')->nullable()->after('actual_settlement');
         });
     }
 
