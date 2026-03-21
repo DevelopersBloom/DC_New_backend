@@ -194,7 +194,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
     });
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');
-
+    Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index']);
 
     Route::group(['prefix' => 'contracts'], function () {
 //        Route::get('/export', [ContractControllerNew::class, 'exportContracts']);

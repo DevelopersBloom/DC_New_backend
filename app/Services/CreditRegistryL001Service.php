@@ -58,14 +58,67 @@ class CreditRegistryL001Service
         return $header;
     }
 
+//    private function createCreditCode(DOMDocument $dom, Contract $contract): DOMElement
+//    {
+//        $creditCode = $dom->createElement('CreditCode');
+//        // Minimal placeholder; expand when full CreditCode XSD is available
+//        $creditCode->appendChild($dom->createTextNode($contract->num ?? (string) $contract->id));
+//        return $creditCode;
+//    }
+    /**
+     * Generates the compliant CreditCode: NNNNN-NNNNNNNN-NNNNNN
+     * 1-5: Bank Code
+     * 7-14: YYYYMMDD
+     * 16-20: Sequence
+     * 21: Checksum (Luhn mod 10)
+     */
     private function createCreditCode(DOMDocument $dom, Contract $contract): DOMElement
     {
-        $creditCode = $dom->createElement('CreditCode');
-        // Minimal placeholder; expand when full CreditCode XSD is available
-        $creditCode->appendChild($dom->createTextNode($contract->num ?? (string) $contract->id));
-        return $creditCode;
+        $orgCode = self::ORGANISATION_CODE; // 5 digits
+        $datePart = Carbon::parse($contract->date)->format('Ymd'); // 8 digits
+
+        // Pad the contract ID or a sequence number to 5 digits
+        $sequence = str_pad(substr($contract->id, -5), 5, '0', STR_PAD_LEFT);
+
+        // Combine for checksum calculation (excluding hyphens and the 21st digit)
+        $base = $orgCode . $datePart . $sequence;
+
+        $checksum = $this->calculateCbaChecksum($base);
+
+        // Final format: 80500-20161228-123785
+        $formattedCode = sprintf("%s-%s-%s%d", $orgCode, $datePart, $sequence, $checksum);
+
+        return $dom->createElement('CreditCode', $formattedCode);
     }
 
+    /**
+     * CBA Specific Luhn Mod 10
+     * Phase I: Double digits at positions 1, 3, 5... (from the right)
+     * Phase II: Sum all digits of results + remaining digits
+     * Phase III: Subtract from next multiple of 10
+     */
+    private function calculateCbaChecksum(string $input): int
+    {
+        $sum = 0;
+        $reversed = strrev($input);
+
+        for ($i = 0; $i < strlen($reversed); $i++) {
+            $digit = (int)$reversed[$i];
+
+            // Phase I: Double digits at 1st, 3rd, 5th... positions (index 0, 2, 4...)
+            if ($i % 2 === 0) {
+                $doubled = $digit * 2;
+                // Phase II: Sum individual digits (e.g., 16 becomes 1 + 6 = 7)
+                $sum += array_sum(str_split((string)$doubled));
+            } else {
+                $sum += $digit;
+            }
+        }
+
+        // Phase III
+        $remainder = $sum % 10;
+        return ($remainder === 0) ? 0 : (10 - $remainder);
+    }
     private function createLoanData(DOMDocument $dom, Contract $contract): DOMElement
     {
         $contract->loadMissing(['client', 'currency']);
