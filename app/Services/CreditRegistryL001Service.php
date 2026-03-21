@@ -78,7 +78,7 @@ class CreditRegistryL001Service
         $datePart = Carbon::parse($contract->date)->format('Ymd'); // 8 digits
 
         // Pad the contract ID or a sequence number to 5 digits
-        $sequence = str_pad(substr($contract->id, -5), 5, '0', STR_PAD_LEFT);
+        $sequence = str_pad(substr($contract->num, -5), 5, '0', STR_PAD_LEFT);
 
         // Combine for checksum calculation (excluding hyphens and the 21st digit)
         $base = $orgCode . $datePart . $sequence;
