@@ -208,7 +208,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles'])->middleware('can:download_all_contract_files');
         Route::get('/export', [FileController::class, 'exportZip'])->middleware('can:export_contracts_zip');
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts'])->middleware('can:export_contracts');
-        Route::get('/{id}/credit-registry/l001', [CreditRegistryController::class, 'downloadL001'])->middleware('can:download_contract_file');
+        Route::get('/{id}/registry/l001', [CreditRegistryController::class, 'downloadL001'])->middleware('can:download_contract_file');
         Route::get('/{id}/credit-registry/l002', [CreditRegistryController::class, 'downloadL002'])->middleware('can:download_contract_file');
         Route::post('/{id}/credit-registry/l001/send', [CreditRegistryController::class, 'sendL001'])->middleware('can:download_contract_file');
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
