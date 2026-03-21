@@ -194,7 +194,7 @@ class CreditRegistryL001Service
         $loanData->appendChild($dom->createElement('LoanUseCountry', $this->escape($loanUseCountry)));
 
         // 19. LoanUseRegion = Վարկի օգտագործման մարզը
-        $loanUseRegion = $client?->region_code ?? '';
+        $loanUseRegion = $client?->actual_province ?? $client?->region_code ?? '';
         $loanData->appendChild($dom->createElement('LoanUseRegion', $this->escape($loanUseRegion)));
 
         return $loanData;
