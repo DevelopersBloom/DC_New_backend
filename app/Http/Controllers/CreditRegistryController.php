@@ -30,6 +30,7 @@ class CreditRegistryController extends Controller
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
+        dd($xml);
         $filename = 'L001_' . ($contract->num ?? $contract->id) . '_' . now()->format('Y-m-d_His') . '.xml';
 
         return response()->streamDownload(
