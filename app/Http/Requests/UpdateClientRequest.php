@@ -32,6 +32,21 @@ class UpdateClientRequest extends FormRequest
             'swift_code' => ['nullable','string','max:50'],
             'has_contract' => ['sometimes','boolean'],
             'date' => ['nullable','date'],
+
+            'gender' => 'nullable|string|in:MALE,FEMALE',
+            'document_type' => 'nullable|string|in:NON_BIOMETRIC_PASSPORT,ID_CARD,BIOMETRIC_PASSPORT,BIRTH_CERTIFICATE,RESIDENCE_CARD,TRAVEL_DOCUMENT,FOREIGN_PASSPORT,OTHER',
+            'legal_country' => 'nullable|string',
+            'legal_province' => 'nullable|string',
+            'legal_community' => 'nullable|string',
+            'legal_settlement' => 'nullable|string',
+            'legal_street_building' => 'nullable|string',
+            'legal_zip_code' => 'nullable|string',
+            'actual_country' => 'nullable|string',
+            'actual_province' => 'nullable|string',
+            'actual_community' => 'nullable|string',
+            'actual_settlement' => 'nullable|string',
+            'actual_street_building' => 'nullable|string',
+            'actual_zip_code' => 'nullable|string',
         ];
 
         if ($effectiveType === 'legal') {
