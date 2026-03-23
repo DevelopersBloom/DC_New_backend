@@ -350,7 +350,7 @@ class AcraExport
         foreach ($this->contracts as $contract) {
             foreach ($contract->items as $item) {
                 $sheet->setCellValue('A' . $row, $contract->num);
-                $sheet->setCellValue('B' . $row, $item->provided_amount ?? $contract->provided_amount);
+                $sheet->setCellValue('B' . $row, $item->estimated_amount ?? $contract->estimated_amount);
                 $sheet->setCellValue('C' . $row, 'AMD');
                 $collateralCode = null;
 
