@@ -348,13 +348,26 @@ class AcraExport
         if (!$sheet) return;
         $row = 2;
         foreach ($this->contracts as $contract) {
-            foreach ($contract->items as $item) {
-                $sheet->setCellValue('A' . $row, $contract->num);
-                $sheet->setCellValue('B' . $row, $item->estimated_amount ?? $contract->estimated_amount);
-                $sheet->setCellValue('C' . $row, 'AMD');
-                $collateralCode = null;
+            $items = $contract->items;
+            if (!$items || $items->isEmpty()) {
+                continue;
+            }
 
-                switch (strtolower($item->category->name)) {
+            $sheet->setCellValue('A' . $row, $contract->num);
+
+            $totalEstimatedAmount = (float) $items->sum(function ($item) {
+                return (float) ($item->estimated_amount ?? 0);
+            });
+            if ($totalEstimatedAmount <= 0) {
+                $totalEstimatedAmount = (float) ($contract->estimated_amount ?? 0);
+            }
+            $sheet->setCellValue('B' . $row, $totalEstimatedAmount);
+            $sheet->setCellValue('C' . $row, 'AMD');
+
+            $firstItem = $items->first();
+            $collateralCode = '';
+            if ($firstItem && $firstItem->category) {
+                switch (strtolower($firstItem->category->name)) {
                     case 'gold':
                         $collateralCode = '01';
                         break;
@@ -370,15 +383,11 @@ class AcraExport
                     case 'guarantee':
                         $collateralCode = '13';
                         break;
-                    default:
-                        $collateralCode = '';
-                        break;
                 }
-                $sheet->setCellValue('D' . $row, $collateralCode);
-
-//                $sheet->setCellValue('D' . $row, $item->category->title . ' ' . $item->subcategory . ' ' . $item->model . ' ' . $item->description);
-                $row++;
             }
+            $sheet->setCellValue('D' . $row, $collateralCode);
+
+            $row++;
         }
     }
 
