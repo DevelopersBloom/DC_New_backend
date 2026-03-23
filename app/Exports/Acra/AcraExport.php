@@ -240,6 +240,16 @@ class AcraExport
                     ->where('date', '<=', $this->to)
                     ->sum('amount_amd');
             }
+            // Some closed contracts may have principal closed without detailed PAY_MOTHER_AMOUNT rows.
+            // Keep I column meaningful by deriving paid principal from contract figures when needed.
+            $derivedPaidFromBalance = max(
+                0,
+                (float)($contract->contract_amount ?? 0) - max(0, (float)($contract->provided_amount ?? 0))
+            );
+            if ((float)$totalPaid <= 0 && $derivedPaidFromBalance > 0) {
+                $totalPaid = $derivedPaidFromBalance;
+            }
+
             if ($lastMotherPayment) {
                 $lastPaymentDate = $lastMotherPayment->date;
             } elseif ($contract->status === 'completed' || $contract->status === 'executed') {
