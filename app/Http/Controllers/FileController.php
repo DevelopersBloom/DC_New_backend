@@ -655,7 +655,7 @@ class FileController extends Controller
         $interestAmount = 0;
         $providedAmount = 0;
         if ($providedAt) {
-            $interestAmount = $contract->type == 'amortized' ? $contract->payments->where('status','initial')->sum('interest_payment')
+            $interestAmount = $contract->payment_type == 'amortized' ? $contract->payments->where('status','initial')->sum('interest_payment')
                                                              : $contract->payments->where('status','initial')->sum('amount');
             $providedAmount = $this->makeMoney((int)$contract->provided_amount);
         }
