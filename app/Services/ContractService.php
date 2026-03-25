@@ -538,12 +538,17 @@ class   ContractService
             $months = (int) $contract->deadline_days;
         }
 
+//        $feeAnnualPercent = (float) $contract->fee_annual_rate;
+//        $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
         $feeAnnualPercent = (float) $contract->fee_annual_rate;
         $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
 
+        $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
+
+        $monthlyPayment = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $pgi_id      = 1;
 
@@ -566,11 +571,12 @@ class   ContractService
 
             $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
 
-            $monthlyPayment   = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
+//            $monthlyPayment   = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
             $endingBalance    = -$this->excelFv($allMonthlyRate, $i, -$monthlyPayment, $loanAmount);
-            $principalPayment = -$this->excelPpmt($allMonthlyRate, $i, $months, $loanAmount);
+//            $principalPayment = -$this->excelPpmt($allMonthlyRate, $i, $months, $loanAmount);
 
             $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
+            $principalPayment = $monthlyPayment - $interestPayment;
             $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate, $i, $months, $loanAmount);
 
             $kaskoAmount = 0;
