@@ -28,7 +28,7 @@ class ContractRequest extends FormRequest
             'provided_amount' => 'required|numeric',
             'contract_amount' => 'nullable|numeric',
             'deadline' => 'required|integer',
-            'contract_created_date => nullable|date',
+            'contract_created_date' => 'nullable|date',
             'description' => 'nullable|string',
             'interest_rate' => 'required|numeric',
             'effective_rate' => 'nullable|numeric',
