@@ -575,7 +575,8 @@ class   ContractService
             $endingBalance    = -$this->excelFv($allMonthlyRate, $i, -$monthlyPayment, $loanAmount);
 //            $principalPayment = -$this->excelPpmt($allMonthlyRate, $i, $months, $loanAmount);
 
-            $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
+//            $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
+            $interestPayment = $this->calcAmount($loanAmount,$daysInPeriod,$contract->interest_rate/100);
             $principalPayment = $monthlyPayment - $interestPayment;
             $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate, $i, $months, $loanAmount);
 
