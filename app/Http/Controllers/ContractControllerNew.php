@@ -333,6 +333,7 @@ class ContractControllerNew extends Controller
     {
         $validatedData = $request->validate([
             'contract_id' => 'required|integer|exists:contracts,id',
+            'contract_created_date' => 'nullable|date',
         ]);
 
         DB::beginTransaction();
@@ -347,7 +348,7 @@ class ContractControllerNew extends Controller
             $contract->deadline = Carbon::now('Asia/Yerevan')
                 ->addMonths((int) $contract->deadline_days)
                 ->format('Y-m-d');
-            $now = Carbon::now();
+            $now = $validatedData['contract_created_date '] ?? Carbon::now();
             $contract->date = $now;
             $contract->provided_at = $now;
             $contract->save();
