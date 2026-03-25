@@ -266,8 +266,7 @@ class   ContractService
         $status = isset($data['closed_at']) ? Contract::STATUS_COMPLETED : Contract::STATUS_INITIAL;
 
         $values = [
-            'date' => $data['contract_created_date'],
-//        ?? $data['date'] ?? now()->toDateString(),
+            'date' => $data['contract_created_date'] ?? $data['date'] ?? now()->toDateString(),
             'client_id' => $client_id,
             'num' => $contractNumber,
             'estimated_amount' => $data['estimated_amount'],
