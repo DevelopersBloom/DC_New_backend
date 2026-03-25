@@ -239,9 +239,10 @@ class ContractControllerNew extends Controller
             $pawnshop_id = \auth()->user()->pawnshop_id;
 //            $date = Carbon::now();
             $validatedContract = $contractRequest->validated();
-            $date = $validatedContract['contract_created_date']
-                ? Carbon::parse($validatedContract['contract_created_date'])
-                : Carbon::now('Asia/Yerevan');
+            $date = Carbon::parse($validatedContract['contract_created_date']);
+//            $validatedContract['contract_created_date']
+//                ? Carbon::parse($validatedContract['contract_created_date'])
+//                : Carbon::now('Asia/Yerevan');
             $deadline = $date->addMonths($contractRequest->validated()['deadline'])->format('Y-m-d');
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
             $category_id = null;
