@@ -345,10 +345,10 @@ class ContractControllerNew extends Controller
             $cash = $contract->provided_amount < 20000;
             $category_id = $contract->category_id;
           //  $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
-            $contract->deadline = Carbon::now('Asia/Yerevan')
+           $now = Carbon::parse($validatedData['contract_created_date']) ?? Carbon::now();
+            $contract->deadline = $now
                 ->addMonths((int) $contract->deadline_days)
                 ->format('Y-m-d');
-            $now = $validatedData['contract_created_date '] ?? Carbon::now();
             $contract->date = $now;
             $contract->provided_at = $now;
             $contract->save();
