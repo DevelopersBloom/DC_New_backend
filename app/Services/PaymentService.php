@@ -300,7 +300,7 @@ class PaymentService
 
         }
         if ($amount > 10) {
-            $this->payPartial($contract, $amount, false, $cash, $deal_id);
+            $this->payPartial($contract, $amount, false, $cash, $deal_id,null,false,true);
         }
         return $decrease;
 
@@ -354,7 +354,7 @@ class PaymentService
         return $payment->id;
     }
 
-    public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null,$is_recount = false)
+    public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null,$is_recount = false,$is_remaining_payment = false)
     {
         $now = Carbon::now();
         $history = ['payment_changes' => []];
@@ -405,7 +405,7 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
-                $history['payment_changes'] = $this->processAmortizedPayments($payments, $partialAmount, $now);
+                $history['payment_changes'] = $this->processAmortizedPayments($payments, $partialAmount, $now,$is_remaining_payment);
                 $history['contract_changes'] = [
                     'old_left' => $contract->left,
                     'new_left' => $contract->left - $partialAmount,
@@ -459,7 +459,7 @@ class PaymentService
         return null;
     }
 
-    protected function processAmortizedPayments($payments, $remainingPartial, $now)
+    protected function processAmortizedPayments($payments, $remainingPartial, $now,$is_remaining_payment=false)
     {
         $changes = [];
         foreach ($payments as $payment) {
@@ -479,7 +479,11 @@ class PaymentService
 
             $payment->amount -= $reduction;
             $payment->paid += $reduction;
-            $payment->principal_payment -= $reduction;
+            if ($is_remaining_payment) {
+                $payment->interest_payment -= $reduction;
+            } else {
+                $payment->principal_payment -= $reduction;
+            }
             if ($payment->amount <= 0) $payment->status = 'completed';
 
             $payment->save();
@@ -489,6 +493,7 @@ class PaymentService
                 'new_amount' => $payment->amount,
                 'new_paid' => $payment->paid,
                 'new_principal' => $payment->principal_payment,
+                'new_interest' => $payment->interest_payment,
                 'reduction' => $reduction,
                 'updated_at' => $now->toDateTimeString()
             ]);
