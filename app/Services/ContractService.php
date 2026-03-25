@@ -579,6 +579,7 @@ class   ContractService
             $interestPayment = $this->calcAmount($loanAmount,$daysInPeriod,$contract->interest_rate/100);
             $principalPayment = $monthlyPayment - $interestPayment;
             $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate, $i, $months, $loanAmount);
+            $loanAmount -= $principalPayment;
 
             $kaskoAmount = 0;
             $isLastMonth = ($i === $months);
