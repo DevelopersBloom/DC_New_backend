@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Contract;
 use App\Services\CreditRegistryL001Service;
 use App\Services\CreditRegistryL002Service;
+use App\Services\CreditRegistryL003Service;
 use App\Services\CreditRegistrySoapClient;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -14,6 +16,7 @@ class CreditRegistryController extends Controller
     public function __construct(
         private CreditRegistryL001Service $l001Service,
         private CreditRegistryL002Service $l002Service,
+        private CreditRegistryL003Service $l003Service,
 //        private CreditRegistrySoapClient $soapClient,
     ) {
     }
@@ -68,6 +71,32 @@ class CreditRegistryController extends Controller
         );
     }
 
+    /**
+     * Generate and download L003 XML (Delete request).
+     */
+    public function downloadL003(Request $request, string $id): StreamedResponse|Response
+    {
+        $contract = Contract::find($id);
+        if (!$contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $reason = $request->input('reason', 'Սխալ գրանցում');
+
+        $xml = $this->l003Service->generateL003Xml((int) $contract->id, $reason);
+        $filename = 'L003_' . ($contract->num ?? $contract->id) . '_' . now()->format('Y-m-d_His') . '.xml';
+
+        return response()->streamDownload(
+            function () use ($xml) {
+                echo $xml;
+            },
+            $filename,
+            [
+                'Content-Type' => 'application/xml',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]
+        );
+    }
     /**
      * Send L001 XML for a single contract to CBA Credit Registry web service.
      *
