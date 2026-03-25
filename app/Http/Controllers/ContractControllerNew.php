@@ -242,6 +242,7 @@ class ContractControllerNew extends Controller
             $date = !empty($validatedContract['contract_created_date'])
                 ? Carbon::parse($validatedContract['contract_created_date'])
                 : Carbon::now();
+            dd($date);
             $deadline = Carbon::now('Asia/Yerevan')->addMonths($contractRequest->validated()['deadline'])->format('Y-m-d');
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
             $category_id = null;
