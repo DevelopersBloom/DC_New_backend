@@ -84,6 +84,7 @@ class DocumentJournal extends Model
 
             $isDebitBank = str_starts_with($debitCode, '102101');
             $isCreditBank = str_starts_with($creditCode, '102101');
+            dd($isDebitBank, $isCreditBank,$debitCode, $creditCode);
             if ($isDebitBank || $isCreditBank) {
                 $bankAccountIds = \App\Models\ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
 
@@ -101,7 +102,8 @@ class DocumentJournal extends Model
                         self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102');
                     }
             }
-        });        static::deleting(function (DocumentJournal $journal) {
+        });
+        static::deleting(function (DocumentJournal $journal) {
             DB::transaction(function () use ($journal) {
                 if ($journal->deal_id && $journal->deal) {
                     $journal->deal->delete();
