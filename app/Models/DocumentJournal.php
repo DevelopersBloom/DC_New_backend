@@ -84,7 +84,6 @@ class DocumentJournal extends Model
 
             $isDebitBank = str_starts_with($debitCode, '102101');
             $isCreditBank = str_starts_with($creditCode, '102101');
-            dd($isDebitBank, $isCreditBank,$journal, $debitCode, $creditCode);
             if ($isDebitBank || $isCreditBank) {
                 $bankAccountIds = \App\Models\ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
 
@@ -97,6 +96,7 @@ class DocumentJournal extends Model
                 $provisionAmount = $journal->amount_amd * 0.01;
                 $provisionAmount = max($provisionAmount, 0);
                     if ($isDebitBank) {
+                        dd(1);
                         self::createProvisionEntry($journal, $provisionAmount, 'Պահուստավորում', '730041', '15300PC');
                     } else {
                         self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102');
