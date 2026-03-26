@@ -96,7 +96,6 @@ class DocumentJournal extends Model
                 $provisionAmount = $journal->amount_amd * 0.01;
                 $provisionAmount = max($provisionAmount, 0);
                     if ($isDebitBank) {
-                        dd(1);
                         self::createProvisionEntry($journal, $provisionAmount, 'Պահուստավորում', '730041', '15300PC');
                     } else {
                         self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102');
@@ -407,6 +406,7 @@ class DocumentJournal extends Model
         $debitAcc = ChartOfAccount::where('code', $debitCode)->first();
         $creditAcc = ChartOfAccount::where('code', $creditCode)->first();
         $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+       dd($debitAcc, $creditAcc, $nextDocNum,$amount,$label);
         if (!$debitAcc || !$creditAcc) return;
 
         $childJournal = DocumentJournal::create([
