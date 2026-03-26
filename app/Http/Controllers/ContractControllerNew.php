@@ -239,10 +239,10 @@ class ContractControllerNew extends Controller
             $pawnshop_id = \auth()->user()->pawnshop_id;
 //            $date = Carbon::now();
             $validatedContract = $contractRequest->validated();
-            $date = $validatedContract['contract_created_date']
-                ? Carbon::parse($validatedContract['contract_created_date'])
+            $date = !empty($validatedContract['contract_created_date'])
+                ? Carbon::parse($validatedContract['contract_created_date'], 'Asia/Yerevan')
                 : Carbon::now('Asia/Yerevan');
-            $deadline = $date->addMonths($contractRequest->validated()['deadline'])->format('Y-m-d');
+            $deadline = $date->copy()->addMonths($contractRequest->validated()['deadline'])->format('Y-m-d');
             $contract = $this->contractService->createContract($client->id, $contractRequest->validated(), $deadline);
             $category_id = null;
             $items = $itemRequest->validated()['items'];
@@ -345,8 +345,10 @@ class ContractControllerNew extends Controller
             $cash = $contract->provided_amount < 20000;
             $category_id = $contract->category_id;
           //  $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
-           $now = Carbon::parse($validatedData['contract_created_date']) ?? Carbon::now();
-            $contract->deadline = $now
+            $now = !empty($validatedData['contract_created_date'])
+                ? Carbon::parse($validatedData['contract_created_date'], 'Asia/Yerevan')
+                : Carbon::now('Asia/Yerevan');
+            $contract->deadline = $now->copy()
                 ->addMonths((int) $contract->deadline_days)
                 ->format('Y-m-d');
             $contract->date = $now;
