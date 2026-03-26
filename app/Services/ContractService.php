@@ -597,7 +597,7 @@ class   ContractService
                 'interest_payment'    => round($interestPayment, 10),
                 'service_fee_payment' => round($monthlyFeeAmount, 10),
 //                'remaining'           => round(max($endingBalance, 0), 10),
-                'remaining'           => round($loanAmount,10),
+                'remaining'           => round(max(0,$loanAmount),10),
                 'kasko_amount'        => $kaskoAmount,
                 'pawnshop_id'         => $pawnshop_id,
                 'PGI_ID'              => $pgi_id,
