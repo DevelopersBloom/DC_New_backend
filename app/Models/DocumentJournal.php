@@ -84,6 +84,7 @@ class DocumentJournal extends Model
 
             $isDebitBank = str_starts_with($debitCode, '102101');
             $isCreditBank = str_starts_with($creditCode, '102101');
+            dd($isDebitBank, $isCreditBank,$journal, $debitCode, $creditCode);
             if ($isDebitBank || $isCreditBank) {
                 $bankAccountIds = \App\Models\ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
 
