@@ -406,7 +406,6 @@ class DocumentJournal extends Model
         $debitAcc = ChartOfAccount::where('code', $debitCode)->first();
         $creditAcc = ChartOfAccount::where('code', $creditCode)->first();
         $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
-       dd($debitCode,$creditCode,$debitAcc, $creditAcc, $nextDocNum,$amount,$label);
         if (!$debitAcc || !$creditAcc) return;
 
         $childJournal = DocumentJournal::create([
