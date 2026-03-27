@@ -32,7 +32,7 @@ class V09Export
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
 
-        $cashAccounts = ChartOfAccount::whereIn('code', ['10000', '10001'])->pluck('id');
+        $cashAccounts = ChartOfAccount::whereIn('code', ['10000', '10001'])->pluck('id')->toArray();
         $cashBalance = $this->getAccountBalance($cashAccounts, $dateStr);
         $sheet->setCellValue('E17',$cashBalance / 1000);
 
