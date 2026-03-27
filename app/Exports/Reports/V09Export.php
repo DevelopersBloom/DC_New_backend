@@ -15,7 +15,7 @@ class V09Export
 {
     public function export($from, $to)
     {
-        $templatePath = base_path('v09.XLS');
+        $templatePath = base_path('v09.xls');
         $reader = IOFactory::createReader('Xls');
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getSheetByName('Sheet1');
