@@ -302,8 +302,8 @@ class V09Export
 
     private function getAccountBalance($accountId, $date)
     {
-        $debit = DocumentJournal::whereIn('debit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
-        $credit = DocumentJournal::whereIn('credit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
+        $debit = DocumentJournal::where('debit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
+        $credit = DocumentJournal::where('credit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
         return $debit - $credit;
     }
 }
