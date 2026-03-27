@@ -6,6 +6,7 @@ use App\Exports\Reports\ReportsJournalExport;
 use App\Exports\Reports\V03Export;
 use App\Exports\Reports\V06Export;
 use App\Exports\Reports\V07Export;
+use App\Exports\Reports\V09Export;
 use App\Exports\Reports\V13Export;
 use App\Exports\Reports\V17Export;
 use App\Services\ActivityService;
@@ -82,6 +83,17 @@ class ReportController
         );
 
         $export = new V07Export();
+        $path = $export->export($request->from, $request->to);
+
+        return response()->download($path)->deleteFileAfterSend();
+    }
+    public function getV09Report(Request $request)
+    {
+        $request->validate([
+            'from' => 'required|date',
+            'to'   => 'required|date',
+        ]);
+        $export = new V09Export();
         $path = $export->export($request->from, $request->to);
 
         return response()->download($path)->deleteFileAfterSend();
