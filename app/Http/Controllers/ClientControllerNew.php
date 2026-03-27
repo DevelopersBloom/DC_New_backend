@@ -555,7 +555,7 @@ class ClientControllerNew extends Controller
                             'credit_partner_id' => $clientId,
                             'comment' => "Zeroing 16200 for contract #{$contract->id} due to loss classification",
                             'debit_account_id' => $debitLossEffective,
-                            'credit_account_id' => $creditClassification,
+                            'credit_account_id' => $creditLossEffective,
                             'user_id' => auth()->id() ?? 1,
                             'journalable_type' => DocumentJournal::class,
                             'journalable_id' => $journal->id,

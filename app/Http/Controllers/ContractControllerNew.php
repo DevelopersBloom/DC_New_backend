@@ -803,7 +803,7 @@ class ContractControllerNew extends Controller
                     'credit_partner_id' => $clientId,
                     'comment' => "Old reserve for contract #{$contract->id} due to classification change",
                     'debit_account_id' => $debitReserve,
-                    'credit_account_id' => $creditEffective,
+                    'credit_account_id' => $creditReserve,
                     'user_id' => auth()->check() ? auth()->id() : 1,
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal?->id,

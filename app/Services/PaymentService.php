@@ -670,20 +670,29 @@ class PaymentService
             ]);
         }
 
-        $ruleReserve = PostingRule::where('business_event_filter', 'provide_general_amount_change')->first();
+        $classificationName = $contract->client->classification->name ?? 'standard';
+
+        $eventFilter = ($classificationName === 'standard')
+            ? 'provide_general_amount_change'
+            : 'provide_special_amount_change';
+
+        $ruleReserve = PostingRule::where('business_event_filter', $eventFilter)->first();
         if ($ruleReserve) {
             $reservePercent = $contract->client->classification->reserve_percent ?? 0;
             $reserveAmount = $partialAmount * $reservePercent / 100;
 
             if ($reserveAmount > 0) {
                 $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                $documentType = ($classificationName === 'standard')
+                    ? DocumentJournal::PROVIDED_AMOUNT_CHANGE
+                    : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
                 $journalDocRes = DocumentJournal::create([
                     'date' => $date,
                     'document_number' => $nextDocNum,
-                    'document_type' => DocumentJournal::PROVIDED_AMOUNT_CHANGE,
+                    'document_type' => $documentType,
                     'amount_amd' => $reserveAmount,
-                    'debit_partner_id' => $clientId,
-                    'credit_partner_id' => $diamondId,
+                    'debit_partner_id' => $diamondId,
+                    'credit_partner_id' => $clientId,
                     'comment' => 'reserve_payment',
                     'debit_account_id' => $ruleReserve->debit_account_id,
                     'credit_account_id' => $ruleReserve->credit_account_id,
@@ -695,7 +704,7 @@ class PaymentService
                 Transaction::create([
                     'date' => $date,
                     'document_number' => $nextDocNum,
-                    'document_type' => DocumentJournal::PROVIDED_AMOUNT_CHANGE,
+                    'document_type' => $documentType,
                     'debit_account_id' => $ruleReserve->debit_account_id,
                     'debit_partner_id' => $diamondId,
                     'credit_account_id' => $ruleReserve->credit_account_id,
