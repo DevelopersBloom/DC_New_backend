@@ -297,7 +297,7 @@ class V09Export
         $debit = (clone $query)->whereIn('debit_account_id', $accIds)->sum('amount_amd');
         $credit = (clone $query)->whereIn('credit_account_id', $accIds)->sum('amount_amd');
 
-        return ($type === 'active' || $type === 1) ? ($debit - $credit) : ($credit - $debit);
+        return ($type === 'active') ? ($debit - $credit) : ($credit - $debit);
     }
 
     private function getAccountBalance($accountId, $date)

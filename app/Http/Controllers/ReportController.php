@@ -136,7 +136,18 @@ class ReportController
 
         return response()->download($file)->deleteFileAfterSend(true);
     }
+    public function getV20Report(Request $request)
+    {
+        $request->validate([
+            'from' => 'nullable|date',
+            'to'   => 'nullable|date'
+        ]);
 
+        $export = new V20Export();
+        $path = $export->export($request->from, $request->to);
+
+        return response()->download($path)->deleteFileAfterSend();
+    }
 
     private function downloadTemplate(string $templateFile, Request $request)
     {
