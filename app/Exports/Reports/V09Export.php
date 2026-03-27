@@ -176,8 +176,11 @@ class V09Export
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
 
-        $cashAccounts = ChartOfAccount::whereIn('code', ['10000', '10001'])->pluck('id')->toArray();
-        $cashBalance = !empty($cashAccounts) ? $this->getAccountBalance($cashAccounts, $dateStr) : 0;
+        $acc10000 = ChartOfAccount::idByCode('10000');
+        $balance10000 = $acc10000 ? $this->getAccountBalance($acc10000,$dateStr) : 0;
+        $acc10001 = ChartOfAccount::idByCode('10001');
+        $balance10001 = $acc10001 ? $this->getAccountBalance($acc10001,$dateStr) : 0;
+        $cashBalance = $acc10000 + $acc10001;
         $sheet->setCellValue('E17', $cashBalance / 1000);
 
         $bankAccount = ChartOfAccount::idByCode('102101');
@@ -188,6 +191,7 @@ class V09Export
 
         $acc19000 = ChartOfAccount::idByCode('19000');
         $balance19000 = $acc19000 ? $this->getAccountBalance($acc19000, $dateStr) : 0;
+        $sheet->setCellValue('F22', $balance19000 / 1000);
         $sheet->setCellValue('F44', $balance19000 / 1000);
 
         $docs = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
@@ -196,7 +200,7 @@ class V09Export
 
         $acc39210 = ChartOfAccount::idByCode('39210');
         $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
-        $acc39200Account = ChartOfAccount::where('code', '39200')->first(); // Ամբողջական մոդելը՝ տիպը ստանալու համար
+        $acc39200Account = ChartOfAccount::where('code', '39200')->first();
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
@@ -296,15 +300,10 @@ class V09Export
         return ($type === 'active' || $type === 1) ? ($debit - $credit) : ($credit - $debit);
     }
 
-    private function getAccountBalance($accountIds, $date)
+    private function getAccountBalance($accountId, $date)
     {
-        $ids = is_array($accountIds) ? $accountIds : [$accountIds];
-        $ids = array_filter($ids);
-
-        if (empty($ids)) return 0;
-
-        $debit = DocumentJournal::whereIn('debit_account_id', $ids)->whereDate('date', '<=', $date)->sum('amount_amd');
-        $credit = DocumentJournal::whereIn('credit_account_id', $ids)->whereDate('date', '<=', $date)->sum('amount_amd');
+        $debit = DocumentJournal::whereIn('debit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
+        $credit = DocumentJournal::whereIn('credit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
         return $debit - $credit;
     }
 }
