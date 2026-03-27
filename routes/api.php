@@ -119,7 +119,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             Route::get('/v09',  [ReportController::class, 'getV09Report']);
             Route::get('/v13', [ReportController::class, 'getV13Report'])->middleware('can:view_v13_report');
             Route::get('/v17',[ReportController::class,'getV17Report'])->middleware('can:view_v17_report');
-//            Route::get('/v20',[ReportController::class,'getV20Report']);
+            Route::get('/v20',[ReportController::class,'getV20Report']);
         });
         Route::get('/transactions/reports/export', \App\Http\Controllers\ReportV01Controller::class)->middleware('can:view_v01_report');
 //        Route::get('/transactions/reports/export', [ReportController::class, 'getFirstReport']);

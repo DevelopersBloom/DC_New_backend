@@ -9,6 +9,7 @@ use App\Exports\Reports\V07Export;
 use App\Exports\Reports\V09Export;
 use App\Exports\Reports\V13Export;
 use App\Exports\Reports\V17Export;
+use App\Exports\Reports\V20Export;
 use App\Services\ActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;

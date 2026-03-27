@@ -16,8 +16,6 @@ class V20Export
         $reader = IOFactory::createReader('Xls');
         $spreadsheet = $reader->load($path);
 
-        $start = Carbon::parse($from)->startOfDay();
-        $end = Carbon::parse($to)->endOfDay();
 
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
         $sheet1->setCellValueExplicit('C5','«Ակրեդիտ» ՎՄ ՍՊԸ',DataType::TYPE_STRING);
