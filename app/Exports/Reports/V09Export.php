@@ -180,7 +180,7 @@ class V09Export
         $balance10000 = $acc10000 ? $this->getAccountBalance($acc10000,$dateStr) : 0;
         $acc10001 = ChartOfAccount::idByCode('10001');
         $balance10001 = $acc10001 ? $this->getAccountBalance($acc10001,$dateStr) : 0;
-        $cashBalance = $acc10000 + $acc10001;
+        $cashBalance = $balance10000 + $balance10001;
         $sheet->setCellValue('E17', $cashBalance / 1000);
 
         $bankAccount = ChartOfAccount::idByCode('102101');
@@ -280,7 +280,7 @@ class V09Export
     private function getSpecificBalance($contractId, $docId, $accountId, $date, $type = 'active')
     {
         $accIds = is_array($accountId) ? $accountId : [$accountId];
-        $accIds = array_filter($accIds); // Հեռացնում ենք null արժեքները
+        $accIds = array_filter($accIds);
 
         if (empty($accIds)) return 0;
 
