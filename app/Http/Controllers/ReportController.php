@@ -99,7 +99,7 @@ class ReportController
         return response()->download($path)->deleteFileAfterSend();
     }
 
-    public function getV013Report(Request $request)
+    public function getV13Report(Request $request)
     {
         $request->validate([
             'from' => 'nullable|date',
