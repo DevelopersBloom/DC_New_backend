@@ -560,6 +560,8 @@ class   ContractService
         $schedule = [];
 
         for ($i = 1; $i <= $months; $i++) {
+            $isLastMonth = ($i === $months);
+
             $prevRawDate    = (clone $currentDate)->addMonths($i - 1);
             $rawPaymentDate = (clone $currentDate)->addMonths($i);
 
@@ -573,6 +575,7 @@ class   ContractService
             $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
 
 //            $monthlyPayment   = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
+
             $endingBalance    = -$this->excelFv($allMonthlyRate, $i, -$monthlyPayment, $loanAmount);
 //            $principalPayment = -$this->excelPpmt($allMonthlyRate, $i, $months, $loanAmount);
 
@@ -583,11 +586,15 @@ class   ContractService
             $loanAmount -= $principalPayment;
 
             $kaskoAmount = 0;
-            $isLastMonth = ($i === $months);
             if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastMonth) {
                 $kaskoAmount = (float) $contract->kasko_amount;
             }
 
+            if ($isLastMonth) {
+                $monthlyPayment += $loanAmount;
+                $principalPayment += $loanAmount;
+                $loanAmount = 0;
+            }
             Payment::create([
                 'contract_id'         => $contract->id,
                 'date'                => $paymentDate->format('Y-m-d'),
@@ -597,7 +604,7 @@ class   ContractService
                 'interest_payment'    => round($interestPayment, 10),
                 'service_fee_payment' => round($monthlyFeeAmount, 10),
 //                'remaining'           => round(max($endingBalance, 0), 10),
-                'remaining'           => round(max(0,$loanAmount),10),
+                'remaining'           => round($loanAmount,10),
                 'kasko_amount'        => $kaskoAmount,
                 'pawnshop_id'         => $pawnshop_id,
                 'PGI_ID'              => $pgi_id,
