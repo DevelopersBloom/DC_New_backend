@@ -205,8 +205,8 @@ class V09Export
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || $contract->status != 'initial') continue;
-
-            $remainingDays = $toDate->diffInDays(Carbon::parse($contract->deadline), false);
+            $date = Carbon::parse($contract->date);
+            $remainingDays = $date->diffInDays(Carbon::parse($contract->deadline), false);
             $col = $this->getColumnByDaysV09($remainingDays);
 
             // 16200NV
