@@ -156,7 +156,7 @@ class UpdateClientClassifications implements ShouldQueue
                             }
 
                             // accounts and document types depending on classification name
-                            if ($oldClassificationName == 'standard') {
+                            if ($client->classification->name === 'standard') {
 
                                 $ruleReserve = PostingRule::where('business_event_filter', 'reserve_general_amount')
                                     ->first();
@@ -178,28 +178,13 @@ class UpdateClientClassifications implements ShouldQueue
                                 $debitReserve = $ruleReserve->debit_account_id;
                                 $creditReserve = $ruleReserve->credit_account_id;
                             }
-                            if ($client->classification->name === 'standard') {
-                                $ruleClassification = PostingRule::where('business_event_filter', 'classification_general_to_special')
-                                    ->first();
-
-                                if (!$ruleClassification) {
-                                    throw new \RuntimeException('Posting rule for classification_general_to_special not found');
-                                }
-
-                                $debitClassification  = $ruleClassification->debit_account_id;
-                                $creditClassification =  $ruleClassification->credit_account_id;
-
+                            if ($oldClassificationName === 'standard') {
+                                $ruleClassification = PostingRule::where('business_event_filter', 'classification_general_to_special')->firstOrFail();
                             } else {
-                                $ruleClassification = PostingRule::where('business_event_filter', 'classification_special_to_general')
-                                    ->first();
-
-                                if (!$ruleClassification) {
-                                    throw new \RuntimeException('Posting rule for classification_special_to_general not found');
-                                }
-
-                                $debitClassification  = $ruleClassification->debit_account_id;
-                                $creditClassification =  $ruleClassification->credit_account_id;
+                                $ruleClassification = PostingRule::where('business_event_filter', 'classification_special_to_general')->firstOrFail();
                             }
+                            $debitClassification  = $ruleClassification->debit_account_id;
+                            $creditClassification = $ruleClassification->credit_account_id;
 
                             $documentType = $client->classification->name === 'standard'
                                 ? DocumentJournal::RESERVE_GENERAL_AMOUNT
