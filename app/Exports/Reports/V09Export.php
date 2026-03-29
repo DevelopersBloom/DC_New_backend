@@ -213,8 +213,13 @@ class V09Export
             if ($acc16200NV) {
                 $balanceNV = $this->getSpecificBalance($contract->id, $doc->id, $acc16200NV, $dateStr, 'active');
                 if ($balanceNV > 0) {
+                    $value = $balanceNV / 1000;
+
                     $prevNV = (float)$sheet->getCell($col . '31')->getValue();
-                    $sheet->setCellValue($col . '31', $prevNV + ($balanceNV / 1000));
+                    $sheet->setCellValue($col . '31', $prevNV + $value);
+
+                    $prev43 = (float)$sheet->getCell($col . '43')->getValue();
+                    $sheet->setCellValue($col . '43', $prev43 + $value);
                 }
             }
 
