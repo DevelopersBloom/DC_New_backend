@@ -14,6 +14,7 @@ class Modification extends Model
         'subject_id',
         'modification_type',
         'field_code',
+        'element_code',
         'old_value',
         'new_value',
         'effective_date',

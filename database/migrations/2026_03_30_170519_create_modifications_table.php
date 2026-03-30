@@ -21,6 +21,8 @@ return new class extends Migration
             $table->string('modification_type', 100);
             // 'LastExpirationDate', 'Notes'
             $table->string('field_code', 100)->nullable();
+            $table->string('element_code', 100)->nullable();
+
             $table->string('old_value')->nullable();
             $table->string('new_value')->nullable();
             $table->date('effective_date')->nullable();

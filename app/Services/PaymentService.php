@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\DealAction;
 use App\Models\DocumentJournal;
+use App\Models\Modification;
 use App\Models\Pawnshop;
 use App\Models\Payment;
 use App\Models\PostingRule;
@@ -64,6 +65,8 @@ class PaymentService
             }
 
         }
+        $contract->old_collected += $interest_amount;
+        $contract->save();
         if ($principal_amount > 0 && $contract->payment_type == 'amortized') {
             $history = [];
             $history['contract_changes'] = [
@@ -84,6 +87,28 @@ class PaymentService
                 'date' => $date ?? Carbon::now()->format('Y-m-d'),
                 'history' => $history
             ]);
+            Modification::create([
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'Modificator',
+                'field_code' => 'PrincipalAmount',
+                'element_code' => 'Amount',
+                'old_value' => $old_provided !== null ? (string)$old_provided : null,
+                'new_value' => (string)max(0, $contract->provided_amount - $principal_amount),
+                'effective_date' => now()->toDateString(),
+            ]);
+
+            Modification::create([
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'Modificator',
+                'field_code' => 'PercentsPaid',
+                'element_code' => 'Amount',
+                'old_value' => $old_collected !== null ? (string)$old_provided : null,
+                'new_value' => (string)max(0, $old_collected + $interest_amount),
+                'effective_date' => now()->toDateString(),
+            ]);
+
         }
 
         return [
@@ -162,7 +187,7 @@ class PaymentService
             $this->partiallyCompletePayment($payment, $amount, $deal_id,[],$principalPayment,$interestPayment);
         }
 
-        $contract->collected += $amount;
+//        $contract->collected += $amount;
         $contract->save();
 
         return [
@@ -397,9 +422,19 @@ class PaymentService
                         'old_collected' => $contract->collected,
                         'contract_id' => $contract->id,
                     ];
+                    Modification::create([
+                        'subject_type' => Contract::class,
+                        'subject_id' => $contract->id,
+                        'modification_type' => 'Modificator',
+                        'field_code' => 'PrincipalAmount',
+                        'element_code' => 'Amount',
+                        'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
+                        'new_value' => (string)max(0, $contract->provided_amount - $partialAmount),
+                        'effective_date' => now()->toDateString(),
+                    ]);
 
                     $contract->left = max(0, $contract->left - $partialAmount);
-                    $contract->collected += $partialAmount;
+//                    $contract->collected += $partialAmount;
                     $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
                     $contract->save();
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
@@ -414,9 +449,18 @@ class PaymentService
                     'old_collected' => $contract->collected,
                     'contract_id' => $contract->id,
                 ];
-
+                Modification::create([
+                    'subject_type' => Contract::class,
+                    'subject_id' => $contract->id,
+                    'modification_type' => 'Modificator',
+                    'field_code' => 'PrincipalAmount',
+                    'element_code' => 'Amount',
+                    'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
+                    'new_value' => (string)max(0, $contract->provided_amount - $partialAmount),
+                    'effective_date' => now()->toDateString(),
+                ]);
                 $contract->left = max(0, $contract->left - $partialAmount);
-                $contract->collected += $partialAmount;
+//                $contract->collected += $partialAmount;
                 $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
                 $contract->save();
             }
@@ -442,9 +486,18 @@ class PaymentService
                 'old_collected' => $contract->collected,
                 'contract_id' => $contract->id,
             ];
-
+            Modification::create([
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'Modificator',
+                'field_code' => 'PrincipalAmount',
+                'element_code' => 'Amount',
+                'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
+                'new_value' => (string)max(0, $contract->provided_amount - $partialAmount),
+                'effective_date' => now()->toDateString(),
+            ]);
             $contract->left = max(0, $contract->left - $partialAmount);
-            $contract->collected += $partialAmount;
+//            $contract->collected += $partialAmount;
             $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
             $contract->save();
         }
@@ -724,19 +777,40 @@ class PaymentService
         Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
 
+        $interestAmount = $amount - $contract->provided_amount;
 
         $history['contract_changes'] = [
             'contract_id' => $contract->id,
             'old_left' => $contract->left,
             'new_left' => 0,
             'old_collected' => $contract->collected,
-            'new_collected' => $contract->collected + $amount,
+            'new_collected' => $contract->collected + $interestAmount,
             'old_provided' => $contract->provided_amount,
 //            'old_estimated' => $contract->estimated_amount,
             'old_status' => 'initial',
             'new_status' => 'completed',
             'updated_at' => now()->toDateTimeString()
         ];
+        Modification::create([
+            'subject_type' => Contract::class,
+            'subject_id' => $contract->id,
+            'modification_type' => 'Modificator',
+            'field_code' => 'PrincipalAmount',
+            'element_code' => 'Amount',
+            'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
+            'new_value' => 0,
+            'effective_date' => now()->toDateString(),
+        ]);
+        Modification::create([
+            'subject_type' => Contract::class,
+            'subject_id' => $contract->id,
+            'modification_type' => 'Modificator',
+            'field_code' => 'PercentsPaid',
+            'element_code' => 'Amount',
+            'old_value' => $contract->collected !== null ? (string)$contract->collected : null,
+            'new_value' => (string)($contract->collected + $interestAmount),
+            'effective_date' => now()->toDateString(),
+        ]);
         ContractAmountHistory::create([
             'contract_id' => $contract->id,
             'amount' => $contract->provided_amount,
@@ -761,7 +835,7 @@ class PaymentService
 
         $contract->status = 'completed';
         $contract->left = 0;
-        $contract->collected += $amount;
+        $contract->collected += $interestAmount;
         $contract->provided_amount = 0;
         $contract->save();
         return $payment;
