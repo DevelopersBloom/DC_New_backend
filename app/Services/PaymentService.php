@@ -65,7 +65,7 @@ class PaymentService
             }
 
         }
-        $contract->old_collected += $interest_amount;
+        $contract->collected += $interest_amount;
         $contract->save();
         if ($principal_amount > 0 && $contract->payment_type == 'amortized') {
             $history = [];
