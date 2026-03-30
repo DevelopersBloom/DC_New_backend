@@ -137,7 +137,6 @@ class CreditRegistryL002Service
             return $fieldEl;
         }
 
-        // 🔥 ctModificator structure
         if ($mod->old_value !== null && $mod->old_value !== '') {
             $fieldEl->appendChild(
                 $dom->createElement('OldValue', (string)$mod->old_value)

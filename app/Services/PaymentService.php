@@ -98,6 +98,8 @@ class PaymentService
                 'effective_date' => now()->toDateString(),
             ]);
 
+        }
+        if ($interest_amount > 0) {
             Modification::create([
                 'subject_type' => Contract::class,
                 'subject_id' => $contract->id,
@@ -108,7 +110,6 @@ class PaymentService
                 'new_value' => (string)max(0, $old_collected + $interest_amount),
                 'effective_date' => now()->toDateString(),
             ]);
-
         }
 
         return [
