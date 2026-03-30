@@ -38,6 +38,8 @@ return new class extends Migration
             $table->string('actual_community')->nullable()->after('actual_province');
             $table->string('actual_settlement')->nullable()->after('actual_community');
             $table->string('actual_street_building')->nullable()->after('actual_settlement');
+            $table->string('actual_zip_code')->nullable()->after('actual_street_building');
+
         });
     }
 
