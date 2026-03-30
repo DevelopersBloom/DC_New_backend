@@ -123,7 +123,6 @@ class CreditRegistryL002Service
     {
         $fieldEl = $dom->createElement($mod->field_code);
 
-        // եթե ապագայում պետք լինի nested (element_code)
         if (!empty($mod->element_code) && false) {
             $inner = $dom->createElement($mod->element_code);
 
