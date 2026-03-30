@@ -106,7 +106,7 @@ class PaymentService
                 'modification_type' => 'Modificator',
                 'field_code' => 'PercentsPaid',
                 'element_code' => 'Amount',
-                'old_value' => $old_collected !== null ? (string)$old_provided : null,
+                'old_value' => $old_collected !== null ? (string)$old_collected : null,
                 'new_value' => (string)max(0, $old_collected + $interest_amount),
                 'effective_date' => now()->toDateString(),
             ]);
