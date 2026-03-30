@@ -462,7 +462,7 @@ class FileController extends Controller
     }
     public function downloadContract($id)
     {
-        $contract = Contract::with(['client', 'items.category', 'pawnshop', 'payments', 'user','seller'])->findOrFail($id);
+        $contract = Contract::with(['category', 'client', 'items.category', 'pawnshop', 'payments', 'user','seller'])->findOrFail($id);
 
         $client = $contract->client;
         $seller = $contract->seller;
@@ -615,6 +615,9 @@ class FileController extends Controller
         $templateProcessor->saveAs($contractPath);
         $filesToZip[] = $contractPath;
 
+        [$individualTempPath] = $this->generateIndividualSheetDocx($contract);
+        $filesToZip[] = $individualTempPath;
+
         $zipFileName = $contract->num . '_փաստաթղթեր.zip';
         $zipFilePath = storage_path('app/tmp/' . $zipFileName);
 
@@ -635,30 +638,37 @@ class FileController extends Controller
         return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
-    public function downloadIndividualSheet($id)
+    private function generateIndividualSheetDocx(Contract $contract): array
     {
-        $contract = Contract::with(['client', 'items.category', 'payments'])->findOrFail($id);
         $client = $contract->client;
         $providedAt = $contract->provided_at;
-        $templatePath = public_path('files/contract_individual.docx');
 
+        $templatePath = public_path('files/contract_individual.docx');
         if (!file_exists($templatePath)) {
             abort(404, "Template not found: contract_individual.docx");
         }
 
-        $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+        $templateProcessor = new TemplateProcessor($templatePath);
 
         $clientName = $client->name . ' ' . $client->surname;
         $fullAddress = $client->city . ', ' . $client->street;
-        $firstPayment = $contract->payments->where('status','initial')->first();
-        $categoryTitle = $contract->category->title;
+        $firstPayment = $contract->payments->where('status', 'initial')->first();
+
+        $categoryTitle = $contract->category?->title
+            ?? $contract->items->first()?->category?->title
+            ?? 'Վարկ';
+
         $interestAmount = 0;
         $providedAmount = 0;
+
         if ($providedAt) {
-            $interestAmount = $contract->payment_type == 'amortized' ? $contract->payments->where('status','initial')->sum('interest_payment')
-                                                             : $contract->payments->where('status','initial')->sum('amount');
+            $interestAmount = $contract->payment_type == 'amortized'
+                ? $contract->payments->where('status', 'initial')->sum('interest_payment')
+                : $contract->payments->where('status', 'initial')->sum('amount');
+
             $providedAmount = $this->makeMoney((int)$contract->provided_amount);
         }
+
         $templateProcessor->setValues([
             'name'               => $categoryTitle,
             'amount'             => $this->makeMoney((int)$contract->contract_amount),
@@ -689,7 +699,21 @@ class FileController extends Controller
 
         $templateProcessor->saveAs($tempPath);
 
-        $this->activity->log('download_individual_sheet', 'Individual Sheet #' . $contract->num, Contract::class, $contract->id);
+        return [$tempPath, $fileName];
+    }
+
+    public function downloadIndividualSheet($id)
+    {
+        $contract = Contract::with(['client', 'category', 'items.category', 'payments'])->findOrFail($id);
+
+        [$tempPath, $fileName] = $this->generateIndividualSheetDocx($contract);
+
+        $this->activity->log(
+            'download_individual_sheet',
+            'Individual Sheet #' . $contract->num,
+            Contract::class,
+            $contract->id
+        );
 
         return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
     }
