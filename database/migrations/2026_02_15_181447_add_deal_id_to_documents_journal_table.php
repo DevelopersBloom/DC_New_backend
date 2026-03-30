@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::table('documents_journal', function (Blueprint $table) {
             $table->foreignId('deal_id')
-                ->after('partner_id')
+                ->after('credit_partner_id')
                 ->nullable()
                 ->constrained('deals')
                 ->nullOnDelete();
