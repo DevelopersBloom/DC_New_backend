@@ -80,7 +80,8 @@ class CreditRegistryL002Service
         $root->appendChild($this->createCreditCode($dom, $contract));
         $root->appendChild($this->createModificationDateTime($dom));
 
-        $dataToModify = $dom->createElementNS(self::NS, 'DataToModify');
+        $dataToModify = $this->createDataToModifyFromMods($dom, $mods);
+
         if ($dataToModify) {
             $root->appendChild($dataToModify);
         }
@@ -104,7 +105,8 @@ class CreditRegistryL002Service
                 continue;
             }
 
-            $modifiedData = $dom->createElementNS(self::NS, 'ModifiedData');
+            $modifiedData = $dom->createElement('ModifiedData');
+
             $fieldEl = $this->createModificatorField($dom, $mod);
 
             $modifiedData->appendChild($fieldEl);
@@ -119,23 +121,39 @@ class CreditRegistryL002Service
      */
     private function createModificatorField(DOMDocument $dom, Modification $mod): DOMElement
     {
-        $fieldEl = $dom->createElementNS(self::NS, $mod->field_code);
+        $fieldEl = $dom->createElement($mod->field_code);
 
-        $fieldEl->setAttribute('ModType', '1');
+        if (!empty($mod->element_code) && false) {
+            $inner = $dom->createElement($mod->element_code);
 
-        if ($mod->old_value !== null && $mod->old_value !== '') {
-            $old = $dom->createElementNS(self::NS, 'OldValue', (string)$mod->old_value);
-            $fieldEl->appendChild($old);
+            if ($mod->old_value !== null) {
+                $inner->appendChild($dom->createElement('OldValue', (string)$mod->old_value));
+            }
+
+            $inner->appendChild($dom->createElement('NewValue', (string)$mod->new_value));
+
+            $fieldEl->appendChild($inner);
+
+            return $fieldEl;
         }
 
-        $new = $dom->createElementNS(self::NS, 'NewValue', (string)$mod->new_value);
-        $fieldEl->appendChild($new);
+        if ($mod->old_value !== null && $mod->old_value !== '') {
+            $fieldEl->appendChild(
+                $dom->createElement('OldValue', (string)$mod->old_value)
+            );
+        }
+
+        $fieldEl->appendChild(
+            $dom->createElement('NewValue', (string)$mod->new_value)
+        );
 
         return $fieldEl;
     }
+
     private function createReportHeader(DOMDocument $dom): DOMElement
     {
-        $header = $dom->createElementNS(self::NS, 'ReportHeader');
+        $header = $dom->createElement('ReportHeader');
+
         $header->appendChild($dom->createElement('OrganisationCode', self::ORGANISATION_CODE));
         $header->appendChild($dom->createElement('OrganisationBranchCode', self::ORGANISATION_BRANCH_CODE));
         $header->appendChild($dom->createElement('OrganizationStatus', self::ORGANIZATION_STATUS));
