@@ -6,8 +6,10 @@ use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\ClassificationHistory;
 use App\Models\Contract;
+use App\Models\ContractModification;
 use App\Models\ContractReserveHistory;
 use App\Models\DocumentJournal;
+use App\Models\Modification;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ClientClassificationService;
@@ -71,6 +73,7 @@ class UpdateClientClassifications implements ShouldQueue
                         // Save old values
                         $oldClassificationName = $client->classification?->name;
                         $oldClassificationId = $client->classification?->id;
+                        $oldClassificationOrder = $client->classification?->order;
                         $oldReservePercent = $client->classification?->reserve_percent ?? 0;
                         Log::info("old reserve percent is {$oldReservePercent} ");
 
@@ -82,6 +85,7 @@ class UpdateClientClassifications implements ShouldQueue
                         $newClassificationName = $client->classification?->name;
                         $newReservePercent = $client->classification?->reserve_percent ?? 0;
                         $newRiskWeight = $client->classification?->risk_weight ?? 0;
+                        $newClassificationOrder = $client->classification?->order;
                         $clientId = $client->id;
 
                         // If new classification is not 'standard' the controller subtracts oldReservePercent:
@@ -91,8 +95,19 @@ class UpdateClientClassifications implements ShouldQueue
 
                         // Loop contracts
                         foreach ($client->contracts as $contract) {
+                            $oldRisk = $oldClassificationOrder !== null ? max(0, min(7, (int)$oldClassificationOrder)) : null;
+                            $newRisk = $newClassificationOrder !== null ? max(0, min(7, (int)$newClassificationOrder)) : 0;
 
-                            // find contract journal (the base journal for this contract)
+                            Modification::create([
+                                'subject_type' => Client::class,
+                                'subject_id' => $clientId->id,
+                                'modification_type' => 'RISK',
+                                'field_code' => 'Risk',
+                                'old_value' => $oldRisk !== null ? (string)$oldRisk : null,
+                                'new_value' => (string)$newRisk,
+                                'effective_date' => now()->toDateString(),
+                            ]);
+
                             $journal = DocumentJournal::where('journalable_type', Contract::class)
                                 ->where('journalable_id', $contract->id)
                                 ->first();

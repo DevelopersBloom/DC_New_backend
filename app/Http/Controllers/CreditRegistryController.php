@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\Contract;
+use App\Models\ContractModification;
+use App\Models\Modification;
 use App\Services\CreditRegistryL001Service;
 use App\Services\CreditRegistryL002Service;
 use App\Services\CreditRegistryL003Service;
 use App\Services\CreditRegistrySoapClient;
+use App\Services\CreditRegistryRiskModificationXmlService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -17,6 +21,7 @@ class CreditRegistryController extends Controller
         private CreditRegistryL001Service $l001Service,
         private CreditRegistryL002Service $l002Service,
         private CreditRegistryL003Service $l003Service,
+        private CreditRegistryRiskModificationXmlService $riskModXmlService,
 //        private CreditRegistrySoapClient $soapClient,
     ) {
     }
@@ -96,6 +101,41 @@ class CreditRegistryController extends Controller
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             ]
         );
+    }
+
+    /**
+     * Generate and download ONE XML file containing all unsent RISK modifications.
+     * Marks exported rows as sent.
+     */
+    public function downloadUnsentRiskModifications(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $mods = Modification::query()
+            ->where('is_sent', false)
+            ->where('modification_type', 'RISK')
+            ->where('subject_type', Client::class)
+            ->orderBy('id')
+            ->get();
+
+        if ($mods->isEmpty()) {
+            return response()->json(['message' => 'No unsent RISK modifications found'], 404);
+        }
+
+        $xml = $this->riskModXmlService->generateUnsentRiskBatchXml($mods);
+
+        $filename = 'RISK_MODIFICATIONS_' . now()->format('Y-m-d_His') . '.xml';
+        $path = storage_path('app/tmp/' . $filename);
+
+        if (!file_exists(dirname($path))) {
+            mkdir(dirname($path), 0775, true);
+        }
+
+        file_put_contents($path, $xml);
+
+        Modification::query()
+            ->whereIn('id', $mods->pluck('id'))
+            ->update(['is_sent' => true, 'sent_at' => now()]);
+
+        return response()->download($path, $filename)->deleteFileAfterSend(true);
     }
     /**
      * Send L001 XML for a single contract to CBA Credit Registry web service.
