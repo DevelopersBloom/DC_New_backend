@@ -327,20 +327,19 @@ class ClientControllerNew extends Controller
 
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
-            foreach ($client->contracts as $contract) {
-                // LNREG3 ctRisk: store risk(classification) change per contract for later XML export
-                $oldRisk = $oldClassificationOrder !== null ? max(0, min(7, (int)$oldClassificationOrder)) : null;
-                $newRisk = $newClassificationOrder !== null ? max(0, min(7, (int)$newClassificationOrder)) : 0;
+            $oldRisk = $oldClassificationOrder !== null ? max(0, min(7, (int)$oldClassificationOrder)) : null;
+            $newRisk = $newClassificationOrder !== null ? max(0, min(7, (int)$newClassificationOrder)) : 0;
 
-                Modification::create([
-                    'subject_type' => Client::class,
-                    'subject_id' => $client->id,
-                    'modification_type' => 'RISK',
-                    'field_code' => 'Risk',
-                    'old_value' => $oldRisk !== null ? (string)$oldRisk : null,
-                    'new_value' => (string)$newRisk,
-                    'effective_date' => now()->toDateString(),
-                ]);
+            Modification::create([
+                'subject_type' => Client::class,
+                'subject_id' => $client->id,
+                'modification_type' => 'RISK',
+                'field_code' => 'Risk',
+                'old_value' => $oldRisk !== null ? (string)$oldRisk : null,
+                'new_value' => (string)$newRisk,
+                'effective_date' => now()->toDateString(),
+            ]);
+            foreach ($client->contracts as $contract) {
 
 //                $reserveAmount = $contract->provided_amount * $newReservePercent / 100;
 //                $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;

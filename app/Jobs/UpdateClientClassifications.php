@@ -92,21 +92,20 @@ class UpdateClientClassifications implements ShouldQueue
                         if ($newClassificationName !== 'standard') {
                             $newReservePercent -= $oldReservePercent;
                         }
+                        $oldRisk = $oldClassificationOrder !== null ? max(0, min(7, (int)$oldClassificationOrder)) : null;
+                        $newRisk = $newClassificationOrder !== null ? max(0, min(7, (int)$newClassificationOrder)) : 0;
 
+                        Modification::create([
+                            'subject_type' => Client::class,
+                            'subject_id' => $clientId->id,
+                            'modification_type' => 'RISK',
+                            'field_code' => 'Risk',
+                            'old_value' => $oldRisk !== null ? (string)$oldRisk : null,
+                            'new_value' => (string)$newRisk,
+                            'effective_date' => now()->toDateString(),
+                        ]);
                         // Loop contracts
                         foreach ($client->contracts as $contract) {
-                            $oldRisk = $oldClassificationOrder !== null ? max(0, min(7, (int)$oldClassificationOrder)) : null;
-                            $newRisk = $newClassificationOrder !== null ? max(0, min(7, (int)$newClassificationOrder)) : 0;
-
-                            Modification::create([
-                                'subject_type' => Client::class,
-                                'subject_id' => $clientId->id,
-                                'modification_type' => 'RISK',
-                                'field_code' => 'Risk',
-                                'old_value' => $oldRisk !== null ? (string)$oldRisk : null,
-                                'new_value' => (string)$newRisk,
-                                'effective_date' => now()->toDateString(),
-                            ]);
 
                             $journal = DocumentJournal::where('journalable_type', Contract::class)
                                 ->where('journalable_id', $contract->id)
