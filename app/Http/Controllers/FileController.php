@@ -490,7 +490,7 @@ class FileController extends Controller
 
         $templateProcessor = new TemplateProcessor($templatePath);
 
-        $clientName = $client->name . ' ' . $client->surname;
+        $clientName = $client->name . ' ' . $client->surname . ' ' . $client->middle_name;
         $userName = $user ? ($user->name . ' ' . $user->surname) : '';
         $sellerName = $seller ? ($seller->name . ' ' . $seller->surname) : '';
         $yearlyRate = round($contract->interest_rate * 365, 5);
@@ -509,8 +509,8 @@ class FileController extends Controller
             'passport_validity' => \Carbon\Carbon::parse($client->passport_validity)->format('d.m.Y'),
             'passport_issued' => $client->passport_issued,
             'social_card_number' => $client->social_card_number ?? $client->tax_number ?? '',
-            'city' => $client->city,
-            'street' => $client->street,
+            'city' => $client->actual_province ?? $client->city,
+            'street' => $client->actual_street_building ?? $client->street,
             'phone' => $client->phone ?? $contract->additional_phone ?? '',
             'contract_amount' => $this->makeMoney((int)$contract->contract_amount),
             'mother_amount' => $this->makeMoney((int)$contract->estimated_amount),
@@ -590,10 +590,10 @@ class FileController extends Controller
             if (!empty($itemRows)) {
                 $templateProcessor->cloneRowAndSetValues('i_desc', $itemRows);
                 $templateProcessor->setValues([
-                    't_i_c' => $totals['count'],
-                    't_i_w' => $totals['weight'],
+                    't_i_c'  => $totals['count'],
+                    't_i_w'  => $totals['weight'],
                     't_i_cw' => $totals['clear_weight'],
-                    't_i_total_am' => $this->makeMoney((int)$totals['sum']),
+                    't_i_am' => $this->makeMoney((int)$totals['sum']),
                 ]);
             }
         }
