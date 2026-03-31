@@ -99,7 +99,7 @@ class CreditRegistryL002Service
 
         foreach ($mods as $mod) {
 
-            $fieldName = $mod->modification_type;
+            $fieldName = $mod->field_code;
 
             if (!in_array($fieldName, self::MODIFIED_DATA_ALLOWED_FIELDS, true)) {
                 continue;
