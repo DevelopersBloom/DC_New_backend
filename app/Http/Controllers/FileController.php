@@ -518,6 +518,7 @@ class FileController extends Controller
             'effective_annual_rate' => $effectiveRate . ' %',
             'deadline' => \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y'),
             'bank_name' => $client->bank_name,
+            'account_card_number' => $client->account_number ?? $client->card_number ?? '',
             'account_number' => $client->account_number,
             'card_number' => $client->card_number,
             'user_name' => $userName,
