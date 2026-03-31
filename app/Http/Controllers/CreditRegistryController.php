@@ -64,11 +64,6 @@ class CreditRegistryController extends Controller
         $xml = $this->l002Service->generateL002Xml((int) $contract->id);
         $filename = 'L002_' . ($contract->num ?? $contract->id) . '_' . now()->format('Y-m-d_His') . '.xml';
 
-        Modification::where('is_sent', false)
-            ->update([
-                'is_sent' => true,
-                'sent_at' => now(),
-            ]);
         return response()->streamDownload(
             function () use ($xml) {
                 echo $xml;

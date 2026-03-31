@@ -839,6 +839,16 @@ class PaymentService
         $contract->collected += $interestAmount;
         $contract->provided_amount = 0;
         $contract->save();
+
+        Modification::create([
+            'subject_type' => Contract::class,
+            'subject_id' => $contract->id,
+            'modification_type' => 'LoanStatus',
+            'field_code' => 'YN',
+            'old_value' => 'Y',
+            'new_value' => 'N',
+            'effective_date' => now()->toDateString(),
+        ]);
         return $payment;
     }
 }

@@ -11,6 +11,7 @@ use App\Models\DealAction;
 use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
+use App\Models\Modification;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PostingRule;
@@ -213,6 +214,16 @@ class PaymentControllerNew extends Controller
             $contract->status = 'completed';
             $contract->closed_at = Carbon::now();
             $contract->left = 0;
+
+            Modification::create([
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'LoanStatus',
+                'field_code' => 'YN',
+                'old_value' => 'Y',
+                'new_value' => 'N',
+                'effective_date' => now()->toDateString(),
+            ]);
         }
         $contract->save();
     }
