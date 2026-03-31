@@ -854,16 +854,6 @@ class PaymentService
                 'new_value' => 'N',
                 'effective_date' => $nowDate,
             ],
-            [
-                'subject_type' => Contract::class,
-                'subject_id' => $contract->id,
-                'modification_type' => 'Modificator',
-                'field_code' =>  'RepaymentDate',
-                'element_code' => 'Date',
-                'old_value' => 'Y',
-                'new_value' => 'N',
-                'effective_date' => $nowDate,
-            ],
         ];
 
         Modification::insert($modifications);
