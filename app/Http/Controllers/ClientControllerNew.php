@@ -333,8 +333,9 @@ class ClientControllerNew extends Controller
             Modification::create([
                 'subject_type' => Client::class,
                 'subject_id' => $client->id,
-                'modification_type' => 'RISK',
-                'field_code' => 'Risk',
+                'modification_type' => 'Modificator',
+                'field_code' => 'RISK',
+                'element_code' => 'Risk',
                 'old_value' => $oldRisk !== null ? (string)$oldRisk : null,
                 'new_value' => (string)$newRisk,
                 'effective_date' => now()->toDateString(),

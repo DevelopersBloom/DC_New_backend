@@ -847,8 +847,9 @@ class PaymentService
             [
                 'subject_type' => Contract::class,
                 'subject_id' => $contract->id,
-                'modification_type' => 'LoanStatus',
-                'field_code' => 'YN',
+                'modification_type' => 'Modificator',
+                'field_code' => 'LoanStatus',
+                'element_code' => 'YN',
                 'old_value' => 'Y',
                 'new_value' => 'N',
                 'effective_date' => $nowDate,
@@ -856,8 +857,9 @@ class PaymentService
             [
                 'subject_type' => Contract::class,
                 'subject_id' => $contract->id,
-                'modification_type' => 'RepaymentDate',
-                'field_code' => 'Date',
+                'modification_type' => 'Modificator',
+                'field_code' =>  'RepaymentDate',
+                'element_code' => 'Date',
                 'old_value' => 'Y',
                 'new_value' => 'N',
                 'effective_date' => $nowDate,
