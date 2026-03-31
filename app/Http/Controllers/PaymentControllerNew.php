@@ -26,6 +26,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpParser\Node\Expr\AssignOp\Mod;
 
 class PaymentControllerNew extends Controller
 {
@@ -59,9 +60,11 @@ class PaymentControllerNew extends Controller
             'in', $contract->id,$contract->client->id,
             $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,null,null,1);
 
+        $oldPaymentAmount = $this->calcPaidAmount($contract);
         $result = $this->paymentService->processPayments(
             $contract,$amount,$payer,$cash,$payments,$deal->id
         );
+        $newPaymentAmount = $oldPaymentAmount + $amount;
         $history->interest_amount = $result['interest_amount'];
         $history->penalty = $result['penalty'];
         $history->discount  = $result['discount'];
@@ -191,7 +194,15 @@ class PaymentControllerNew extends Controller
             ]);
         }
 
-
+        Modification::create([
+            'subject_type' => Contract::class,
+            'subject_id' => $contract->id,
+            'modification_type' => 'AmountsPaid',
+            'field_code' => 'Amount',
+            'old_value' => (string)$oldPaymentAmount,
+            'new_value' => (string)($newPaymentAmount),
+            'effective_date' => now()->toDateString(),
+        ]);
         $this->activityService->log(
             'make_payment',
             "Payment made: {$amount} AMD for contract #{$contract->id}, and deal #{$deal->id}",
@@ -215,166 +226,34 @@ class PaymentControllerNew extends Controller
             $contract->closed_at = Carbon::now();
             $contract->left = 0;
 
-            Modification::create([
-                'subject_type' => Contract::class,
-                'subject_id' => $contract->id,
-                'modification_type' => 'LoanStatus',
-                'field_code' => 'YN',
-                'old_value' => 'Y',
-                'new_value' => 'N',
-                'effective_date' => now()->toDateString(),
-            ]);
+            $nowDate = now()->toDateString();
+
+            $modifications = [
+                [
+                    'subject_type' => Contract::class,
+                    'subject_id' => $contract->id,
+                    'modification_type' => 'LoanStatus',
+                    'field_code' => 'YN',
+                    'old_value' => 'Y',
+                    'new_value' => 'N',
+                    'effective_date' => $nowDate,
+                ],
+                [
+                    'subject_type' => Contract::class,
+                    'subject_id' => $contract->id,
+                    'modification_type' => 'RepaymentDate',
+                    'field_code' => 'Date',
+                    'old_value' => 'Y',
+                    'new_value' => 'N',
+                    'effective_date' => $nowDate,
+                ],
+            ];
+            Modification::insert($modifications);
+
         }
         $contract->save();
     }
-//    public function makeFullPayment(Request $request): JsonResponse
-//    {
-//        $contract = Contract::findOrFail($request->contract_id);
-//        $amount = $request->amount;
-//        $payer = $request->payer;
-//        $cash = $request->cash;
-//        if (!$contract) {
-//            return response()->json([
-//                'success' => 'error',
-//                'message' => 'Contract not found',
-//            ], 404);
-//        }
-//        $interestAmount = $this->calculateCurrentPayment($contract)['current_amount'];
-//
-//        $motherAmount = $contract->provided_amount;
-//
-//        $type = HistoryType::where('name', 'full_payment')->first();
-//        $purpose = 'Վարկի մարում՝ տոկոսագւմար և մայր գումար';
-//        if ($request->hasPenalty) {
-//            $purpose .= ', տուգանք';
-//        }
-//        $newOrder = $this->generateOrder($contract, $amount, $purpose, 'in', $cash,Order::FULL_FILTER);
-//
-//        $history = History::create([
-//            'amount' => $amount,
-//            'type_id' => $type->id,
-//            'user_id' => auth()->user()->id,
-//            'order_id' => $newOrder->id,
-//            'contract_id' => $contract->id,
-//            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
-//        ]);
-//
-//        $deal = $this->createDeal($amount, null,null,null,null,'in', $contract->id,$contract->client->id, $newOrder->id, $cash,null,Contract::FULL_PAYMENT,'full_payment',$history->id,null);
-//
-//         $paymentId = $this->paymentService->processFullPayment($contract, $amount, $payer, $cash,$deal->id);
-//         $deal->payment_id = $paymentId;
-//         $deal->save();
-//
-//        $contract->closed_at = now();
-//        $contract->save();
-//        $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
-//            ->first();
-//
-//        if (!$ruleMotherAmount) {
-//            throw new \RuntimeException('Posting rule for pay_mother_amount not found');
-//        }
-//
-//        $debitMother = $ruleMotherAmount->debit_account_id;
-//        $creditMother = $ruleMotherAmount->credit_account_id;
-//
-//
-//        $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
-//        $creditPartnerId = $contract->client_id;
-//        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-//
-//        $document_type = DocumentJournal::PAY_MOTHER_AMOUNT;
-//        $date = \Illuminate\Support\Carbon::now()->format('Y-m-d');
-//        $journal = DocumentJournal::where('journalable_type', Contract::class)
-//            ->where('journalable_id', $contract->id)
-//            ->first();
-//        $journalDoc = DocumentJournal::create([
-//            'date' => $date,
-//            'document_number' => $nextDocNum,
-//            'document_type' => $document_type,
-//            'amount_amd' => $amount,
-//            'partner_id' => $debetPartnerId,
-//            'credit_partner_id' => $creditPartnerId,
-//            'comment' => 'mother_amount_payment',
-//            'debit_account_id' => $debitMother,
-//            'credit_account_id' => $creditMother,
-//            'user_id' => auth()->id(),
-//            'journalable_type' => DocumentJournal::class,
-//            'journalable_id' => $journal->id,
-//            'deal_id' => $deal->id,
-//        ]);
-//        Transaction::create([
-//            'date' => $date,
-//            'document_number' => $nextDocNum,
-//            'document_type' => $document_type,
-//
-//            'debit_account_id' => $debitMother,
-//            'debit_partner_id' => $debetPartnerId,
-//            'debit_currency_id' => 1,
-//
-//            'credit_account_id' => $creditMother,
-//            'credit_currency_id' => 1,
-//            'credit_partner_id' => $creditPartnerId,
-//
-//            'amount_amd' => $amount,
-//
-//            'comment' => 'mother_amount_payment',
-//            'user_id' => auth()->id(),
-//            'is_system' => false,
-//
-//            'disbursement_date' => $date,
-//            'transactionable_type' => DocumentJournal::class,
-//            'transactionable_id' => $journalDoc->id
-//        ]);
-//        if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
-//            $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
-//            if ($refundAmount > 0) {
-//                $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash,Order::REFUND_LUMP_FILTER);
-//                $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
-//
-//                $history = History::create([
-//                    'amount' => $refundAmount,
-//                    'type_id' => $refund_type->id,
-//                    'user_id' => auth()->user()->id,
-//                    'order_id' => $refundOrder->id,
-//                    'contract_id' => $contract->id,
-//                    'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
-//                ]);
-//                $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
-//                DealAction::create([
-//                    'deal_id' => $deal->id,
-//                    'actionable_id' => $paymentId,
-//                    'actionable_type' => Payment::class,
-//                    'amount' => $refundAmount,
-//                    'type' => 'refund',
-//                    'description' => 'Refund payment',
-//                    'date' => \Illuminate\Support\Carbon::now()->format('Y-m-d'),
-//                ]);
-//                $this->activityService->log(
-//                    'refund_lump',
-//                    "Refund lump sum: {$refundAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",
-//                    Contract::class,
-//                    $contract->id
-//                );
-//
-//                return response()->json([
-//                    'success' => 'success',
-//                    'message' => 'Full payment created successfully with a lump sum refund',
-//                    'refund_amount' => $refundAmount
-//                ]);
-//            }
-//        }
-//        $this->activityService->log(
-//            'full_payment',
-//            "Full payment of {$amount} AMD for contract #{$contract->id} and deal #{$deal->id}",
-//            Contract::class,
-//            $contract->id
-//        );
-//
-//        return response()->json([
-//            'success' => 'success',
-//            'message' => 'Full payment created successfully',
-//        ]);
-//    }
+
     public function makeFullPayment(Request $request): JsonResponse
     {
         $contract = Contract::findOrFail($request->contract_id);
@@ -402,8 +281,9 @@ class PaymentControllerNew extends Controller
         ]);
 
         $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null);
-
+        $oldPaymentAmount = $this->calcPaidAmount($contract);
         $paymentId = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id);
+        $newPaymentAmount = $oldPaymentAmount + $totalAmount;
         $deal->payment_id = $paymentId;
         $deal->save();
 
@@ -439,6 +319,15 @@ class PaymentControllerNew extends Controller
         }
         $contract->closed_at = now();
         $contract->save();
+        Modification::create([
+            'subject_type' => Contract::class,
+            'subject_id' => $contract->id,
+            'modification_type' => 'AmountsPaid',
+            'field_code' => 'Amount',
+            'old_value' => (string)$oldPaymentAmount,
+            'new_value' => (string)($newPaymentAmount),
+            'effective_date' => now()->toDateString(),
+        ]);
         if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
             $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
             if ($refundAmount > 0) {
@@ -555,7 +444,7 @@ class PaymentControllerNew extends Controller
             $deal->is_recount = $is_recount;
             $deal->save();
         }
-
+        $oldPaymentAmount = $this->calcPaidAmount($contract);
         $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash,$deal->id,null,$is_recount);
 
         $deal->payment_id = $payment_id;
@@ -568,7 +457,16 @@ class PaymentControllerNew extends Controller
             Contract::class,
             $contract->id
         );
-
+        $newPaymentAmount = $oldPaymentAmount + $partialAmount;
+        Modification::create([
+            'subject_type' => Contract::class,
+            'subject_id' => $contract->id,
+            'modification_type' => 'AmountsPaid',
+            'field_code' => 'Amount',
+            'old_value' => (string)$oldPaymentAmount,
+            'new_value' => (string)($newPaymentAmount),
+            'effective_date' => now()->toDateString(),
+        ]);
         return response()->json([
             'success' => 'success',
             'message' => 'Partial payment processed successfully!'
@@ -680,4 +578,8 @@ class PaymentControllerNew extends Controller
         }
     }
 
+    private function calcPaidAmount(Contract $contract)
+    {
+        return $contract->payments()->sum('paid');
+    }
 }

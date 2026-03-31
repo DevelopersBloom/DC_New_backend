@@ -117,7 +117,7 @@ class CreditRegistryL002Service
     }
 
     /**
-     * 🔥 Universal ctModificator builder
+     * Universal ctModificator builder
      */
     private function createModificatorField(DOMDocument $dom, Modification $mod): DOMElement
     {

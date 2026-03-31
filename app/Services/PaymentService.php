@@ -792,26 +792,7 @@ class PaymentService
             'new_status' => 'completed',
             'updated_at' => now()->toDateTimeString()
         ];
-        Modification::create([
-            'subject_type' => Contract::class,
-            'subject_id' => $contract->id,
-            'modification_type' => 'Modificator',
-            'field_code' => 'PrincipalAmount',
-            'element_code' => 'Amount',
-            'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
-            'new_value' => 0,
-            'effective_date' => now()->toDateString(),
-        ]);
-        Modification::create([
-            'subject_type' => Contract::class,
-            'subject_id' => $contract->id,
-            'modification_type' => 'Modificator',
-            'field_code' => 'PercentsPaid',
-            'element_code' => 'Amount',
-            'old_value' => $contract->collected !== null ? (string)$contract->collected : null,
-            'new_value' => (string)($contract->collected + $interestAmount),
-            'effective_date' => now()->toDateString(),
-        ]);
+
         ContractAmountHistory::create([
             'contract_id' => $contract->id,
             'amount' => $contract->provided_amount,
@@ -840,15 +821,50 @@ class PaymentService
         $contract->provided_amount = 0;
         $contract->save();
 
-        Modification::create([
-            'subject_type' => Contract::class,
-            'subject_id' => $contract->id,
-            'modification_type' => 'LoanStatus',
-            'field_code' => 'YN',
-            'old_value' => 'Y',
-            'new_value' => 'N',
-            'effective_date' => now()->toDateString(),
-        ]);
+        $nowDate = now()->toDateString();
+
+        $modifications = [
+            [
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'Modificator',
+                'field_code' => 'PrincipalAmount',
+                'element_code' => 'Amount',
+                'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
+                'new_value' => '0',
+                'effective_date' => $nowDate,
+            ],
+            [
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'Modificator',
+                'field_code' => 'PercentsPaid',
+                'element_code' => 'Amount',
+                'old_value' => $contract->collected !== null ? (string)$contract->collected : null,
+                'new_value' => (string)($contract->collected + $interestAmount),
+                'effective_date' => $nowDate,
+            ],
+            [
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'LoanStatus',
+                'field_code' => 'YN',
+                'old_value' => 'Y',
+                'new_value' => 'N',
+                'effective_date' => $nowDate,
+            ],
+            [
+                'subject_type' => Contract::class,
+                'subject_id' => $contract->id,
+                'modification_type' => 'RepaymentDate',
+                'field_code' => 'Date',
+                'old_value' => 'Y',
+                'new_value' => 'N',
+                'effective_date' => $nowDate,
+            ],
+        ];
+
+        Modification::insert($modifications);
         return $payment;
     }
 }
