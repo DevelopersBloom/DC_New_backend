@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Contract;
 use App\Models\Modification;
+use App\Models\Payment;
 use Carbon\Carbon;
 use DOMDocument;
 use DOMElement;
@@ -80,7 +81,7 @@ class CreditRegistryL002Service
         $root->appendChild($this->createCreditCode($dom, $contract));
         $root->appendChild($this->createModificationDateTime($dom));
 
-        $dataToModify = $this->createDataToModifyFromMods($dom, $mods);
+        $dataToModify = $this->createDataToModifyFromMods($dom, $mods,$contract);
 
         if ($dataToModify) {
             $root->appendChild($dataToModify);
@@ -89,12 +90,8 @@ class CreditRegistryL002Service
         return $dom->saveXML();
     }
 
-    private function createDataToModifyFromMods(DOMDocument $dom, $mods): ?DOMElement
+    private function createDataToModifyFromMods(DOMDocument $dom, $mods, Contract $contract): ?DOMElement
     {
-        if ($mods->isEmpty()) {
-            return null;
-        }
-
         $dataToModify = $dom->createElement('DataToModify');
 
         foreach ($mods as $mod) {
@@ -113,9 +110,38 @@ class CreditRegistryL002Service
             $dataToModify->appendChild($modifiedData);
         }
 
-        return $dataToModify;
-    }
+        $days = $this->calculateOverdueDays($contract);
+        $percent = $this->calculateOverdueValues($contract, $days);
 
+        $runtimeFields = [
+            'OverdueDays' => $days,
+            'OverduePercent' => $percent['interest_payment'],
+            'OverduePrincipalAmount' => $percent['principal_payment'],
+        ];
+
+        foreach ($runtimeFields as $field => $value) {
+
+            if (!in_array($field, self::MODIFIED_DATA_ALLOWED_FIELDS, true)) {
+                continue;
+            }
+
+            if ($value == 0) {
+                continue;
+            }
+
+            $modifiedData = $dom->createElement('ModifiedData');
+
+            $fieldEl = $dom->createElement($field);
+            $fieldEl->appendChild(
+                $dom->createElement('NewValue', (string)$value)
+            );
+
+            $modifiedData->appendChild($fieldEl);
+            $dataToModify->appendChild($modifiedData);
+        }
+
+        return $dataToModify->hasChildNodes() ? $dataToModify : null;
+    }
     /**
      * Universal ctModificator builder
      */
@@ -183,5 +209,43 @@ class CreditRegistryL002Service
         $el->appendChild($dom->createElement('Time', $now->format('H:i:s')));
 
         return $el;
+    }
+    private function calculateOverdueDays(Contract $contract): int
+    {
+        $firstUnpaid = $contract->payments()
+            ->where('status', '=', 'initial')
+            ->orderBy('date')
+            ->first();
+
+        if (!$firstUnpaid) {
+            return 0;
+        }
+
+        $today = now();
+        $dueDate = Carbon::parse($firstUnpaid->date);
+
+        if ($today->lessThanOrEqualTo($dueDate)) {
+            return 0;
+        }
+
+        return $dueDate->diffInDays($today);
+    }
+    private function calculateOverdueValues(Contract $contract, int $days): array
+    {
+        if ($days <= 0) {
+            return ['interest_payment' => 0, 'principal_payment' => 0];
+        }
+        $query = Payment::where('contract_id', $contract->id)
+            ->where('status', 'initial')
+            ->where('date', '<', now());
+
+        if ($contract->payment_type == 'amortized') {
+            $interestPayment = (clone $query)->sum('interest_payment');
+            $principalPayment = (clone $query)->sum('principal_payment');
+        } else {
+            $interestPayment = (clone $query)->sum('amount');
+            $principalPayment = 0;
+        }
+       return ['interest_payment' => $interestPayment, 'principal_payment' => $principalPayment];
     }
 }
