@@ -212,7 +212,6 @@ class V09Export
             $date = Carbon::parse($contract->date);
             $remainingDays = $date->diffInDays(Carbon::parse($contract->deadline), false);
             $col = $this->getColumnByDaysV09($remainingDays);
-dd($remainingDays,$contract->id,$date,$col);
             // 16200NV
             if ($acc16200NV) {
                 $balanceNV = $this->getSpecificBalance($contract->id, $doc->id, $acc16200NV, $dateStr, 'active');
@@ -221,7 +220,7 @@ dd($remainingDays,$contract->id,$date,$col);
 
                     $prevNV = (float)$sheet->getCell($col . '31')->getValue();
                     $sheet->setCellValue($col . '31', $prevNV + $value);
-
+dd($prevNV,$value);
                     $prev43 = (float)$sheet->getCell($col . '43')->getValue();
                     $sheet->setCellValue($col . '43', $prev43 + $value);
                 }
