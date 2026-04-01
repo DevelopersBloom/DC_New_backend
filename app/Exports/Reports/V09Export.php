@@ -205,7 +205,8 @@ class V09Export
         $acc39210 = ChartOfAccount::idByCode('39210');
         $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
         $acc39200Account = ChartOfAccount::where('code', '39200')->first();
-
+        $prevNV = 0;
+        $prev43 = 0;
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || $contract->status != 'initial') continue;
@@ -220,7 +221,6 @@ class V09Export
 
                     $prevNV = (float)$sheet->getCell($col . '31')->getValue();
                     $sheet->setCellValue($col . '31', $prevNV + $value);
-dd($prevNV,$value);
                     $prev43 = (float)$sheet->getCell($col . '43')->getValue();
                     $sheet->setCellValue($col . '43', $prev43 + $value);
                 }
