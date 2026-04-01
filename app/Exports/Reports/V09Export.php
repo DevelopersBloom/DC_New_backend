@@ -184,8 +184,11 @@ class V09Export
         $cashBalance = $balance10000 + $balance10001;
         $sheet->setCellValue('E17', $cashBalance / 1000);
 
-        $bankAccount = ChartOfAccount::idByCode('102101');
-        $bankBalance = $bankAccount ? $this->getAccountBalance($bankAccount, $dateStr) : 0;
+        $bankAccount102101 = ChartOfAccount::idByCode('102101');
+        $bankBalance102101 = $bankAccount102101 ? $this->getAccountBalance($bankAccount102101, $dateStr) : 0;
+        $bankAccount102102 = ChartOfAccount::idByCode('102102');
+        $bankBalance102102 = $bankAccount102102 ? $this->getAccountBalance($bankAccount102102, $dateStr) : 0;
+        $bankBalance = $bankBalance102101 + $bankBalance102102;
         $sheet->setCellValue('E19', $bankBalance / 1000);
 
         $sheet->setCellValue('E44', ($cashBalance + $bankBalance) / 1000);
