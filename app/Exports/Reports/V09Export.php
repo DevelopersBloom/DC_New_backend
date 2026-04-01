@@ -168,7 +168,7 @@ class V09Export
         $fromDate = Carbon::parse($from);
         $toDate = Carbon::parse($to);
         $dateStr = $toDate->format('Y-m-d');
-
+        $toDay = now();
         $sheet->setCellValueExplicit('B10', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
         $sheet->setCellValue('C11', Date::PHPToExcel($fromDate));
         $sheet->setCellValue('E11', Date::PHPToExcel($toDate));
@@ -211,7 +211,8 @@ class V09Export
             $contract = $doc->journalable;
             if (!$contract || $contract->status != 'initial') continue;
             $date = Carbon::parse($contract->date);
-            $remainingDays = $toDate->diffInDays(Carbon::parse($contract->deadline), false);
+            $remainingDays = $toDay->diffInDays(Carbon::parse($contract->deadline), false);
+            dd($remainingDays);
             $col = $this->getColumnByDaysV09($remainingDays);
             // 16200NV
             if ($acc16200NV) {
