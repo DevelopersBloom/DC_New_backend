@@ -150,6 +150,7 @@ use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
@@ -260,6 +261,8 @@ class V09Export
             }
         }
 
+        $this->fixPColumnTotals($sheet);
+
         $fileName = 'v09_export_' . now()->format('Ymd_His') . '.xls';
         $outputPath = storage_path('app/public/' . $fileName);
         $writer = new Xls($spreadsheet);
@@ -310,5 +313,28 @@ class V09Export
         $debit = DocumentJournal::where('debit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
         $credit = DocumentJournal::where('credit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
         return $debit - $credit;
+    }
+
+    private function fixPColumnTotals(Worksheet $sheet): void
+    {
+        $highestRow = $sheet->getHighestRow();
+
+        for ($row = 1; $row <= $highestRow; $row++) {
+            $formula = $sheet->getCell('P' . $row)->getValue();
+
+            if (!is_string($formula) || strncmp($formula, '=', 1) !== 0) {
+                continue;
+            }
+
+            $correctFormula = preg_replace(
+                '/^=SUM\\(C' . $row . ':C' . $row . '\\)$/i',
+                '=SUM(C' . $row . ':O' . $row . ')',
+                $formula
+            );
+
+            if ($correctFormula !== null && $correctFormula !== $formula) {
+                $sheet->setCellValue('P' . $row, $correctFormula);
+            }
+        }
     }
 }
