@@ -212,7 +212,6 @@ class V09Export
             if (!$contract || $contract->status != 'initial') continue;
             $date = Carbon::parse($contract->date);
             $remainingDays = $toDay->diffInDays(Carbon::parse($contract->deadline), false);
-            dd($remainingDays);
             $col = $this->getColumnByDaysV09($remainingDays);
             // 16200NV
             if ($acc16200NV) {
