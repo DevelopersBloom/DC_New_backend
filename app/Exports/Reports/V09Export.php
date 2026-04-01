@@ -200,19 +200,19 @@ class V09Export
 
         $docs = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $dateStr)
-            ->pluck('id')->toArray();
+            ->get();
 
         $acc39210 = ChartOfAccount::idByCode('39210');
         $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
         $acc39200Account = ChartOfAccount::where('code', '39200')->first();
+
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || $contract->status != 'initial') continue;
             $date = Carbon::parse($contract->date);
             $remainingDays = $date->diffInDays(Carbon::parse($contract->deadline), false);
-            dd($remainingDays,$contract);
             $col = $this->getColumnByDaysV09($remainingDays);
-
+dd($remainingDays,$contract->id,$date,$col);
             // 16200NV
             if ($acc16200NV) {
                 $balanceNV = $this->getSpecificBalance($contract->id, $doc->id, $acc16200NV, $dateStr, 'active');
