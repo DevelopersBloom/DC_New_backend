@@ -150,6 +150,8 @@ use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -198,7 +200,13 @@ class V09Export
         $sheet->setCellValue('F22', $balance19000 / 1000);
         $sheet->setCellValue('F44', $balance19000 / 1000);
 
-        $docs = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+        if ($acc16200NV) {
+            $this->fillRow31And43Contract16200Nv($sheet, $toDate, $dateStr, $acc16200NV);
+        }
+
+        $docs = DocumentJournal::query()
+            ->with('journalable')
+            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $dateStr)
             ->get();
 
@@ -208,24 +216,12 @@ class V09Export
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
-            if (!$contract || $contract->status != 'initial') continue;
-            $date = Carbon::parse($contract->date);
-            $remainingDays = $date->diffInDays(Carbon::parse($contract->deadline), false);
-            $col = $this->getColumnByDaysV09($remainingDays);
-
-            // 16200NV
-            if ($acc16200NV) {
-                $balanceNV = $this->getSpecificBalance($contract->id, $doc->id, $acc16200NV, $dateStr, 'active');
-                if ($balanceNV > 0) {
-                    $value = $balanceNV / 1000;
-
-                    $prevNV = (float)$sheet->getCell($col . '31')->getValue();
-                    $sheet->setCellValue($col . '31', $prevNV + $value);
-
-                    $prev43 = (float)$sheet->getCell($col . '43')->getValue();
-                    $sheet->setCellValue($col . '43', $prev43 + $value);
-                }
+            if (!$contract || $contract->status != 'initial') {
+                continue;
             }
+
+            $remainingDays = $this->remainingCalendarDaysUntilDeadline($toDate, $contract->deadline);
+            $col = $this->getColumnByDaysV09($remainingDays);
 
             // 16201NI
             if ($acc16201NI) {
@@ -272,6 +268,130 @@ class V09Export
         $writer->save($outputPath);
 
         return $outputPath;
+    }
+
+    /**
+     * Row 31 / 43: one entry per contract, full 16200NV net (debit − credit), bucketed by
+     * calendar days from report date to deadline. No iteration over PROVIDE_CONTRACT_AMOUNT.
+     */
+    private function fillRow31And43Contract16200Nv(
+        Worksheet $sheet,
+        Carbon $reportTo,
+        string $asOfDate,
+        int $account16200NvId
+    ): void {
+        $this->clearBucketCellsForRows($sheet, [31, 43], 'E', 'N');
+
+        $netByContractId = $this->aggregateContract16200NvNetByContractId($asOfDate, $account16200NvId);
+        if ($netByContractId->isEmpty()) {
+            return;
+        }
+
+        $contracts = Contract::query()
+            ->whereIn('id', $netByContractId->keys()->all())
+            ->whereNotNull('deadline')
+            ->get(['id', 'deadline']);
+
+        foreach ($contracts as $contract) {
+            $balanceNv = (float) $netByContractId->get($contract->id, 0.0);
+            if ($balanceNv <= 0) {
+                continue;
+            }
+
+            $remainingDays = $this->remainingCalendarDaysUntilDeadline($reportTo, $contract->deadline);
+            $col = $this->getColumnByDaysV09($remainingDays);
+            $value = $balanceNv / 1000;
+
+            $cell31 = $col . '31';
+            $cell43 = $col . '43';
+            $sheet->setCellValue($cell31, (float) $sheet->getCell($cell31)->getValue() + $value);
+            $sheet->setCellValue($cell43, (float) $sheet->getCell($cell43)->getValue() + $value);
+        }
+    }
+
+    /**
+     * Full 16200NV net per contract: all journal lines on the contract morph, plus one-level
+     * child journals whose parent row is itself journalable to the contract (common for
+     * postings hung off the disbursement document).
+     */
+    private function aggregateContract16200NvNetByContractId(string $asOfDate, int $accountId): Collection
+    {
+        $contractMorph = Contract::class;
+        $journalMorph = DocumentJournal::class;
+
+        $sql = <<<'SQL'
+SELECT contract_id,
+    SUM(debit_part) - SUM(credit_part) AS net_nv
+FROM (
+    SELECT journalable_id AS contract_id,
+        CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END AS debit_part,
+        CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END AS credit_part
+    FROM documents_journal
+    WHERE journalable_type = ?
+      AND journalable_id IS NOT NULL
+      AND deleted_at IS NULL
+      AND date <= ?
+      AND (debit_account_id = ? OR credit_account_id = ?)
+
+    UNION ALL
+
+    SELECT p.journalable_id AS contract_id,
+        CASE WHEN c.debit_account_id = ? THEN c.amount_amd ELSE 0 END AS debit_part,
+        CASE WHEN c.credit_account_id = ? THEN c.amount_amd ELSE 0 END AS credit_part
+    FROM documents_journal c
+    INNER JOIN documents_journal p
+        ON c.journalable_type = ?
+       AND c.journalable_id = p.id
+       AND p.deleted_at IS NULL
+    WHERE p.journalable_type = ?
+      AND p.journalable_id IS NOT NULL
+      AND c.deleted_at IS NULL
+      AND c.date <= ?
+      AND (c.debit_account_id = ? OR c.credit_account_id = ?)
+) lines
+GROUP BY contract_id
+HAVING net_nv > 0
+SQL;
+
+        $bindings = [
+            $accountId,
+            $accountId,
+            $contractMorph,
+            $asOfDate,
+            $accountId,
+            $accountId,
+            $accountId,
+            $accountId,
+            $journalMorph,
+            $contractMorph,
+            $asOfDate,
+            $accountId,
+            $accountId,
+        ];
+
+        return collect(DB::select($sql, $bindings))
+            ->mapWithKeys(fn ($row) => [(int) $row->contract_id => (float) $row->net_nv]);
+    }
+
+    /**
+     * Calendar days from report date to deadline (signed). Negative = overdue.
+     */
+    private function remainingCalendarDaysUntilDeadline(Carbon $reportTo, $deadline): int
+    {
+        $reportDay = $reportTo->copy()->startOfDay();
+        $deadlineDay = Carbon::parse($deadline)->startOfDay();
+
+        return (int) $reportDay->diffInDays($deadlineDay, false);
+    }
+
+    private function clearBucketCellsForRows(Worksheet $sheet, array $rows, string $fromCol, string $toCol): void
+    {
+        for ($i = ord($fromCol); $i <= ord($toCol); $i++) {
+            $col = chr($i);
+            foreach ($rows as $row) {
+                $sheet->setCellValue($col . $row, 0);
+            }
+        }
     }
 
     private function getColumnByDaysV09($days): string
