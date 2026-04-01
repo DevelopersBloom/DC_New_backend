@@ -200,12 +200,12 @@ class V09Export
 
         $docs = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $dateStr)
-            ->get();
+            ->pluck('id')->toArray();
 
         $acc39210 = ChartOfAccount::idByCode('39210');
         $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
         $acc39200Account = ChartOfAccount::where('code', '39200')->first();
-
+dd($docs);
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || $contract->status != 'initial') continue;
@@ -304,17 +304,9 @@ class V09Export
                     ->where('journalable_id', $docId);
             });
         })->whereDate('date', '<=', $date);
-        $debit = (clone $query)
-            ->whereIn('debit_account_id', $accIds)
-            ->pluck('id')->toArray();
 
-        $credit = (clone $query)
-            ->whereIn('credit_account_id', $accIds)
-            ->pluck('id')->toArray();
-
-//        $debit = (clone $query)->whereIn('debit_account_id', $accIds)->sum('amount_amd');
-//        $credit = (clone $query)->whereIn('credit_account_id', $accIds)->sum('amount_amd');
-dd($accIds,$debit,$credit);
+        $debit = (clone $query)->whereIn('debit_account_id', $accIds)->sum('amount_amd');
+        $credit = (clone $query)->whereIn('credit_account_id', $accIds)->sum('amount_amd');
         return ($type === 'active') ? ($debit - $credit) : ($credit - $debit);
     }
 
