@@ -304,10 +304,18 @@ class V09Export
                     ->where('journalable_id', $docId);
             });
         })->whereDate('date', '<=', $date);
+        $debit = (clone $query)
+            ->whereIn('debit_account_id', $accIds)
+            ->pluck('id');
 
-        $debit = (clone $query)->whereIn('debit_account_id', $accIds)->select('id');//sum('amount_amd');
-        $credit = (clone $query)->whereIn('credit_account_id', $accIds)->select('id');//sum('amount_amd');
+        $credit = (clone $query)
+            ->whereIn('credit_account_id', $accIds)
+            ->pluck('id');
 
+        dd($debit, $credit);
+//        $debit = (clone $query)->whereIn('debit_account_id', $accIds)->sum('amount_amd');
+//        $credit = (clone $query)->whereIn('credit_account_id', $accIds)->sum('amount_amd');
+dd($debit,$credit);
         return ($type === 'active') ? ($debit - $credit) : ($credit - $debit);
     }
 
