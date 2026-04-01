@@ -306,16 +306,15 @@ class V09Export
         })->whereDate('date', '<=', $date);
         $debit = (clone $query)
             ->whereIn('debit_account_id', $accIds)
-            ->pluck('id');
+            ->pluck('id')->toArray();
 
         $credit = (clone $query)
             ->whereIn('credit_account_id', $accIds)
-            ->pluck('id');
+            ->pluck('id')->toArray();
 
-        dd($debit, $credit);
 //        $debit = (clone $query)->whereIn('debit_account_id', $accIds)->sum('amount_amd');
 //        $credit = (clone $query)->whereIn('credit_account_id', $accIds)->sum('amount_amd');
-dd($debit,$credit);
+dd($accIds,$debit,$credit);
         return ($type === 'active') ? ($debit - $credit) : ($credit - $debit);
     }
 
