@@ -305,8 +305,8 @@ class V09Export
             });
         })->whereDate('date', '<=', $date);
 
-        $debit = (clone $query)->whereIn('debit_account_id', $accIds)->sum('amount_amd');
-        $credit = (clone $query)->whereIn('credit_account_id', $accIds)->sum('amount_amd');
+        $debit = (clone $query)->whereIn('debit_account_id', $accIds)->select('id');//sum('amount_amd');
+        $credit = (clone $query)->whereIn('credit_account_id', $accIds)->select('id');//sum('amount_amd');
 
         return ($type === 'active') ? ($debit - $credit) : ($credit - $debit);
     }
