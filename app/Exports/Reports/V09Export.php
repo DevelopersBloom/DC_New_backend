@@ -150,6 +150,7 @@ use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -158,6 +159,9 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class V09Export
 {
+    /** @var array<int, DocumentJournal> */
+    private array $v09JournalParentCache = [];
+
     public function export($from, $to)
     {
         $templatePath = base_path('v09.xls');
@@ -206,26 +210,13 @@ class V09Export
         $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
         $acc39200Account = ChartOfAccount::where('code', '39200')->first();
 
+        $this->fillRow31And43Contract16200Nv($sheet, $acc16200NV, $toDate, $dateStr);
+
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
             if (!$contract || $contract->status != 'initial') continue;
-            $date = Carbon::parse($contract->date);
-            $remainingDays = $date->diffInDays(Carbon::parse($contract->deadline), false);
+            $remainingDays = $this->remainingDaysUntilDeadline($toDate, $contract->deadline);
             $col = $this->getColumnByDaysV09($remainingDays);
-
-            // 16200NV
-            if ($acc16200NV) {
-                $balanceNV = $this->getSpecificBalance($contract->id, $doc->id, $acc16200NV, $dateStr, 'active');
-                if ($balanceNV > 0) {
-                    $value = $balanceNV / 1000;
-
-                    $prevNV = (float)$sheet->getCell($col . '31')->getValue();
-                    $sheet->setCellValue($col . '31', $prevNV + $value);
-
-                    $prev43 = (float)$sheet->getCell($col . '43')->getValue();
-                    $sheet->setCellValue($col . '43', $prev43 + $value);
-                }
-            }
 
             // 16201NI
             if ($acc16201NI) {
@@ -272,6 +263,171 @@ class V09Export
         $writer->save($outputPath);
 
         return $outputPath;
+    }
+
+    /**
+     * Row 31 / 43: one pass per contract — full 16200NV net on the contract journal tree, bucketed by
+     * days from report "to" date until contract deadline (no PROVIDE_CONTRACT_AMOUNT iteration).
+     */
+    private function fillRow31And43Contract16200Nv(
+        Worksheet $sheet,
+        ?int $acc16200NV,
+        Carbon $reportTo,
+        string $dateStr
+    ): void {
+        if (!$acc16200NV) {
+            return;
+        }
+
+        $balancesByContract = $this->collect16200NvNetByContractId($acc16200NV, $dateStr);
+        $positiveIds = array_keys(array_filter($balancesByContract, static fn (float $b): bool => $b > 0));
+
+        if ($positiveIds === []) {
+            return;
+        }
+
+        $contracts = Contract::query()
+            ->whereIn('id', $positiveIds)
+            ->get(['id', 'deadline']);
+
+        foreach ($contracts as $contract) {
+            $balance = $balancesByContract[$contract->id] ?? 0.0;
+            if ($balance <= 0 || $contract->deadline === null) {
+                continue;
+            }
+
+            $remainingDays = $this->remainingDaysUntilDeadline($reportTo, $contract->deadline);
+            $col = $this->getColumnByDaysV09($remainingDays);
+            $value = $balance / 1000;
+
+            $prevNV = (float) $sheet->getCell($col . '31')->getValue();
+            $sheet->setCellValue($col . '31', $prevNV + $value);
+
+            $prev43 = (float) $sheet->getCell($col . '43')->getValue();
+            $sheet->setCellValue($col . '43', $prev43 + $value);
+        }
+    }
+
+    /**
+     * Net 16200NV (debit − credit) on documents_journal, grouped by owning contract.
+     * Includes lines on the contract morph and on any nested DocumentJournal chain that resolves to that contract.
+     */
+    private function collect16200NvNetByContractId(int $accountId, string $dateStr): array
+    {
+        $this->v09JournalParentCache = [];
+
+        $lines = DocumentJournal::query()
+            ->whereDate('date', '<=', $dateStr)
+            ->where(function ($q) use ($accountId) {
+                $q->where('debit_account_id', $accountId)
+                    ->orWhere('credit_account_id', $accountId);
+            })
+            ->get(['id', 'journalable_type', 'journalable_id', 'debit_account_id', 'credit_account_id', 'amount_amd']);
+
+        $this->prefetchJournalParentsForLines($lines);
+
+        $balances = [];
+
+        foreach ($lines as $line) {
+            $contractId = $this->resolveContractIdForJournalable($line->journalable_type, (int) $line->journalable_id);
+            if ($contractId === null) {
+                continue;
+            }
+
+            $debit = $line->debit_account_id == $accountId ? (float) $line->amount_amd : 0.0;
+            $credit = $line->credit_account_id == $accountId ? (float) $line->amount_amd : 0.0;
+            $balances[$contractId] = ($balances[$contractId] ?? 0.0) + ($debit - $credit);
+        }
+
+        return $balances;
+    }
+
+    private function remainingDaysUntilDeadline(Carbon $reportTo, $deadline): int
+    {
+        $reportDay = $reportTo->copy()->startOfDay();
+        $deadlineDay = Carbon::parse($deadline)->startOfDay();
+
+        return (int) $reportDay->diffInDays($deadlineDay, false);
+    }
+
+    private function morphIsContract(?string $type): bool
+    {
+        return $type !== null && is_a($type, Contract::class, true);
+    }
+
+    private function morphIsDocumentJournal(?string $type): bool
+    {
+        return $type !== null && is_a($type, DocumentJournal::class, true);
+    }
+
+    /**
+     * Load every DocumentJournal row needed to walk journalable_id chains down to Contract.
+     */
+    private function prefetchJournalParentsForLines(Collection $lines): void
+    {
+        $pending = [];
+
+        foreach ($lines as $line) {
+            if ($this->morphIsDocumentJournal($line->journalable_type)) {
+                $pending[(int) $line->journalable_id] = true;
+            }
+        }
+
+        $guard = 0;
+        while ($pending !== [] && $guard++ < 500) {
+            $batch = array_keys(array_diff_key($pending, $this->v09JournalParentCache));
+            $pending = [];
+
+            if ($batch === []) {
+                break;
+            }
+
+            $rows = DocumentJournal::query()
+                ->whereIn('id', $batch)
+                ->get(['id', 'journalable_type', 'journalable_id']);
+
+            foreach ($rows as $row) {
+                $this->v09JournalParentCache[$row->id] = $row;
+                if ($this->morphIsDocumentJournal($row->journalable_type)) {
+                    $pending[(int) $row->journalable_id] = true;
+                }
+            }
+        }
+    }
+
+    private function resolveContractIdForJournalable(?string $type, int $id): ?int
+    {
+        if ($this->morphIsContract($type)) {
+            return $id;
+        }
+
+        if (!$this->morphIsDocumentJournal($type)) {
+            return null;
+        }
+
+        $currentId = $id;
+        for ($i = 0; $i < 200; $i++) {
+            if (!isset($this->v09JournalParentCache[$currentId])) {
+                return null;
+            }
+
+            $parent = $this->v09JournalParentCache[$currentId];
+            $pType = $parent->journalable_type;
+            $pId = (int) $parent->journalable_id;
+
+            if ($this->morphIsContract($pType)) {
+                return $pId;
+            }
+
+            if ($this->morphIsDocumentJournal($pType)) {
+                $currentId = $pId;
+                continue;
+            }
+
+            return null;
+        }
+
+        return null;
     }
 
     private function getColumnByDaysV09($days): string
