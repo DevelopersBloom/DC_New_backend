@@ -326,6 +326,7 @@ class PaymentService
 
         }
         if ($amount > 10) {
+            dd($amount);
             $this->payPartial($contract, $amount, false, $cash, $deal_id,null,false,true);
         }
         return $decrease;
@@ -557,7 +558,7 @@ class PaymentService
                 'updated_at' => $now->toDateTimeString(),
             ]);
         }
-
+dd($changes);
         if (!empty($changes)) {
             $this->recalculateAmortizedInterestFromSchedule($contract, $payments);
         }
