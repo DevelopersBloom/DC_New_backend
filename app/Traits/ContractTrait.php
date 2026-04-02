@@ -610,5 +610,6 @@ trait ContractTrait
             'transactionable_type' => DocumentJournal::class,
             'transactionable_id' => $journalDoc->id
         ]);
+        return $journalDoc->id;
     }
 }

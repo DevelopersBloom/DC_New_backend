@@ -282,9 +282,56 @@ class PaymentControllerNew extends Controller
 
         if ($motherAmount > 0) {
             $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_cash';
-            $this->createAccountingTransaction(
+            $docId = $this->createAccountingTransaction(
                 $contract, $motherAmount, $ruleKey, 'mother_amount_payment', $deal->id
             );
+
+            $classificationName = $contract->client->classification->name ?? 'standard';
+
+            $eventFilter = ($classificationName === 'standard')
+                ? 'provide_general_amount_change'
+                : 'provide_special_amount_change';
+
+            $ruleReserve = PostingRule::where('business_event_filter', $eventFilter)->first();
+            if ($ruleReserve) {
+                $reservePercent = $contract->client->classification->reserve_percent ?? 0;
+                $reserveAmount = $motherAmount * $reservePercent / 100;
+
+                if ($reserveAmount > 0) {
+                    $clientId = $contract->client->id;
+                    $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                    $documentType = ($classificationName === 'standard')
+                        ? DocumentJournal::PROVIDED_AMOUNT_CHANGE
+                        : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+                    $journalDocRes = DocumentJournal::create([
+                        'date' => $date,
+                        'document_number' => $nextDocNum,
+                        'document_type' => $documentType,
+                        'amount_amd' => $reserveAmount,
+                        'debit_partner_id' => $clientId,
+                        'comment' => 'reserve_payment',
+                        'debit_account_id' => $ruleReserve->debit_account_id,
+                        'credit_account_id' => $ruleReserve->credit_account_id,
+                        'user_id' => auth()->id(),
+                        'journalable_type' => DocumentJournal::class,
+                        'journalable_id' => $docId,
+                    ]);
+
+                    Transaction::create([
+                        'date' => $date,
+                        'document_number' => $nextDocNum,
+                        'document_type' => $documentType,
+                        'debit_account_id' => $ruleReserve->debit_account_id,
+                        'debit_partner_id' => $clientId,
+                        'credit_account_id' => $ruleReserve->credit_account_id,
+                        'amount_amd' => $reserveAmount,
+                        'comment' => 'reserve_amount',
+                        'user_id' => auth()->id(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id' => $journalDocRes->id,
+                    ]);
+                }
+            }
         }
 
         if (($interestAmount) > 0) {

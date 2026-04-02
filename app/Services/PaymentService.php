@@ -745,8 +745,7 @@ class PaymentService
                     'document_number' => $nextDocNum,
                     'document_type' => $documentType,
                     'amount_amd' => $reserveAmount,
-                    'debit_partner_id' => $diamondId,
-                    'credit_partner_id' => $clientId,
+                    'debit_partner_id' => $clientId,
                     'comment' => 'reserve_payment',
                     'debit_account_id' => $ruleReserve->debit_account_id,
                     'credit_account_id' => $ruleReserve->credit_account_id,
@@ -760,9 +759,8 @@ class PaymentService
                     'document_number' => $nextDocNum,
                     'document_type' => $documentType,
                     'debit_account_id' => $ruleReserve->debit_account_id,
-                    'debit_partner_id' => $diamondId,
+                    'debit_partner_id' => $clientId,
                     'credit_account_id' => $ruleReserve->credit_account_id,
-                    'credit_partner_id' => $clientId,
                     'amount_amd' => $reserveAmount,
                     'comment' => 'reserve_amount',
                     'user_id' => auth()->id(),
@@ -778,7 +776,8 @@ class PaymentService
         Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
 
-        $interestAmount = $amount - $contract->provided_amount;
+        $providedAmount = $contract->provided_amount;
+        $interestAmount = $amount - $providedAmount;
 
         $history['contract_changes'] = [
             'contract_id' => $contract->id,
