@@ -99,7 +99,7 @@ class DocumentJournal extends Model
                     if ($isDebitBank) {
                         self::createProvisionEntry($journal, $provisionAmount, 'Պահուստավորում', '730041', '15300PC');
                     } else {
-                        self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102',$journal->debit_partner_id);
+                        self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102');
                     }
             }
         });
@@ -402,7 +402,7 @@ class DocumentJournal extends Model
         return max($remainingBalance,0);
     }
 
-    protected static function createProvisionEntry(DocumentJournal $parent, $amount, $label, $debitCode, $creditCode,$clientId = null)
+    protected static function createProvisionEntry(DocumentJournal $parent, $amount, $label, $debitCode, $creditCode)
     {
         $debitAcc = ChartOfAccount::where('code', $debitCode)->first();
         $creditAcc = ChartOfAccount::where('code', $creditCode)->first();
@@ -417,7 +417,6 @@ class DocumentJournal extends Model
             'debit_account_id'   => $debitAcc->id,
             'credit_account_id'  => $creditAcc->id,
             'user_id'            => $parent->user_id,
-            'debit_partner_id'    => $clientId,
             'journalable_type'   => DocumentJournal::class,
             'journalable_id'     => $parent->id,
             'comment'            => $label . ' (Անկանխիկի 1%)',
@@ -431,7 +430,6 @@ class DocumentJournal extends Model
             'debit_account_id'     => $debitAcc->id,
             'credit_account_id'    => $creditAcc->id,
             'amount_amd'           => $amount,
-            'debit_partner_id'     => $clientId,
             'user_id'              => $parent->user_id,
             'transactionable_type' => DocumentJournal::class,
             'transactionable_id'   => $childJournal->id,
