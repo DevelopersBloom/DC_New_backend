@@ -557,7 +557,6 @@ class PaymentService
                 'updated_at' => $now->toDateTimeString(),
             ]);
         }
-dd($changes);
         if (!empty($changes)) {
             $this->recalculateAmortizedInterestFromSchedule($contract, $payments);
         }
@@ -600,6 +599,7 @@ dd($changes);
             $fee = (float) ($payment->service_fee_payment ?? 0);
             $paid = (float) ($payment->paid ?? 0);
             $payment->amount = max(0, $principal + $interest);
+
             if ((float) $payment->amount <= 0) {
                 $payment->status = 'completed';
             }
