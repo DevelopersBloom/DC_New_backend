@@ -592,7 +592,7 @@ class PaymentService
 
             $prevDate = $paymentDate;
 
-            $interest = $this->calcAmount($balance, $days, $rate / 100);
+            $interest = $balance * $days * $rate / 100;
             dd($interest,$balance,$days,$rate);
             $payment->interest_payment = $interest;
 
