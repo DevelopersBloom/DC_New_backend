@@ -304,7 +304,7 @@ class PaymentService
             $history['payment_changes'][] = [
                 'payment_id' => $nextPayment->id,
                 'old_amount' => $oldAmount,
-                'new_amount' => $nextPayment->amout,
+                'new_amount' => $nextPayment->amount,
                 'old_paid' => $oldPaid,
                 'new_paid' => $nextPayment->paid,
                 'old_date' => $oldDate,
@@ -441,7 +441,7 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
-                $history['payment_changes'] = $this->processAmortizedPayments($payments, $partialAmount, $now,$is_remaining_payment);
+                $history['payment_changes'] = $this->processAmortizedPayments($contract, $payments, $partialAmount, $now);
                 $history['contract_changes'] = [
                     'old_left' => $contract->left,
                     'new_left' => $contract->left - $partialAmount,
@@ -513,14 +513,25 @@ class PaymentService
         return null;
     }
 
-    protected function processAmortizedPayments($payments, $remainingPartial, $now,$is_remaining_payment=false)
+    /**
+     * Applies prepayment to future installments: reduces principal_payment in order,
+     * then recalculates interest on the outstanding balance for each period (same basis as schedule).
+     */
+    protected function processAmortizedPayments(Contract $contract, $payments, $remainingPartial, $now)
     {
+        $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
         $changes = [];
+        $contract->provided_amount -= $remainingPartial;
+        $contract->save();
         foreach ($payments as $payment) {
-            if ($remainingPartial <= 0) break;
+            if ($remainingPartial <= 0) {
+                break;
+            }
 
-            $reduction = min($remainingPartial, $payment->principal_payment);
-            if ($reduction <= 0) continue;
+            $reduction = min($remainingPartial, (float) $payment->principal_payment);
+            if ($reduction <= 0) {
+                continue;
+            }
 
             $oldData = [
                 'payment_id' => $payment->id,
@@ -533,26 +544,72 @@ class PaymentService
 
             $payment->amount -= $reduction;
             $payment->paid += $reduction;
-            if ($is_remaining_payment) {
-                $payment->interest_payment -= $reduction;
-            } else {
-                $payment->principal_payment -= $reduction;
-            }
-            if ($payment->amount <= 0) $payment->status = 'completed';
-
-            $payment->save();
+            $payment->principal_payment -= $reduction;
             $remainingPartial -= $reduction;
 
+            $payment->save();
             $changes[] = array_merge($oldData, [
                 'new_amount' => $payment->amount,
                 'new_paid' => $payment->paid,
                 'new_principal' => $payment->principal_payment,
                 'new_interest' => $payment->interest_payment,
                 'reduction' => $reduction,
-                'updated_at' => $now->toDateTimeString()
+                'updated_at' => $now->toDateTimeString(),
             ]);
         }
+
+        if (!empty($changes)) {
+            $this->recalculateAmortizedInterestFromSchedule($contract, $payments);
+        }
+
+        foreach ($changes as &$change) {
+            $p = Payment::find($change['payment_id']);
+            if ($p) {
+                $change['new_principal'] = $p->principal_payment;
+                $change['new_interest'] = $p->interest_payment;
+                $change['new_amount'] = $p->amount;
+            }
+        }
+        unset($change);
+
         return $changes;
+    }
+
+    /**
+     * Running balance: interest for each period = calcAmount(balance, days, rate) per schedule,
+     * then balance -= principal_payment for that line.
+     */
+    protected function recalculateAmortizedInterestFromSchedule(Contract $contract, $payments): void
+    {
+        $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
+        $balance = (float) $contract->provided_amount;
+        $rate = (float) $contract->interest_rate;
+        $prevDate = Carbon::parse($contract->date);
+
+        foreach ($payments as $payment) {
+            $paymentDate = Carbon::parse($payment->to_date);
+            $fromDate = Carbon::parse($payment->from_date);
+            $days = max(1, $paymentDate->diffInDays($fromDate));
+
+            $prevDate = $paymentDate;
+
+            $interest = $this->calcAmount($balance, $days, $rate / 100);
+            $payment->interest_payment = $interest;
+
+            $principal = (float) $payment->principal_payment;
+            $fee = (float) ($payment->service_fee_payment ?? 0);
+            $paid = (float) ($payment->paid ?? 0);
+            $payment->amount = max(0, $principal + $interest);
+            if ((float) $payment->amount <= 0) {
+                $payment->status = 'completed';
+            }
+            $payment->save();
+
+            $balance -= $principal;
+            if ($balance < 0) {
+                $balance = 0;
+            }
+        }
     }
 
 //    protected function processClassicPayments($payments, $contract, $partialAmount, $now)
