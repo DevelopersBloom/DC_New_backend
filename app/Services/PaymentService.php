@@ -441,6 +441,10 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
+                $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+                $contract->left = max(0, $contract->left - $partialAmount);
+//                $contract->collected += $partialAmount;
+                $contract->save();
                 $history['payment_changes'] = $this->processAmortizedPayments($contract, $payments, $partialAmount, $now);
                 $history['contract_changes'] = [
                     'old_left' => $contract->left,
@@ -460,10 +464,7 @@ class PaymentService
                     'new_value' => (string)max(0, $contract->provided_amount - $partialAmount),
                     'effective_date' => now()->toDateString(),
                 ]);
-                $contract->left = max(0, $contract->left - $partialAmount);
-//                $contract->collected += $partialAmount;
-                $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
-                $contract->save();
+
             }
             DealAction::create([
                 'deal_id' => $deal_id,
