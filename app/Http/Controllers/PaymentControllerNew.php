@@ -89,7 +89,7 @@ class PaymentControllerNew extends Controller
 
         $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
         $creditPartnerId = $contract->client_id;
-
+        $clientId = $contract->client_id;
         $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
 
         $document_type = DocumentJournal::PAY_INTEREST_AMOUNT;
@@ -105,8 +105,7 @@ class PaymentControllerNew extends Controller
                 'document_number'    => $nextDocNum,
                 'document_type'      => $document_type,
                 'amount_amd'         => $result['interest_amount'],
-                'debit_partner_id'   => $debetPartnerId,
-                'credit_partner_id'  => $creditPartnerId,
+                'credit_partner_id'   => $clientId,
                 'comment'            => 'interest_amount_payment',
                 'debit_account_id'   => $debitInterestPayment,
                 'credit_account_id'  => $creditInterestPayment,
@@ -123,12 +122,11 @@ class PaymentControllerNew extends Controller
                 'document_type'      => $document_type,
 
                 'debit_account_id'   => $debitInterestPayment,
-                'debit_partner_id'   => $debetPartnerId,
+                'credit_partner_id'   => $clientId,
                 'debit_currency_id'  => 1,
 
                 'credit_account_id'  => $creditInterestPayment,
                 'credit_currency_id' => 1,
-                'credit_partner_id'  => $creditPartnerId,
 
                 'amount_amd'         => $result['interest_amount'],
 
@@ -159,8 +157,7 @@ class PaymentControllerNew extends Controller
                 'document_number' => $nextDocNum,
                 'document_type' => $documentTypePrincipal,
                 'amount_amd' => $principalAmount,
-                'debit_partner_id' => $debetPartnerId,
-                'credit_partner_id' => $creditPartnerId,
+                'debit_partner_id' => $clientId,
                 'comment' => 'mother_amount_payment',
                 'debit_account_id' => $debitMother,
                 'credit_account_id' => $creditMother,
@@ -175,12 +172,11 @@ class PaymentControllerNew extends Controller
                 'document_type' => $documentTypePrincipal,
 
                 'debit_account_id' => $debitMother,
-                'debit_partner_id' => $debetPartnerId,
+                'debit_partner_id' => $clientId,
                 'debit_currency_id' => 1,
 
                 'credit_account_id' => $creditMother,
                 'credit_currency_id' => 1,
-                'credit_partner_id' => $creditPartnerId,
 
                 'amount_amd' => $principalAmount,
 
