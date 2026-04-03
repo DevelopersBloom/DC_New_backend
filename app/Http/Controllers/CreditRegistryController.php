@@ -26,7 +26,7 @@ class CreditRegistryController extends Controller
     ) {
     }
 
-    public function send(string $id): Response
+    public function sendL001(string $id): Response
     {
         dd($id);
         $contract = Contract::find($id);
