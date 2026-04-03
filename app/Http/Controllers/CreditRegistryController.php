@@ -148,6 +148,8 @@ class CreditRegistryController extends Controller
      */
     public function sendL001(string $id): Response
     {
+        dd(3);
+
         $contract = Contract::find($id);
 
         if (! $contract) {
@@ -155,7 +157,6 @@ class CreditRegistryController extends Controller
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
-dd(3);
         $requestId = $this->soapClient->sendL001($xml, false);
 
         $maxTries = 10;
