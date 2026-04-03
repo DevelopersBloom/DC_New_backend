@@ -81,7 +81,7 @@ class CreditRegistryController extends Controller
             CURLOPT_POSTFIELDS => $xml,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/soap+xml; charset=utf-8',
-                'SOAPAction: "' . $soapAction . '"',
+                'SOAPAction: "urn:cba-am:lnreg3#L001"
             ],
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
