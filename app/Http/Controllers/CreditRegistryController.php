@@ -35,6 +35,7 @@ class CreditRegistryController extends Controller
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
+
         $requestId = $this->soapClient->sendL001($xml, false);
 
         $maxTries = 10;

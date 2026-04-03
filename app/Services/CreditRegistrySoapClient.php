@@ -41,7 +41,14 @@ class CreditRegistrySoapClient
     {
         $config = config('credit_registry');
 
-        if (empty($config['wsdl'])) {
+        $wsdl = $config['wsdl'] ?? null;
+        $wsdlLocalPath = $config['wsdl_local_path'] ?? null;
+
+        if (! empty($wsdlLocalPath) && is_string($wsdlLocalPath) && is_file($wsdlLocalPath)) {
+            $wsdl = $wsdlLocalPath;
+        }
+
+        if (empty($wsdl)) {
             throw new RuntimeException('CREDIT_REGISTRY_WSDL is not configured.');
         }
 
@@ -69,13 +76,14 @@ class CreditRegistrySoapClient
         if (! empty($config['client_cert_path'])) {
             $options['local_cert'] = $config['client_cert_path'];
             if (! empty($config['client_cert_password'])) {
+                dd(4);
                 $options['passphrase'] = $config['client_cert_password'];
             }
         }
 
         $options['stream_context'] = stream_context_create(['ssl' => $ssl]);
 
-        $this->client = new SoapClient($config['wsdl'], $options);
+        $this->client = new SoapClient($wsdl, $options);
     }
 
     /**

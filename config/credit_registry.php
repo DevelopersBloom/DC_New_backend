@@ -13,6 +13,8 @@ return [
 
     // Full WSDL URL provided by CBA (e.g. https://host/DEGSHost?wsdl)
     'wsdl' => env('CREDIT_REGISTRY_WSDL'),
+    // Optional local WSDL file path (use when remote ?wsdl is blocked/400)
+    'wsdl_local_path' => env('CREDIT_REGISTRY_WSDL_LOCAL_PATH'),
 
     // Optional client certificate (PEM/PFX converted to PEM) and password
     'client_cert_path' => env('CREDIT_REGISTRY_CLIENT_CERT_PATH'),
