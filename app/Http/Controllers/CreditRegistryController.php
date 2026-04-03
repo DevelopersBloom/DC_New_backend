@@ -71,7 +71,8 @@ class CreditRegistryController extends Controller
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
-        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
+        $url = "https://100.100.100.60:8888/DEGSHost";
+//        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
 
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
