@@ -97,7 +97,6 @@ class CreditRegistrySoapClient
      */
     public function sendL001(string $xml, bool $isDelay = false): int
     {
-        dd(34);
         return $this->sendRequest(
             appName: config('credit_registry.app_name', 'LNREG3'),
             docType: 'L001',
@@ -111,6 +110,7 @@ class CreditRegistrySoapClient
      */
     public function sendRequest(string $appName, string $docType, string $xml, bool $isDelay = false): int
     {
+        dd($appName,$docType,$xml);
         try {
             dd(33);
             $result = $this->client->__soapCall('SendRequest', [[
