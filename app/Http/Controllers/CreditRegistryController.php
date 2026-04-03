@@ -70,10 +70,10 @@ class CreditRegistryController extends Controller
             return response()->json(['message' => 'Contract not found'], 404);
         }
 
-        $xml = $xml = <<<XML
+        $xml = <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope
- xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+ xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"
  xmlns:urn="urn:cba-am:lnreg3">
    <soapenv:Header/>
    <soapenv:Body>
@@ -83,7 +83,6 @@ class CreditRegistryController extends Controller
    </soapenv:Body>
 </soapenv:Envelope>
 XML;
-
         $url = "https://100.100.100.60:8888/DEGSHost";
 
         curl_setopt_array($ch, [
@@ -92,8 +91,7 @@ XML;
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $xml,
             CURLOPT_HTTPHEADER => [
-                'Content-Type: text/xml; charset=utf-8',
-                'SOAPAction: "urn:L001"',
+                'Content-Type: application/soap+xml; charset=utf-8',
             ],
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
