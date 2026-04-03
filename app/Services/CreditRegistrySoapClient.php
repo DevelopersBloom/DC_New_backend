@@ -59,6 +59,9 @@ class CreditRegistrySoapClient
             'connection_timeout' => (int) ($config['connection_timeout'] ?? 30),
         ];
 
+        $soapVersion = strtolower((string) ($config['soap_version'] ?? '1.2'));
+        $options['soap_version'] = $soapVersion === '1.1' ? SOAP_1_1 : SOAP_1_2;
+
         $ssl = [
             'verify_peer' => $this->boolish($config['verify_peer'] ?? null, true),
             'verify_peer_name' => $this->boolish($config['verify_peer_name'] ?? null, true),

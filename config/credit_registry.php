@@ -18,6 +18,9 @@ return [
     // Optional override for SOAP service endpoint (useful when WSDL is served elsewhere)
     'endpoint' => env('CREDIT_REGISTRY_ENDPOINT'),
 
+    // SOAP protocol version: "1.2" (recommended) or "1.1"
+    'soap_version' => env('CREDIT_REGISTRY_SOAP_VERSION', '1.2'),
+
     // Optional client certificate (PEM/PFX converted to PEM) and password
     'client_cert_path' => env('CREDIT_REGISTRY_CLIENT_CERT_PATH'),
     'client_cert_password' => env('CREDIT_REGISTRY_CLIENT_CERT_PASSWORD'),
