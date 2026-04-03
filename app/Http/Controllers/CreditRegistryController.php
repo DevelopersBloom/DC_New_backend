@@ -65,14 +65,14 @@ class CreditRegistryController extends Controller
     {
         $ch = curl_init();
         $contract = Contract::find($id);
-//
+
         if (! $contract) {
             return response()->json(['message' => 'Contract not found'], 404);
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
+
         $url = "https://100.100.100.60:8888/DEGSHost";
-//        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
 
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
@@ -80,9 +80,8 @@ class CreditRegistryController extends Controller
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $xml,
             CURLOPT_HTTPHEADER => [
-                'Content-Type: text/xml; charset=utf-8',
+                'Content-Type: application/soap+xml; charset=utf-8',
                 'SOAPAction: "' . $soapAction . '"',
-                'Content-Length: ' . strlen($xml),
             ],
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
@@ -99,8 +98,7 @@ class CreditRegistryController extends Controller
             'response' => $response,
             'error' => $error,
         ];
-    }
-    /**
+    }    /**
      * Generate and download L001 XML for a single contract (Credit Registry).
      */
     public function downloadL001(string $id): StreamedResponse|Response
