@@ -77,11 +77,11 @@ class CreditRegistrySoapClient
             $options['local_cert'] = $config['client_cert_path'];
             if (! empty($config['client_cert_password'])) {
                 $options['passphrase'] = $config['client_cert_password'];
-                dd(4);
             }
         }
 
         $options['stream_context'] = stream_context_create(['ssl' => $ssl]);
+        dd(34);
 
         $this->client = new SoapClient($wsdl, $options);
     }
