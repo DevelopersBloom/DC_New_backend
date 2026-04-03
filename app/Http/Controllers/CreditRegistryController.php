@@ -83,8 +83,8 @@ class CreditRegistryController extends Controller
    </soapenv:Body>
 </soapenv:Envelope>
 XML;
-        $url = "https://100.100.100.60:8888/DEGSHost";
-
+//        $url = "https://100.100.100.60:8888/DEGSHost";
+        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
