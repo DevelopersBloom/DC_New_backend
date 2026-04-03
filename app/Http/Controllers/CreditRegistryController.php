@@ -26,40 +26,77 @@ class CreditRegistryController extends Controller
     ) {
     }
 
-    public function sendL001(string $id): Response
+//    public function sendL001(string $id): Response
+//    {
+//        $contract = Contract::find($id);
+//
+//        if (! $contract) {
+//            return response()->json(['message' => 'Contract not found'], 404);
+//        }
+//
+//        $xml = $this->l001Service->generateL001Xml($contract);
+//
+//        $requestId = $this->soapClient->sendL001($xml, false);
+//
+//        $maxTries = 10;
+//        $sleepMs = 500;
+//
+//        $isReady = false;
+//        for ($i = 0; $i < $maxTries; $i++) {
+//            if ($this->soapClient->isResponsePrepared($requestId)) {
+//                $isReady = true;
+//                break;
+//            }
+//            usleep($sleepMs * 1000);
+//        }
+//
+//        $responseXml = null;
+//        if ($isReady) {
+//            $responseXml = $this->soapClient->getResponse($requestId);
+//        }
+//
+//        return response()->json([
+//            'request_id' => $requestId,
+//            'is_ready' => $isReady,
+//            'response_xml' => $responseXml,
+//        ]);
+//    }
+    function sendL001($id,string $url, string $soapAction = '')
     {
+        $ch = curl_init();
         $contract = Contract::find($id);
-
+//
         if (! $contract) {
             return response()->json(['message' => 'Contract not found'], 404);
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
 
-        $requestId = $this->soapClient->sendL001($xml, false);
-
-        $maxTries = 10;
-        $sleepMs = 500;
-
-        $isReady = false;
-        for ($i = 0; $i < $maxTries; $i++) {
-            if ($this->soapClient->isResponsePrepared($requestId)) {
-                $isReady = true;
-                break;
-            }
-            usleep($sleepMs * 1000);
-        }
-
-        $responseXml = null;
-        if ($isReady) {
-            $responseXml = $this->soapClient->getResponse($requestId);
-        }
-
-        return response()->json([
-            'request_id' => $requestId,
-            'is_ready' => $isReady,
-            'response_xml' => $responseXml,
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $xml,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: text/xml; charset=utf-8',
+                'SOAPAction: "' . $soapAction . '"',
+                'Content-Length: ' . strlen($xml),
+            ],
+            CURLOPT_SSL_VERIFYPEER => false, // test-ի համար
+            CURLOPT_SSL_VERIFYHOST => false, // test-ի համար
         ]);
+
+        $response = curl_exec($ch);
+        $error = curl_error($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        curl_close($ch);
+
+        return [
+            'status' => $status,
+            'response' => $response,
+            'error' => $error,
+        ];
     }
     /**
      * Generate and download L001 XML for a single contract (Credit Registry).
