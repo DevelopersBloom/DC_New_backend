@@ -61,40 +61,64 @@ class CreditRegistryController extends Controller
 //            'response_xml' => $responseXml,
 //        ]);
 //    }
-    function sendL001($id, string $soapAction = '')
+    function sendL001($id, string $soapAction = 'L001')
     {
-        $ch = curl_init();
         $contract = Contract::find($id);
 
-        if (! $contract) {
+        if (!$contract) {
             return response()->json(['message' => 'Contract not found'], 404);
         }
+
+        $username = env('CREDIT_REGISTRY_USERNAME', '');
+        $password = env('CREDIT_REGISTRY_PASSWORD', '');
 
         $xml = <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope
  xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"
- xmlns:urn="urn:cba-am:lnreg3">
-   <soapenv:Header/>
+ xmlns:urn="urn:cba-am:lnreg3"
+ xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+
+   <soapenv:Header>
+      <wsse:Security>
+         <wsse:UsernameToken>
+            <wsse:Username>{$username}</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">{$password}</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soapenv:Header>
+
    <soapenv:Body>
       <urn:L001>
+         <urn:ContractNum>{$contract->num}</urn:ContractNum>
          <urn:Test>123</urn:Test>
       </urn:L001>
    </soapenv:Body>
+
 </soapenv:Envelope>
 XML;
-        $url = "https://100.100.100.60:8888/DEGSHost";
-//        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
+
+        $url = env('CREDIT_REGISTRY_ENDPOINT', 'https://100.100.100.60:8888/DEGSHost');
+        $certPath = env('CREDIT_REGISTRY_CLIENT_CERT_PATH');
+        $certPassword = env('CREDIT_REGISTRY_CLIENT_CERT_PASSWORD');
+        $caCertPath = env('CREDIT_REGISTRY_CA_CERT_PATH');
+        $verifyPeer = env('CREDIT_REGISTRY_VERIFY_PEER', true);
+        $verifyHost = env('CREDIT_REGISTRY_VERIFY_PEER_NAME', 0);
+
+        $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $xml,
             CURLOPT_HTTPHEADER => [
-                'Content-Type: application/soap+xml; charset=utf-8',
+                'Content-Type: application/soap+xml; charset=utf-8; action="urn:' . $soapAction . '"',
             ],
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSLCERT => $certPath,
+            CURLOPT_SSLCERTPASSWD => $certPassword,
+            CURLOPT_CAINFO => $caCertPath,
+            CURLOPT_SSL_VERIFYPEER => $verifyPeer,
+            CURLOPT_SSL_VERIFYHOST => $verifyHost,
         ]);
 
         $response = curl_exec($ch);
@@ -108,8 +132,7 @@ XML;
             'response' => $response,
             'error' => $error,
         ];
-    }
-    /**
+    }    /**
      * Generate and download L001 XML for a single contract (Credit Registry).
      */
     public function downloadL001(string $id): StreamedResponse|Response
