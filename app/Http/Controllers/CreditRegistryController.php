@@ -148,8 +148,6 @@ class CreditRegistryController extends Controller
      */
     public function sendL001(string $id): Response
     {
-        dd(3);
-
         $contract = Contract::find($id);
 
         if (! $contract) {
