@@ -15,6 +15,8 @@ return [
     'wsdl' => env('CREDIT_REGISTRY_WSDL'),
     // Optional local WSDL file path (use when remote ?wsdl is blocked/400)
     'wsdl_local_path' => env('CREDIT_REGISTRY_WSDL_LOCAL_PATH'),
+    // Optional override for SOAP service endpoint (useful when WSDL is served elsewhere)
+    'endpoint' => env('CREDIT_REGISTRY_ENDPOINT'),
 
     // Optional client certificate (PEM/PFX converted to PEM) and password
     'client_cert_path' => env('CREDIT_REGISTRY_CLIENT_CERT_PATH'),

@@ -81,7 +81,11 @@ class CreditRegistrySoapClient
         }
 
         $options['stream_context'] = stream_context_create(['ssl' => $ssl]);
-dd($wsdl, $options);
+
+        if (! empty($config['endpoint']) && is_string($config['endpoint'])) {
+            $options['location'] = $config['endpoint'];
+        }
+
         $this->client = new SoapClient($wsdl, $options);
     }
 
