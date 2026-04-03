@@ -10,6 +10,33 @@ class CreditRegistrySoapClient
 {
     private SoapClient $client;
 
+    private function boolish(mixed $value, bool $default): bool
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value !== 0;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+            if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
+                return true;
+            }
+            if (in_array($normalized, ['0', 'false', 'no', 'off', ''], true)) {
+                return false;
+            }
+        }
+
+        return (bool) $value;
+    }
+
     public function __construct()
     {
         $config = config('credit_registry');
@@ -26,9 +53,9 @@ class CreditRegistrySoapClient
         ];
 
         $ssl = [
-            'verify_peer' => (bool) ($config['verify_peer'] ?? true),
-            'verify_peer_name' => (bool) ($config['verify_peer_name'] ?? true),
-            'allow_self_signed' => (bool) ($config['allow_self_signed'] ?? false),
+            'verify_peer' => $this->boolish($config['verify_peer'] ?? null, true),
+            'verify_peer_name' => $this->boolish($config['verify_peer_name'] ?? null, true),
+            'allow_self_signed' => $this->boolish($config['allow_self_signed'] ?? null, false),
         ];
 
         if (! empty($config['ca_cert_path'])) {
