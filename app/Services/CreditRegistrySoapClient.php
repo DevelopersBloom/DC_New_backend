@@ -111,6 +111,7 @@ class CreditRegistrySoapClient
     public function sendRequest(string $appName, string $docType, string $xml, bool $isDelay = false): int
     {
         try {
+            dd(33);
             $result = $this->client->__soapCall('SendRequest', [[
                 'AppName' => $appName,
                 'DocType' => $docType,
