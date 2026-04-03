@@ -81,8 +81,7 @@ class CreditRegistrySoapClient
         }
 
         $options['stream_context'] = stream_context_create(['ssl' => $ssl]);
-        dd(34);
-
+dd($wsdl, $options);
         $this->client = new SoapClient($wsdl, $options);
     }
 
