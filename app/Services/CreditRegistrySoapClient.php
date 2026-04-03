@@ -124,6 +124,7 @@ class CreditRegistrySoapClient
 
             return (int) $result->SendRequestResult;
         } catch (SoapFault $e) {
+            dd($e);
             throw new RuntimeException('SendRequest failed: ' . $e->getMessage(), 0, $e);
         }
     }
