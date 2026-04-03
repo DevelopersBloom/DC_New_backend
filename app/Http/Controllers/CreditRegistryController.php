@@ -22,7 +22,7 @@ class CreditRegistryController extends Controller
         private CreditRegistryL002Service $l002Service,
         private CreditRegistryL003Service $l003Service,
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
-        private CreditRegistrySoapClient $soapClient,
+//        private CreditRegistrySoapClient $soapClient,
     ) {
     }
 
