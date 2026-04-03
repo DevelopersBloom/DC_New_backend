@@ -83,8 +83,8 @@ class CreditRegistryController extends Controller
    </soapenv:Body>
 </soapenv:Envelope>
 XML;
-//        $url = "https://100.100.100.60:8888/DEGSHost";
-        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
+        $url = "https://100.100.100.60:8888/DEGSHost";
+//        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -108,7 +108,8 @@ XML;
             'response' => $response,
             'error' => $error,
         ];
-    }    /**
+    }
+    /**
      * Generate and download L001 XML for a single contract (Credit Registry).
      */
     public function downloadL001(string $id): StreamedResponse|Response
