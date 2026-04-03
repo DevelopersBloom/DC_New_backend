@@ -70,7 +70,19 @@ class CreditRegistryController extends Controller
             return response()->json(['message' => 'Contract not found'], 404);
         }
 
-        $xml = $this->l001Service->generateL001Xml($contract);
+        $xml = $xml = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope
+ xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+ xmlns:urn="urn:cba-am:lnreg3">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <urn:L001>
+         <urn:Test>123</urn:Test>
+      </urn:L001>
+   </soapenv:Body>
+</soapenv:Envelope>
+XML;
 
         $url = "https://100.100.100.60:8888/DEGSHost";
 
