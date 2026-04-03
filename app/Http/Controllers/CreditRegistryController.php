@@ -18,10 +18,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class CreditRegistryController extends Controller
 {
     public function __construct(
-        private CreditRegistryL001Service $l001Service,
-        private CreditRegistryL002Service $l002Service,
-        private CreditRegistryL003Service $l003Service,
-        private CreditRegistryRiskModificationXmlService $riskModXmlService,
+//        private CreditRegistryL001Service $l001Service,
+//        private CreditRegistryL002Service $l002Service,
+//        private CreditRegistryL003Service $l003Service,
+//        private CreditRegistryRiskModificationXmlService $riskModXmlService,
 //        private CreditRegistrySoapClient $soapClient,
     ) {
     }
