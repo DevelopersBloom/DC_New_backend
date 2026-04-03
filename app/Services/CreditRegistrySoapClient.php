@@ -76,8 +76,8 @@ class CreditRegistrySoapClient
         if (! empty($config['client_cert_path'])) {
             $options['local_cert'] = $config['client_cert_path'];
             if (! empty($config['client_cert_password'])) {
-                dd(4);
                 $options['passphrase'] = $config['client_cert_password'];
+                dd(4);
             }
         }
 
