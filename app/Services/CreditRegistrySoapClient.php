@@ -52,6 +52,18 @@ class CreditRegistrySoapClient
             throw new RuntimeException('CREDIT_REGISTRY_WSDL is not configured.');
         }
 
+        $responseTimeout = (int) ($config['response_timeout'] ?? 180);
+        dd($responseTimeout);
+        if ($responseTimeout < 30) {
+            $responseTimeout = 30;
+        }
+
+        ini_set('default_socket_timeout', (string) $responseTimeout);
+        if (function_exists('set_time_limit')) {
+
+            @set_time_limit(max(120, $responseTimeout + 120));
+        }
+
         $options = [
             'trace' => true,
             'exceptions' => true,
@@ -83,7 +95,12 @@ class CreditRegistrySoapClient
             }
         }
 
-        $options['stream_context'] = stream_context_create(['ssl' => $ssl]);
+        $options['stream_context'] = stream_context_create([
+            'ssl' => $ssl,
+            'http' => [
+                'timeout' => (float) $responseTimeout,
+            ],
+        ]);
 
         if (! empty($config['endpoint']) && is_string($config['endpoint'])) {
             $options['location'] = $config['endpoint'];
@@ -117,14 +134,13 @@ class CreditRegistrySoapClient
                 'IsDelay' => $isDelay,
                 'xml' => $xml,
             ]]);
-            dd($result);
+
             if (! isset($result->SendRequestResult)) {
                 throw new RuntimeException('SendRequestResult is missing in SOAP response.');
             }
 
             return (int) $result->SendRequestResult;
         } catch (SoapFault $e) {
-            dd($e);
             throw new RuntimeException('SendRequest failed: ' . $e->getMessage(), 0, $e);
         }
     }
