@@ -71,7 +71,7 @@ class CreditRegistryController extends Controller
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
-        $url = "https://100.100.100.60:8888/DEGSHost";
+        $url = "http://100.100.100.60:8889/DEGSHost?singleWsdl";
 
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
@@ -83,8 +83,8 @@ class CreditRegistryController extends Controller
                 'SOAPAction: "' . $soapAction . '"',
                 'Content-Length: ' . strlen($xml),
             ],
-            CURLOPT_SSL_VERIFYPEER => false, // test-ի համար
-            CURLOPT_SSL_VERIFYHOST => false, // test-ի համար
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
         ]);
 
         $response = curl_exec($ch);
