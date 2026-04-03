@@ -61,7 +61,7 @@ class CreditRegistryController extends Controller
 //            'response_xml' => $responseXml,
 //        ]);
 //    }
-    function sendL001($id,string $url, string $soapAction = '')
+    function sendL001($id, string $soapAction = '')
     {
         $ch = curl_init();
         $contract = Contract::find($id);
@@ -71,6 +71,7 @@ class CreditRegistryController extends Controller
         }
 
         $xml = $this->l001Service->generateL001Xml($contract);
+        $url = "https://100.100.100.60:8888/DEGSHost";
 
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
