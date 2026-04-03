@@ -53,7 +53,6 @@ class CreditRegistrySoapClient
         }
 
         $responseTimeout = (int) ($config['response_timeout'] ?? 180);
-        dd($responseTimeout);
         if ($responseTimeout < 30) {
             $responseTimeout = 30;
         }
@@ -105,7 +104,7 @@ class CreditRegistrySoapClient
         if (! empty($config['endpoint']) && is_string($config['endpoint'])) {
             $options['location'] = $config['endpoint'];
         }
-
+dd($this->client);
         $this->client = new SoapClient($wsdl, $options);
     }
 
