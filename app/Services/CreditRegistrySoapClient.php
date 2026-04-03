@@ -104,7 +104,6 @@ class CreditRegistrySoapClient
         if (! empty($config['endpoint']) && is_string($config['endpoint'])) {
             $options['location'] = $config['endpoint'];
         }
-dd($this->client);
         $this->client = new SoapClient($wsdl, $options);
     }
 
