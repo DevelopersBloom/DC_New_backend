@@ -92,8 +92,8 @@ XML;
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $xml,
             CURLOPT_HTTPHEADER => [
-                'Content-Type: application/soap+xml; charset=utf-8',
-                'SOAPAction: urn:cba-am:lnreg3#L001'
+                'Content-Type: text/xml; charset=utf-8',
+                'SOAPAction: "urn:L001"',
             ],
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false,
