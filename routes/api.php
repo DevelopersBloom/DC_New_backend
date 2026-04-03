@@ -214,7 +214,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/{id}/credit-registry/l002', [CreditRegistryController::class, 'downloadL002'])->middleware('can:download_contract_file');
         Route::get('/{id}/credit-registry/l003', [CreditRegistryController::class, 'downloadL003'])->middleware('can:download_contract_file');
         Route::get('/credit-registry/risk-modifications', [CreditRegistryController::class, 'downloadUnsentRiskModifications'])->middleware('can:download_contract_file');
-        Route::post('/{id}/credit-registry/l001/send', [AdminController::class, 'sendL001']);
+        Route::post('/{id}/credit-registry/l001/send', [CreditRegistryController::class, 'sendL001']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware('can:make_contract_payment');
         Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment'])->middleware('can:make_full_contract_payment');
