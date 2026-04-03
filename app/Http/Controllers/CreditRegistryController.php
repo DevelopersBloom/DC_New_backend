@@ -43,6 +43,7 @@ class CreditRegistryController extends Controller
 
         $isReady = false;
         for ($i = 0; $i < $maxTries; $i++) {
+            dd($maxTries);
             if ($this->soapClient->isResponsePrepared($requestId)) {
                 $isReady = true;
                 break;

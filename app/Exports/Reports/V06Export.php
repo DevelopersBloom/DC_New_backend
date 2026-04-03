@@ -274,8 +274,8 @@ class V06Export
                 ->sum('amount_amd');
             $debitPartnersCount = DocumentJournal::where('debit_account_id', $acc19331)
                 ->whereDate('date', '<=', $date)
-                ->distinct('partner_id')
-                ->count('partner_id');
+                ->distinct('debit_partner_id')
+                ->count('debit_partner_id');
         }
         $sheet->setCellValue('R125', $debitPartnersCount);
         $sheet->getStyle('R125')->getNumberFormat()->setFormatCode('#,##0');

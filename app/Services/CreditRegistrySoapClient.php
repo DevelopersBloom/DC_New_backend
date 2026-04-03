@@ -117,7 +117,6 @@ class CreditRegistrySoapClient
                 'IsDelay' => $isDelay,
                 'xml' => $xml,
             ]]);
-dd(4);
             if (! isset($result->SendRequestResult)) {
                 throw new RuntimeException('SendRequestResult is missing in SOAP response.');
             }
