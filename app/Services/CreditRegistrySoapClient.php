@@ -111,13 +111,13 @@ class CreditRegistrySoapClient
     public function sendRequest(string $appName, string $docType, string $xml, bool $isDelay = false): int
     {
         try {
-            dd(33);
             $result = $this->client->__soapCall('SendRequest', [[
                 'AppName' => $appName,
                 'DocType' => $docType,
                 'IsDelay' => $isDelay,
                 'xml' => $xml,
             ]]);
+            dd($result);
             if (! isset($result->SendRequestResult)) {
                 throw new RuntimeException('SendRequestResult is missing in SOAP response.');
             }
