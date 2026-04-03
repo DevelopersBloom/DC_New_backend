@@ -21,6 +21,19 @@ return [
     // Optional Root / CA certificate for server validation
     'ca_cert_path' => env('CREDIT_REGISTRY_CA_CERT_PATH'),
 
+    /*
+     * SSL verification toggles.
+     *
+     * Prefer keeping verification enabled and configuring CA/peer_name correctly.
+     * Only disable verification temporarily for troubleshooting.
+     */
+    'verify_peer' => env('CREDIT_REGISTRY_VERIFY_PEER', true),
+    'verify_peer_name' => env('CREDIT_REGISTRY_VERIFY_PEER_NAME', true),
+    'allow_self_signed' => env('CREDIT_REGISTRY_ALLOW_SELF_SIGNED', false),
+
+    // Optional peer name to validate certificate against (useful when connecting by IP)
+    'peer_name' => env('CREDIT_REGISTRY_PEER_NAME'),
+
     // Default application name for LNREG3 documents
     'app_name' => env('CREDIT_REGISTRY_APP_NAME', 'LNREG3'),
 

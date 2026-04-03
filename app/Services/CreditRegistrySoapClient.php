@@ -26,13 +26,17 @@ class CreditRegistrySoapClient
         ];
 
         $ssl = [
-            'verify_peer' => true,
-            'verify_peer_name' => true,
-            'allow_self_signed' => true,
+            'verify_peer' => (bool) ($config['verify_peer'] ?? true),
+            'verify_peer_name' => (bool) ($config['verify_peer_name'] ?? true),
+            'allow_self_signed' => (bool) ($config['allow_self_signed'] ?? false),
         ];
 
         if (! empty($config['ca_cert_path'])) {
             $ssl['cafile'] = $config['ca_cert_path'];
+        }
+
+        if (! empty($config['peer_name'])) {
+            $ssl['peer_name'] = $config['peer_name'];
         }
 
         if (! empty($config['client_cert_path'])) {
