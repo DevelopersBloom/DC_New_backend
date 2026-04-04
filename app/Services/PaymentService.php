@@ -247,7 +247,6 @@ class PaymentService
 
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
         $now = Carbon::now('Asia/Yerevan')->startOfDay();
-dd($due,$now,$due->isFuture());
         if (!$due->isFuture()) {
             return null;
         }
@@ -255,6 +254,7 @@ dd($due,$now,$due->isFuture());
         $from = Carbon::parse($payment->from_date)->startOfDay();
         $elapsedDays = max(1, $from->diffInDays($now));
         $futureDays = $now->diffInDays($due);
+      dd($futureDays);
         if ($futureDays < 1) {
             return null;
         }
