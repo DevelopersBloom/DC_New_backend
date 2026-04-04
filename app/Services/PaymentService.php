@@ -280,13 +280,13 @@ class PaymentService
         $futureInterest = $this->calcAmount(max(0, $P - $x), (int) $futureDays, $rate);
         $paidInterest = $pastInterest + $futureInterest;
         $paidPrincipal = $x;
-dd($futureInterest,$pastInterest,$paidPrincipal,$paidInterest + $paidPrincipal > $cashAfterPenalty + 1.0);
         if ($paidInterest + $paidPrincipal > $cashAfterPenalty + 1.0) {
             return null;
         }
 
         $principalForLine = min($paidPrincipal, (float) ($payment->principal_payment ?? 0));
         $remainingCash = $cashAfterPenalty - $paidInterest - $principalForLine;
+       dd($remainingCash,$cashAfterPenalty,$paidInterest,$principalForLine);
         if ($remainingCash < 0) {
             $remainingCash = 0;
         }
