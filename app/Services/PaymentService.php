@@ -277,7 +277,7 @@ class PaymentService
         }
         $x = min($x, $P, $cashAfterPenalty);
 
-        $futureInterest = $this->calcAmount(max(0, $P - $x), (int) $futureDays, $rate / 100);
+        $futureInterest = $this->calcAmount(max(0, $P - $x), (int) $futureDays, $rate);
         $paidInterest = $pastInterest + $futureInterest;
         $paidPrincipal = $x;
 

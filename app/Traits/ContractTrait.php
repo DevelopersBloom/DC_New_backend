@@ -326,7 +326,7 @@ trait ContractTrait
 
     public function calcAmount($amount, $days, $rate): int
     {
-        return intval(ceil($days * $rate * $amount * 0.01 / 10) * 10);
+        return $days * $rate / 100 * $amount;
     }
 
     public function calculateCurrentPayment($contract)
