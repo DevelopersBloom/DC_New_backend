@@ -247,6 +247,7 @@ class PaymentService
 
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
         $now = Carbon::now('Asia/Yerevan')->startOfDay();
+dd($due,$now,$due->isFuture());
         if (!$due->isFuture()) {
             return null;
         }
