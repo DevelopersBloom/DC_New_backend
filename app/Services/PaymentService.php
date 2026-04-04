@@ -254,7 +254,6 @@ class PaymentService
         $from = Carbon::parse($payment->from_date)->startOfDay();
         $elapsedDays = max(1, $from->diffInDays($now));
         $futureDays = $now->diffInDays($due);
-      dd($futureDays);
         if ($futureDays < 1) {
             return null;
         }
@@ -281,7 +280,7 @@ class PaymentService
         $futureInterest = $this->calcAmount(max(0, $P - $x), (int) $futureDays, $rate);
         $paidInterest = $pastInterest + $futureInterest;
         $paidPrincipal = $x;
-
+dd($futureInterest,$pastInterest,$paidPrincipal,$paidInterest + $paidPrincipal > $cashAfterPenalty + 1.0);
         if ($paidInterest + $paidPrincipal > $cashAfterPenalty + 1.0) {
             return null;
         }
