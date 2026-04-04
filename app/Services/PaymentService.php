@@ -287,7 +287,6 @@ class PaymentService
 
         $principalForLine = min($paidPrincipal, (float) ($payment->principal_payment ?? 0));
         $remainingCash = $cashAfterPenalty - $paidInterest - $principalForLine;
-       dd($remainingCash,$cashAfterPenalty,$paidInterest,$principalForLine);
         if ($remainingCash < 0) {
             $remainingCash = 0;
         }
