@@ -260,6 +260,7 @@ class PaymentService
 
         $P = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
+      dd($P,$cashAfterPenalty);
         if ($P <= 0 || $cashAfterPenalty <= 0) {
             return null;
         }
