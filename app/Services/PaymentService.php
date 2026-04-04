@@ -290,12 +290,6 @@ class PaymentService
         if ($remainingCash < 0) {
             $remainingCash = 0;
         }
-        dd([
-            'paid_interest' => (float) $paidInterest,
-            'paid_principal' => (float) $paidPrincipal,
-            'principal_for_line' => (float) $principalForLine,
-            'remaining_cash' => (float) $remainingCash,
-        ]);
 
         return [
             'paid_interest' => (float) $paidInterest,
