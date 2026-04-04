@@ -272,6 +272,7 @@ class PaymentService
         }
 
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
+   dd($x,$cashAfterPenalty,$pastInterest,$P*$kFuture);
         if ($x < 0) {
             return null;
         }
