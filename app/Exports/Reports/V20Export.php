@@ -46,55 +46,55 @@ class V20Export
 
 
 
-        $acc10000 = ChartOfAccount::idByCode('10000');
+        $acc10000s = ChartOfAccount::where('code', 'like', '10000%')->pluck('id')->toArray();
 
         $cashQuery = DocumentJournal::whereDate('date', '<=', $toDate);
 
         $cashDebitSum = (clone $cashQuery)
-            ->where('debit_account_id', $acc10000)
+            ->whereIn('debit_account_id', $acc10000s)
             ->sum('amount_amd');
 
         $cashCreditSum = (clone $cashQuery)
-            ->where('credit_account_id', $acc10000)
+            ->whereIn('credit_account_id', $acc10000s)
             ->sum('amount_amd');
 
         $cashDebitCount = (clone $cashQuery)
-            ->where('debit_account_id', $acc10000)
+            ->whereIn('debit_account_id', $acc10000s)
             ->count();
 
         $cashCreditCount = (clone $cashQuery)
-            ->where('credit_account_id', $acc10000)
+            ->whereIn('credit_account_id', $acc10000s)
             ->count();
 
-        $sheet->setCellValue('C22', $cashCreditSum);
-        $sheet->setCellValue('C23', $cashDebitSum);
+        $sheet->setCellValue('C22', $cashCreditSum / 1000);
+        $sheet->setCellValue('C23', $cashDebitSum / 1000);
 
         $sheet->setCellValue('D22', $cashCreditCount);
         $sheet->setCellValue('D23', $cashDebitCount);
 
 
-        $acc102101 = ChartOfAccount::idByCode('102101');
+        $acc102101s = ChartOfAccount::where('code', 'like', '102101%')->pluck('id')->toArray();
 
         $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate);
 
         $bankDebitSum = (clone $bankQuery)
-            ->where('debit_account_id', $acc102101)
+            ->whereIn('debit_account_id', $acc102101s)
             ->sum('amount_amd');
 
         $bankCreditSum = (clone $bankQuery)
-            ->where('credit_account_id', $acc102101)
+            ->whereIn('credit_account_id', $acc102101s)
             ->sum('amount_amd');
 
         $bankDebitCount = (clone $bankQuery)
-            ->where('debit_account_id', $acc102101)
+            ->whereIn('debit_account_id', $acc102101s)
             ->count();
 
         $bankCreditCount = (clone $bankQuery)
-            ->where('credit_account_id', $acc102101)
+            ->whereIn('credit_account_id', $acc102101s)
             ->count();
 
-        $sheet->setCellValue('E22', $bankCreditSum);
-        $sheet->setCellValue('E23', $bankDebitSum);
+        $sheet->setCellValue('E22', $bankCreditSum / 1000);
+        $sheet->setCellValue('E23', $bankDebitSum / 1000);
 
         $sheet->setCellValue('F22', $bankCreditCount);
         $sheet->setCellValue('F23', $bankDebitCount);
