@@ -178,8 +178,8 @@ class PaymentService
                 $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
                 $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
 
+                dd($earlySplit);
                 $cashAppliedToLine = $paidInterest + $principalForLine;
-                dd($payment->id,$payment->amount,$cashAppliedToLine,$paidInterest,$principalForLine,$paidPrincipal);
                 if ($amount >= $payment->amount) {
 //                if ($cashAppliedToLine + 0.01 >= $dueSnapshot + $penalty) {
                     $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
