@@ -166,7 +166,7 @@ class PaymentService
             $dueSnapshot = (float) $payment->amount;
 
             $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount);
-           dd($earlySplit);
+
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -179,6 +179,7 @@ class PaymentService
                 $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
 
                 $cashAppliedToLine = $paidInterest + $principalForLine;
+                dd($payment->id,$payment->amount,$cashAppliedToLine,$paidInterest,$principalForLine,$paidPrincipal);
                 if ($amount >= $payment->amount) {
 //                if ($cashAppliedToLine + 0.01 >= $dueSnapshot + $penalty) {
                     $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
