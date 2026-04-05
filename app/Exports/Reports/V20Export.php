@@ -76,11 +76,10 @@ class V20Export
         $acc102101s = ChartOfAccount::where('code', 'like', '102101%')->pluck('id')->toArray();
 
         $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate);
-dd($acc102101s);
         $bankDebitSum = (clone $bankQuery)
             ->whereIn('debit_account_id', $acc102101s)
             ->sum('amount_amd');
-
+dd($bankDebitSum);
         $bankCreditSum = (clone $bankQuery)
             ->whereIn('credit_account_id', $acc102101s)
             ->sum('amount_amd');
