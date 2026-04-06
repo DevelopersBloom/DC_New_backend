@@ -316,22 +316,52 @@ class ReportsJournalExport implements
         $this->summary = [];
     }
 
-        public function collection(): Collection
+//        public function collection(): Collection
+//    {
+//        $raw = $this->balancesRowsQuery($this->to)->get();
+//
+//        $final = $this->transformToReport1($raw);
+//
+//        $final = $final->filter(function ($row) {
+//            $totalSum = 0;
+//            foreach ($this->sumFields as $field) {
+//                $totalSum += abs((float)($row->{$field} ?? 0));
+//            }
+//            return $totalSum > 1e-6;
+//        });
+//        $this->summary = $this->balancesSummary($this->to);
+//
+//        $this->rows = $final->values();
+//
+//        return $this->rows;
+//    }
+    public function collection(): Collection
     {
         $raw = $this->balancesRowsQuery($this->to)->get();
 
+        // 1. Ստանում ենք բոլոր տվյալները (խմբավորված և տրանսֆորմացված)
         $final = $this->transformToReport1($raw);
 
-        $final = $final->filter(function ($row) {
-            $totalSum = 0;
-            foreach ($this->sumFields as $field) {
-                $totalSum += abs((float)($row->{$field} ?? 0));
-            }
-            return $totalSum > 1e-6;
-        });
-        $this->summary = $this->balancesSummary($this->to);
+        // 2. Զտում ենք այն տողերը, որտեղ բոլոր գումարային սյուները 0 են
+        $this->rows = $final->filter(function ($row) {
+            // Հաշվում ենք բոլոր թվային սյուների բացարձակ արժեքների գումարը
+            $sum = abs($row->amd_resident ?? 0) +
+                abs($row->amd_non_resident ?? 0) +
+                abs($row->fx_group1_resident ?? 0) +
+                abs($row->fx_group1_non_resident ?? 0) +
+                abs($row->usd_resident ?? 0) +
+                abs($row->usd_non_resident ?? 0) +
+                abs($row->eur_resident ?? 0) +
+                abs($row->eur_non_resident ?? 0) +
+                abs($row->fx_group2_resident ?? 0) +
+                abs($row->fx_group2_non_resident ?? 0) +
+                abs($row->rub_resident ?? 0) +
+                abs($row->rub_non_resident ?? 0);
 
-        $this->rows = $final->values();
+            return $sum > 0.001 && !empty($row->code);
+        })->values();
+
+        $this->summary = $this->balancesSummary($this->to);
 
         return $this->rows;
     }
