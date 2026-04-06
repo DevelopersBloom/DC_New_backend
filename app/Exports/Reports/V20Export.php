@@ -48,22 +48,21 @@ class V20Export
 
         $acc10000s = ChartOfAccount::where('code', 'like', '10000%')->pluck('id')->toArray();
 
-        $cashQuery = DocumentJournal::whereDate('date', '<=', $toDate);
 
-        $cashDebitSum = (clone $cashQuery)
-            ->whereIn('debit_account_id', $acc10000s)
+        $cashDebitSum =  DocumentJournal::whereIn('debit_account_id', $acc10000s)
+            ->whereDate('date', '<=', $toDate)
             ->sum('amount_amd');
 
-        $cashCreditSum = (clone $cashQuery)
-            ->whereIn('credit_account_id', $acc10000s)
+        $cashCreditSum = DocumentJournal::whereIn('credit_account_id', $acc10000s)
+            ->whereDate('date', '<=', $toDate)
             ->sum('amount_amd');
 
-        $cashDebitCount = (clone $cashQuery)
-            ->whereIn('debit_account_id', $acc10000s)
+        $cashDebitCount = DocumentJournal::whereIn('debit_account_id', $acc10000s)
+            ->whereDate('date', '<=', $toDate)
             ->count();
 
-        $cashCreditCount = (clone $cashQuery)
-            ->whereIn('credit_account_id', $acc10000s)
+        $cashCreditCount = DocumentJournal::whereIn('credit_account_id', $acc10000s)
+            ->whereDate('date', '<=', $toDate)
             ->count();
 
         $sheet->setCellValue('C22', $cashCreditSum / 1000);
@@ -76,20 +75,22 @@ class V20Export
         $acc102101s = ChartOfAccount::where('code', 'like', '102101%')->pluck('id')->toArray();
 
         $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate);
-        $bankDebitSum = (clone $bankQuery)
-            ->whereIn('debit_account_id', $acc102101s)
+
+        $bankDebitSum =  DocumentJournal::whereIn('debit_account_id', $acc102101s)
+            ->whereDate('date', '<=', $toDate)
             ->sum('amount_amd');
 
-        $bankCreditSum = (clone $bankQuery)
-            ->whereIn('credit_account_id', $acc102101s)
+        $bankCreditSum = DocumentJournal::whereIn('credit_account_id', $acc102101s)
+            ->whereDate('date', '<=', $toDate)
             ->sum('amount_amd');
 
-        $bankDebitCount = (clone $bankQuery)
-            ->whereIn('debit_account_id', $acc102101s)
+
+        $bankDebitCount = DocumentJournal::whereIn('debit_account_id', $acc102101s)
+            ->whereDate('date', '<=', $toDate)
             ->count();
 
-        $bankCreditCount = (clone $bankQuery)
-            ->whereIn('credit_account_id', $acc102101s)
+        $bankCreditCount = DocumentJournal::whereIn('credit_account_id', $acc102101s)
+            ->whereDate('date', '<=', $toDate)
             ->count();
 
         $sheet->setCellValue('E22', $bankCreditSum / 1000);
