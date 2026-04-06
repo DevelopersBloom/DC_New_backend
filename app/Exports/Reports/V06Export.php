@@ -25,7 +25,7 @@ class V06Export
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
         $docs = DocumentJournal::with(['journalable.payments' => function ($q) {
-            $q->where('status', 'initial');
+//            $q->where('status', 'initial');
         }])
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $date)
