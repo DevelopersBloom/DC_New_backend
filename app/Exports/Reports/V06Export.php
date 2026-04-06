@@ -61,7 +61,7 @@ class V06Export
 
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
-                    return Carbon::parse($p->date)->lt($date);
+                    return Carbon::parse($p->to_date)->lt($date);
                 });
 
             if ($hasExpiredPayment) {
