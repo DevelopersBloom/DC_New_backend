@@ -148,7 +148,7 @@ class V06Export
             $amount = $net16200NV + $net16201NI + $net16200;
             $amountsByClassification[$name] +=  $amount;
             if ($contract->category){
-                if ($contract->category->name === 'car') {
+                if (in_array($contract->category->name, ['car', 'car-purchase'])) {
                     $carContractAmount += $amount ;
                     $groupsCar[$col] += $net16200NV;
                     $carContractCount++;
