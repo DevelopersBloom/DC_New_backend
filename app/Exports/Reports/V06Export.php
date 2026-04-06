@@ -222,9 +222,17 @@ class V06Export
         $classificationKeys = ['standard', 'monitored', 'substandard', 'suspicious', 'loss'];
         foreach ($rows as $index => $row) {
             $key = $classificationKeys[$index];
+            $amountByClass = ($amountsByClassification[$key] ?? 0);
+            $reserveByClass = ($reserveByClassification[$key] ?? 0);
+
+            // Business rule: monitored reserve must be exactly 10% of monitored amount (D126).
+            if ($key === 'monitored') {
+                $reserveByClass = $amountByClass * 0.10;
+            }
+
             $sheet->setCellValue('B' . $row, ($classificationCounts[$key] ?? 0));
-            $sheet->setCellValue('D' . $row, ($amountsByClassification[$key] ?? 0)/1000);
-            $sheet->setCellValue('F' . $row, ($reserveByClassification[$key] ?? 0) / 1000);
+            $sheet->setCellValue('D' . $row, $amountByClass / 1000);
+            $sheet->setCellValue('F' . $row, $reserveByClass / 1000);
             $sheet->getStyle('B' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0');
             $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0');
