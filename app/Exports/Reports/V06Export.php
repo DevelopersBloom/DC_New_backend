@@ -24,8 +24,16 @@ class V06Export
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
-        $docs = DocumentJournal::with(['journalable.payments' => function ($q) {
-            $q->where('status', 'initial');
+        $docs = DocumentJournal::with(['journalable.payments' => function ($q) use ($date) {
+            // Load payments that were unpaid as of the report date:
+            // either still initial, or completed after the report date.
+            $q->where(function ($q2) use ($date) {
+                $q2->where('status', 'initial')
+                    ->orWhere(function ($q3) use ($date) {
+                        $q3->where('status', 'completed')
+                            ->whereDate('to_date', '>', $date);
+                    });
+            });
         }])
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $date)
@@ -60,7 +68,10 @@ class V06Export
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
-            if (!$contract || !$contract->client || !$contract->client->classification || $contract->status != 'initial') continue;
+            if (!$contract || !$contract->client || !$contract->client->classification) continue;
+            // Skip contracts that were already closed before the report date.
+            // A contract closed after $date was still active on the report snapshot.
+            if ($contract->closed_at && Carbon::parse($contract->closed_at)->lt($date)) continue;
 
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
@@ -184,19 +195,11 @@ class V06Export
         $sheet->setCellValue('R21', $expiredCount);
         $sheet->setCellValue('R22', $expiredCount);
 
-        $rowsCar = [110];
-        $rowsGold = [112];
+        $rowsCar = [110, 112];
         $rowsTotal = [108];
 
         foreach ($groupsCar as $col => $value) {
             foreach ($rowsCar as $row) {
-                $sheet->setCellValue($col . $row, $value / 1000);
-                $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
-            }
-        }
-
-        foreach ($groupsGold as $col => $value) {
-            foreach ($rowsGold as $row) {
                 $sheet->setCellValue($col . $row, $value / 1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
@@ -220,7 +223,7 @@ class V06Export
         $sheet->getStyle('P110')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('P111', $electronicsContractAmount);
         $sheet->getStyle('P111')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P112', $goldContractAmount);
+        $sheet->setCellValue('P112', $carContractAmount);
         $sheet->getStyle('P112')->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->setCellValue('R108',($carContractCount + $goldContractCount + $electronicsContractCount));
@@ -231,7 +234,7 @@ class V06Export
         $sheet->getStyle('R110')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('R111', $electronicsContractCount);
         $sheet->getStyle('R111')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('R112', $goldContractCount);
+        $sheet->setCellValue('R112', $carContractCount);
         $sheet->getStyle('R112')->getNumberFormat()->setFormatCode('#,##0');
 
         $rows = [125, 126, 127, 128, 129];
