@@ -73,17 +73,33 @@ class TurnoverReportController extends Controller
             ])
             ->groupBy('o.account_id');
 
+        // Collect all account IDs that appear in either period or opening movements.
+        // This ensures accounts with only an opening/closing balance (no period turnover)
+        // are still included in the report.
+        $allAccountIds = DB::query()
+            ->fromSub(
+                DB::query()
+                    ->fromSub($periodLines, 'pl')->select('pl.account_id')
+                    ->unionAll(
+                        DB::query()->fromSub($openingLines, 'ol')->select('ol.account_id')
+                    ),
+                'all_accounts'
+            )
+            ->select('account_id')
+            ->distinct();
+
         $base = DB::table('chart_of_accounts as ca')
             ->whereNull('ca.deleted_at')
-            ->joinSub($periodAgg, 'period', 'ca.id', '=', 'period.account_id')
+            ->joinSub($allAccountIds, 'relevant', 'ca.id', '=', 'relevant.account_id')
+            ->leftJoinSub($periodAgg, 'period', 'ca.id', '=', 'period.account_id')
             ->leftJoinSub($openingAgg, 'opening', 'ca.id', '=', 'opening.account_id')
             ->select([
                 'ca.code',
                 'ca.name',
                 DB::raw('COALESCE(opening.opening_debit, 0) as opening_debit'),
                 DB::raw('COALESCE(opening.opening_credit, 0) as opening_credit'),
-                'period.period_debit',
-                'period.period_credit',
+                DB::raw('COALESCE(period.period_debit, 0) as period_debit'),
+                DB::raw('COALESCE(period.period_credit, 0) as period_credit'),
             ])
             ->orderBy('ca.code');
 
