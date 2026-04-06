@@ -24,7 +24,9 @@ class V06Export
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
-        $docs = DocumentJournal::with(['journalable.payments'])
+        $docs = DocumentJournal::with(['journalable.payments' => function ($q) {
+            $q->where('status', 'initial');
+        }])
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $date)
             ->get();
@@ -59,26 +61,7 @@ class V06Export
 
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
-                    if (!$p->date) {
-                        return false;
-                    }
-
-                    $reportDate = Carbon::parse($date)->endOfDay();
-                    $paymentDate = Carbon::parse($p->date)->endOfDay();
-                    if (!$paymentDate->lt($reportDate)) {
-                        return false;
-                    }
-
-                    // Evaluate payment status as of report date, not current status.
-                    if ($p->status === 'initial') {
-                        return true;
-                    }
-
-                    if ($p->status === 'completed' && $p->updated_at) {
-                        return Carbon::parse($p->updated_at)->gt($reportDate);
-                    }
-
-                    return false;
+                    return Carbon::parse($p->date)->lt($date);
                 });
 
             if ($hasExpiredPayment) {
@@ -86,9 +69,8 @@ class V06Export
             } else {
                 $onTimeCount++;
             }
-            $dateProvided = $doc->created_at->format('Y-m-d');
             $days = Carbon::parse($contract->deadline)
-                ->diffInDays(Carbon::parse($dateProvided));
+                ->diffInDays(Carbon::parse($date));
 
             $col = $this->getColumnByDays($days);
 

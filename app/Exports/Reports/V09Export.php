@@ -764,6 +764,28 @@ class V09Export
         $sheet->setCellValue('F22', $balance19000 / 1000);
         $sheet->setCellValue('F44', $balance19000 / 1000);
 
+        $acc39210 = ChartOfAccount::idByCode('39210');
+        $balance39210 = $acc39210 ? $this->getAccountBalance($acc39210, $dateStr,'passive') : 0;
+        $sheet->setCellValue('F52', $balance39210 / 1000);
+
+        $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
+
+        $balance39102 = 0;
+        foreach ($acc39102Group as $accId) {
+            $balance39102 += $this->getAccountBalance($accId, $dateStr, 'passive');
+        }
+
+        $sheet->setCellValue('F53', $balance39102 / 1000);
+
+
+        $acc39200Account = ChartOfAccount::where('code', '39200')->first();
+
+        $balance39200 = $acc39200Account
+            ? $this->getAccountBalance($acc39200Account->id, $dateStr, $acc39200Account->type)
+            : 0;
+
+        $sheet->setCellValue('F59', $balance39200 / 1000);
+
         $docs = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $dateStr)
             ->get();
@@ -775,7 +797,7 @@ class V09Export
             $contract = $doc->journalable;
             if (!$contract || $contract->status != 'initial') continue;
             $date = Carbon::parse($contract->date);
-            $remainingDays = $toDay->diffInDays(Carbon::parse($contract->deadline), false);
+            $remainingDays = $toDate->diffInDays(Carbon::parse($contract->deadline), false);
             $col = $this->getColumnByDaysV09($remainingDays);
             // 16200NV
             if ($acc16200NV) {
@@ -800,31 +822,31 @@ class V09Export
             }
 
             // 39210
-            if ($acc39210) {
-                $balance39210 = $this->getSpecificBalance($contract->id, $doc->id, $acc39210, $dateStr, 'passive');
-                if ($balance39210 > 0) {
-                    $prev52 = (float)$sheet->getCell($col . '52')->getValue();
-                    $sheet->setCellValue($col . '52', $prev52 + ($balance39210 / 1000));
-                }
-            }
-
-            // 39102Group
-            if (!empty($acc39102Group)) {
-                $balance39102 = $this->getSpecificBalance($contract->id, $doc->id, $acc39102Group, $dateStr, 'passive');
-                if ($balance39102 > 0) {
-                    $prev54 = (float)$sheet->getCell($col . '54')->getValue();
-                    $sheet->setCellValue($col . '54', $prev54 + ($balance39102 / 1000));
-                }
-            }
-
-            // 39200
-            if ($acc39200Account) {
-                $balance39200 = $this->getSpecificBalance($contract->id, $doc->id, $acc39200Account->id, $dateStr, $acc39200Account->type);
-                if ($balance39200 > 0) {
-                    $prev59 = (float)$sheet->getCell($col . '59')->getValue();
-                    $sheet->setCellValue($col . '59', $prev59 + ($balance39200 / 1000));
-                }
-            }
+//            if ($acc39210) {
+//                $balance39210 = $this->getSpecificBalance($contract->id, $doc->id, $acc39210, $dateStr, 'passive');
+//                if ($balance39210 > 0) {
+//                    $prev52 = (float)$sheet->getCell($col . '52')->getValue();
+//                    $sheet->setCellValue($col . '52', $prev52 + ($balance39210 / 1000));
+//                }
+//            }
+//
+//            // 39102Group
+//            if (!empty($acc39102Group)) {
+//                $balance39102 = $this->getSpecificBalance($contract->id, $doc->id, $acc39102Group, $dateStr, 'passive');
+//                if ($balance39102 > 0) {
+//                    $prev54 = (float)$sheet->getCell($col . '54')->getValue();
+//                    $sheet->setCellValue($col . '54', $prev54 + ($balance39102 / 1000));
+//                }
+//            }
+//
+//            // 39200
+//            if ($acc39200Account) {
+//                $balance39200 = $this->getSpecificBalance($contract->id, $doc->id, $acc39200Account->id, $dateStr, $acc39200Account->type);
+//                if ($balance39200 > 0) {
+//                    $prev59 = (float)$sheet->getCell($col . '59')->getValue();
+//                    $sheet->setCellValue($col . '59', $prev59 + ($balance39200 / 1000));
+//                }
+//            }
         }
 
         $this->fixPColumnTotals($sheet);
@@ -869,11 +891,11 @@ class V09Export
         return ($type === 'active') ? ($debit - $credit) : ($credit - $debit);
     }
 
-    private function getAccountBalance($accountId, $date)
+    private function getAccountBalance($accountId, $date,$type = 'active')
     {
         $debit = DocumentJournal::where('debit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
         $credit = DocumentJournal::where('credit_account_id', $accountId)->whereDate('date', '<=', $date)->sum('amount_amd');
-        return $debit - $credit;
+        return ($type == 'active') ? $debit - $credit : $credit - $debit;
     }
 
     private function fixPColumnTotals(Worksheet $sheet): void

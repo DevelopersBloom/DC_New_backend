@@ -48,7 +48,7 @@ class V20Export
 
         $acc10000s = ChartOfAccount::where('code', 'like', '10000%')->pluck('id')->toArray();
 
-        $cashQuery = DocumentJournal::whereDate('date', '<=', $toDate);
+        $cashQuery = DocumentJournal::whereDate('date', '<=', $toDate)->whereDate('date', '>=', $fromDate);
 
         $cashDebitSum = (clone $cashQuery)
             ->whereIn('debit_account_id', $acc10000s)
@@ -75,7 +75,7 @@ class V20Export
 
         $acc102101s = ChartOfAccount::where('code', 'like', '102101%')->pluck('id')->toArray();
 
-        $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate);
+        $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate)->whereDate('date', '>=', $fromDate);
         $bankDebitSum = (clone $bankQuery)
             ->whereIn('debit_account_id', $acc102101s)
             ->sum('amount_amd');
