@@ -91,8 +91,15 @@ class ReportV01Controller extends Controller
                     17 => (float)($row->rub_non_resident ?? 0),
                 ];
 
+//                foreach ($nums as $colIndex => $val) {
+//                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val/1000, DataType::TYPE_NUMERIC);
+//                }
                 foreach ($nums as $colIndex => $val) {
-                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val/1000, DataType::TYPE_NUMERIC);
+                    if (abs($val) < 0.0001) {
+                        $sheet->setCellValueByColumnAndRow($colIndex, $currentRow, null);
+                    } else {
+                        $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val/1000, DataType::TYPE_NUMERIC);
+                    }
                 }
 
                 $currentRow++;
