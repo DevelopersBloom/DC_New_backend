@@ -31,6 +31,7 @@ class V06Export
             ->whereDate('date', '<=', $date)
             ->get();
 
+
         $carContractCount = 0;
         $goldContractCount = 0;
         $electronicsContractCount = 0;
@@ -61,7 +62,7 @@ class V06Export
 
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
-                    return Carbon::parse($p->date)->lt($date);
+                    return Carbon::parse($p->to_date)->lt($date);
                 });
 
             if ($hasExpiredPayment) {
