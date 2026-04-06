@@ -24,23 +24,9 @@ class V06Export
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
-//        $docs = DocumentJournal::with(['journalable.payments' => function ($q) {
-//            $q->where('status', 'initial');
-//        }])
-//            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-//            ->whereDate('date', '<=', $date)
-//            ->get();
-        $docs = DocumentJournal::with([
-            'journalable.payments' => function ($q) use ($date) {
-                $q->where(function ($query) use ($date) {
-                    $query->where('status', 'initial')
-                        ->orWhere(function ($sub) use ($date) {
-                            $sub->where('status', 'completed')
-                                ->where('date', '<=', $date);
-                        });
-                });
-            }
-        ])
+        $docs = DocumentJournal::with(['journalable.payments' => function ($q) {
+            $q->where('status', 'initial');
+        }])
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $date)
             ->get();
