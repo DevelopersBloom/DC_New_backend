@@ -49,6 +49,7 @@ class V06Export
         $expiredCarContractAmount = 0;
         $expiredGoldContractAmount = 0;
         $expiredElectronicsContractAmount = 0;
+        $onTimeContractAmount = 0;
 
         $groupsOnTime = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
         $groupsExpired = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
@@ -177,6 +178,7 @@ class V06Export
                 $groupsExpired[$col] += $net16200NV;
             } else {
                 $groupsOnTime[$col] += $net16200NV;
+                $onTimeContractAmount += $amount;
             }
 
             $interest = DocumentJournal::where('journalable_id', $doc->id)
@@ -196,9 +198,9 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
-        $sheet->setCellValue('P15',($carContractAmount + $goldContractAmount + $electronicsContractAmount)/1000);
+        $sheet->setCellValue('P15', $onTimeContractAmount / 1000);
         $sheet->getStyle('P15')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P16',($carContractAmount + $goldContractAmount + $electronicsContractAmount)/1000);
+        $sheet->setCellValue('P16', $onTimeContractAmount / 1000);
         $sheet->getStyle('P16')->getNumberFormat()->setFormatCode('#,##0');
         $rowsExpired = [21, 22];
         foreach ($rowsExpired as $row) {
