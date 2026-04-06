@@ -63,7 +63,7 @@ class V13Export
         $credit10000NotFromBank = DocumentJournal::whereIn('credit_account_id', $acc10000s)
             ->where('date', '<=', $toDate)
             ->sum('amount_amd');
-        $sheet1->setCellValue('C22', $credit10000NotFromBank / 1000);
+        $sheet1->setCellValue('C26', $credit10000NotFromBank / 1000);
 
 //        $sheet1->setCellValue('C26', 0);
 
