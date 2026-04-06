@@ -31,7 +31,6 @@ class V06Export
             ->whereDate('date', '<=', $date)
             ->get();
 
-
         $carContractCount = 0;
         $goldContractCount = 0;
         $electronicsContractCount = 0;
@@ -62,7 +61,7 @@ class V06Export
 
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
-                    return Carbon::parse($p->to_date)->lt($date);
+                    return Carbon::parse($p->date)->lt($date);
                 });
 
             if ($hasExpiredPayment) {
@@ -70,6 +69,7 @@ class V06Export
             } else {
                 $onTimeCount++;
             }
+            // Bucket by report snapshot date, not contract creation timestamp.
             $days = Carbon::parse($contract->deadline)
                 ->diffInDays(Carbon::parse($date));
 
