@@ -65,6 +65,7 @@ class V06Export
         $expiredCount = 0;
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
+        $acc16200   = ChartOfAccount::idByCode('16200');
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
@@ -124,7 +125,27 @@ class V06Export
                  SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
                     [$acc16201NI, $acc16201NI])
                 ->value('balance');
-            $amount = $net16200NV + $net16201NI;
+
+            $net16200 = 0;
+            if ($acc16200) {
+                $net16200 = DocumentJournal::where(function ($query) use ($contract, $doc) {
+                    $query->where(function ($q) use ($contract) {
+                        $q->where('journalable_type', Contract::class)
+                            ->where('journalable_id', $contract->id);
+                    })
+                        ->orWhere(function ($q) use ($doc) {
+                            $q->where('journalable_type', DocumentJournal::class)
+                                ->where('journalable_id', $doc->id);
+                        });
+                })
+                    ->whereDate('date', '<=', $date)
+                    ->selectRaw("SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) -
+                     SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance",
+                        [$acc16200, $acc16200])
+                    ->value('balance');
+            }
+
+            $amount = $net16200NV + $net16201NI + $net16200;
             $amountsByClassification[$name] +=  $amount;
             if ($contract->category){
                 if ($contract->category->name === 'car') {
@@ -146,6 +167,7 @@ class V06Export
                 if ($contract->category->name === 'electronics') {
                     $electronicsContractCount++;
                     $electronicsContractAmount += $amount ;
+                    $groupsElect[$col] += $net16200NV;
                     if ($hasExpiredPayment) {
                         $expiredElectronicsContractAmount += $amount;
                     }
@@ -195,7 +217,7 @@ class V06Export
         $sheet->setCellValue('R21', $expiredCount);
         $sheet->setCellValue('R22', $expiredCount);
 
-        $rowsCar = [110, 112];
+        $rowsCar = [110];
         $rowsTotal = [108];
 
         foreach ($groupsCar as $col => $value) {
@@ -205,10 +227,16 @@ class V06Export
             }
         }
 
+        foreach ($groupsGold as $col => $value) {
+            $sheet->setCellValue($col . '112', $value / 1000);
+            $sheet->getStyle($col . '112')->getNumberFormat()->setFormatCode('#,##0');
+        }
+
         foreach ($groupsCar as $col => $value) {
             $goldValue = $groupsGold[$col] ?? 0;
+            $electValue = $groupsElect[$col] ?? 0;
             foreach ($rowsTotal as $row) {
-                $sheet->setCellValue($col . $row, ($value + $goldValue)/1000);
+                $sheet->setCellValue($col . $row, ($value + $goldValue + $electValue)/1000);
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
@@ -223,7 +251,7 @@ class V06Export
         $sheet->getStyle('P110')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('P111', $electronicsContractAmount);
         $sheet->getStyle('P111')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('P112', $carContractAmount);
+        $sheet->setCellValue('P112', $goldContractAmount);
         $sheet->getStyle('P112')->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->setCellValue('R108',($carContractCount + $goldContractCount + $electronicsContractCount));
@@ -234,7 +262,7 @@ class V06Export
         $sheet->getStyle('R110')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('R111', $electronicsContractCount);
         $sheet->getStyle('R111')->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->setCellValue('R112', $carContractCount);
+        $sheet->setCellValue('R112', $goldContractCount);
         $sheet->getStyle('R112')->getNumberFormat()->setFormatCode('#,##0');
 
         $rows = [125, 126, 127, 128, 129];
