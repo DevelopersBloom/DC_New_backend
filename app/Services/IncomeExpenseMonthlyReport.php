@@ -45,14 +45,50 @@ class IncomeExpenseMonthlyReport
             SUM(u.inflow) - SUM(u.outflow) as net
         ")
             ->groupBy('u.code')
-            ->orderBy('u.code')
             ->get();
 
-        return ( $rows->map(fn($r) => [
-            'code'    => (string)$r->code,
-            'inflow'  => (float)$r->inflow / 1000,
-            'outflow' => (float)$r->outflow / 1000,
-            'net'     => (float)$r->net / 1000,
-        ])->all());
-    }
-}
+        $data = [];
+        foreach ($rows as $r) {
+            $data[(string)$r->code] = [
+                'code'    => (string)$r->code,
+                'inflow'  => (float)$r->inflow,
+                'outflow' => (float)$r->outflow,
+                'net'     => (float)$r->net,
+            ];
+        }
+
+        $val52 = DB::table('transactions as t')
+            ->join('chart_of_accounts as da', 'da.id', '=', 't.debit_account_id')
+            ->join('chart_of_accounts as ca', 'ca.id', '=', 't.credit_account_id')
+            ->whereNull('t.deleted_at')
+            ->where('da.code', '73015')
+            ->where('ca.code', '16605PS')
+            ->where('t.date', '<=', $date)
+            ->sum('t.amount_amd');
+
+        $val62 = DB::table('transactions as t')
+            ->join('chart_of_accounts as da', 'da.id', '=', 't.debit_account_id')
+            ->join('chart_of_accounts as ca', 'ca.id', '=', 't.credit_account_id')
+            ->whereNull('t.deleted_at')
+            ->where('da.code', '16605PS')
+            ->where('ca.code', '63015')
+            ->where('t.date', '<=', $date)
+            ->sum('t.amount_amd');
+
+        $data['5.2'] = ['code' => '5.2', 'inflow' => 0, 'outflow' => 0, 'net' => $val52];
+        if (isset($data['5.1'])) {
+            $data['5.1']['net'] -= $val52;
+        }
+
+        $data['6.2'] = ['code' => '6.2', 'inflow' => 0, 'outflow' => 0, 'net' => $val62];
+        if (isset($data['6.1'])) {
+            $data['6.1']['net'] -= $val62;
+        }
+
+        return array_map(fn($r) => [
+            'code'    => $r['code'],
+            'inflow'  => $r['inflow'] / 1000,
+            'outflow' => $r['outflow'] / 1000,
+            'net'     => $r['net'] / 1000,
+        ], array_values($data));
+    }}
