@@ -38,6 +38,9 @@ class V06Export
         $carContractAmount = 0;
         $goldContractAmount = 0;
         $electronicsContractAmount = 0;
+        $expiredCarContractAmount = 0;
+        $expiredGoldContractAmount = 0;
+        $expiredElectronicsContractAmount = 0;
 
         $groupsOnTime = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
         $groupsExpired = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
@@ -117,15 +120,24 @@ class V06Export
                     $carContractAmount += $amount ;
                     $groupsCar[$col] += $net16200NV;
                     $carContractCount++;
+                    if ($hasExpiredPayment) {
+                        $expiredCarContractAmount += $amount;
+                    }
                 }
                 if ($contract->category->name === 'gold') {
                     $goldContractAmount += $amount ;
                     $groupsGold[$col] += $net16200NV;
                     $goldContractCount++;
+                    if ($hasExpiredPayment) {
+                        $expiredGoldContractAmount += $amount;
+                    }
                 }
                 if ($contract->category->name === 'electronics') {
                     $electronicsContractCount++;
                     $electronicsContractAmount += $amount ;
+                    if ($hasExpiredPayment) {
+                        $expiredElectronicsContractAmount += $amount;
+                    }
                 }
             }
             if ($hasExpiredPayment) {
@@ -162,6 +174,10 @@ class V06Export
                 $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
             }
         }
+        $sheet->setCellValue('P21', ($expiredCarContractAmount + $expiredGoldContractAmount + $expiredElectronicsContractAmount) / 1000);
+        $sheet->getStyle('P21')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('P22', ($expiredCarContractAmount + $expiredGoldContractAmount + $expiredElectronicsContractAmount) / 1000);
+        $sheet->getStyle('P22')->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->setCellValue('R15', $onTimeCount);
         $sheet->setCellValue('R16', $onTimeCount);
