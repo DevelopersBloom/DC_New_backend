@@ -24,28 +24,14 @@ class V06Export
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
-//        $docs = DocumentJournal::with(['journalable.payments' => function ($q) {
-//            $q->where('status', 'initial');
-//        }])
-//            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-//            ->whereDate('date', '<=', $date)
-//            ->get();
-
-        $docs = DocumentJournal::with(['journalable.payments' => function ($q) use ($date) {
-            $q->where(function ($query) use ($date) {
-                $query->where(function ($q) use ($date) {
-                    $q->where('status', 'initial')
-                        ->where('to_date', '<', $date);
-                })
-                    ->orWhere(function ($q) {
-                        $q->where('status', 'completed')
-                            ->whereColumn('date', '>', 'to_date');
-                    });
-            });
+        $docs = DocumentJournal::with(['journalable.payments' => function ($q) {
+            $q->where('status', 'initial');
         }])
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $date)
             ->get();
+
+
         $carContractCount = 0;
         $goldContractCount = 0;
         $electronicsContractCount = 0;
@@ -74,22 +60,9 @@ class V06Export
             $contract = $doc->journalable;
             if (!$contract || !$contract->client || !$contract->client->classification || $contract->status != 'initial') continue;
 
-//            $hasExpiredPayment = $contract->payments
-//                ->contains(function ($p) use ($date) {
-//                    return Carbon::parse($p->to_date)->lt($date);
-//                });
             $hasExpiredPayment = $contract->payments
                 ->contains(function ($p) use ($date) {
-
-                    if ($p->status === 'initial' && Carbon::parse($p->to_date)->lt($date)) {
-                        return true;
-                    }
-
-                    if ($p->status === 'completed' && $p->paid_date && Carbon::parse($p->paid_date)->gt(Carbon::parse($p->to_date))) {
-                        return true;
-                    }
-
-                    return false;
+                    return Carbon::parse($p->to_date)->lt($date);
                 });
 
             if ($hasExpiredPayment) {
