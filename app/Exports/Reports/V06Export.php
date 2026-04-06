@@ -42,7 +42,10 @@ class V06Export
                             ->whereColumn('date', '>', 'to_date');
                     });
             });
-        }]);
+        }])
+            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->whereDate('date', '<=', $date)
+            ->get();
         $carContractCount = 0;
         $goldContractCount = 0;
         $electronicsContractCount = 0;
