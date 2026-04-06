@@ -322,6 +322,13 @@ class ReportsJournalExport implements
 
         $final = $this->transformToReport1($raw);
 
+        $final = $final->filter(function ($row) {
+            $totalSum = 0;
+            foreach ($this->sumFields as $field) {
+                $totalSum += abs((float)($row->{$field} ?? 0));
+            }
+            return $totalSum > 1e-6;
+        });
         $this->summary = $this->balancesSummary($this->to);
 
         $this->rows = $final->values();
