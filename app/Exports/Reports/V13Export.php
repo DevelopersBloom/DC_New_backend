@@ -30,14 +30,20 @@ class V13Export
 
         $acc10000 = ChartOfAccount::idByCode('10000');
         $acc102101 = ChartOfAccount::idByCode('102101');
+        $acc10000s = ChartOfAccount::where('code', 'like', '10000%')->pluck('id')->toArray();
 
         $openingBalance = $this->getAccountBalance($acc10000, $fromDate);
         $sheet1->setCellValue('C21', $openingBalance / 1000);
 
-        $debit10000NotFromBank = DocumentJournal::where('debit_account_id', $acc10000)
-            ->where('credit_account_id', '!=', $acc102101)
+//        $debit10000NotFromBank = DocumentJournal::where('debit_account_id', $acc10000)
+//            ->where('credit_account_id', '!=', $acc102101)
+//            ->where('date', '<=', $toDate)
+//            ->sum('amount_amd');
+
+        $debit10000NotFromBank = DocumentJournal::whereIn('debit_account_id', $acc10000s)
             ->where('date', '<=', $toDate)
             ->sum('amount_amd');
+
         $sheet1->setCellValue('C22', $debit10000NotFromBank / 1000);
 
         $sheet1->setCellValue('C23', 0);
@@ -54,7 +60,12 @@ class V13Export
             ->sum('amount_amd');
         $sheet1->setCellValue('C25', $credit10000NotToBank / 1000);
 
-        $sheet1->setCellValue('C26', 0);
+        $credit10000NotFromBank = DocumentJournal::whereIn('credit_account_id', $acc10000s)
+            ->where('date', '<=', $toDate)
+            ->sum('amount_amd');
+        $sheet1->setCellValue('C22', $credit10000NotFromBank / 1000);
+
+//        $sheet1->setCellValue('C26', 0);
 
         $credit10000ToBank = DocumentJournal::where('credit_account_id', $acc10000)
             ->where('debit_account_id', $acc102101)
