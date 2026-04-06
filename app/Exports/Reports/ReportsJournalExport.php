@@ -374,18 +374,15 @@ class ReportsJournalExport implements
         $final = $baseAggregates->values()->merge($letteredNormalized->values());
 
         $final = $final->filter(function($r) {
+            $sum = 0;
             foreach ($this->sumFields as $f) {
-                if (abs($r->{$f}) > 0.001) {
-                    return true;
-                }
+                $sum += abs((float)($r->{$f} ?? 0));
             }
-            return false;
+            return $sum > 0.001;
         })->values();
 
-        // SortBy
         return $final->sortBy('code')->values();
-    }
-    protected function isLetteredCode(string $code): bool
+    }    protected function isLetteredCode(string $code): bool
     {
         return (bool)preg_match('/^\d{5}[A-Za-z]+$/', $code);
     }
