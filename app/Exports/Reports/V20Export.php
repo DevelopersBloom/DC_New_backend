@@ -79,6 +79,7 @@ class V20Export
         $bankDebitSum = (clone $bankQuery)
             ->whereIn('debit_account_id', $acc102101s)
             ->sum('amount_amd');
+        dd($bankDebitSum);
         $bankCreditSum = (clone $bankQuery)
             ->whereIn('credit_account_id', $acc102101s)
             ->sum('amount_amd');
