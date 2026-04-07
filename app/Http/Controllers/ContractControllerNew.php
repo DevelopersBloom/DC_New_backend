@@ -146,6 +146,7 @@ class ContractControllerNew extends Controller
 
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
         $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
+        $contract->future_interest_discount = $currentPaymentAmount['future_interest_discount'] ?? 0;
 
         $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 

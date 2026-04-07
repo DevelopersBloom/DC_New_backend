@@ -334,7 +334,8 @@ trait ContractTrait
         if ($contract->closed_at) {
             return [
                 "current_amount" => 0,
-                "penalty_amount" => 0
+                "penalty_amount" => 0,
+                "future_interest_discount" => 0,
             ];
         }
         $penaltyAmount = $this->countPenalty($contract->id);
@@ -368,6 +369,28 @@ trait ContractTrait
         $totalPaid = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')->sum('paid');
         $currentAmount = $totalPayment - $totalPaid + $penaltyAmount['penalty_amount'];
+
+        $futureInterestDiscount = 0.0;
+        $today = Carbon::now('Asia/Yerevan')->startOfDay();
+        $nextInitialRegularPayment = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->orderBy('to_date')
+            ->orderBy('id')
+            ->first();
+
+        if ($nextInitialRegularPayment) {
+            $dueDate = Carbon::parse($nextInitialRegularPayment->to_date ?? $nextInitialRegularPayment->date)
+                ->setTimezone('Asia/Yerevan')
+                ->startOfDay();
+            $futureDays = $today->diffInDays($dueDate, false);
+            if ($futureDays > 0) {
+                $principalBase = max(0, (float) ($contract->provided_amount ?? 0));
+                $dailyRate = (float) ($contract->interest_rate ?? 0) / 100;
+                $futureInterestDiscount = $principalBase * $futureDays * $dailyRate;
+            }
+        }
+
         return [
             "daysPassed" => $daysPassed,
             "endDate" => $currentDate,
@@ -376,7 +399,9 @@ trait ContractTrait
             "penaltyAmount" => $penaltyAmount,
             "current_amount" =>$currentAmount > 0 ? $currentAmount : 0,
             "penalty_amount" => $penaltyAmount['penalty_amount'],
-            "delay_days" => $penaltyAmount['delay_days']
+            "delay_days" => $penaltyAmount['delay_days'],
+            // UI can render this under payable amount with a minus sign.
+            "future_interest_discount" => round($futureInterestDiscount, 2),
         ];
 
     }
