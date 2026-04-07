@@ -182,6 +182,10 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
                 $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
+                $payment->remaining = max(
+                    0,
+                    (float) $contract->provided_amount - max(0, (float) $paidPrincipal - (float) $principalForLine)
+                );
 
                 $cashAppliedToLine = $paidInterest + $principalForLine;
                 if ($amount >= $payment->amount) {
@@ -208,6 +212,7 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
+                $payment->remaining = max(0, (float) $contract->provided_amount);
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
@@ -713,12 +718,14 @@ class PaymentService
             if ((float) $payment->amount <= 0) {
                 $payment->status = 'completed';
             }
-            $payment->save();
 
             $balance -= $principal;
             if ($balance < 0) {
                 $balance = 0;
             }
+
+            $payment->remaining = round($balance, 10);
+            $payment->save();
         }
     }
 
