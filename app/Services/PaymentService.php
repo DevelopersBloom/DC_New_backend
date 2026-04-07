@@ -27,7 +27,7 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id,$journal_id=null)
     {
         $payments_sum = 0;
         $interest_amount = 0;
@@ -47,6 +47,41 @@ class PaymentService
             $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id);
             $payed_penalty = $penaltyResult['penalty'];
             $amount = $penaltyResult['amount'];
+            if ($payed_penalty > 0) {
+                $rulePenalty = PostingRule::where('business_event_filter', 'penalty_rate_amount')->first();
+                if ($rulePenalty) {
+                    $userId = auth()->id();
+                    $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                    $journalDocPenalty = DocumentJournal::create([
+                        'date' => $date ?? Carbon::now()->format('Y-m-d'),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
+                        'amount_amd' => $payed_penalty,
+                        'credit_partner_id' => $contract->client_id,
+                        'comment' => 'Daily penalty accrual for contract #' . $contract->id,
+                        'debit_account_id' => $rulePenalty->debit_account_id,
+                        'credit_account_id' => $rulePenalty->credit_account_id,
+                        'user_id' =>$userId,
+                        'journalable_type' => DocumentJournal::class,
+                        'journalable_id' => $journal_id,
+                    ]);
+
+                    Transaction::create([
+                        'date' => $date,
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
+                        'debit_account_id' => $rulePenalty->debit_account_id,
+                        'credit_account_id' => $rulePenalty->credit_account_id,
+                        'credit_partner_id' => $contract->client_id,
+                        'amount_amd' => $payed_penalty,
+                        'comment' => 'Daily penalty accrual for contract #' . $contract->id,
+                        'user_id' => $userId,
+                        'is_system' => true,
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id' => $journalDocPenalty->id,
+                    ]);
+                }
+            }
         }
 
         if ($amount > 0) {

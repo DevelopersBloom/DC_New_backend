@@ -61,8 +61,11 @@ class PaymentControllerNew extends Controller
             $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,null,null,1);
 
         $oldPaymentAmount = $this->calcPaidAmount($contract);
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->first();
         $result = $this->paymentService->processPayments(
-            $contract,$amount,$payer,$cash,$payments,$deal->id
+            $contract,$amount,$payer,$cash,$payments,$deal->id,$journal->id
         );
         $newPaymentAmount = $oldPaymentAmount + $amount;
         $history->interest_amount = $result['interest_amount'];
@@ -94,9 +97,7 @@ class PaymentControllerNew extends Controller
 
         $document_type = DocumentJournal::PAY_INTEREST_AMOUNT;
         $date = Carbon::now()->format('Y-m-d');
-        $journal = DocumentJournal::where('journalable_type', Contract::class)
-            ->where('journalable_id', $contract->id)
-            ->first();
+
         $interestAmount = $result['interest_amount'];
         $principalAmount = $result['principal_amount'];
         if ($interestAmount > 0) {
