@@ -204,7 +204,7 @@ class ChartOfAccountController
 
     public function exportPartnerAccountBalances(Request $request)
     {
-        $dateTo    = $request->query('to');
+        $dateTo    = $request->query('to_date');
         $partnerId = $request->query('partner_id');
         $accountId = $request->query('account_id');
         $search    = $request->query('search');
