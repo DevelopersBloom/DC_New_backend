@@ -186,6 +186,19 @@ class PaymentService
                     $this->partiallyCompletePayment($payment, $cashAppliedToLine, $deal_id, [], $principalPayment, $interestPayment);
                 }
                 $earlyHandled = true;
+
+                // Recalculate interest on all remaining (initial) installments using
+                // the new lower balance (P - x). Principal per installment is unchanged —
+                // no schedule regeneration. Only interest goes down, so the next payment
+                // is smaller; from the period after that the amounts follow the same
+                // principal sequence but with interest on the running reduced balance.
+                $remainingPayments = Payment::where('contract_id', $contract->id)
+                    ->where('type', 'regular')
+                    ->where('status', 'initial')
+                    ->get();
+                if ($remainingPayments->isNotEmpty()) {
+                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingPayments);
+                }
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
 
@@ -267,7 +280,7 @@ class PaymentService
         }
 
         $pastInterest = $P* $elapsedDays * $rate / 100;
-        $kFuture = $futureDays * ($rate / 100) * 0.01;
+        $kFuture = $futureDays * ($rate / 100);
         $denom = 1 - $kFuture;
         if (abs($denom) < 1e-9) {
             return null;
