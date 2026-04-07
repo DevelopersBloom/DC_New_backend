@@ -428,11 +428,11 @@ class ProcessContractDailyRate implements ShouldQueue
                     }
                 }
 
-                $isExpiredContract = !empty($contract->deadline)
-                    && Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay()
-                        ->lt(Carbon::parse($date, 'Asia/Yerevan')->startOfDay());
+//                $isExpiredContract = !empty($contract->deadline)
+//                    && Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay()
+//                        ->lt(Carbon::parse($date, 'Asia/Yerevan')->startOfDay());
 
-                if ($isExpiredContract && (float) ($contract->penalty ?? 0) > 0) {
+//                if ($isExpiredContract && (float) ($contract->penalty ?? 0) > 0) {
                     $penaltyYesterday = (float) ($this->countPenalty(
                         $contract->id,
                         Carbon::parse($date, 'Asia/Yerevan')->subDay()->toDateString()
@@ -477,7 +477,7 @@ class ProcessContractDailyRate implements ShouldQueue
                             ]);
                         }
                     }
-                }
+//                }
 
                 DB::commit();
             } catch (\Exception $e) {
