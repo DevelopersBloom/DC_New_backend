@@ -266,8 +266,8 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
 
             if ($closestReserve) {
 //                $contractData['reserve'] = $closestReserve->reserve_amount;
-                $contractData['risk_weight_percent'] = $closestReserve->risk_weight ?? 0;
-                $contractData['reserve_percent'] = $closestReserve->reserve_percent ?? 0;
+                $contractData['risk_weight_percent'] = $closestReserve->classification->risk_weight ?? 0;
+                $contractData['reserve_percent'] = $closestReserve->classification->reserve_percent ?? 0;
             } else {
 //                $contractData['reserve'] = 0;
                 $contractData['risk_weight_percent'] = 0;
