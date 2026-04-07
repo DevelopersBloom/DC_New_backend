@@ -307,7 +307,8 @@ class AcraExport
                 ->first();
 
             if ($firstOverdue && ($overdueMother > 0 || $overdueInterest > 0)) {
-                $sheet->setCellValue('M' . $row, $this->formatDate($firstOverdue->date));
+                $overdueDate = Carbon::parse($firstOverdue->date)->addDay();
+                $sheet->setCellValue('M' . $row, $this->formatDate($overdueDate));
                 $days = Carbon::parse($firstOverdue->date)->diffInDays(Carbon::parse($this->from));
                 $sheet->setCellValue('W' . $row, $days);
             } else {
@@ -337,7 +338,7 @@ class AcraExport
             }
 //            $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
             $sheet->setCellValue('Q' . $row, $contract->interest_rate * 365);
-            $sheet->setCellValue('U' . $row, $this->formatDate($contract->date));
+            $sheet->setCellValue('U' . $row, $this->formatDate($contract->created_at));
 
             $row++;
         }
