@@ -173,8 +173,13 @@ class PaymentService
                 $principalForLine = $earlySplit['principal_for_line'];
                 $remainingAmount = $earlySplit['remaining_cash'];
 
-                $contract->left = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                // Only reduce contract balance by principalForLine (the scheduled
+                // principal for this installment). Any extra principal (x - scheduled)
+                // sits in remainingCash and flows through handleRemainingAmount →
+                // payPartial, which reduces future installments' principal and
+                // recalculates interest on the new running balance.
+                $contract->left = max(0, $contract->left - $principalForLine);
+                $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
                 $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
 
@@ -187,18 +192,9 @@ class PaymentService
                 }
                 $earlyHandled = true;
 
-                // Recalculate interest on all remaining (initial) installments using
-                // the new lower balance (P - x). Principal per installment is unchanged —
-                // no schedule regeneration. Only interest goes down, so the next payment
-                // is smaller; from the period after that the amounts follow the same
-                // principal sequence but with interest on the running reduced balance.
-                $remainingPayments = Payment::where('contract_id', $contract->id)
-                    ->where('type', 'regular')
-                    ->where('status', 'initial')
-                    ->get();
-                if ($remainingPayments->isNotEmpty()) {
-                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingPayments);
-                }
+                // Update paidPrincipal to reflect only what was applied here;
+                // the overflow is handled separately by handleRemainingAmount.
+                $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
 
