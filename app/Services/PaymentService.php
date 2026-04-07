@@ -42,7 +42,7 @@ class PaymentService
         $delay_days = $result_penalty['delay_days'];
         $parent_id = $result_penalty['parent_id'];
         $payed_penalty = 0;
-
+        $date = Carbon::now()->format('Y-m-d');
         if ($penalty > 0) {
             $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id);
             $payed_penalty = $penaltyResult['penalty'];
@@ -53,7 +53,7 @@ class PaymentService
                     $userId = auth()->id();
                     $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
                     $journalDocPenalty = DocumentJournal::create([
-                        'date' => $date ?? Carbon::now()->format('Y-m-d'),
+                        'date' => $date,
                         'document_number' => $nextDocNum,
                         'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
                         'amount_amd' => $payed_penalty,
@@ -119,7 +119,7 @@ class PaymentService
                 'amount' => $principal_amount,
                 'type' => 'partial',
                 'description' => 'Partial payment contract changes',
-                'date' => $date ?? Carbon::now()->format('Y-m-d'),
+                'date' => $date,
                 'history' => $history
             ]);
             Modification::create([
