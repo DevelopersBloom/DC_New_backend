@@ -24,6 +24,7 @@ class PostingRuleSeeder extends Seeder
         $acc16200 = ChartOfAccount::idByCode('16200');
         $acc60120 = ChartOfAccount::idByCode('60120');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
+        $acc66301 = ChartOfAccount::idByCode('66301');
         $acc73015 = CHARTOfAccount::idByCode('73015');
         $acc16605PC = ChartOfAccount::idByCode('16605PC');
         $acc16605PS = ChartOfAccount::idByCode('16605PS');
@@ -96,6 +97,13 @@ class PostingRuleSeeder extends Seeder
                 'business_event_filter' => 'interest_rate_amount',
                 'debit_account_id'  => $acc16201NI,
                 'credit_account_id' => $acc16200,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'penalty_rate_amount',
+                'debit_account_id'  => $acc16201NI,
+                'credit_account_id' => $acc66301,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

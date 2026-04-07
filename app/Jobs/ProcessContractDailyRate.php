@@ -225,6 +225,7 @@ use App\Models\ChartOfAccount;
 use App\Models\PostingRule;
 use App\Models\Client;
 use App\Services\EffectiveRateService;
+use App\Traits\ContractTrait;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -237,6 +238,7 @@ use Carbon\Carbon;
 class ProcessContractDailyRate implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use ContractTrait;
 
     public function __construct()
     {
@@ -423,6 +425,57 @@ class ProcessContractDailyRate implements ShouldQueue
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id' => $journalDocInterest->id,
                         ]);
+                    }
+                }
+
+                $isExpiredContract = !empty($contract->deadline)
+                    && Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay()
+                        ->lt(Carbon::parse($date, 'Asia/Yerevan')->startOfDay());
+
+                if ($isExpiredContract && (float) ($contract->penalty ?? 0) > 0) {
+                    $penaltyYesterday = (float) ($this->countPenalty(
+                        $contract->id,
+                        Carbon::parse($date, 'Asia/Yerevan')->subDay()->toDateString()
+                    )['penalty_amount'] ?? 0);
+
+                    $penaltyToday = (float) ($this->countPenalty($contract->id, $date)['penalty_amount'] ?? 0);
+                    $dailyPenaltyAmount = max(0, $penaltyToday - $penaltyYesterday);
+
+                    if ($dailyPenaltyAmount > 0) {
+                        $rulePenalty = PostingRule::where('business_event_filter', 'penalty_rate_amount')->first();
+                        if ($rulePenalty) {
+                            $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                            $journalDocPenalty = DocumentJournal::create([
+                                'date' => $date,
+                                'document_number' => $nextDocNum,
+                                'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
+                                'amount_amd' => $dailyPenaltyAmount,
+                                'debit_partner_id' => $contract->client_id,
+                                'credit_partner_id' => $diamondId,
+                                'comment' => 'Daily penalty accrual for contract #' . $contract->id,
+                                'debit_account_id' => $rulePenalty->debit_account_id,
+                                'credit_account_id' => $rulePenalty->credit_account_id,
+                                'user_id' => $systemUserId,
+                                'journalable_type' => DocumentJournal::class,
+                                'journalable_id' => $journal->id,
+                            ]);
+
+                            Transaction::create([
+                                'date' => $date,
+                                'document_number' => $nextDocNum,
+                                'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
+                                'debit_account_id' => $rulePenalty->debit_account_id,
+                                'debit_partner_id' => $contract->client_id,
+                                'credit_account_id' => $rulePenalty->credit_account_id,
+                                'credit_partner_id' => $diamondId,
+                                'amount_amd' => $dailyPenaltyAmount,
+                                'comment' => 'Daily penalty accrual for contract #' . $contract->id,
+                                'user_id' => $systemUserId,
+                                'is_system' => true,
+                                'transactionable_type' => DocumentJournal::class,
+                                'transactionable_id' => $journalDocPenalty->id,
+                            ]);
+                        }
                     }
                 }
 
