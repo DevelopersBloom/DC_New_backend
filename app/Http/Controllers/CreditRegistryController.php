@@ -100,22 +100,43 @@ class CreditRegistryController extends Controller
 //    }
     public function testConnection()
     {
-        $wsdl = 'http://100.100.100.60:8889/DEGSHost?wsdl';
-
-        $options = [
-            'trace' => false,
-            'exceptions' => false,
-            'cache_wsdl' => WSDL_CACHE_NONE,
-        ];
-
         try {
+            $wsdl = 'http://100.100.100.60:8889/DEGSHost?wsdl';
+
+            $options = [
+                'trace' => true,
+                'exceptions' => true,
+                'connection_timeout' => 15,
+                'cache_wsdl' => WSDL_CACHE_NONE,
+            ];
+
             $client = new \SoapClient($wsdl, $options);
-            dd('OK - WSDL reachable via SoapClient');
-        } catch (\Throwable $e) {
-            dd('FAILED', $e->getMessage());
+
+            $functions = $client->__getFunctions();
+
+            $types = $client->__getTypes();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Connected to CBA SOAP Service',
+                'available_methods' => $functions,
+                'data_structures' => $types
+            ]);
+
+        } catch (\SoapFault $e) {
+            return response()->json([
+                'status' => 'error',
+                'error_code' => $e->faultcode,
+                'error_message' => $e->getMessage(),
+                'trace' => 'Հնարավոր է՝ VPN-ը միացված չէ կամ IP-ն հասանելի չէ ձեր սերվերից:'
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'general_error',
+                'error_message' => $e->getMessage()
+            ], 500);
         }
-    }
-    public function sendL001(string $id): JsonResponse
+    }    public function sendL001(string $id): JsonResponse
     {
         $contract = Contract::find($id);
         if (! $contract) {
