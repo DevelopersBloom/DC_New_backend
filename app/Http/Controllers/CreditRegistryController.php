@@ -105,19 +105,21 @@ class CreditRegistryController extends Controller
         $ch = curl_init($wsdl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+// SSL/TLS կարգավորումներ
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // միայն թեստի համար
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);     // միայն թեստի համար
+        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2); // պարտադիր TLS 1.2
 
         $response = curl_exec($ch);
         $err = curl_error($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($response === false) {
-            return response()->json(['status' => 'FAILED', 'message' => $err]);
+            dd('FAILED', $err);
+        } else {
+            dd('OK - WSDL reachable');
         }
-
-        return response()->json(['status' => 'OK', 'http_code' => $code, 'message' => 'WSDL reachable']);
     }
     public function sendL001(string $id): JsonResponse
     {
