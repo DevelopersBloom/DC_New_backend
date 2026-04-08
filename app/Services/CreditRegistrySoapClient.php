@@ -133,6 +133,7 @@ class CreditRegistrySoapClient
                 'xml'     => $xml,
             ]], null, $this->buildWsSecurityHeader());
 
+            dd($result);
             if (! isset($result->SendRequestResult)) {
                 throw new RuntimeException('SendRequestResult is missing in SOAP response.');
             }
@@ -165,7 +166,7 @@ class CreditRegistrySoapClient
         $token->appendChild($pass);
         $security->appendChild($token);
         $xml->appendChild($security);
-
+dd($xml);
         return new \SoapHeader($wsse, 'Security', new \SoapVar($xml->saveXML($security), XSD_ANYXML), true);
     }
     public function isResponsePrepared(int $requestId): bool
