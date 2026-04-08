@@ -103,13 +103,13 @@ class CreditRegistryController extends Controller
         $wsdl = 'http://100.100.100.60:8889/DEGSHost?wsdl';
 
         $options = [
-            'trace' => true,
-            'exceptions' => true,
+            'trace' => false,
+            'exceptions' => false,
             'cache_wsdl' => WSDL_CACHE_NONE,
         ];
 
         try {
-//            $client = new \SoapClient($wsdl, $options);
+            $client = new \SoapClient($wsdl, $options);
             dd('OK - WSDL reachable via SoapClient');
         } catch (\Throwable $e) {
             dd('FAILED', $e->getMessage());
