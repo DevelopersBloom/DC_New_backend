@@ -132,7 +132,7 @@ class CreditRegistrySoapClient
                 $this->buildWsSecurityHeader(),
                 new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', $action)
             ];
-            dd(34);
+            dd($headers);
 
             $result = $this->client->__soapCall('SendRequest', [[
                 'AppName' => $appName,
