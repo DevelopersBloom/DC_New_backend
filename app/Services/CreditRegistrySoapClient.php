@@ -74,8 +74,8 @@ class CreditRegistrySoapClient
         $options['soap_version'] = $soapVersion === '1.1' ? SOAP_1_1 : SOAP_1_2;
 
         $ssl = [
-            'verify_peer' => $this->boolish($config['verify_peer'] ?? null, true),
-            'verify_peer_name' => $this->boolish($config['verify_peer_name'] ?? null, true),
+            'verify_peer' => $this->boolish($config['verify_peer'] ?? null, false),
+            'verify_peer_name' => $this->boolish($config['verify_peer_name'] ?? null, false),
             'allow_self_signed' => $this->boolish($config['allow_self_signed'] ?? null, false),
         ];
 
@@ -123,8 +123,6 @@ class CreditRegistrySoapClient
     /**
      * Generic SendRequest wrapper if later you need other DocTypes (e.g. L002).
      */
-// Ավելացրեք սա ձեր CreditRegistrySoapClient կլասի մեջ
-
     public function sendRequest(string $appName, string $docType, string $xml, bool $isDelay = false): int
     {
         try {
@@ -157,30 +155,6 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('CBA Service Error: ' . $e->getMessage());
         }
     }
-//    private function buildWsSecurityHeader(): \SoapHeader
-//    {
-//        $username = config('credit_registry.username');
-//        $password = config('credit_registry.password');
-//
-//        $wsse = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
-//        $wsu = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
-//
-//        $security = new \SimpleXMLElement('<wsse:Security xmlns:wsse="' . $wsse . '" xmlns:wsu="' . $wsu . '" />');
-//
-//        // Timestamp առանց բացատների
-//        $ts = $security->addChild('wsu:Timestamp', '', $wsu);
-//        $ts->addChild('wsu:Created', gmdate('Y-m-d\TH:i:s\Z'), $wsu);
-//        $ts->addChild('wsu:Expires', gmdate('Y-m-d\TH:i:s\Z', time() + 300), $wsu);
-//
-//        $ut = $security->addChild('wsse:UsernameToken', '', $wsse);
-//        $ut->addChild('wsse:Username', $username, $wsse); // ԱՅՍ ՏՈՂԸ ՊԱՐՏԱԴԻՐ Է
-//        $ut->addChild('wsse:Password', $password, $wsse)
-//            ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
-//        $dom = dom_import_simplexml($security);
-//        $xmlContent = $dom->ownerDocument->saveXML($dom->ownerDocument->documentElement);
-//        return new \SoapHeader($wsse, 'Security', new \SoapVar($xmlContent, XSD_ANYXML), true);
-//    }
-
     private function buildWsSecurityHeader(): \SoapHeader
     {
         $username = config('credit_registry.username');
@@ -189,22 +163,21 @@ class CreditRegistrySoapClient
         $wsse = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
         $wsu = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
 
-        $created = gmdate('Y-m-d\TH:i:s\Z');
-        $expires = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
+        $security = new \SimpleXMLElement('<wsse:Security xmlns:wsse="' . $wsse . '" xmlns:wsu="' . $wsu . '" />');
 
-        $xml = '<wsse:Security xmlns:wsse="'.$wsse.'" xmlns:wsu="'.$wsu.'">'.
-            '<wsu:Timestamp>'.
-            '<wsu:Created>'.$created.'</wsu:Created>'.
-            '<wsu:Expires>'.$expires.'</wsu:Expires>'.
-            '</wsu:Timestamp>'.
-            '<wsse:UsernameToken>'.
-            '<wsse:Username>'.htmlspecialchars($username).'</wsse:Username>'.
-            '<wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">'.htmlspecialchars($password).'</wsse:Password>'.
-            '</wsse:UsernameToken>'.
-            '</wsse:Security>';
+        $ts = $security->addChild('wsu:Timestamp', '', $wsu);
+        $ts->addChild('wsu:Created', gmdate('Y-m-d\TH:i:s\Z'), $wsu);
+        $ts->addChild('wsu:Expires', gmdate('Y-m-d\TH:i:s\Z', time() + 300), $wsu);
 
-        return new \SoapHeader($wsse, 'Security', new \SoapVar($xml, XSD_ANYXML), true);
-    }    public function isResponsePrepared(int $requestId): bool
+        $ut = $security->addChild('wsse:UsernameToken', '', $wsse);
+        $ut->addChild('wsse:Username', $username, $wsse); // ԱՅՍ ՏՈՂԸ ՊԱՐՏԱԴԻՐ Է
+        $ut->addChild('wsse:Password', $password, $wsse)
+            ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
+        $dom = dom_import_simplexml($security);
+        $xmlContent = $dom->ownerDocument->saveXML($dom->ownerDocument->documentElement);
+        return new \SoapHeader($wsse, 'Security', new \SoapVar($xmlContent, XSD_ANYXML), true);
+    }
+    public function isResponsePrepared(int $requestId): bool
     {
         try {
             $result = $this->client->__soapCall('IsResponsePrepared', [[
