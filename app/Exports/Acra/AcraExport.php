@@ -151,8 +151,8 @@ class AcraExport
             $sheet->setCellValue('B' . $row, $statusCode);
 
             $name = ($client->type === 'legal')
-                ? ($client->company_name . ' ' . $client->legal_form)
-                : trim($client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : ''));
+                ? trim($client->company_name . ' ' . $client->legal_form)
+                : trim($client->name . '^' . $client->surname . ($client->middle_name ? '^' . $client->middle_name : ''));
 
             $sheet->setCellValue('C' . $row, $name);
             $sheet->setCellValue('D' . $row, ($client->type === 'legal' ? $client->tax_number : $client->passport_series));
