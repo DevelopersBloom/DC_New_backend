@@ -23,85 +23,14 @@ class CreditRegistryController extends Controller
         private CreditRegistryL002Service $l002Service,
         private CreditRegistryL003Service $l003Service,
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
-//        private CreditRegistrySoapClient $soapClient,
+        private CreditRegistrySoapClient $soapClient,
     ) {
     }
 
-//    public function sendL001(string $id): JsonResponse
-//    {
-//        $contract = Contract::find($id);
-//
-//        if (! $contract) {
-//            return response()->json(['message' => 'Contract not found'], 404);
-//        }
-//
-//        // 1. Generate XML
-//        try {
-//            $xml = $this->l001Service->generateL001Xml($contract);
-//        } catch (Throwable $e) {
-//            return response()->json([
-//                'message' => 'Failed to generate L001 XML',
-//                'error'   => $e->getMessage(),
-//            ], 500);
-//        }
-//
-//        // 2. Send to CBA
-//        try {
-//            $requestId = $this->soapClient->sendL001($xml, false);
-//        } catch (\RuntimeException $e) {
-//            return response()->json([
-//                'message' => 'Failed to send L001 to Credit Registry',
-//                'error'   => $e->getMessage(),
-//            ], 502);
-//        }
-//
-//        // 3. Poll for response (10 attempts × 500ms = 5 seconds max)
-//        $maxTries  = 10;
-//        $sleepMs   = 500;
-//        $isReady   = false;
-//
-//        for ($i = 0; $i < $maxTries; $i++) {
-//            try {
-//                if ($this->soapClient->isResponsePrepared($requestId)) {
-//                    $isReady = true;
-//                    break;
-//                }
-//            } catch (\RuntimeException $e) {
-//                return response()->json([
-//                    'message'    => 'Failed to check response status',
-//                    'request_id' => $requestId,
-//                    'error'      => $e->getMessage(),
-//                ], 502);
-//            }
-//
-//            usleep($sleepMs * 1000);
-//        }
-//
-//        // 4. Fetch response if ready
-//        $responseXml = null;
-//        if ($isReady) {
-//            try {
-//                $responseXml = $this->soapClient->getResponse($requestId);
-//            } catch (\RuntimeException $e) {
-//                return response()->json([
-//                    'message'    => 'Failed to retrieve response',
-//                    'request_id' => $requestId,
-//                    'error'      => $e->getMessage(),
-//                ], 502);
-//            }
-//        }
-//
-//        // 5. Return — 202 if still processing, 200 if response received
-//        return response()->json([
-//            'request_id'   => $requestId,
-//            'is_ready'     => $isReady,
-//            'response_xml' => $responseXml,
-//        ], $isReady ? 200 : 202);
-//    }
+
     public function testConnection()
     {
         try {
-            // 1. Ճանապարհը դեպի ձեր ուղղված լոկալ WSDL ֆայլը
             $wsdlPath = storage_path('app/cba.wsdl');
 
             if (!file_exists($wsdlPath)) {
@@ -112,16 +41,14 @@ class CreditRegistryController extends Controller
             $options = [
                 'trace' => true,
                 'exceptions' => true,
-                'cache_wsdl' => WSDL_CACHE_NONE, // Թեստավորման փուլում քեշ մի արեք
+                'cache_wsdl' => WSDL_CACHE_NONE,
                 'connection_timeout' => 20,
-                // Կարևոր է նշել իրական location-ը, քանի որ WSDL-ի մեջ կարող է սխալ լինել
                 'location' => 'http://100.100.100.60:8889/DEGSHost',
-                'soap_version' => SOAP_1_2, // WCF ծառայությունները սովորաբար 1.2 են
+                'soap_version' => SOAP_1_2,
             ];
 
             $client = new \SoapClient($wsdlPath, $options);
 
-            // 3. Ստուգում ենք հասանելի մեթոդները
             $functions = $client->__getFunctions();
 
             return response()->json([
@@ -152,100 +79,22 @@ class CreditRegistryController extends Controller
 
         try {
             $xml = $this->l001Service->generateL001Xml($contract);
+
             $requestId = $this->soapClient->sendL001($xml, false);
+
+            return response()->json([
+                'request_id' => $requestId,
+                'status'     => 'sent',
+                'message'    => 'Հարցումը հաջողությամբ ուղարկվեց ԿԲ Վարկային Ռեգիստր'
+            ], 202);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Failed to send L001',
                 'error'   => $e->getMessage(),
             ], 502);
         }
-
-        return response()->json([
-            'request_id' => $requestId,
-            'status'     => 'sent',
-        ], 202);
     }
-    function sendL001test($id, string $soapAction = 'L001')
-    {
-        $contract = Contract::find($id);
-
-        if (!$contract) {
-            return response()->json(['message' => 'Contract not found'], 404);
-        }
-
-        $username = env('CREDIT_REGISTRY_USERNAME', '');
-        $password = env('CREDIT_REGISTRY_PASSWORD', '');
-
-        $xml = <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope
- xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope"
- xmlns:urn="urn:cba-am:lnreg3"
- xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-   <soapenv:Header>
-      <wsse:Security>
-         <wsse:UsernameToken>
-            <wsse:Username>{$username}</wsse:Username>
-            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">{$password}</wsse:Password>
-         </wsse:UsernameToken>
-      </wsse:Security>
-   </soapenv:Header>
-   <soapenv:Body>
-      <urn:L001>
-         <urn:ContractNum>{$contract->num}</urn:ContractNum>
-         <urn:Test>123</urn:Test>
-      </urn:L001>
-   </soapenv:Body>
-</soapenv:Envelope>
-XML;
-
-        $url        = env('CREDIT_REGISTRY_ENDPOINT', 'https://100.100.100.60:8888/DEGSHost');
-        $certPath   = env('CREDIT_REGISTRY_CLIENT_CERT_PATH');
-        $certPass   = env('CREDIT_REGISTRY_CLIENT_CERT_PASSWORD');
-        $caCertPath = env('CREDIT_REGISTRY_CA_CERT_PATH');
-
-        // env() returns strings — cast properly
-        $verifyPeer = filter_var(env('CREDIT_REGISTRY_VERIFY_PEER', true), FILTER_VALIDATE_BOOLEAN);
-        $verifyHost = filter_var(env('CREDIT_REGISTRY_VERIFY_PEER_NAME', false), FILTER_VALIDATE_BOOLEAN) ? 2 : 0;
-
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $xml,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/soap+xml; charset=utf-8; action="urn:' . $soapAction . '"',
-                'Content-Length: ' . strlen($xml),
-            ],
-            CURLOPT_SSLCERT        => $certPath,
-            CURLOPT_SSLCERTPASSWD  => $certPass,
-            CURLOPT_CAINFO         => $caCertPath,
-            CURLOPT_SSL_VERIFYPEER => $verifyPeer,
-            CURLOPT_SSL_VERIFYHOST => $verifyHost,
-            CURLOPT_TIMEOUT        => 30,
-        ]);
-
-        $response = curl_exec($ch);
-        $error    = curl_error($ch);
-        $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($error) {
-            return response()->json([
-                'message' => 'cURL error',
-                'error'   => $error,
-                'status'  => $status,
-            ], 500);
-        }
-
-        return response()->json([
-            'status'   => $status,
-            'response' => $response,
-        ]);
-    }    /**
-     * Generate and download L001 XML for a single contract (Credit Registry).
-     */
     public function downloadL001(string $id): StreamedResponse|Response
     {
         $contract = Contract::find($id);

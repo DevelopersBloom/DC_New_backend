@@ -14,13 +14,13 @@ return [
     // Full WSDL URL provided by CBA (e.g. https://host/DEGSHost?wsdl)
     'wsdl' => env('CREDIT_REGISTRY_WSDL'),
     // Optional local WSDL file path (use when remote ?wsdl is blocked/400)
-    'wsdl_local_path' => env('CREDIT_REGISTRY_WSDL_LOCAL_PATH'),
+    'wsdl_local_path' => storage_path('app/cba.wsdl'),
     // Optional override for SOAP service endpoint (useful when WSDL is served elsewhere)
     'endpoint' => env('CREDIT_REGISTRY_ENDPOINT'),
 
     // SOAP protocol version: "1.2" (recommended) or "1.1"
-    'soap_version' => env('CREDIT_REGISTRY_SOAP_VERSION', '1.2'),
-
+    'soap_version' => '1.2',
+    'app_name' => 'LNREG3',
     // Optional client certificate (PEM/PFX converted to PEM) and password
     'client_cert_path' => env('CREDIT_REGISTRY_CLIENT_CERT_PATH'),
     'client_cert_password' => env('CREDIT_REGISTRY_CLIENT_CERT_PASSWORD'),
@@ -42,7 +42,6 @@ return [
     'peer_name' => env('CREDIT_REGISTRY_PEER_NAME'),
 
     // Default application name for LNREG3 documents
-    'app_name' => env('CREDIT_REGISTRY_APP_NAME', 'LNREG3'),
 
     // Default timeout settings (seconds)
     'connection_timeout' => env('CREDIT_REGISTRY_CONNECTION_TIMEOUT', 30),

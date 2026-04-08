@@ -123,29 +123,36 @@ class CreditRegistrySoapClient
     /**
      * Generic SendRequest wrapper if later you need other DocTypes (e.g. L002).
      */
+// Ավելացրեք սա ձեր CreditRegistrySoapClient կլասի մեջ
+
     public function sendRequest(string $appName, string $docType, string $xml, bool $isDelay = false): int
     {
         try {
+            $action = 'http://tempuri.org/IDegsNSS/SendRequest';
+
+            $headers = [
+                $this->buildWsSecurityHeader(),
+                new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', $action)
+            ];
+
             $result = $this->client->__soapCall('SendRequest', [[
                 'AppName' => $appName,
                 'DocType' => $docType,
                 'IsDelay' => $isDelay,
                 'xml'     => $xml,
-            ]], null, $this->buildWsSecurityHeader());
+            ]], null, $headers);
 
             if (! isset($result->SendRequestResult)) {
-                throw new RuntimeException('SendRequestResult is missing in SOAP response.');
+                throw new \RuntimeException('SendRequestResult is missing.');
             }
 
             return (int) $result->SendRequestResult;
 
-        } catch (SoapFault $e) {
-            logger()->error('SOAP last request: ' . $this->client->__getLastRequest());
-            logger()->error('SOAP last response: ' . $this->client->__getLastResponse());
-            throw new RuntimeException('SendRequest failed: ' . $e->getMessage(), 0, $e);
+        } catch (\SoapFault $e) {
+            logger()->error('SOAP Fault: ' . $e->getMessage());
+            throw new \RuntimeException('CBA Service Error: ' . $e->getMessage());
         }
     }
-
     private function buildWsSecurityHeader(): \SoapHeader
     {
         $username = config('credit_registry.username', '');
