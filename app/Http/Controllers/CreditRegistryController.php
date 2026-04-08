@@ -23,7 +23,7 @@ class CreditRegistryController extends Controller
         private CreditRegistryL002Service $l002Service,
         private CreditRegistryL003Service $l003Service,
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
-        private CreditRegistrySoapClient $soapClient,
+//        private CreditRegistrySoapClient $soapClient,
     ) {
     }
 
@@ -98,6 +98,17 @@ class CreditRegistryController extends Controller
 //            'response_xml' => $responseXml,
 //        ], $isReady ? 200 : 202);
 //    }
+    public function testConnection()
+    {
+        $wsdl = config('credit_registry.wsdl');
+
+        try {
+            $content = file_get_contents($wsdl);
+            dd('OK - WSDL reachable');
+        } catch (\Throwable $e) {
+            dd('FAILED', $e->getMessage());
+        }
+    }
     public function sendL001(string $id): JsonResponse
     {
         $contract = Contract::find($id);
