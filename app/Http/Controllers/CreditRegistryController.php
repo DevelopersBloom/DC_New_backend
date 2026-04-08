@@ -101,42 +101,49 @@ class CreditRegistryController extends Controller
     public function testConnection()
     {
         try {
-            $wsdl = 'http://100.100.100.60:8889/DEGSHost?wsdl';
+            // 1. Ճանապարհը դեպի ձեր ուղղված լոկալ WSDL ֆայլը
+            $wsdlPath = storage_path('app/cba.wsdl');
 
+            if (!file_exists($wsdlPath)) {
+                throw new \Exception("WSDL ֆայլը գոյություն չունի: Նախ ներբեռնեք այն storage/app/ հասցեում:");
+            }
+
+            // 2. Կարգավորումներ
             $options = [
                 'trace' => true,
                 'exceptions' => true,
-                'connection_timeout' => 15,
-                'cache_wsdl' => WSDL_CACHE_NONE,
+                'cache_wsdl' => WSDL_CACHE_NONE, // Թեստավորման փուլում քեշ մի արեք
+                'connection_timeout' => 20,
+                // Կարևոր է նշել իրական location-ը, քանի որ WSDL-ի մեջ կարող է սխալ լինել
+                'location' => 'http://100.100.100.60:8889/DEGSHost',
+                'soap_version' => SOAP_1_2, // WCF ծառայությունները սովորաբար 1.2 են
             ];
 
-            $client = new \SoapClient($wsdl, $options);
+            $client = new \SoapClient($wsdlPath, $options);
 
+            // 3. Ստուգում ենք հասանելի մեթոդները
             $functions = $client->__getFunctions();
 
-            $types = $client->__getTypes();
-
             return response()->json([
-                'status' => 'success',
-                'message' => 'Connected to CBA SOAP Service',
+                'status' => 'Connected!',
                 'available_methods' => $functions,
-                'data_structures' => $types
+                'server_info' => 'CBA/WCF Service identified as DegsMainHost'
             ]);
 
         } catch (\SoapFault $e) {
             return response()->json([
-                'status' => 'error',
-                'error_code' => $e->faultcode,
-                'error_message' => $e->getMessage(),
-                'trace' => 'Հնարավոր է՝ VPN-ը միացված չէ կամ IP-ն հասանելի չէ ձեր սերվերից:'
+                'status' => 'SOAP Error',
+                'message' => $e->getMessage(),
+                'xml_detail' => $e->faultstring ?? 'No details'
             ], 500);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'general_error',
-                'error_message' => $e->getMessage()
+                'status' => 'System Error',
+                'message' => $e->getMessage()
             ], 500);
         }
-    }    public function sendL001(string $id): JsonResponse
+    }
+    public function sendL001(string $id): JsonResponse
     {
         $contract = Contract::find($id);
         if (! $contract) {
