@@ -100,8 +100,7 @@ class CreditRegistryController extends Controller
 //    }
     public function testConnection()
     {
-        // Վերցնում ենք WSDL-ի URL
-        $wsdl = config('credit_registry.wsdl');
+        $wsdl = 'http://100.100.100.60:8889/DEGSHost?wsdl';
 
         $options = [
             'trace' => true,
