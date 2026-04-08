@@ -193,17 +193,6 @@ class CreditRegistrySoapClient
             throw new RuntimeException('GetResponse failed: ' . $e->getMessage(), 0, $e);
         }
     }
-    public function getResponse(int $requestId): ?string
-    {
-        try {
-            $result = $this->client->__soapCall('GetResponse', [[
-                'requsetId' => $requestId,
-            ]]);
 
-            return $result->GetResponseResult ?? null;
-        } catch (SoapFault $e) {
-            throw new RuntimeException('GetResponse failed: ' . $e->getMessage(), 0, $e);
-        }
-    }
 }
 
