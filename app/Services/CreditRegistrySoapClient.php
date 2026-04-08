@@ -133,6 +133,7 @@ class CreditRegistrySoapClient
                 new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', $action)
             ];
 
+            dd($headers);
             $result = $this->client->__soapCall('SendRequest', [[
                 'AppName' => $appName,
                 'DocType' => $docType,
@@ -140,7 +141,6 @@ class CreditRegistrySoapClient
                 'xml'     => $xml,
             ]], null, $headers);
 
-            dd($result);
             if (! isset($result->SendRequestResult)) {
                 throw new \RuntimeException('SendRequestResult is missing.');
             }
