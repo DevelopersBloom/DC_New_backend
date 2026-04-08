@@ -34,10 +34,9 @@ return [
      * Prefer keeping verification enabled and configuring CA/peer_name correctly.
      * Only disable verification temporarily for troubleshooting.
      */
-    'verify_peer' => env('CREDIT_REGISTRY_VERIFY_PEER', true),
-    'verify_peer_name' => env('CREDIT_REGISTRY_VERIFY_PEER_NAME', true),
-    'allow_self_signed' => env('CREDIT_REGISTRY_ALLOW_SELF_SIGNED', false),
-
+    'verify_peer' => false,
+    'verify_peer_name' => false,
+    'allow_self_signed' => true,
     // Optional peer name to validate certificate against (useful when connecting by IP)
     'peer_name' => env('CREDIT_REGISTRY_PEER_NAME'),
 

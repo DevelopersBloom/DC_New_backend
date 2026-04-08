@@ -133,7 +133,6 @@ class CreditRegistrySoapClient
                 'xml'     => $xml,
             ]], null, $this->buildWsSecurityHeader());
 
-            dd($result);
             if (! isset($result->SendRequestResult)) {
                 throw new RuntimeException('SendRequestResult is missing in SOAP response.');
             }
