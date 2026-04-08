@@ -166,7 +166,6 @@ class CreditRegistrySoapClient
         $token->appendChild($pass);
         $security->appendChild($token);
         $xml->appendChild($security);
-dd($xml);
         return new \SoapHeader($wsse, 'Security', new \SoapVar($xml->saveXML($security), XSD_ANYXML), true);
     }
     public function isResponsePrepared(int $requestId): bool
