@@ -131,13 +131,7 @@ class CreditRegistrySoapClient
                 'DocType' => $docType,
                 'IsDelay' => $isDelay,
                 'xml'     => $xml,
-            ]]);
-
-            // DEBUG — remove after fix
-            logger()->error('SOAP last request headers: ' . $this->client->__getLastRequestHeaders());
-            logger()->error('SOAP last request: ' . $this->client->__getLastRequest());
-            logger()->error('SOAP last response headers: ' . $this->client->__getLastResponseHeaders());
-            logger()->error('SOAP last response: ' . $this->client->__getLastResponse());
+            ]], null, $this->buildWsSecurityHeader());
 
             if (! isset($result->SendRequestResult)) {
                 throw new RuntimeException('SendRequestResult is missing in SOAP response.');
@@ -146,22 +140,40 @@ class CreditRegistrySoapClient
             return (int) $result->SendRequestResult;
 
         } catch (SoapFault $e) {
-            // Log everything before rethrowing
-            logger()->error('SOAP FAULT: ' . $e->getMessage());
-            logger()->error('SOAP last request headers: ' . $this->client->__getLastRequestHeaders());
             logger()->error('SOAP last request: ' . $this->client->__getLastRequest());
-            logger()->error('SOAP last response headers: ' . $this->client->__getLastResponseHeaders());
             logger()->error('SOAP last response: ' . $this->client->__getLastResponse());
-
             throw new RuntimeException('SendRequest failed: ' . $e->getMessage(), 0, $e);
         }
+    }
+
+    private function buildWsSecurityHeader(): \SoapHeader
+    {
+        $username = config('credit_registry.username', '');
+        $password = config('credit_registry.password', '');
+
+        $wsse = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
+        $passwordType = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText';
+
+        $xml = new \DOMDocument();
+        $security = $xml->createElementNS($wsse, 'wsse:Security');
+        $token     = $xml->createElementNS($wsse, 'wsse:UsernameToken');
+        $user      = $xml->createElementNS($wsse, 'wsse:Username', $username);
+        $pass      = $xml->createElementNS($wsse, 'wsse:Password', $password);
+        $pass->setAttribute('Type', $passwordType);
+
+        $token->appendChild($user);
+        $token->appendChild($pass);
+        $security->appendChild($token);
+        $xml->appendChild($security);
+
+        return new \SoapHeader($wsse, 'Security', new \SoapVar($xml->saveXML($security), XSD_ANYXML), true);
     }
     public function isResponsePrepared(int $requestId): bool
     {
         try {
             $result = $this->client->__soapCall('IsResponsePrepared', [[
                 'requsetId' => $requestId,
-            ]]);
+            ]], null, $this->buildWsSecurityHeader());
 
             return (bool) ($result->IsResponsePreparedResult ?? false);
         } catch (SoapFault $e) {
@@ -169,6 +181,18 @@ class CreditRegistrySoapClient
         }
     }
 
+    public function getResponse(int $requestId): ?string
+    {
+        try {
+            $result = $this->client->__soapCall('GetResponse', [[
+                'requsetId' => $requestId,
+            ]], null, $this->buildWsSecurityHeader());
+
+            return $result->GetResponseResult ?? null;
+        } catch (SoapFault $e) {
+            throw new RuntimeException('GetResponse failed: ' . $e->getMessage(), 0, $e);
+        }
+    }
     public function getResponse(int $requestId): ?string
     {
         try {
