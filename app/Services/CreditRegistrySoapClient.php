@@ -168,7 +168,7 @@ class CreditRegistrySoapClient
         $ts->addChild('wsu:Expires', gmdate('Y-m-d\TH:i:s\Z', time() + 300), $wsu);
 
         $ut = $timestamp->addChild('wsse:UsernameToken', '', $wsse);
-        $ut->addChild('wsse:Username', $username, $wsse);
+//        $ut->addChild('wsse:Username', $username, $wsse);
         $ut->addChild('wsse:Password', $password, $wsse)
             ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
 

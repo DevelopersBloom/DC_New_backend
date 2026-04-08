@@ -46,7 +46,6 @@ return [
     // Default timeout settings (seconds)
     'connection_timeout' => env('CREDIT_REGISTRY_CONNECTION_TIMEOUT', 30),
     'response_timeout' => env('CREDIT_REGISTRY_RESPONSE_TIMEOUT', 180),
-    'username' => 'test',
-    'password' => 'test',
+    'password' => env('CREDIT_REGISTRY_PASSWORD'),
 ];
 
