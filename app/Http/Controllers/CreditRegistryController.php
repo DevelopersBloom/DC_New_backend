@@ -100,12 +100,18 @@ class CreditRegistryController extends Controller
 //    }
     public function testConnection()
     {
-        $wsdl = 'http://100.100.100.60:8889/DEGSHost?wsdl';
-
+        $wsdl = '/var/www/html/DEGSHost.wsdl';
         $options = [
             'trace' => true,
             'exceptions' => true,
             'cache_wsdl' => WSDL_CACHE_NONE,
+            'stream_context' => stream_context_create([
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true,
+                ]
+            ]),
         ];
 
         try {
