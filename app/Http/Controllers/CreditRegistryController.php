@@ -27,77 +27,100 @@ class CreditRegistryController extends Controller
     ) {
     }
 
+//    public function sendL001(string $id): JsonResponse
+//    {
+//        $contract = Contract::find($id);
+//
+//        if (! $contract) {
+//            return response()->json(['message' => 'Contract not found'], 404);
+//        }
+//
+//        // 1. Generate XML
+//        try {
+//            $xml = $this->l001Service->generateL001Xml($contract);
+//        } catch (Throwable $e) {
+//            return response()->json([
+//                'message' => 'Failed to generate L001 XML',
+//                'error'   => $e->getMessage(),
+//            ], 500);
+//        }
+//
+//        // 2. Send to CBA
+//        try {
+//            $requestId = $this->soapClient->sendL001($xml, false);
+//        } catch (\RuntimeException $e) {
+//            return response()->json([
+//                'message' => 'Failed to send L001 to Credit Registry',
+//                'error'   => $e->getMessage(),
+//            ], 502);
+//        }
+//
+//        // 3. Poll for response (10 attempts × 500ms = 5 seconds max)
+//        $maxTries  = 10;
+//        $sleepMs   = 500;
+//        $isReady   = false;
+//
+//        for ($i = 0; $i < $maxTries; $i++) {
+//            try {
+//                if ($this->soapClient->isResponsePrepared($requestId)) {
+//                    $isReady = true;
+//                    break;
+//                }
+//            } catch (\RuntimeException $e) {
+//                return response()->json([
+//                    'message'    => 'Failed to check response status',
+//                    'request_id' => $requestId,
+//                    'error'      => $e->getMessage(),
+//                ], 502);
+//            }
+//
+//            usleep($sleepMs * 1000);
+//        }
+//
+//        // 4. Fetch response if ready
+//        $responseXml = null;
+//        if ($isReady) {
+//            try {
+//                $responseXml = $this->soapClient->getResponse($requestId);
+//            } catch (\RuntimeException $e) {
+//                return response()->json([
+//                    'message'    => 'Failed to retrieve response',
+//                    'request_id' => $requestId,
+//                    'error'      => $e->getMessage(),
+//                ], 502);
+//            }
+//        }
+//
+//        // 5. Return — 202 if still processing, 200 if response received
+//        return response()->json([
+//            'request_id'   => $requestId,
+//            'is_ready'     => $isReady,
+//            'response_xml' => $responseXml,
+//        ], $isReady ? 200 : 202);
+//    }
     public function sendL001(string $id): JsonResponse
     {
         $contract = Contract::find($id);
-
         if (! $contract) {
             return response()->json(['message' => 'Contract not found'], 404);
         }
 
-        // 1. Generate XML
         try {
             $xml = $this->l001Service->generateL001Xml($contract);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to generate L001 XML',
-                'error'   => $e->getMessage(),
-            ], 500);
-        }
-
-        // 2. Send to CBA
-        try {
             $requestId = $this->soapClient->sendL001($xml, false);
-        } catch (\RuntimeException $e) {
+        } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Failed to send L001 to Credit Registry',
+                'message' => 'Failed to send L001',
                 'error'   => $e->getMessage(),
             ], 502);
         }
 
-        // 3. Poll for response (10 attempts × 500ms = 5 seconds max)
-        $maxTries  = 10;
-        $sleepMs   = 500;
-        $isReady   = false;
-
-        for ($i = 0; $i < $maxTries; $i++) {
-            try {
-                if ($this->soapClient->isResponsePrepared($requestId)) {
-                    $isReady = true;
-                    break;
-                }
-            } catch (\RuntimeException $e) {
-                return response()->json([
-                    'message'    => 'Failed to check response status',
-                    'request_id' => $requestId,
-                    'error'      => $e->getMessage(),
-                ], 502);
-            }
-
-            usleep($sleepMs * 1000);
-        }
-
-        // 4. Fetch response if ready
-        $responseXml = null;
-        if ($isReady) {
-            try {
-                $responseXml = $this->soapClient->getResponse($requestId);
-            } catch (\RuntimeException $e) {
-                return response()->json([
-                    'message'    => 'Failed to retrieve response',
-                    'request_id' => $requestId,
-                    'error'      => $e->getMessage(),
-                ], 502);
-            }
-        }
-
-        // 5. Return — 202 if still processing, 200 if response received
         return response()->json([
-            'request_id'   => $requestId,
-            'is_ready'     => $isReady,
-            'response_xml' => $responseXml,
-        ], $isReady ? 200 : 202);
-    }    function sendL001test($id, string $soapAction = 'L001')
+            'request_id' => $requestId,
+            'status'     => 'sent',
+        ], 202);
+    }
+    function sendL001test($id, string $soapAction = 'L001')
     {
         $contract = Contract::find($id);
 
