@@ -157,6 +157,30 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('CBA Service Error: ' . $e->getMessage());
         }
     }
+//    private function buildWsSecurityHeader(): \SoapHeader
+//    {
+//        $username = config('credit_registry.username');
+//        $password = config('credit_registry.password');
+//
+//        $wsse = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
+//        $wsu = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
+//
+//        $security = new \SimpleXMLElement('<wsse:Security xmlns:wsse="' . $wsse . '" xmlns:wsu="' . $wsu . '" />');
+//
+//        // Timestamp առանց բացատների
+//        $ts = $security->addChild('wsu:Timestamp', '', $wsu);
+//        $ts->addChild('wsu:Created', gmdate('Y-m-d\TH:i:s\Z'), $wsu);
+//        $ts->addChild('wsu:Expires', gmdate('Y-m-d\TH:i:s\Z', time() + 300), $wsu);
+//
+//        $ut = $security->addChild('wsse:UsernameToken', '', $wsse);
+//        $ut->addChild('wsse:Username', $username, $wsse); // ԱՅՍ ՏՈՂԸ ՊԱՐՏԱԴԻՐ Է
+//        $ut->addChild('wsse:Password', $password, $wsse)
+//            ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
+//        $dom = dom_import_simplexml($security);
+//        $xmlContent = $dom->ownerDocument->saveXML($dom->ownerDocument->documentElement);
+//        return new \SoapHeader($wsse, 'Security', new \SoapVar($xmlContent, XSD_ANYXML), true);
+//    }
+
     private function buildWsSecurityHeader(): \SoapHeader
     {
         $username = config('credit_registry.username');
@@ -165,20 +189,24 @@ class CreditRegistrySoapClient
         $wsse = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
         $wsu = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
 
-        $security = new \SimpleXMLElement('<wsse:Security xmlns:wsse="' . $wsse . '" xmlns:wsu="' . $wsu . '" />');
+        $created = gmdate('Y-m-d\TH:i:s\Z');
+        $expires = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
 
-        // Timestamp առանց բացատների
-        $ts = $security->addChild('wsu:Timestamp', '', $wsu);
-        $ts->addChild('wsu:Created', gmdate('Y-m-d\TH:i:s\Z'), $wsu);
-        $ts->addChild('wsu:Expires', gmdate('Y-m-d\TH:i:s\Z', time() + 300), $wsu);
+        $xml = sprintf(
+            '<wsse:Security xmlns:wsse="%s" xmlns:wsu="%s">'.
+            '<wsu:Timestamp>'.
+            '<wsu:Created>%s</wsu:Created>'.
+            '<wsu:Expires>%s</wsu:Expires>'.
+            '</wsu:Timestamp>'.
+            '<wsse:UsernameToken>'.
+            '<wsse:Username>%s</wsse:Username>'.
+            '<wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">%s</wsse:Password>'.
+            '</wsse:UsernameToken>'.
+            '</wsse:Security>',
+            $wsse, $wsu, $created, $expires, htmlspecialchars($username), htmlspecialchars($password)
+        );
 
-        $ut = $security->addChild('wsse:UsernameToken', '', $wsse);
-        $ut->addChild('wsse:Username', $username, $wsse); // ԱՅՍ ՏՈՂԸ ՊԱՐՏԱԴԻՐ Է
-        $ut->addChild('wsse:Password', $password, $wsse)
-            ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
-        $dom = dom_import_simplexml($security);
-        $xmlContent = $dom->ownerDocument->saveXML($dom->ownerDocument->documentElement);
-        return new \SoapHeader($wsse, 'Security', new \SoapVar($xmlContent, XSD_ANYXML), true);
+        return new \SoapHeader($wsse, 'Security', new \SoapVar($xml, XSD_ANYXML), true);
     }
     public function isResponsePrepared(int $requestId): bool
     {
