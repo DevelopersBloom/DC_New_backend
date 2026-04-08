@@ -130,10 +130,10 @@ class CreditRegistrySoapClient
 
             $headers = [
                 $this->buildWsSecurityHeader(),
-                new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', $action)
+                new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', 'http://tempuri.org/IDegsNSS/SendRequest'),
+                new \SoapHeader('http://www.w3.org/2005/08/addressing', 'To', 'http://100.100.100.60:8889/DEGSHost?singleWsdl:1')
             ];
 
-            dd($appName,$docType,$xml,$headers);
             $result = $this->client->__soapCall('SendRequest', [[
                 'AppName' => $appName,
                 'DocType' => $docType,
