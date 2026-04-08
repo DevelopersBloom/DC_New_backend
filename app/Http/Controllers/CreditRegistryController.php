@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Contract;
-use App\Models\ContractModification;
 use App\Models\Modification;
 use App\Services\CreditRegistryL001Service;
 use App\Services\CreditRegistryL002Service;
@@ -37,7 +36,6 @@ class CreditRegistryController extends Controller
                 throw new \Exception("WSDL ֆայլը գոյություն չունի: Նախ ներբեռնեք այն storage/app/ հասցեում:");
             }
 
-            // 2. Կարգավորումներ
             $options = [
                 'trace' => true,
                 'exceptions' => true,
@@ -85,7 +83,7 @@ class CreditRegistryController extends Controller
             return response()->json([
                 'request_id' => $requestId,
                 'status'     => 'sent',
-                'message'    => 'Հարցումը հաջողությամբ ուղարկվեց ԿԲ Վարկային Ռեգիստր'
+                'message'    => 'Request send successfully'
             ], 202);
 
         } catch (\Throwable $e) {

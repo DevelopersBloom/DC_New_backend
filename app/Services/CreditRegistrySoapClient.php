@@ -155,24 +155,24 @@ class CreditRegistrySoapClient
     }
     private function buildWsSecurityHeader(): \SoapHeader
     {
-        $username = config('credit_registry.username', '');
-        $password = config('credit_registry.password', '');
+        $username = config('credit_registry.username');
+        $password = config('credit_registry.password');
 
         $wsse = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
-        $passwordType = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText';
+        $wsu = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
 
-        $xml = new \DOMDocument();
-        $security = $xml->createElementNS($wsse, 'wsse:Security');
-        $token     = $xml->createElementNS($wsse, 'wsse:UsernameToken');
-        $user      = $xml->createElementNS($wsse, 'wsse:Username', $username);
-        $pass      = $xml->createElementNS($wsse, 'wsse:Password', $password);
-        $pass->setAttribute('Type', $passwordType);
+        $timestamp = new \SimpleXMLElement('<wsse:Security xmlns:wsse="' . $wsse . '" xmlns:wsu="' . $wsu . '" />');
 
-        $token->appendChild($user);
-        $token->appendChild($pass);
-        $security->appendChild($token);
-        $xml->appendChild($security);
-        return new \SoapHeader($wsse, 'Security', new \SoapVar($xml->saveXML($security), XSD_ANYXML), true);
+        $ts = $timestamp->addChild('wsu:Timestamp', '', $wsu);
+        $ts->addChild('wsu:Created', gmdate('Y-m-d\TH:i:s\Z'), $wsu);
+        $ts->addChild('wsu:Expires', gmdate('Y-m-d\TH:i:s\Z', time() + 300), $wsu);
+
+        $ut = $timestamp->addChild('wsse:UsernameToken', '', $wsse);
+        $ut->addChild('wsse:Username', $username, $wsse);
+        $ut->addChild('wsse:Password', $password, $wsse)
+            ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
+
+        return new \SoapHeader($wsse, 'Security', new \SoapVar($timestamp->asXML(), XSD_ANYXML), true);
     }
     public function isResponsePrepared(int $requestId): bool
     {
