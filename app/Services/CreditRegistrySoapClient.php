@@ -192,23 +192,19 @@ class CreditRegistrySoapClient
         $created = gmdate('Y-m-d\TH:i:s\Z');
         $expires = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
 
-        $xml = sprintf(
-            '<wsse:Security xmlns:wsse="%s" xmlns:wsu="%s">'.
+        $xml = '<wsse:Security xmlns:wsse="'.$wsse.'" xmlns:wsu="'.$wsu.'">'.
             '<wsu:Timestamp>'.
-            '<wsu:Created>%s</wsu:Created>'.
-            '<wsu:Expires>%s</wsu:Expires>'.
+            '<wsu:Created>'.$created.'</wsu:Created>'.
+            '<wsu:Expires>'.$expires.'</wsu:Expires>'.
             '</wsu:Timestamp>'.
             '<wsse:UsernameToken>'.
-            '<wsse:Username>%s</wsse:Username>'.
-            '<wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">%s</wsse:Password>'.
+            '<wsse:Username>'.htmlspecialchars($username).'</wsse:Username>'.
+            '<wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">'.htmlspecialchars($password).'</wsse:Password>'.
             '</wsse:UsernameToken>'.
-            '</wsse:Security>',
-            $wsse, $wsu, $created, $expires, htmlspecialchars($username), htmlspecialchars($password)
-        );
+            '</wsse:Security>';
 
         return new \SoapHeader($wsse, 'Security', new \SoapVar($xml, XSD_ANYXML), true);
-    }
-    public function isResponsePrepared(int $requestId): bool
+    }    public function isResponsePrepared(int $requestId): bool
     {
         try {
             $result = $this->client->__soapCall('IsResponsePrepared', [[
