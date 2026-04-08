@@ -109,8 +109,7 @@ class CreditRegistryController extends Controller
 // SSL/TLS կարգավորումներ
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // միայն թեստի համար
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);     // միայն թեստի համար
-        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_0); // պարտադիր TLS 1.2
-
+        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
         $response = curl_exec($ch);
         $err = curl_error($ch);
         curl_close($ch);
