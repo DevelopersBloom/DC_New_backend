@@ -130,6 +130,7 @@ class CreditRegistrySoapClient
 
             $headers = [
                 $this->buildWsSecurityHeader(),
+                dd(34);
                 new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', $action)
             ];
 
