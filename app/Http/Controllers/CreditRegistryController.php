@@ -100,6 +100,7 @@ class CreditRegistryController extends Controller
 //    }
     public function testConnection()
     {
+        // Վերցնում ենք WSDL-ի URL
         $wsdl = config('credit_registry.wsdl');
 
         $options = [
@@ -111,19 +112,22 @@ class CreditRegistryController extends Controller
                     'verify_peer' => false,
                     'verify_peer_name' => false,
                     'allow_self_signed' => true,
-                    // 'local_cert' => '/path/to/client_cert.pem',
-                    // 'passphrase' => 'cert_passphrase',
                 ]
             ]),
         ];
 
         try {
+            // Ստեղծում ենք SoapClient-ը
             $client = new \SoapClient($wsdl, $options);
+
+            // Եթե հաջող է, WSDL հասանելի է
             dd('OK - WSDL reachable via SoapClient');
         } catch (\Throwable $e) {
+            // Հատուկ սխալի հաղորդագրություն
             dd('FAILED', $e->getMessage());
         }
-    }    public function sendL001(string $id): JsonResponse
+    }
+    public function sendL001(string $id): JsonResponse
     {
         $contract = Contract::find($id);
         if (! $contract) {
