@@ -107,6 +107,7 @@ class CreditRegistryController extends Controller
 
         try {
             $xml = $this->l001Service->generateL001Xml($contract);
+            dd($xml);
             $requestId = $this->soapClient->sendL001($xml, false);
         } catch (\Throwable $e) {
             return response()->json([
