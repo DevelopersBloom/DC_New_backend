@@ -149,7 +149,11 @@ class CreditRegistrySoapClient
             return (int) $result->SendRequestResult;
 
         } catch (\SoapFault $e) {
-            logger()->error('SOAP Fault: ' . $e->getMessage());
+            echo $this->client->__getLastRequest();
+
+            echo $this->client->__getLastResponse();
+
+            logger()->error('Full XML Request: ' . $this->client->__getLastRequest());
             throw new \RuntimeException('CBA Service Error: ' . $e->getMessage());
         }
     }
