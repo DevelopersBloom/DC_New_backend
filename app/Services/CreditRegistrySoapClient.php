@@ -171,7 +171,6 @@ class CreditRegistrySoapClient
 //        $ut->addChild('wsse:Username', $username, $wsse);
         $ut->addChild('wsse:Password', $password, $wsse)
             ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
-dd($wsse, 'Security', new \SoapVar($timestamp->asXML(), XSD_ANYXML));
         return new \SoapHeader($wsse, 'Security', new \SoapVar($timestamp->asXML(), XSD_ANYXML), true);
     }
     public function isResponsePrepared(int $requestId): bool
