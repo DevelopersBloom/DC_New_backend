@@ -102,25 +102,28 @@ class CreditRegistryController extends Controller
     {
         $wsdl = config('credit_registry.wsdl');
 
-        $ch = curl_init($wsdl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        $options = [
+            'trace' => true,
+            'exceptions' => true,
+            'cache_wsdl' => WSDL_CACHE_NONE,
+            'stream_context' => stream_context_create([
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true,
+                    // 'local_cert' => '/path/to/client_cert.pem',
+                    // 'passphrase' => 'cert_passphrase',
+                ]
+            ]),
+        ];
 
-// SSL/TLS կարգավորումներ
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // միայն թեստի համար
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);     // միայն թեստի համար
-//        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_3);
-        $response = curl_exec($ch);
-        $err = curl_error($ch);
-        curl_close($ch);
-
-        if ($response === false) {
-            dd('FAILED', $err);
-        } else {
-            dd('OK - WSDL reachable');
+        try {
+            $client = new \SoapClient($wsdl, $options);
+            dd('OK - WSDL reachable via SoapClient');
+        } catch (\Throwable $e) {
+            dd('FAILED', $e->getMessage());
         }
-    }
-    public function sendL001(string $id): JsonResponse
+    }    public function sendL001(string $id): JsonResponse
     {
         $contract = Contract::find($id);
         if (! $contract) {
