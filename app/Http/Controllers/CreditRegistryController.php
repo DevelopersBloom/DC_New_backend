@@ -100,22 +100,16 @@ class CreditRegistryController extends Controller
 //    }
     public function testConnection()
     {
-        $wsdl = '/var/www/html/DEGSHost.wsdl';
+        $wsdl = 'http://100.100.100.60:8889/DEGSHost?wsdl';
+
         $options = [
             'trace' => true,
             'exceptions' => true,
             'cache_wsdl' => WSDL_CACHE_NONE,
-            'stream_context' => stream_context_create([
-                'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true,
-                ]
-            ]),
         ];
 
         try {
-            $client = new \SoapClient($wsdl, $options);
+//            $client = new \SoapClient($wsdl, $options);
             dd('OK - WSDL reachable via SoapClient');
         } catch (\Throwable $e) {
             dd('FAILED', $e->getMessage());
