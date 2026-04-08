@@ -130,20 +130,32 @@ class CreditRegistrySoapClient
                 'AppName' => $appName,
                 'DocType' => $docType,
                 'IsDelay' => $isDelay,
-                'xml' => $xml,
+                'xml'     => $xml,
             ]]);
 
-            dd(2);
+            // DEBUG — remove after fix
+            logger()->error('SOAP last request headers: ' . $this->client->__getLastRequestHeaders());
+            logger()->error('SOAP last request: ' . $this->client->__getLastRequest());
+            logger()->error('SOAP last response headers: ' . $this->client->__getLastResponseHeaders());
+            logger()->error('SOAP last response: ' . $this->client->__getLastResponse());
+
             if (! isset($result->SendRequestResult)) {
                 throw new RuntimeException('SendRequestResult is missing in SOAP response.');
             }
 
             return (int) $result->SendRequestResult;
+
         } catch (SoapFault $e) {
+            // Log everything before rethrowing
+            logger()->error('SOAP FAULT: ' . $e->getMessage());
+            logger()->error('SOAP last request headers: ' . $this->client->__getLastRequestHeaders());
+            logger()->error('SOAP last request: ' . $this->client->__getLastRequest());
+            logger()->error('SOAP last response headers: ' . $this->client->__getLastResponseHeaders());
+            logger()->error('SOAP last response: ' . $this->client->__getLastResponse());
+
             throw new RuntimeException('SendRequest failed: ' . $e->getMessage(), 0, $e);
         }
     }
-
     public function isResponsePrepared(int $requestId): bool
     {
         try {
