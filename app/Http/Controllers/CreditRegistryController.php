@@ -106,23 +106,12 @@ class CreditRegistryController extends Controller
             'trace' => true,
             'exceptions' => true,
             'cache_wsdl' => WSDL_CACHE_NONE,
-            'stream_context' => stream_context_create([
-                'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                    'allow_self_signed' => true,
-                ]
-            ]),
         ];
 
         try {
-            // Ստեղծում ենք SoapClient-ը
             $client = new \SoapClient($wsdl, $options);
-
-            // Եթե հաջող է, WSDL հասանելի է
             dd('OK - WSDL reachable via SoapClient');
         } catch (\Throwable $e) {
-            // Հատուկ սխալի հաղորդագրություն
             dd('FAILED', $e->getMessage());
         }
     }
