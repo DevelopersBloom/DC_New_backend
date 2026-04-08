@@ -418,99 +418,99 @@ class PaymentControllerNew extends Controller
 
         return round($refund_amount/10)*10;
     }
-    public function payPartial(Request $request): JsonResponse
-    {
-        $has_penalty_amount = $this->countPenalty($request->contract_id);
-        if ($has_penalty_amount['penalty_amount'] > 0) {
-            return response()->json([
-                'message' => 'You have an unpaid penalty amount! ',
-            ], 404);
-        }
-
-        $contract_id = $request->contract_id;
-        $contract = Contract::findOrFail($contract_id);
-
-        $partialAmount = $request->amount;
-        $is_recount = $request->is_recount;
-
-        if ($contract->provided_amount <= 0) {
-            return response()->json([
-                'message' => 'You have already paid the principal amount.'
-            ], 400);
-        }
-
-        if ($partialAmount > $contract->provided_amount) {
-            return response()->json([
-                'message' => 'The amount entered is greater than the remaining principal amount.',
-                'max_allowed' => $contract->provided_amount
-            ], 400);
-        }
-
-
-        $payer = $request->payer;
-        $cash = $request->cash;
-
-        $history_type = HistoryType::where('name','partial_payment')->first();
-        $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
-        $order_id = $this->getOrder($cash,'in');
-        $res = [
-            'contract_id' => $contract->id,
-            'type' => 'in',
-            'title' => 'Օրդեր',
-            'pawnshop_id' => auth()->user()->pawnshop_id,
-            'order' => $order_id,
-            'amount' => $partialAmount,
-            'rep_id' => '2211',
-            'date' => Carbon::now()->format('Y-m-d'),
-            'client_name' => $client_name,
-            'purpose' => 'Մասնակի մարում',
-            'cash' => $cash,
-            'filter' => Order::PARTIAL_FILTER
-        ];
-        $new_order = Order::create($res);
-        $history = History::create([
-            'amount' => $partialAmount,
-            'user_id' => auth()->user()->id,
-            'type_id' => $history_type->id,
-            'order_id' => $new_order->id,
-            'contract_id' => $contract->id,
-            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
-        ]);
-        $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id);
-
-        if ($is_recount) {
-            $deal->is_recount = $is_recount;
-            $deal->save();
-        }
-        $oldPaymentAmount = $this->calcPaidAmount($contract);
-        $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash,$deal->id,null,$is_recount);
-
-        $deal->payment_id = $payment_id;
-        $deal->save();
-
-        $this->updateContractStatus($contract);
-        $this->activityService->log(
-            'partial_payment',
-            "Partial payment: {$partialAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",
-            Contract::class,
-            $contract->id
-        );
-        $newPaymentAmount = $oldPaymentAmount + $partialAmount;
-        Modification::create([
-            'subject_type' => Contract::class,
-            'subject_id' => $contract->id,
-            'modification_type' => 'Modificator',
-            'field_code' => 'AmountsPaid',
-            'element_code' => 'Amount',
-            'old_value' => (string)$oldPaymentAmount,
-            'new_value' => (string)($newPaymentAmount),
-            'effective_date' => now()->toDateString(),
-        ]);
-        return response()->json([
-            'success' => 'success',
-            'message' => 'Partial payment processed successfully!'
-        ]);
-    }
+//    public function payPartial(Request $request): JsonResponse
+//    {
+//        $has_penalty_amount = $this->countPenalty($request->contract_id);
+//        if ($has_penalty_amount['penalty_amount'] > 0) {
+//            return response()->json([
+//                'message' => 'You have an unpaid penalty amount! ',
+//            ], 404);
+//        }
+//
+//        $contract_id = $request->contract_id;
+//        $contract = Contract::findOrFail($contract_id);
+//
+//        $partialAmount = $request->amount;
+//        $is_recount = $request->is_recount;
+//
+//        if ($contract->provided_amount <= 0) {
+//            return response()->json([
+//                'message' => 'You have already paid the principal amount.'
+//            ], 400);
+//        }
+//
+//        if ($partialAmount > $contract->provided_amount) {
+//            return response()->json([
+//                'message' => 'The amount entered is greater than the remaining principal amount.',
+//                'max_allowed' => $contract->provided_amount
+//            ], 400);
+//        }
+//
+//
+//        $payer = $request->payer;
+//        $cash = $request->cash;
+//
+//        $history_type = HistoryType::where('name','partial_payment')->first();
+//        $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
+//        $order_id = $this->getOrder($cash,'in');
+//        $res = [
+//            'contract_id' => $contract->id,
+//            'type' => 'in',
+//            'title' => 'Օրդեր',
+//            'pawnshop_id' => auth()->user()->pawnshop_id,
+//            'order' => $order_id,
+//            'amount' => $partialAmount,
+//            'rep_id' => '2211',
+//            'date' => Carbon::now()->format('Y-m-d'),
+//            'client_name' => $client_name,
+//            'purpose' => 'Մասնակի մարում',
+//            'cash' => $cash,
+//            'filter' => Order::PARTIAL_FILTER
+//        ];
+//        $new_order = Order::create($res);
+//        $history = History::create([
+//            'amount' => $partialAmount,
+//            'user_id' => auth()->user()->id,
+//            'type_id' => $history_type->id,
+//            'order_id' => $new_order->id,
+//            'contract_id' => $contract->id,
+//            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
+//        ]);
+//        $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id);
+//
+//        if ($is_recount) {
+//            $deal->is_recount = $is_recount;
+//            $deal->save();
+//        }
+//        $oldPaymentAmount = $this->calcPaidAmount($contract);
+//        $payment_id = $this->paymentService->payPartial($contract, $partialAmount, $payer, $cash,$deal->id,null,$is_recount);
+//
+//        $deal->payment_id = $payment_id;
+//        $deal->save();
+//
+//        $this->updateContractStatus($contract);
+//        $this->activityService->log(
+//            'partial_payment',
+//            "Partial payment: {$partialAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",
+//            Contract::class,
+//            $contract->id
+//        );
+//        $newPaymentAmount = $oldPaymentAmount + $partialAmount;
+//        Modification::create([
+//            'subject_type' => Contract::class,
+//            'subject_id' => $contract->id,
+//            'modification_type' => 'Modificator',
+//            'field_code' => 'AmountsPaid',
+//            'element_code' => 'Amount',
+//            'old_value' => (string)$oldPaymentAmount,
+//            'new_value' => (string)($newPaymentAmount),
+//            'effective_date' => now()->toDateString(),
+//        ]);
+//        return response()->json([
+//            'success' => 'success',
+//            'message' => 'Partial payment processed successfully!'
+//        ]);
+//    }
     public function executeItem(ExecuteItemRequest $request)
     {
         DB::beginTransaction();
