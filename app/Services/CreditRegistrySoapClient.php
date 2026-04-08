@@ -133,7 +133,7 @@ class CreditRegistrySoapClient
                 new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', $action)
             ];
 
-            dd($headers);
+            dd($appName,$docType,$xml,$headers);
             $result = $this->client->__soapCall('SendRequest', [[
                 'AppName' => $appName,
                 'DocType' => $docType,
@@ -177,18 +177,6 @@ class CreditRegistrySoapClient
         $dom = dom_import_simplexml($security);
         $xmlContent = $dom->ownerDocument->saveXML($dom->ownerDocument->documentElement);
         return new \SoapHeader($wsse, 'Security', new \SoapVar($xmlContent, XSD_ANYXML), true);
-    }
-    public function isResponsePrepared(int $requestId): bool
-    {
-        try {
-            $result = $this->client->__soapCall('IsResponsePrepared', [[
-                'requsetId' => $requestId,
-            ]], null, $this->buildWsSecurityHeader());
-
-            return (bool) ($result->IsResponsePreparedResult ?? false);
-        } catch (SoapFault $e) {
-            throw new RuntimeException('IsResponsePrepared failed: ' . $e->getMessage(), 0, $e);
-        }
     }
 
     public function getResponse(int $requestId): ?string
