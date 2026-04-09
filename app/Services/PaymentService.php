@@ -308,7 +308,7 @@ class PaymentService
         if ($futureDays < 1) {
             return null;
         }
-
+dd($futureDays);
         $P = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         if ($P <= 0 || $cashAfterPenalty <= 0) {
