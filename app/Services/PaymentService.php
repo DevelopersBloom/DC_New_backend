@@ -732,7 +732,6 @@ class PaymentService
             $payment->save();
             $changes[] = $oldData;
         }
-dd($changes);
         if (!empty($changes)) {
             $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                 ->where('type', 'regular')
@@ -768,6 +767,7 @@ dd($changes);
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
+        dd(3);
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
