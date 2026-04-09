@@ -317,12 +317,13 @@ dd($earlySplit);
         $pastInterest = $P* $elapsedDays * $rate / 100;
         $kFuture = $futureDays * ($rate / 100);
         $denom = 1 - $kFuture;
-        dd($denom);
         if (abs($denom) < 1e-9) {
             return null;
         }
 
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
+        dd($x,$cashAfterPenalty,$pastInterest,$P,$kFuture,$denom);
+
         if ($x < 0) {
             return null;
         }
