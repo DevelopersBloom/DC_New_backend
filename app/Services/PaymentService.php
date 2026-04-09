@@ -212,9 +212,7 @@ class PaymentService
 
             // For multi-select full-cover flows, close selected rows first;
             // otherwise allow early split logic for partial early cash.
-            $earlySplit = $forceScheduledForSelected
-                ? null
-                : $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate);
+            $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate);
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
