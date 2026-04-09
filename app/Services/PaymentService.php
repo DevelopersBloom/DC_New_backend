@@ -213,7 +213,6 @@ class PaymentService
             // For multi-select full-cover flows, close selected rows first;
             // otherwise allow early split logic for partial early cash.
             $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate);
-          dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -268,7 +267,7 @@ class PaymentService
         }
 
         if (!$earlyHandled) {
-            $totalRequiredForThisLine = $payment->amount + $penalty;
+            $totalRequiredForThisLine = $payment->amount;
             if ($amount >= $totalRequiredForThisLine) {
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
             } else {
@@ -304,7 +303,6 @@ class PaymentService
         return [
             'interest_amount'  => $paidInterest,
             'principal_amount' => $paidPrincipal,
-            'penalty'          => $paidPenalty,
             'amount'           => $remainingAmount
         ];
     }
