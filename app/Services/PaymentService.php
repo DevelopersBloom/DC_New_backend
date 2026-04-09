@@ -315,14 +315,13 @@ class PaymentService
      */
     private function tryEarlyAmortizedPaymentSplit(Contract $contract, Payment $payment, float $cashAfterPenalty, $paymentDate = null): ?array
     {
-        dd($payment->type,$payment->status);
         if ($payment->type !== 'regular' || $payment->status !== 'initial') {
             return null;
         }
 
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
         $now = Carbon::now('Asia/Yerevan')->startOfDay();
-    dd($due, $now);
+
         if (!$due->isFuture()) {
             return null;
         }
