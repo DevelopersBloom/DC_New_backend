@@ -67,7 +67,7 @@ class PaymentControllerNew extends Controller
             ->where('journalable_id', $contract->id)
             ->first();
         $result = $this->paymentService->processPayments(
-            $contract,$amount,$payer,$cash,$payments,$deal->id,$journal->id
+            $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, true
         );
         $newPaymentAmount = $oldPaymentAmount + $amount;
         $history->interest_amount = $result['interest_amount'];

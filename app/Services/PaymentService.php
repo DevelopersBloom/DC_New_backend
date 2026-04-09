@@ -27,7 +27,7 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id,$journal_id=null)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false)
     {
         $payments_sum = 0;
         $interest_amount = 0;
@@ -88,9 +88,9 @@ class PaymentService
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
             });
-            // If the entered amount can fully cover all selected rows, close selected
-            // installments by schedule first; early split is only for true short/partial cash.
-            $forceScheduledForSelected = $amount >= $selectedTotalDue;
+            // If the entered amount can fully cover all selected rows, or the caller explicitly
+            // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
+            $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
 
             foreach ($payments as $payment) {
                 $result = $this->processSinglePayment(
@@ -283,9 +283,11 @@ class PaymentService
             }
         }
 
-        // When an amortized installment is paid earlier than its due date and
-        // fully closed, update remaining schedule interest on lower principal.
-        if ($contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
+        // When an amortized installment was handled via early split and paid earlier than
+        // its due date, update remaining schedule interest on the reduced principal.
+        // Skip this for regular scheduled payments (no early split) — their schedule is
+        // already correct and recalculating introduces unnecessary floating-point drift.
+        if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
             $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
             $now = Carbon::now('Asia/Yerevan')->startOfDay();
             if ($due->isFuture()) {
