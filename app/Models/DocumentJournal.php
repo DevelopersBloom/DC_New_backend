@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DocumentJournal extends Model
@@ -106,9 +105,16 @@ class DocumentJournal extends Model
         });
         static::deleting(function (DocumentJournal $journal) {
             DB::transaction(function () use ($journal) {
-                if ($journal->deal_id && $journal->deal) {
+                // Avoid cascading deletion of all documents in a deal when deleting
+                // a single child journal row (e.g. one payment line).
+                if (
+                    $journal->deal_id &&
+                    $journal->deal &&
+                    $journal->journalable_type !== self::class
+                ) {
                     $journal->deal->delete();
                 }
+                self::syncContractProvidedAmountOnMotherPaymentDelete($journal);
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
 
                     $ndmId   = $journal->journalable_id;
@@ -200,6 +206,7 @@ class DocumentJournal extends Model
                 if ($journal->deal_id) {
                     $journal->deal()->withTrashed()->restore();
                 }
+                self::syncContractProvidedAmountOnMotherPaymentRestore($journal);
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
 
                     $ndmId   = $journal->journalable_id;
@@ -436,5 +443,66 @@ class DocumentJournal extends Model
             'transactionable_id'   => $childJournal->id,
             'is_system'            => true,
         ]);
+    }
+
+    protected static function syncContractProvidedAmountOnMotherPaymentDelete(DocumentJournal $journal): void
+    {
+        if ($journal->document_type !== self::PAY_MOTHER_AMOUNT) {
+            return;
+        }
+
+        $contract = self::resolveContractFromPaymentJournal($journal);
+        if (!$contract) {
+            return;
+        }
+
+        $amount = (float) ($journal->amount_amd ?? 0);
+        if ($amount <= 0) {
+            return;
+        }
+
+        $contract->provided_amount = (float) ($contract->provided_amount ?? 0) + $amount;
+        $contract->left = (float) ($contract->left ?? 0) + $amount;
+        $contract->save();
+    }
+
+    protected static function syncContractProvidedAmountOnMotherPaymentRestore(DocumentJournal $journal): void
+    {
+        if ($journal->document_type !== self::PAY_MOTHER_AMOUNT) {
+            return;
+        }
+
+        $contract = self::resolveContractFromPaymentJournal($journal);
+        if (!$contract) {
+            return;
+        }
+
+        $amount = (float) ($journal->amount_amd ?? 0);
+        if ($amount <= 0) {
+            return;
+        }
+
+        $contract->provided_amount = max(0, (float) ($contract->provided_amount ?? 0) - $amount);
+        $contract->left = max(0, (float) ($contract->left ?? 0) - $amount);
+        $contract->save();
+    }
+
+    protected static function resolveContractFromPaymentJournal(DocumentJournal $journal): ?Contract
+    {
+        if ($journal->journalable_type !== self::class || !$journal->journalable_id) {
+            return null;
+        }
+
+        $parentJournal = self::withTrashed()->find($journal->journalable_id);
+        if (!$parentJournal) {
+            return null;
+        }
+
+        $contractTypes = [Contract::class, 'Contract'];
+        if (!in_array($parentJournal->journalable_type, $contractTypes, true)) {
+            return null;
+        }
+
+        return Contract::withTrashed()->find($parentJournal->journalable_id);
     }
 }
