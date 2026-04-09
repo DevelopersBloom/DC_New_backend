@@ -318,6 +318,7 @@ dd($earlySplit);
      */
     private function tryEarlyAmortizedPaymentSplit(Contract $contract, Payment $payment, float $cashAfterPenalty, $paymentDate = null): ?array
     {
+        dd($payment->type,$payment->status);
         if ($payment->type !== 'regular' || $payment->status !== 'initial') {
             return null;
         }
