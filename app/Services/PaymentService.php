@@ -767,7 +767,7 @@ class PaymentService
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
-        dd(3);
+      dd($payments->count());
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
