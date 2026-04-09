@@ -794,7 +794,6 @@ class PaymentService
             }
 
             $payment->remaining = round($balance, 10);
-            dd( $payment->interest_payment,$payment->id,$payment->amount,$interest );
             $payment->save();
         }
     }
