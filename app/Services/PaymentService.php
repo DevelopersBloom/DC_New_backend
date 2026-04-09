@@ -333,12 +333,14 @@ dd($earlySplit);
         $from = Carbon::parse($payment->from_date)->startOfDay();
         $elapsedDays = max(1, $from->diffInDays($now));
         $futureDays = $now->diffInDays($due);
+    dd($futureDays);
         if ($futureDays < 1) {
             return null;
         }
 
         $P = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
+
         if ($P <= 0 || $cashAfterPenalty <= 0) {
             return null;
         }
