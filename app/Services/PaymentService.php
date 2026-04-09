@@ -737,7 +737,7 @@ class PaymentService
             $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                 ->where('type', 'regular')
                 ->where('status', 'initial')
-                ->orderBy('date', 'asc')
+                ->orderBy('to_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
             // Single save point: recalculates interest on the updated principals and persists
