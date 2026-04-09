@@ -213,7 +213,6 @@ class PaymentService
             // For multi-select full-cover flows, close selected rows first;
             // otherwise allow early split logic for partial early cash.
             $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate) : null;
-dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -285,7 +284,6 @@ dd($earlySplit);
             $now = $paymentDate
                 ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
                 : Carbon::now('Asia/Yerevan')->startOfDay();
-            dd($contract->principal_payment);
             if ($due->gt($now)) {
                 $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                     ->where('type', 'regular')
@@ -349,7 +347,6 @@ dd($earlySplit);
         }
 
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
-       dd($x,$cashAfterPenalty,$pastInterest,$P);
         if ($x < 0) {
             return null;
         }
@@ -772,7 +769,6 @@ dd($earlySplit);
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
-dd($balance);
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
