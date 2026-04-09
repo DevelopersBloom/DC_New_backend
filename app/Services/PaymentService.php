@@ -213,6 +213,7 @@ class PaymentService
             // For multi-select full-cover flows, close selected rows first;
             // otherwise allow early split logic for partial early cash.
             $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate);
+          dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -329,7 +330,6 @@ class PaymentService
         $from = Carbon::parse($payment->from_date)->startOfDay();
         $elapsedDays = max(1, $from->diffInDays($now));
         $futureDays = $now->diffInDays($due);
-    dd($futureDays);
         if ($futureDays < 1) {
             return null;
         }
