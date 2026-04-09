@@ -730,14 +730,20 @@ class PaymentService
             $payment->paid += $reduction;
             $payment->principal_payment -= $reduction;
             $remainingPartial -= $reduction;
-
+            $payment->save();
             $changes[] = $oldData;
         }
 
         if (!empty($changes)) {
+            $remainingInitialPayments = Payment::where('contract_id', $contract->id)
+                ->where('type', 'regular')
+                ->where('status', 'initial')
+                ->orderBy('date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
             // Single save point: recalculates interest on the updated principals and persists
             // all modified fields (paid, principal_payment, interest_payment, amount) atomically.
-            $this->recalculateAmortizedInterestFromSchedule($contract, $payments);
+            $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments);
         }
 
         foreach ($changes as &$change) {
@@ -763,7 +769,7 @@ class PaymentService
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
-
+dd($balance);
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
