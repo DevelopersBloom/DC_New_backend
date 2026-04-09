@@ -345,8 +345,8 @@ class PaymentService
         if (abs($denom) < 1e-9) {
             return null;
         }
-
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
+        dd($cashAfterPenalty,$x,$P);
         if ($x < 0) {
             return null;
         }
