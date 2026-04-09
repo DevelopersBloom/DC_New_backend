@@ -200,7 +200,13 @@ class PaymentService
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
 
-            $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount);
+            // If this selected installment is fully covered, pay it by schedule first.
+            // Early-split is only for true partial early cash.
+            $lineTotal = ((float) $payment->amount) + ((float) ($payment->penalty ?? 0));
+            $canFullyCoverLine = $amount >= $lineTotal;
+            $earlySplit = $canFullyCoverLine
+                ? null
+                : $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount);
 
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
@@ -261,6 +267,24 @@ class PaymentService
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
             } else {
                 $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
+            }
+        }
+
+        // When an amortized installment is paid earlier than its due date and
+        // fully closed, update remaining schedule interest on lower principal.
+        if ($contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
+            $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
+            $now = Carbon::now('Asia/Yerevan')->startOfDay();
+            if ($due->isFuture()) {
+                $remainingInitialPayments = Payment::where('contract_id', $contract->id)
+                    ->where('type', 'regular')
+                    ->where('status', 'initial')
+                    ->orderBy('date', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->get();
+                if ($remainingInitialPayments->isNotEmpty()) {
+                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments);
+                }
             }
         }
 
