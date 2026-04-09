@@ -322,7 +322,7 @@ dd($earlySplit);
         }
 
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
-        dd($x,$cashAfterPenalty,$pastInterest,$P,$kFuture,$denom);
+        dd($x,$cashAfterPenalty,$pastInterest,$P,$kFuture,$denom,$payment);
 
         if ($x < 0) {
             return null;
