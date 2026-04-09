@@ -435,7 +435,9 @@ class PaymentService
     private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
     {
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
-            ->where('id', '!=', $payment_id)->first();
+            ->where('id', '!=', $payment_id)
+            ->orderBy('date', 'asc')->orderBy('id', 'asc')
+            ->first();
         $decrease = null;
         $oldAmount = null;
         $oldDate = null;
@@ -691,24 +693,23 @@ class PaymentService
                 'old_principal' => $payment->principal_payment,
                 'old_date' => $payment->date,
                 'old_interest' => $payment->interest_payment,
+                'reduction' => $reduction,
             ];
 
-            $payment->amount -= $reduction;
+            // Mutate in-memory only — do NOT save yet.
+            // amount is intentionally left unchanged here; recalculateAmortizedInterestFromSchedule
+            // will set the correct value (new_principal + new_interest) and persist everything
+            // in a single pass, preventing a window where amount = old_interest + new_principal.
             $payment->paid += $reduction;
             $payment->principal_payment -= $reduction;
             $remainingPartial -= $reduction;
 
-            $payment->save();
-            $changes[] = array_merge($oldData, [
-                'new_amount' => $payment->amount,
-                'new_paid' => $payment->paid,
-                'new_principal' => $payment->principal_payment,
-                'new_interest' => $payment->interest_payment,
-                'reduction' => $reduction,
-                'updated_at' => $now->toDateTimeString(),
-            ]);
+            $changes[] = $oldData;
         }
+
         if (!empty($changes)) {
+            // Single save point: recalculates interest on the updated principals and persists
+            // all modified fields (paid, principal_payment, interest_payment, amount) atomically.
             $this->recalculateAmortizedInterestFromSchedule($contract, $payments);
         }
 

@@ -45,6 +45,8 @@ class PaymentControllerNew extends Controller
     }
     public function makePayment(Request $request): JsonResponse
     {
+        DB::beginTransaction();
+        try {
 
         $contract =  Contract::findOrFail($request->contract_id);
         $amount = $request->amount;
@@ -209,10 +211,19 @@ class PaymentControllerNew extends Controller
         );
 
 
-       return response()->json([
-           'success' => 'success',
-           'message' => 'Successfully created payment!'
-       ]);
+        DB::commit();
+        return response()->json([
+            'success' => 'success',
+            'message' => 'Successfully created payment!'
+        ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     private function updateContractStatus($contract)
