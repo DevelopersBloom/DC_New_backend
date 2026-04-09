@@ -85,8 +85,23 @@ class PaymentService
         }
 
         if ($amount > 0) {
+            $selectedTotalDue = $payments->sum(function ($p) {
+                return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
+            });
+            // If the entered amount can fully cover all selected rows, close selected
+            // installments by schedule first; early split is only for true short/partial cash.
+            $forceScheduledForSelected = $amount >= $selectedTotalDue;
+
             foreach ($payments as $payment) {
-                $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
+                $result = $this->processSinglePayment(
+                    $contract,
+                    $payment,
+                    $amount,
+                    $payer,
+                    $cash,
+                    $deal_id,
+                    $forceScheduledForSelected
+                );
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
@@ -179,7 +194,7 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id,)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false)
     {
         $penalty = $payment->penalty ?? 0;
         $remainingAmount = $amount;
@@ -200,11 +215,9 @@ class PaymentService
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
 
-            // If this selected installment is fully covered, pay it by schedule first.
-            // Early-split is only for true partial early cash.
-            $lineTotal = ((float) $payment->amount) + ((float) ($payment->penalty ?? 0));
-            $canFullyCoverLine = $amount >= $lineTotal;
-            $earlySplit = $canFullyCoverLine
+            // For multi-select full-cover flows, close selected rows first;
+            // otherwise allow early split logic for partial early cash.
+            $earlySplit = $forceScheduledForSelected
                 ? null
                 : $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount);
 
@@ -307,16 +320,6 @@ class PaymentService
     private function tryEarlyAmortizedPaymentSplit(Contract $contract, Payment $payment, float $cashAfterPenalty): ?array
     {
         if ($payment->type !== 'regular' || $payment->status !== 'initial') {
-            return null;
-        }
-
-        $firstInitial = Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')
-            ->where('status', 'initial')
-            ->orderBy('to_date')
-            ->orderBy('id')
-            ->first();
-        if (!$firstInitial || (int) $firstInitial->id !== (int) $payment->id) {
             return null;
         }
 
