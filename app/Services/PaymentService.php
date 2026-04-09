@@ -323,9 +323,7 @@ dd($earlySplit);
         }
 
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-        $now = $paymentDate
-            ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
-            : Carbon::now('Asia/Yerevan')->startOfDay();
+        $now = Carbon::now('Asia/Yerevan')->startOfDay();
         if (!$due->isFuture()) {
             return null;
         }
