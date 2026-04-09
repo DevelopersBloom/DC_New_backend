@@ -280,10 +280,12 @@ class PaymentService
         // Skip this for regular scheduled payments (no early split) — their schedule is
         // already correct and recalculating introduces unnecessary floating-point drift.
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
+
             $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
             $now = $paymentDate
                 ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
                 : Carbon::now('Asia/Yerevan')->startOfDay();
+            dd($contract->principal_payment);
             if ($due->gt($now)) {
                 $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                     ->where('type', 'regular')
