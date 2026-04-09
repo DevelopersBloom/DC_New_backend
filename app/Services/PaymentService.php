@@ -88,11 +88,10 @@ class PaymentService
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
             });
-            dd($amount,$selectedTotalDue);
             // If the entered amount can fully cover all selected rows, or the caller explicitly
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
-
+dd($forceScheduledForSelected,$forceScheduled,$amount,$selectedTotalDue);
             foreach ($payments as $payment) {
                 $result = $this->processSinglePayment(
                     $contract,
