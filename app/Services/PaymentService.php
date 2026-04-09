@@ -200,7 +200,7 @@ class PaymentService
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
 
-            $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount);
+            $earlySplit = $amount > $payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount) : null;
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -214,8 +214,8 @@ class PaymentService
                 // recalculates interest on the new running balance.
                 $contract->left = max(0, $contract->left - $principalForLine);
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
-                $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
-                $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
+                $payment->principal_payment = 0;
+                $payment->interest_payment = 0;
                 $payment->remaining = max(
                     0,
                     (float) $contract->provided_amount - max(0, (float) $paidPrincipal - (float) $principalForLine)
@@ -730,12 +730,14 @@ class PaymentService
      */
     protected function recalculateAmortizedInterestFromSchedule(Contract $contract, $payments): void
     {
-        $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
+        $payment = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->first();
+
+//        $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
 
-        foreach ($payments as $payment) {
+//        foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
             $days = max(1, $paymentDate->diffInDays($fromDate));
@@ -761,7 +763,7 @@ class PaymentService
 
             $payment->remaining = round($balance, 10);
             $payment->save();
-        }
+//        }
     }
 
 //    protected function processClassicPayments($payments, $contract, $partialAmount, $now)
