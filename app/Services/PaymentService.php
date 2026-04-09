@@ -794,6 +794,7 @@ class PaymentService
             }
 
             $payment->remaining = round($balance, 10);
+            dd($payment);
             $payment->save();
         }
     }
