@@ -340,7 +340,6 @@ class PaymentService
         }
 
         $pastInterest = $P* $elapsedDays * $rate / 100;
-        dd($pastInterest,$elapsedDays,$payment->id);
         $kFuture = $futureDays * ($rate / 100);
         $denom = 1 - $kFuture;
         if (abs($denom) < 1e-9) {
