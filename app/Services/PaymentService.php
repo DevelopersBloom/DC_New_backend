@@ -283,7 +283,6 @@ class PaymentService
             $now = $paymentDate
                 ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
                 : Carbon::now('Asia/Yerevan')->startOfDay();
-            dd($due,$due->gt($now));
             if ($due->gt($now)) {
                 $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                     ->where('type', 'regular')
