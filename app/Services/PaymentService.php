@@ -625,6 +625,7 @@ class PaymentService
                 $contract->left = max(0, $contract->left - $partialAmount);
 //                $contract->collected += $partialAmount;
                 $contract->save();
+                $contract->load();
                 $history['payment_changes'] = $this->processAmortizedPayments($contract, $payments, $partialAmount, $now);
                 $history['contract_changes'] = [
                     'old_left' => $contract->left,
@@ -767,7 +768,6 @@ class PaymentService
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
-      dd($payments->count());
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
