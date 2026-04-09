@@ -775,7 +775,6 @@ class PaymentService
 
             $prevDate = $paymentDate;
             $interest = $balance * $days * $rate / 100;
-            dd($interest,$balance,$days,$rate);
 
             $payment->interest_payment = $interest;
 
@@ -794,8 +793,8 @@ class PaymentService
             }
 
             $payment->remaining = round($balance, 10);
-            dd($payment);
             $payment->save();
+            dd($payment->interest_payment,$interest,$balance,$days,$rate);
         }
     }
 
