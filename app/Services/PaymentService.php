@@ -254,7 +254,7 @@ class PaymentService
                 $remainingAmount -= $paidPrincipal;
 
                 $contract->left = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal - $paidInterest);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
                 $payment->remaining = max(0, (float) $contract->provided_amount);
@@ -776,6 +776,7 @@ class PaymentService
             $prevDate = $paymentDate;
 
             $interest = $balance * $days * $rate / 100;
+
             $payment->interest_payment = $interest;
 
             $principal = (float) $payment->principal_payment;
