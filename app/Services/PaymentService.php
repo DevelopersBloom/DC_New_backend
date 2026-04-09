@@ -767,7 +767,6 @@ class PaymentService
         $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
-     dd($balance);
         $prevDate = Carbon::parse($contract->date);
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
