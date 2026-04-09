@@ -621,11 +621,11 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
-                $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+                $providedAmount = $contract->provided_amount - $partialAmount;
+                $contract->provided_amount = max(0, $providedAmount);
                 $contract->left = max(0, $contract->left - $partialAmount);
 //                $contract->collected += $partialAmount;
                 $contract->save();
-                $contract->load();
                 $history['payment_changes'] = $this->processAmortizedPayments($contract, $payments, $partialAmount, $now);
                 $history['contract_changes'] = [
                     'old_left' => $contract->left,
@@ -767,6 +767,7 @@ class PaymentService
         $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
+     dd($balance);
         $prevDate = Carbon::parse($contract->date);
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
