@@ -27,7 +27,7 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null)
     {
         $payments_sum = 0;
         $interest_amount = 0;
@@ -100,7 +100,8 @@ class PaymentService
                     $payer,
                     $cash,
                     $deal_id,
-                    $forceScheduledForSelected
+                    $forceScheduledForSelected,
+                    $paymentDate
                 );
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
@@ -194,7 +195,7 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null)
     {
         $penalty = $payment->penalty ?? 0;
         $remainingAmount = $amount;
@@ -219,7 +220,7 @@ class PaymentService
             // otherwise allow early split logic for partial early cash.
             $earlySplit = $forceScheduledForSelected
                 ? null
-                : $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount);
+                : $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate);
 
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
@@ -289,8 +290,10 @@ class PaymentService
         // already correct and recalculating introduces unnecessary floating-point drift.
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
             $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-            $now = Carbon::now('Asia/Yerevan')->startOfDay();
-            if ($due->isFuture()) {
+            $now = $paymentDate
+                ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
+                : Carbon::now('Asia/Yerevan')->startOfDay();
+            if ($due->gt($now)) {
                 $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                     ->where('type', 'regular')
                     ->where('status', 'initial')
@@ -319,14 +322,16 @@ class PaymentService
      * cash = past_interest + calcAmount(P - x, future_days) + x (same basis as ContractTrait::calcAmount).
      * Returns null when due date is today or past, or split does not apply.
      */
-    private function tryEarlyAmortizedPaymentSplit(Contract $contract, Payment $payment, float $cashAfterPenalty): ?array
+    private function tryEarlyAmortizedPaymentSplit(Contract $contract, Payment $payment, float $cashAfterPenalty, $paymentDate = null): ?array
     {
         if ($payment->type !== 'regular' || $payment->status !== 'initial') {
             return null;
         }
 
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-        $now = Carbon::now('Asia/Yerevan')->startOfDay();
+        $now = $paymentDate
+            ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
+            : Carbon::now('Asia/Yerevan')->startOfDay();
         if (!$due->isFuture()) {
             return null;
         }

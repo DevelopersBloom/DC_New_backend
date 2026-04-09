@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ExecuteItemRequest;
+use App\Http\Requests\PaymentRequest;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\Contract;
@@ -43,7 +44,7 @@ class PaymentControllerNew extends Controller
         $this->paymentService = $paymentService;
         $this->activityService = $activityService;
     }
-    public function makePayment(Request $request): JsonResponse
+    public function makePayment(PaymentRequest $request): JsonResponse
     {
         DB::beginTransaction();
         try {
@@ -52,10 +53,37 @@ class PaymentControllerNew extends Controller
         $amount = $request->amount;
         $payer = $request->payer;
         $cash = $request->cash;
+        $paymentDate = $request->input('payment_date');
 
-        $paymentIds = $request->payments;
+        $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
+        $paymentIds = collect($rawPaymentIds)
+            ->map(function ($value) {
+                if (is_array($value)) {
+                    return $value['id'] ?? null;
+                }
+                return $value;
+            })
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
 
-        $payments = Payment::whereIn('id', $paymentIds)->get();
+        $paymentsQuery = Payment::query()
+            ->where('contract_id', $contract->id)
+            ->where('status', 'initial')
+            ->orderBy('date', 'asc')
+            ->orderBy('id', 'asc');
+
+        if ($paymentIds->isNotEmpty()) {
+            $paymentsQuery->whereIn('id', $paymentIds->all());
+        } else {
+            $paymentsQuery->where('type', 'regular');
+        }
+
+        $payments = $paymentsQuery->get();
+        if ($payments->isEmpty()) {
+            throw new \RuntimeException('No payable rows found for this contract');
+        }
         $order_id = $this->generateOrderInNew($request,$payments,Order::REGULAR_FILTER)->id;
         $history = $this->createHistory($request, $order_id);
         $deal = $this->createDeal($amount,null,null,null,null,
@@ -66,8 +94,9 @@ class PaymentControllerNew extends Controller
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
             ->first();
+        $forceScheduled = $paymentIds->isNotEmpty();
         $result = $this->paymentService->processPayments(
-            $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, true
+            $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate
         );
         $newPaymentAmount = $oldPaymentAmount + $amount;
         $history->interest_amount = $result['interest_amount'];
