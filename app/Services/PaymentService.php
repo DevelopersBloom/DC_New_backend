@@ -92,6 +92,8 @@ class PaymentService
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
+                if ($payment->from_date < $date) continue;
+
                 $result = $this->processSinglePayment(
                     $contract,
                     $payment,
@@ -213,7 +215,6 @@ class PaymentService
             // For multi-select full-cover flows, close selected rows first;
             // otherwise allow early split logic for partial early cash.
             $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate) : null;
-          dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -326,8 +327,7 @@ class PaymentService
         }
 
         $from = Carbon::parse($payment->from_date)->startOfDay();
-        $to = Carbon::parse($payment->to_date)->startOfDay();
-        $elapsedDays = max(1, $to->diffInDays($now));
+        $elapsedDays = max(1, $from->diffInDays($now));
         $futureDays = $now->diffInDays($due);
         if ($futureDays < 1) {
             return null;
@@ -346,7 +346,6 @@ class PaymentService
             return null;
         }
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
-        dd($cashAfterPenalty,$x,$P);
         if ($x < 0) {
             return null;
         }
