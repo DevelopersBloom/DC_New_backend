@@ -201,7 +201,6 @@ class PaymentService
             $dueSnapshot = (float) $payment->amount;
 
             $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount);
-dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -322,7 +321,6 @@ dd($earlySplit);
         }
 
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
-        dd($x,$cashAfterPenalty,$pastInterest,$P,$kFuture,$denom,$payment);
 
         if ($x < 0) {
             return null;
