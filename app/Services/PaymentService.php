@@ -212,7 +212,8 @@ class PaymentService
 
             // For multi-select full-cover flows, close selected rows first;
             // otherwise allow early split logic for partial early cash.
-            $earlySplit = $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate);
+            $earlySplit = $amount>=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate) : null;
+
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -226,20 +227,19 @@ class PaymentService
                 // recalculates interest on the new running balance.
                 $contract->left = max(0, $contract->left - $principalForLine);
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
-                $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
-                $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
-                $payment->remaining = max(
-                    0,
-                    (float) $contract->provided_amount - max(0, (float) $paidPrincipal - (float) $principalForLine)
-                );
+//                $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
+//                $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
+//                $payment->remaining = max(
+//                    0,
+//                    (float) $contract->provided_amount - max(0, (float) $paidPrincipal - (float) $principalForLine)
+//                );
 
                 $cashAppliedToLine = $paidInterest + $principalForLine;
-                if ($amount >= $payment->amount) {
-//                if ($cashAppliedToLine + 0.01 >= $dueSnapshot + $penalty) {
+//                if ($amount >= $payment->amount) {
                     $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
-                } else {
-                    $this->partiallyCompletePayment($payment, $cashAppliedToLine, $deal_id, [], $principalPayment, $interestPayment);
-                }
+//                } else {
+//                    $this->partiallyCompletePayment($payment, $cashAppliedToLine, $deal_id, [], $principalPayment, $interestPayment);
+//                }
                 $earlyHandled = true;
 
                 // Update paidPrincipal to reflect only what was applied here;
@@ -387,6 +387,9 @@ class PaymentService
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
         $payment->amount = 0;
+        $payment->interest_payment = 0;
+        $payment->principal_payment = 0;
+        $payment->remaining  = 0;
         $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
 
         if ($payer) {
