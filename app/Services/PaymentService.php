@@ -91,6 +91,7 @@ class PaymentService
             // If the entered amount can fully cover all selected rows, or the caller explicitly
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
+            dd($forceScheduledForSelected);
             foreach ($payments as $payment) {
                 $result = $this->processSinglePayment(
                     $contract,
@@ -215,7 +216,6 @@ class PaymentService
             $earlySplit = $forceScheduledForSelected
                 ? null
                 : $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate);
-dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
