@@ -260,7 +260,7 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
-                $payment->remaining = max(0, (float) $contract->provided_amount);
+//                $payment->remaining = max(0, (float) $contract->provided_amount);
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
@@ -389,7 +389,7 @@ class PaymentService
         $payment->amount = 0;
         $payment->interest_payment = 0;
         $payment->principal_payment = 0;
-        $payment->remaining  = 0;
+//        $payment->remaining  = 0;
         $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
 
         if ($payer) {
@@ -793,7 +793,7 @@ class PaymentService
                 $balance = 0;
             }
 
-            $payment->remaining = round($balance, 10);
+//            $payment->remaining = round($balance, 10);
             $payment->save();
         }
     }
