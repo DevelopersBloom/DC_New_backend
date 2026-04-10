@@ -214,6 +214,8 @@ class PaymentService
                 // recalculates interest on the new running balance.
                 $contract->left = max(0, $contract->left - $payment->principal_payment);
                 $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
+                $payment->remaining = max(0, (float) $contract->remaining - $remainingAmount);
+
 //                $payment->principal_payment = 0;
 //                $payment->interest_payment = 0;
 //                $payment->remaining = max(
@@ -243,7 +245,7 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
-                $payment->remaining = max(0, (float) $contract->provided_amount);
+                $payment->remaining = max(0, (float) $contract->remaining - $remainingAmount);
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
@@ -363,7 +365,7 @@ class PaymentService
         $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
         $payment->principal_payment = 0;
         $payment->interest_payment = 0;
-        $payment->remaining = 0;
+//        $payment->remaining = 0;
         if ($payer) {
             $payment->another_payer = true;
             $payment->name = $payer['name'];
