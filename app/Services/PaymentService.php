@@ -262,7 +262,7 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
-                $payment->remaining = max(0, (float) $payment->remaining - $remainingAmount);
+                $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
@@ -303,6 +303,7 @@ class PaymentService
 
 //        $contract->collected += $amount;
         $contract->save();
+        $payment->save();
 
         return [
             'interest_amount'  => $paidInterest,
