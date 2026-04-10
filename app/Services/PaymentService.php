@@ -256,7 +256,6 @@ class PaymentService
 
                 $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
                 $remainingAmount -= $paidPrincipal;
-                dd($remainingAmount,$payment->remaining,$payment->remaining-$remainingAmount);
 
                 $contract->left = max(0, $contract->left - $paidPrincipal);
                 $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
@@ -304,7 +303,6 @@ class PaymentService
 //        $contract->collected += $amount;
         $contract->save();
         $payment->save();
-
         return [
             'interest_amount'  => $paidInterest,
             'principal_amount' => $paidPrincipal,
