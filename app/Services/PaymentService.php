@@ -108,10 +108,7 @@ class PaymentService
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
-                if ($amount > 0){
-                    $payment->remaining = max(0, (float) ($payment->remaining - $amount));
 
-                }
             }
 
             if ($amount > 0) {
@@ -124,7 +121,6 @@ class PaymentService
         }
         $contract->collected += $interest_amount;
         $contract->save();
-        $payment->save();
         if ($principal_amount > 0 && $contract->payment_type == 'amortized') {
             $history = [];
             $history['contract_changes'] = [
@@ -237,6 +233,7 @@ class PaymentService
                 //                $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
 //                $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
 
+                $payment->remaining = max(0, (float) ($payment->remaining - $amount));
 
                 $cashAppliedToLine = $paidInterest + $principalForLine;
 //                if ($amount >= $payment->amount) {
@@ -262,6 +259,7 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
+                $payment->remaining = max(0, (float) ($payment->remaining - $amount));
 
             }
         } else {
