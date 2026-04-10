@@ -93,7 +93,6 @@ class PaymentService
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
                 if ($payment->from_date >= $date) {
-                    dd(2);
                     continue;
                 }
 
@@ -259,7 +258,7 @@ class PaymentService
                 $remainingAmount -= $paidPrincipal;
 
                 $contract->left = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal - $paidInterest);
+                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
                 $payment->remaining = max(0, (float) $contract->provided_amount);
