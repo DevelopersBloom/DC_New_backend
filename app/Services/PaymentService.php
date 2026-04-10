@@ -92,9 +92,8 @@ class PaymentService
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
-                if ($payment->from_date >= $date) {
-                    continue;
-                }
+                if ($payment->from_date >= $date) continue;
+
 
                 $result = $this->processSinglePayment(
                     $contract,
@@ -258,7 +257,7 @@ class PaymentService
                 $remainingAmount -= $paidPrincipal;
 
                 $contract->left = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal - $paidInterest);
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
                 $payment->remaining = max(0, (float) $contract->provided_amount);
