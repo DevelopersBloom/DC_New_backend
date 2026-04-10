@@ -108,10 +108,14 @@ class PaymentService
                 $amount = $result['amount'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
-                $payment->remaining = max(0, (float) ($payment->remaining - $amount));
+                if ($amount > 0){
+                    $payment->remaining = max(0, (float) ($payment->remaining - $amount));
+
+                }
             }
 
             if ($amount > 0) {
+
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id);
                 //$principal_amount += $amount;
                 $amount = 0;
