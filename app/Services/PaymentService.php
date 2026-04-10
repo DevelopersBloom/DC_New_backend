@@ -262,7 +262,6 @@ class PaymentService
                 $payment->principal_payment -= $paidPrincipal;
                 $payment->interest_payment -= $paidInterest;
                 $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
-                dd($remainingAmount,$payment->remaining,$payment->remaining-$remainingAmount);
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
