@@ -793,7 +793,7 @@ class PaymentService
                 $balance = 0;
             }
 
-//            $payment->remaining = round($balance, 10);
+            $payment->remaining = round($balance, 10);
             $payment->save();
         }
     }
