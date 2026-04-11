@@ -91,7 +91,6 @@ class PaymentControllerNew extends Controller
             } else {
                 $paymentsQuery->where('type', 'regular');
             }
-            dd($paymentIds);
 
             $payments = $paymentsQuery->get();
             if ($payments->isEmpty()) {
@@ -102,6 +101,7 @@ class PaymentControllerNew extends Controller
             $deal = $this->createDeal($amount,null,null,null,null,
                 'in', $contract->id,$contract->client->id,
                 $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,null,null,1);
+            dd($paymentIds);
 
             $oldPaymentAmount = $this->calcPaidAmount($contract);
             $journal = DocumentJournal::where('journalable_type', Contract::class)
