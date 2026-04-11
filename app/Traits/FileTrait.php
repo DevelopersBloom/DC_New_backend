@@ -93,8 +93,7 @@ trait FileTrait
         $has_last_payment = false;
         if($amount){
 
-            if($penalty>=0){
-                dd($penalty);
+            if($penalty>0){
                 if($amount <= $penalty){
                     $purpose = 'տուգանք';
                 }elseif($payments){
