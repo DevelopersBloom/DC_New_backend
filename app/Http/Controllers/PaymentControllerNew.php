@@ -101,7 +101,6 @@ class PaymentControllerNew extends Controller
             {
                 $order_id = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
             }
-            dd(34);
 
             $history = $this->createHistory($request, $order_id);
             $deal = $this->createDeal($amount,null,null,null,null,
