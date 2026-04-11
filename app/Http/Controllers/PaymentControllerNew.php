@@ -91,6 +91,7 @@ class PaymentControllerNew extends Controller
             } else {
                 $paymentsQuery->where('type', 'regular');
             }
+            dd($paymentIds);
 
             $payments = $paymentsQuery->get();
             if ($payments->isEmpty()) {
@@ -107,7 +108,6 @@ class PaymentControllerNew extends Controller
                 ->where('journalable_id', $contract->id)
                 ->first();
             $forceScheduled = $paymentIds->isNotEmpty();
-          dd($paymentIds);
             $result = $this->paymentService->processPayments(
                 $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate
             );
