@@ -63,9 +63,8 @@ class PaymentControllerNew extends Controller
             $providedAmount = (float) $contract->provided_amount;
 
             $fullPaymentThreshold = $currentInterest + $penaltyAmount + $providedAmount;
-dd($amount,$fullPaymentThreshold,$providedAmount > 0 && (float) $amount >= $fullPaymentThreshold);
+
             if ($providedAmount > 0 && (float) $amount >= $fullPaymentThreshold) {
-                dd(1);
                 return $this->makeFullPayment($request);
             }
 
