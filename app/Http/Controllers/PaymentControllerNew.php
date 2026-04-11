@@ -97,11 +97,12 @@ class PaymentControllerNew extends Controller
                 throw new \RuntimeException('No payable rows found for this contract');
             }
             $order_id = $this->generateOrderInNew($request,$payments,Order::REGULAR_FILTER)->id;
+
+           dd($paymentIds);
             $history = $this->createHistory($request, $order_id);
             $deal = $this->createDeal($amount,null,null,null,null,
                 'in', $contract->id,$contract->client->id,
                 $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,null,null,1);
-            dd($paymentIds);
 
             $oldPaymentAmount = $this->calcPaidAmount($contract);
             $journal = DocumentJournal::where('journalable_type', Contract::class)
