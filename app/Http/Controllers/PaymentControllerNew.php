@@ -64,7 +64,7 @@ class PaymentControllerNew extends Controller
 
             $fullPaymentThreshold = $currentInterest + $penaltyAmount + $providedAmount;
 
-            if ($providedAmount > 0 && (float) $amount >= $fullPaymentThreshold) {
+            if ((float) $amount >= $fullPaymentThreshold) {
                 return $this->makeFullPayment($request);
             }
 
@@ -97,8 +97,7 @@ class PaymentControllerNew extends Controller
                 throw new \RuntimeException('No payable rows found for this contract');
             }
             $order_id = null;
-            if ($payments)
-            {
+            if ($payments) {
                 $order_id = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
             }
 
