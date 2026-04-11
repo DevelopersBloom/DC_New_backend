@@ -309,8 +309,9 @@ class PaymentControllerNew extends Controller
             $cash = $request->cash;
             $date = Carbon::now()->format('Y-m-d');
 
-            $interestAmount = $this->calculateCurrentPayment($contract)['current_amount'];
+            $currentPaymentData = $this->calculateCurrentPayment($contract);
 
+            $interestAmount = is_array($currentPaymentData) ? ($currentPaymentData['current_amount'] ?? 0) : 0;
             $motherAmount = $contract->provided_amount;
 
             $type = HistoryType::where('name', 'full_payment')->first();
