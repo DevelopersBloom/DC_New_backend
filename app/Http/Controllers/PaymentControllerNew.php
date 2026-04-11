@@ -438,7 +438,7 @@ class PaymentControllerNew extends Controller
                     ]);
 
                     $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
-
+dd(34);
                     DealAction::create([
                         'deal_id' => $deal->id,
                         'actionable_id' => $paymentId,
@@ -455,7 +455,6 @@ class PaymentControllerNew extends Controller
                     ]);
                 }
             }
-dd(45);
             if (isset($refundAmount) && $refundAmount > 0) {
                 return response()->json([
                     'success' => 'success',
