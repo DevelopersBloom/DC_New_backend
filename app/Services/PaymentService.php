@@ -1013,7 +1013,6 @@ class PaymentService
     }
     public function processFullPayment($contract, $amount, $payer, $cash, $deal_id = null)
     {
-dd($contract->id);
         Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
 
