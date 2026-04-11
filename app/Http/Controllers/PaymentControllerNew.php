@@ -46,10 +46,16 @@ class PaymentControllerNew extends Controller
     }
     public function makePayment(PaymentRequest $request): JsonResponse
     {
+        $contract = Contract::findOrFail($request->contract_id);
+        $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+        $fullPaymentThreshold = $currentPaymentAmount['current_amount'] + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
+
+        if ((float) $request->amount >= $fullPaymentThreshold) {
+            return $this->makeFullPayment($request);
+        }
         DB::beginTransaction();
         try {
 
-        $contract =  Contract::findOrFail($request->contract_id);
             $amount = $request->amount;
             $payer = $request->payer;
             $cash = $request->cash;
@@ -57,7 +63,6 @@ class PaymentControllerNew extends Controller
 
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
 
-            $currentPaymentAmount = $this->calculateCurrentPayment($contract);
             $currentInterest = $currentPaymentAmount['current_amount'];
             $penaltyAmount = $currentPaymentAmount['penalty_amount'];
             $providedAmount = (float) $contract->provided_amount;
@@ -438,7 +443,6 @@ class PaymentControllerNew extends Controller
                     ]);
 
                     $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
-dd(34);
                     DealAction::create([
                         'deal_id' => $deal->id,
                         'actionable_id' => $paymentId,
