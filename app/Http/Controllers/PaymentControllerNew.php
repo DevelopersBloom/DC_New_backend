@@ -107,6 +107,7 @@ class PaymentControllerNew extends Controller
                 ->where('journalable_id', $contract->id)
                 ->first();
             $forceScheduled = $paymentIds->isNotEmpty();
+          dd(23);
             $result = $this->paymentService->processPayments(
                 $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate
             );
