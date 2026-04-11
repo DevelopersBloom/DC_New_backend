@@ -92,9 +92,9 @@ trait FileTrait
         $penalty = (integer)$request->penalty;
         $has_last_payment = false;
         if($amount){
-            dd(342);
 
             if($penalty>=0){
+                dd($penalty);
                 if($amount <= $penalty){
                     $purpose = 'տուգանք';
                 }elseif($payments){
