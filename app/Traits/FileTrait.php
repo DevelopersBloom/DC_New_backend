@@ -92,6 +92,8 @@ trait FileTrait
         $penalty = (integer)$request->penalty;
         $has_last_payment = false;
         if($amount){
+            dd(342);
+
             if($penalty>=0){
                 if($amount <= $penalty){
                     $purpose = 'տուգանք';
@@ -123,7 +125,6 @@ trait FileTrait
             }elseif($request->payments){
                 $payments_count = 0;
                 foreach ($request -> payments as $item){
-                    dd(342);
 
                     $paymentFinal = $item['final'];
                     if($amount >= $paymentFinal){
