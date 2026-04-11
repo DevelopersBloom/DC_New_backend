@@ -123,6 +123,8 @@ trait FileTrait
             }elseif($request->payments){
                 $payments_count = 0;
                 foreach ($request -> payments as $item){
+                    dd(342);
+
                     $paymentFinal = $item['final'];
                     if($amount >= $paymentFinal){
                         $amount -= $paymentFinal;
@@ -134,7 +136,6 @@ trait FileTrait
                         $amount = 0;
                     }
                 }
-                dd(342);
                 if($payments_count){
                     if($has_last_payment){
                         $purpose.= 'Վարկի մարում՝ տոկոսագւմար և մայր գումար';
