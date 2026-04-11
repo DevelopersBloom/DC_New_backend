@@ -384,7 +384,6 @@ class PaymentControllerNew extends Controller
                 }
             }
         }
-dd($interestAmount);
         if (($interestAmount) > 0) {
             $ruleKey = $cash ? 'pay_interest_amount_cash' : 'pay_interest_amount';
             $this->createAccountingTransaction(
