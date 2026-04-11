@@ -58,6 +58,7 @@ class PaymentControllerNew extends Controller
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
 
             $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+           dd($currentPaymentAmount);
             $currentInterest = $currentPaymentAmount['current_amount'];
             $penaltyAmount = $currentPaymentAmount['penalty_amount'];
                 $providedAmount = (float) $contract->provided_amount;
