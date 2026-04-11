@@ -96,9 +96,10 @@ class PaymentControllerNew extends Controller
             if ($payments->isEmpty()) {
                 throw new \RuntimeException('No payable rows found for this contract');
             }
+            dd($paymentIds);
+
             $order_id = $this->generateOrderInNew($request,$payments,Order::REGULAR_FILTER)->id;
 
-           dd($paymentIds);
             $history = $this->createHistory($request, $order_id);
             $deal = $this->createDeal($amount,null,null,null,null,
                 'in', $contract->id,$contract->client->id,
