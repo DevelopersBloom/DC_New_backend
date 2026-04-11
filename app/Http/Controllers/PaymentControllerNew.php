@@ -51,6 +51,7 @@ class PaymentControllerNew extends Controller
         $fullPaymentThreshold = $currentPaymentAmount['current_amount'] + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
 
         if ((float) $request->amount >= $fullPaymentThreshold) {
+            dd(65);
             return $this->makeFullPayment($request);
         }
         DB::beginTransaction();
@@ -62,16 +63,6 @@ class PaymentControllerNew extends Controller
             $paymentDate = $request->input('payment_date');
 
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
-
-            $currentInterest = $currentPaymentAmount['current_amount'];
-            $penaltyAmount = $currentPaymentAmount['penalty_amount'];
-            $providedAmount = (float) $contract->provided_amount;
-
-            $fullPaymentThreshold = $currentInterest + $penaltyAmount + $providedAmount;
-
-            if ((float) $amount >= $fullPaymentThreshold) {
-                return $this->makeFullPayment($request);
-            }
 
             $paymentIds = collect($rawPaymentIds)
                 ->map(function ($value) {
