@@ -51,7 +51,6 @@ class PaymentControllerNew extends Controller
         $fullPaymentThreshold = $currentPaymentAmount['current_amount'] + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
 
         if ((float) $request->amount >= $fullPaymentThreshold) {
-            dd(65);
             return $this->makeFullPayment($request);
         }
         DB::beginTransaction();
@@ -297,8 +296,7 @@ class PaymentControllerNew extends Controller
 
     public function makeFullPayment(Request $request): JsonResponse
     {
-        DB::beginTransaction();
-        try {
+
             $contract = Contract::findOrFail($request->contract_id);
             $totalAmount = $request->amount;
             $payer = $request->payer;
@@ -460,10 +458,7 @@ class PaymentControllerNew extends Controller
 
             return response()->json(['success' => 'success', 'message' => 'Full payment created successfully']);
 
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+
 
     }
     /**
