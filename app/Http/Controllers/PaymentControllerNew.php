@@ -387,7 +387,6 @@ class PaymentControllerNew extends Controller
                     }
                 }
             }
-            dd($interestAmount);
             if (($interestAmount) > 0) {
                 $ruleKey = $cash ? 'pay_interest_amount_cash' : 'pay_interest_amount';
                 $this->createAccountingTransaction(
@@ -456,7 +455,7 @@ class PaymentControllerNew extends Controller
                     ]);
                 }
             }
-
+dd(45);
             if (isset($refundAmount) && $refundAmount > 0) {
                 return response()->json([
                     'success' => 'success',
