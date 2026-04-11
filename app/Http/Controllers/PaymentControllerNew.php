@@ -328,11 +328,10 @@ class PaymentControllerNew extends Controller
         $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null);
         $oldPaymentAmount = $this->calcPaidAmount($contract);
         $paymentId = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id);
-        dd($paymentId);
         $newPaymentAmount = $oldPaymentAmount + $totalAmount;
         $deal->payment_id = $paymentId;
         $deal->save();
-
+dd($motherAmount);
         if ($motherAmount > 0) {
             $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_cash';
             $docId = $this->createAccountingTransaction(
