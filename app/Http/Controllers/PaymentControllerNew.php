@@ -97,6 +97,7 @@ class PaymentControllerNew extends Controller
                 throw new \RuntimeException('No payable rows found for this contract');
             }
             $order_id = null;
+            dd(34);
             if ($payments) {
                 $order_id = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
             }
