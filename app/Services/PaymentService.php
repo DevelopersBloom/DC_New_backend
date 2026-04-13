@@ -785,6 +785,7 @@ class PaymentService
 
             $prevDate = $paymentDate;
             $interest = $balance * $days * $rate / 100;
+           dd($interest,$days,$selectedDate,$paymentDate);
             $payment->interest_payment = $interest;
 
             $principal = (float) $payment->principal_payment;
