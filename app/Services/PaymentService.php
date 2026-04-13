@@ -258,15 +258,16 @@ class PaymentService
                     $remainingAmount -= $paidInterest;
                 }
 
-                $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
-                $remainingAmount -= $paidPrincipal;
+                if ($payment->to_date < now()->format('Y-m-d')) {
+                    $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
+                    $remainingAmount -= $paidPrincipal;
 
-                $contract->left = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-                $payment->principal_payment -= $paidPrincipal;
-                $payment->interest_payment -= $paidInterest;
-                $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
-
+                    $contract->left = max(0, $contract->left - $paidPrincipal);
+                    $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                    $payment->principal_payment -= $paidPrincipal;
+                    $payment->interest_payment -= $paidInterest;
+                    $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
+                }
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
