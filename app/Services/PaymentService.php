@@ -779,9 +779,12 @@ class PaymentService
         $prevDate = Carbon::parse($contract->date);
         foreach ($payments as $payment) {
 
-            $paymentDate = Carbon::parse($payment->to_date);
-            $fromDate = Carbon::parse($payment->from_date);
-            $selectedDate = $fromDate->lt(now()) ? now() : $fromDate;
+            $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
+            $fromDate = Carbon::parse($payment->from_date)->startOfDay();
+            $now = now()->startOfDay();
+
+            $selectedDate = $fromDate->lt($now) ? $now : $fromDate;
+
             $days = max(1, $paymentDate->diffInDays($selectedDate));
 
             $prevDate = $paymentDate;
