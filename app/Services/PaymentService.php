@@ -27,7 +27,7 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null,$interestAmount = 0)
     {
         $payments_sum = 0;
         $interest_amount = 0;
@@ -103,9 +103,11 @@ class PaymentService
                     $cash,
                     $deal_id,
                     $forceScheduledForSelected,
-                    $paymentDate
+                    $paymentDate,
+                    $interestAmount
                 );
                 $amount = $result['amount'];
+                $interestAmount = $result['remaining_interest'];
                 $interest_amount += $result['interest_amount'];
                 $principal_amount += $result['principal_amount'];
 
@@ -198,9 +200,10 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null,$interestAmount = 0)
     {
         $remainingAmount = $amount;
+        $remainingInterestAmount = 0;
         $paidInterest = 0;
         $paidPrincipal = 0;
 
@@ -249,8 +252,13 @@ class PaymentService
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
 
-                $paidInterest = min($remainingAmount, $remainingInterestPlan);
-                $remainingAmount -= $paidInterest;
+//                $paidInterest = min($remainingAmount, $remainingInterestPlan);
+                if ($remainingInterestAmount > 0) {
+                    $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
+
+                    $remainingInterestAmount -= $paidInterest;
+                    $remainingAmount -= $paidInterest;
+                }
 
                 $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
                 $remainingAmount -= $paidPrincipal;
@@ -305,7 +313,8 @@ class PaymentService
         return [
             'interest_amount'  => $paidInterest,
             'principal_amount' => $paidPrincipal,
-            'amount'           => $remainingAmount
+            'amount'           => $remainingAmount,
+            'remaining_interest' => $remainingInterestAmount,
         ];
     }
 

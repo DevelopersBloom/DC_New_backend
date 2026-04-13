@@ -48,7 +48,8 @@ class PaymentControllerNew extends Controller
     {
         $contract = Contract::findOrFail($request->contract_id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
-        $fullPaymentThreshold = $currentPaymentAmount['current_amount'] + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
+        $interestAmount = max(0.0, (float) ($currentPaymentData['current_amount'] ?? 0));
+        $fullPaymentThreshold = $interestAmount + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
 
         if ((float) $request->amount >= $fullPaymentThreshold) {
             return $this->makeFullPayment($request);
@@ -107,7 +108,7 @@ class PaymentControllerNew extends Controller
                 ->first();
             $forceScheduled = $paymentIds->isNotEmpty();
             $result = $this->paymentService->processPayments(
-                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate
+                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate,$interestAmount
             );
             $newPaymentAmount = $oldPaymentAmount + $amount;
             $history->interest_amount = $result['interest_amount'];
