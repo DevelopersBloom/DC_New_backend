@@ -780,7 +780,7 @@ class PaymentService
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
-            $selectedDate = $fromDate->lt(now()) ? $fromDate : now();
+            $selectedDate = $fromDate->lt(now()) ? now() : $fromDate;
             $days = max(1, $paymentDate->diffInDays($selectedDate));
 
             $prevDate = $paymentDate;
