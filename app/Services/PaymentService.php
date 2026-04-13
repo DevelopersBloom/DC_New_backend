@@ -106,7 +106,6 @@ class PaymentService
                         $paymentDate,
                         $interestAmount
                     );
-                    dd($interestAmount,$amount,$result);
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
