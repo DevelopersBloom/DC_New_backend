@@ -780,7 +780,8 @@ class PaymentService
         foreach ($payments as $payment) {
             $paymentDate = Carbon::parse($payment->to_date);
             $fromDate = Carbon::parse($payment->from_date);
-            $days = max(1, $paymentDate->diffInDays($fromDate));
+            $selectedDate = $fromDate->lt(now()) ? $fromDate : now();
+            $days = max(1, $paymentDate->diffInDays($selectedDate));
 
             $prevDate = $paymentDate;
             $interest = $balance * $days * $rate / 100;
