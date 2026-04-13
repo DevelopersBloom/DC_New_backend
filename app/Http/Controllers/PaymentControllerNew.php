@@ -84,7 +84,7 @@ class PaymentControllerNew extends Controller
             if ($paymentIds->isNotEmpty()) {
                 $paymentsQuery->whereIn('id', $paymentIds->all());
             } else {
-                $paymentsQuery->where('to_date','<=',$date)->where('type', 'regular');
+                $paymentsQuery->where('from_date','<=',$date)->where('type', 'regular');
             }
 
             $payments = $paymentsQuery->get();
