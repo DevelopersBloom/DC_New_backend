@@ -50,7 +50,7 @@ class PaymentControllerNew extends Controller
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
         $interestAmount = max(0.0, (float) ($currentPaymentData['current_amount'] ?? 0));
         $fullPaymentThreshold = $interestAmount + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
-dd($interestAmount);
+dd($currentPaymentData);
         if ((float) $request->amount >= $fullPaymentThreshold) {
             return $this->makeFullPayment($request);
         }
