@@ -203,7 +203,7 @@ class PaymentService
     private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null,$interestAmount = 0)
     {
         $remainingAmount = $amount;
-        $remainingInterestAmount = 0;
+        $remainingInterestAmount = $interestAmount;
         $paidInterest = 0;
         $paidPrincipal = 0;
 
