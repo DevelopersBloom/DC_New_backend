@@ -266,7 +266,7 @@ class PaymentService
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                     $payment->principal_payment -= $paidPrincipal;
                     $payment->interest_payment -= $paidInterest;
-                    $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
+//                    $payment->remaining = max(0, (float) ($payment->remaining - $paidPrincipal));
                 }
             }
         } else {
