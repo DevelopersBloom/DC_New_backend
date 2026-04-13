@@ -48,9 +48,8 @@ class PaymentControllerNew extends Controller
     {
         $contract = Contract::findOrFail($request->contract_id);
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
-        $interestAmount = max(0.0, (float) ($currentPaymentData['current_amount'] ?? 0));
+        $interestAmount = max(0.0, (float) ($currentPaymentAmount['current_amount'] ?? 0));
         $fullPaymentThreshold = $interestAmount + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
-dd($currentPaymentData);
         if ((float) $request->amount >= $fullPaymentThreshold) {
             return $this->makeFullPayment($request);
         }
