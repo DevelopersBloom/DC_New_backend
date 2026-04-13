@@ -94,23 +94,23 @@ class PaymentService
             foreach ($payments as $payment) {
                 if ($payment->from_date >= $date) continue;
 
-
-                $result = $this->processSinglePayment(
-                    $contract,
-                    $payment,
-                    $amount,
-                    $payer,
-                    $cash,
-                    $deal_id,
-                    $forceScheduledForSelected,
-                    $paymentDate,
-                    $interestAmount
-                );
-                $amount = $result['amount'];
-                $interestAmount = $result['remaining_interest'];
-                $interest_amount += $result['interest_amount'];
-                $principal_amount += $result['principal_amount'];
-
+                if ($amount > 0) {
+                    $result = $this->processSinglePayment(
+                        $contract,
+                        $payment,
+                        $amount,
+                        $payer,
+                        $cash,
+                        $deal_id,
+                        $forceScheduledForSelected,
+                        $paymentDate,
+                        $interestAmount
+                    );
+                    $amount = $result['amount'];
+                    $interestAmount = $result['remaining_interest'];
+                    $interest_amount += $result['interest_amount'];
+                    $principal_amount += $result['principal_amount'];
+                }
             }
 
             if ($amount > 0) {

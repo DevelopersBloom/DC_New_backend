@@ -61,7 +61,7 @@ class PaymentControllerNew extends Controller
             $payer = $request->payer;
             $cash = $request->cash;
             $paymentDate = $request->input('payment_date');
-
+            $date = now()->format('Y-m-d');
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
 
             $paymentIds = collect($rawPaymentIds)
@@ -85,7 +85,7 @@ class PaymentControllerNew extends Controller
             if ($paymentIds->isNotEmpty()) {
                 $paymentsQuery->whereIn('id', $paymentIds->all());
             } else {
-                $paymentsQuery->where('type', 'regular');
+                $paymentsQuery->where('to_date','<=',$date)->where('type', 'regular');
             }
 
             $payments = $paymentsQuery->get();
