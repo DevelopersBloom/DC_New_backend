@@ -27,7 +27,7 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null,$interestAmount = 0)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null,$interestAmount = 0,$ispPaymentSelected = false)
     {
         $payments_sum = 0;
         $interest_amount = 0;
@@ -92,7 +92,7 @@ class PaymentService
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
-                if ($payment->from_date >= $date) continue;
+                if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
 
                 if ($amount > 0) {
                     $result = $this->processSinglePayment(
@@ -216,8 +216,6 @@ class PaymentService
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
 
-            // For multi-select full-cover flows, close selected rows first;
-            // otherwise allow early split logic for partial early cash.
             $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate) : null;
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
@@ -234,7 +232,6 @@ class PaymentService
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
-
                 if ($remainingInterestAmount > 0) {
                     $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
                     $remainingInterestAmount -= $paidInterest;
@@ -265,11 +262,6 @@ class PaymentService
                 $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
             }
         }
-
-        // When an amortized installment was handled via early split and paid earlier than
-        // its due date, update remaining schedule interest on the reduced principal.
-        // Skip this for regular scheduled payments (no early split) — their schedule is
-        // already correct and recalculating introduces unnecessary floating-point drift.
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
             $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
             $now = $paymentDate
@@ -288,7 +280,6 @@ class PaymentService
             }
         }
 
-//        $contract->collected += $amount;
         $contract->save();
         $payment->save();
         return [

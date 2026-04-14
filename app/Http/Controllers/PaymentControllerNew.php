@@ -55,14 +55,16 @@ class PaymentControllerNew extends Controller
         }
         DB::beginTransaction();
         try {
-
+            $ispPaymentSelected = false;
             $amount = $request->amount;
             $payer = $request->payer;
             $cash = $request->cash;
             $paymentDate = $request->input('payment_date');
             $date = now()->format('Y-m-d');
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
-
+            if ($rawPaymentIds) {
+                $ispPaymentSelected = true;
+            }
             $paymentIds = collect($rawPaymentIds)
                 ->map(function ($value) {
                     if (is_array($value)) {
@@ -105,7 +107,7 @@ class PaymentControllerNew extends Controller
                 ->first();
             $forceScheduled = $paymentIds->isNotEmpty();
             $result = $this->paymentService->processPayments(
-                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate,$interestAmount
+                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate,$interestAmount,$ispPaymentSelected
             );
             $newPaymentAmount = $oldPaymentAmount + $amount;
             $history->interest_amount = $result['interest_amount'];
