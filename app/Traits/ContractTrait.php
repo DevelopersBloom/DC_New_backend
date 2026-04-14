@@ -517,4 +517,31 @@ trait ContractTrait
         ]);
         return $journalDoc->id;
     }
+
+    protected function normalizePaymentDates($payment, $contract)
+    {
+        if ($payment->from_date && $payment->days) {
+            return $payment;
+        }
+
+        $toDate = Carbon::parse($payment->to_date);
+
+        $prevPayment = Payment::where('contract_id', $contract->id)
+            ->where('to_date', '<', $payment->to_date)
+            ->orderBy('to_date', 'desc')
+            ->first();
+
+        if ($prevPayment) {
+            $fromDate = Carbon::parse($prevPayment->to_date);
+        } else {
+            $fromDate = Carbon::parse($contract->date);
+        }
+
+        $days = $toDate->diffInDays($fromDate);
+
+        $payment->from_date = $fromDate->format('Y-m-d');
+        $payment->days = $days;
+
+        return $payment;
+    }
 }

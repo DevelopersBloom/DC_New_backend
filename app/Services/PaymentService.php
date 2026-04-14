@@ -92,6 +92,8 @@ class PaymentService
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
+                $payment = $this->normalizePaymentDates($payment, $contract);
+                dd($payment->from_date, $payment->days);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
 
                 if ($amount > 0) {
@@ -751,7 +753,7 @@ class PaymentService
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
         foreach ($payments as $payment) {
-
+            $payment = $this->normalizePaymentDates($payment, $contract);
             $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
             $now = now()->startOfDay();
@@ -783,51 +785,6 @@ class PaymentService
         }
     }
 
-//    protected function processClassicPayments($payments, $contract, $partialAmount, $now)
-//    {
-//        $changes = [];
-//        $startedToChange = false;
-//
-//        foreach ($payments as $index => $payment) {
-//            if ($payment->amount <= 0) continue;
-//
-//            $dateToCheck = Carbon::parse($payment->date);
-//            if ($dateToCheck->gt($now)) {
-//                $oldPaid = $payment->paid;
-//                $oldAmount = $payment->amount;
-//                $oldDate = $payment->date;
-//                if ($startedToChange) {
-//                    $coeff = ($contract->left - $partialAmount) / $contract->left;
-//                    $newAmount = intval(ceil($oldAmount * $coeff / 10) * 10);
-//                } else {
-//                    $startedToChange = true;
-//                    $prevDate = $index === 0 ? $contract->date : $payments[$index - 1]->date;
-//                    $daysLeft = $payment->days - $now->diffInDays(Carbon::parse($prevDate));
-//
-//                    $newAmount = $oldAmount
-//                        - $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate)
-//                        + $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
-//                }
-//
-//                $payment->amount = max(0, $newAmount);
-//                $payment->save();
-//
-//                $changes[] = [
-//                    'payment_id' => $payment->id,
-//                    'old_amount' => $oldAmount,
-//                    'new_amount' => $payment->amount,
-//                    'old_paid' =>  $oldPaid,
-//                    'old_date' => $oldDate,
-//                    'updated_at' => $now->toDateTimeString()
-//                ];
-//            }
-//
-//            if ($payment->last_payment) {
-//                $this->updateLastPayment($payment, $contract->left - $partialAmount, $changes);
-//            }
-//        }
-//        return $changes;
-//    }
     protected function processClassicPayments($payments, $contract, $partialAmount, $now)
     {
         $history = [
@@ -839,6 +796,7 @@ class PaymentService
         foreach ($payments as $index => $payment) {
             if ($payment->amount <= 0) continue;
 
+            $payment = $this->normalizePaymentDates($payment, $contract);
             $dateToCheck = Carbon::parse($payment->date);
             if ($dateToCheck->gt($now)) {
                 $oldPaid = $payment->paid;
