@@ -541,7 +541,7 @@ trait ContractTrait
 
         $payment->from_date = $fromDate->format('Y-m-d');
         $payment->days = $days;
-
+        $payment->save();
         return $payment;
     }
 }

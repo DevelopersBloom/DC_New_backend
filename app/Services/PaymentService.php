@@ -93,7 +93,6 @@ class PaymentService
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
                 $payment = $this->normalizePaymentDates($payment, $contract);
-                dd($payment->from_date, $payment->days);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
 
                 if ($amount > 0) {
