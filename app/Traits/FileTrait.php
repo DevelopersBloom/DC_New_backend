@@ -198,8 +198,8 @@ trait FileTrait
         return $order_amount;
     }
     public function generateOrderIn($request){
+        dd($request);
         $contract = Contract::where('id',$request->contract_id)->first();
-        dd(324);
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $purpose = $this->getOrderPurpose($request);
         $amount = $this->getOrderAmount($request);
