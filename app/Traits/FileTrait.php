@@ -17,7 +17,6 @@ trait FileTrait
         $penalty = (integer)$request->penalty;
         $has_last_payment = false;
         if($amount){
-            dd($amount,$penalty);
             if($penalty>=0){
                 if($amount <= $penalty){
                     $purpose = 'տուգանք';
@@ -201,6 +200,7 @@ trait FileTrait
     public function generateOrderIn($request){
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
+       dd(2);
         $purpose = $this->getOrderPurpose($request);
         $amount = $this->getOrderAmount($request);
         $order_id = $this->getOrder($request->cash,'in');
