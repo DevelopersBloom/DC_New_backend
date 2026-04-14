@@ -256,14 +256,6 @@ class ContractControllerNew extends Controller
             $contract->save();
             $guarantors = $contractRequest->validated()['guarantors'] ?? [];
 
-//            if (!empty($guarantors)) {
-//                foreach ($guarantors as $guarantorData) {
-//                    $guarantor = $this->clientService->storeOrUpdate($guarantorData);
-//
-//                    $contract->guarantors()->attach($guarantor->id);
-//                }
-//            }
-
             if (!empty($guarantors)) {
                 $guarantorIds = collect($guarantors)->pluck('id')->unique()->toArray();
 

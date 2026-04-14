@@ -241,20 +241,12 @@ class PaymentService
                 $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
 
                 $cashAppliedToLine = $paidInterest + $principalForLine;
-//                if ($amount >= $payment->amount) {
-                    $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
-//                } else {
-//                    $this->partiallyCompletePayment($payment, $cashAppliedToLine, $deal_id, [], $principalPayment, $interestPayment);
-//                }
+                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
                 $earlyHandled = true;
-
-                // Update paidPrincipal to reflect only what was applied here;
-                // the overflow is handled separately by handleRemainingAmount.
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
 
-//                $paidInterest = min($remainingAmount, $remainingInterestPlan);
                 if ($remainingInterestAmount > 0) {
                     $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
                     $remainingInterestAmount -= $paidInterest;
@@ -269,7 +261,6 @@ class PaymentService
                     $contract->left = max(0, $contract->left - $paidPrincipal);
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                     $payment->principal_payment -= $paidPrincipal;
-//                    $payment->remaining = max(0, (float) ($payment->remaining - $paidPrincipal));
                 }
             }
         } else {
