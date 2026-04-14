@@ -124,7 +124,7 @@ trait FileTrait
             }elseif($request->payments){
                 $payments_count = 0;
                 foreach ($request -> payments as $item){
-dd($item);
+dd($request -> payments);
                     $paymentFinal = $item['final'];
                     if($amount >= $paymentFinal){
                         $amount -= $paymentFinal;
