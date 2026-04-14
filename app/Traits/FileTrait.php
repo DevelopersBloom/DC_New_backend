@@ -123,19 +123,18 @@ trait FileTrait
                 }
             }elseif($request->payments){
                 $payments_count = 0;
-                foreach ($request -> payments as $item){
-dd($request -> payments);
-                    $paymentFinal = $item['final'];
-                    if($amount >= $paymentFinal){
-                        $amount -= $paymentFinal;
-                        $payments_count++;
-                        if($item['last_payment']){
-                            $has_last_payment = true;
-                        }
-                    }else{
-                        $amount = 0;
-                    }
-                }
+//                foreach ($request -> payments as $item){
+//                    $paymentFinal = $item['final'];
+//                    if($amount >= $paymentFinal){
+//                        $amount -= $paymentFinal;
+//                        $payments_count++;
+//                        if($item['last_payment']){
+//                            $has_last_payment = true;
+//                        }
+//                    }else{
+//                        $amount = 0;
+//                    }
+//                }
                 if($payments_count){
                     if($has_last_payment){
                         $purpose.= 'Վարկի մարում՝ տոկոսագւմար և մայր գումար';
