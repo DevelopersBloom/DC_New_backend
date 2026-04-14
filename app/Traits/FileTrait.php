@@ -198,7 +198,6 @@ trait FileTrait
         return $order_amount;
     }
     public function generateOrderIn($request){
-        dd($request);
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $purpose = $this->getOrderPurpose($request);
@@ -225,6 +224,7 @@ trait FileTrait
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $purpose = $this->getOrderPurposeNew($request,$payments);
+     dd($purpose);
         $amount = $this->getOrderAmountNew($request,$payments);
         $order_id = $this->getOrder($request->cash,'in');
         $res = [
