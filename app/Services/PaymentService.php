@@ -92,7 +92,6 @@ class PaymentService
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
-                dd(34);
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 dd($payment->from_date, $payment->days);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
