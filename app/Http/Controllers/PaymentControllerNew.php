@@ -87,7 +87,6 @@ class PaymentControllerNew extends Controller
                 $paymentsQuery->where('from_date','<=',$date)->where('type', 'regular');
             }
             $payments = $paymentsQuery->get();
-            dd($paymentsQuery);
             if ($payments->isEmpty()) {
                 throw new \RuntimeException('No payable rows found for this contract');
             }
@@ -95,7 +94,7 @@ class PaymentControllerNew extends Controller
             if ($payments) {
                 $order_id = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
             }
-
+dd($order_id);
             $history = $this->createHistory($request, $order_id);
             $deal = $this->createDeal($amount,null,null,null,null,
                 'in', $contract->id,$contract->client->id,
