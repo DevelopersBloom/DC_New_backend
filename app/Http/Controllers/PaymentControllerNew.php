@@ -80,15 +80,14 @@ class PaymentControllerNew extends Controller
                 ->where('status', 'initial')
                 ->orderBy('date', 'asc')
                 ->orderBy('id', 'asc');
-            dd($paymentIds);
 
             if ($paymentIds->isNotEmpty()) {
                 $paymentsQuery->whereIn('id', $paymentIds->all());
             } else {
                 $paymentsQuery->where('from_date','<=',$date)->where('type', 'regular');
             }
-
             $payments = $paymentsQuery->get();
+            dd($paymentsQuery);
             if ($payments->isEmpty()) {
                 throw new \RuntimeException('No payable rows found for this contract');
             }
