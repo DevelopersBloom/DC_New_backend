@@ -11,6 +11,7 @@ class DocumentJournalResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'date' => $this->date,
             'amount_amd' => $this->amount_amd,
             'debit_account_code' => $this->debitAccount->code ?? null,
             'credit_account_code' => $this->creditAccount->code ?? null,

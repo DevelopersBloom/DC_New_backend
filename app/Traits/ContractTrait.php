@@ -2,21 +2,16 @@
 
 namespace App\Traits;
 
-use App\Models\Category;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Deal;
 use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
-use App\Models\Item;
-use App\Models\LumpRate;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
 use App\Models\PostingRule;
-use App\Models\Subcategory;
-use App\Models\SubcategoryItem;
 use App\Models\Transaction;
 use Carbon\Carbon;
 
@@ -99,48 +94,6 @@ trait ContractTrait
 
     }
 
-    /**
-     * Helper method to create individual order and history entries
-     */
-//    private function createOrderHistoryEntry($contract, $client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose, $num = null, $pawnshop_id, $date = null,$filter=null)
-//    {
-//        $order_id = $this->getOrder($cash, $type, $pawnshop_id);
-//        if ($historyTypeName !== 'opening') {
-//            // Create an order
-//            $order = Order::create([
-//                'num' => $num,
-//                'contract_id' => $contract->id,
-//                'type' => $type,
-//                'title' => 'Օրդեր',
-//                'pawnshop_id' => auth()->user()->pawnshop_id ?? $pawnshop_id,
-//                'order' => $order_id,
-//                'amount' => $amount,
-//                'rep_id' => '2211',
-//                'date' => $date ?? \Illuminate\Support\Carbon::now()->format('Y-m-d'),
-//                'client_name' => $client_name,
-//                'purpose' => $purpose,
-//                'cash' => $cash,
-//                'filter' => $filter ?? null
-//            ]);
-//        }
-//        $order_id = $order->id ?? null;
-//        // Add history for the order
-//        $historyType = HistoryType::where('name', $historyTypeName)->first();
-//        $history = History::create([
-//            'type_id' => $historyType->id,
-//            'contract_id' => $contract->id,
-//            'user_id' => auth()->user()->id ?? null,
-//            'order_id' => $order_id,
-//            'date' => $date ?? Carbon::parse($contract->created_at)->setTimezone('Asia/Yerevan')->format('Y.m.d'),
-//            'amount' => $amount,
-//        ]);
-//        if ($historyTypeName !== 'opening') {
-//            // Create a deal for the order
-//            $deal = $this->createDeal($amount, null, null, null, null, $type, $contract->id, $client_id, $order_id, $cash, null, $purpose, 'contract', $history->id, null, null, $pawnshop_id, $date);
-//            return $deal->id;
-//        }
-//        return 0;
-//    }
     private function createOrderHistoryEntry($contract, $client_id, $client_name, $type, $historyTypeName, $amount, $cash, $purpose, $num = null, $pawnshop_id, $date = null,$filter=null)
     {
         if ($historyTypeName !== 'opening') {
@@ -400,83 +353,10 @@ trait ContractTrait
             "current_amount" =>$currentAmount > 0 ? $currentAmount : 0,
             "penalty_amount" => $penaltyAmount['penalty_amount'],
             "delay_days" => $penaltyAmount['delay_days'],
-            // UI can render this under payable amount with a minus sign.
             "future_interest_discount" => round($futureInterestDiscount, 2),
         ];
 
     }
-
-
-//    public function countPenalty($contract_id, $import_date = null)
-//    {
-//        $contract = Contract::with('payments')->find($contract_id);
-//
-//        if (!$contract) {
-//            return [
-//                'penalty_amount' => 0,
-//                'delay_days' => 0,
-//            ];
-//        }
-//
-//        $now = $import_date ? Carbon::parse($import_date) : now();
-//        $parent_id = null;
-//
-//        $first_unpayed_payment = Payment::where('contract_id',$contract->id)
-//            ->where('status','initial')
-//            ->where('type', '!=', 'penalty')
-//            ->where('amount','>','0')
-//            ->orderBy('date','asc')
-//            ->first();
-//
-//        $lasPayedPenalty = Payment::where('contract_id',$contract->id)
-//            ->where('type','penalty')
-//            ->where('is_completed',true)
-//            ->orderBy('date','desc')
-//            ->orderBy('id','desc')
-//            ->first();
-//
-//        $penalty_amount = 0;
-//        $delay_days = 0;
-//
-//        if ($first_unpayed_payment) {
-//            $penalty_start_date = Carbon::parse($first_unpayed_payment->date);
-//            $parent_id = $first_unpayed_payment->id;
-//            if ($lasPayedPenalty) {
-//                $lastPayedPenaltyDate = Carbon::parse($lasPayedPenalty->date);
-//                if ($lastPayedPenaltyDate->gt($penalty_start_date)) {
-////
-//                    $penalty_start_date = $lastPayedPenaltyDate;
-//                    $parent_id = $lasPayedPenalty->id;
-//                }
-//            }
-//            if ($now->gt($penalty_start_date)) {
-//                $delay_days = $now->diffInDays($penalty_start_date);
-////                $penalty_amount = $this->calcAmount($contract->left, $delay_days, $contract->penalty);
-//                $overdue_amount = $first_unpayed_payment->amount;
-//                $penalty_amount = $this->calcAmount($overdue_amount, $delay_days, $contract->penalty);
-//                if ($parent_id) {
-//                    $penalty_paid =  Payment::where('contract_id', $contract->id)
-//                        ->where('type', 'penalty')
-//                        ->where('parent_id', $parent_id)
-//                        ->sum('paid') ?? 0;
-//                } else {
-//                    $penalty_paid = 0;
-//                }
-//
-//
-//                $penalty_amount -= $penalty_paid;
-//            }
-//        }
-//        $contract->penalty_amount = $penalty_amount;
-//        $contract->save();
-//
-//        return [
-//            'payment_date' => $penalty_start_date ?? null,
-//            'penalty_amount' =>$penalty_amount,
-//            'delay_days' => $delay_days,
-//            'parent_id' => $parent_id
-//        ];
-//    }
 
     public function countPenalty($contract_id, $import_date = null)
     {
@@ -636,5 +516,32 @@ trait ContractTrait
             'transactionable_id' => $journalDoc->id
         ]);
         return $journalDoc->id;
+    }
+
+    protected function normalizePaymentDates($payment, $contract)
+    {
+        if ($payment->from_date && $payment->days) {
+            return $payment;
+        }
+
+        $toDate = Carbon::parse($payment->to_date);
+
+        $prevPayment = Payment::where('contract_id', $contract->id)
+            ->where('to_date', '<', $payment->to_date)
+            ->orderBy('to_date', 'desc')
+            ->first();
+
+        if ($prevPayment) {
+            $fromDate = Carbon::parse($prevPayment->to_date);
+        } else {
+            $fromDate = Carbon::parse($contract->date);
+        }
+
+        $days = $toDate->diffInDays($fromDate);
+
+        $payment->from_date = $fromDate->format('Y-m-d');
+        $payment->days = $days;
+        $payment->save();
+        return $payment;
     }
 }

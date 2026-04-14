@@ -25,10 +25,13 @@ class PaymentRequest extends FormRequest
     {
         return [
             'contract_id' => 'required|exists:contracts,id',
-            'amount' => 'nullable|numeric',
+            'amount' => 'required|numeric|min:0.01',
             'penalty' => 'nullable|numeric',
-            'payments' => 'required|array',
-            'payments.*.id' => 'required|exists:payments,id',
+            'payment_date' => 'nullable|date',
+            'payments' => 'nullable|array',
+            'payments.*' => 'integer|exists:payments,id',
+            'payment_ids' => 'nullable|array',
+            'payment_ids.*' => 'integer|exists:payments,id',
             'payer' => 'nullable|array',
             'payer.name' => 'nullable|string',
             'payer.surname' => 'nullable|string',

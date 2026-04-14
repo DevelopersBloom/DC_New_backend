@@ -27,7 +27,7 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id,$journal_id=null)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null,$interestAmount = 0,$ispPaymentSelected = false)
     {
         $payments_sum = 0;
         $interest_amount = 0;
@@ -85,15 +85,36 @@ class PaymentService
         }
 
         if ($amount > 0) {
+            $selectedTotalDue = $payments->sum(function ($p) {
+                return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
+            });
+            // If the entered amount can fully cover all selected rows, or the caller explicitly
+            // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
+            $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
-                $result = $this->processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id);
-                $amount = $result['amount'];
-                $interest_amount += $result['interest_amount'];
-                $principal_amount += $result['principal_amount'];
+                $payment = $this->normalizePaymentDates($payment, $contract);
+                if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
 
+                if ($amount > 0) {
+                    $result = $this->processSinglePayment(
+                        $contract,
+                        $payment,
+                        $amount,
+                        $payer,
+                        $cash,
+                        $deal_id,
+                        $forceScheduledForSelected,
+                        $paymentDate,
+                        $interestAmount
+                    );
+                    $amount = $result['amount'];
+                    $interestAmount = $result['remaining_interest'];
+                    $interest_amount += $result['interest_amount'];
+                    $principal_amount += $result['principal_amount'];
+                }
             }
-
             if ($amount > 0) {
+
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id);
                 //$principal_amount += $amount;
                 $amount = 0;
@@ -179,14 +200,10 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id,)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null,$interestAmount = 0)
     {
-        $penalty = $payment->penalty ?? 0;
         $remainingAmount = $amount;
-
-        $paidPenalty = min($remainingAmount, $penalty);
-        $remainingAmount -= $paidPenalty;
-
+        $remainingInterestAmount = $interestAmount;
         $paidInterest = 0;
         $paidPrincipal = 0;
 
@@ -200,53 +217,37 @@ class PaymentService
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
 
-            $earlySplit = $amount >= $payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount) : null;
+            $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate) : null;
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
                 $principalForLine = $earlySplit['principal_for_line'];
                 $remainingAmount = $earlySplit['remaining_cash'];
 
-                // Only reduce contract balance by principalForLine (the scheduled
-                // principal for this installment). Any extra principal (x - scheduled)
-                // sits in remainingCash and flows through handleRemainingAmount →
-                // payPartial, which reduces future installments' principal and
-                // recalculates interest on the new running balance.
-                $contract->left = max(0, $contract->left - $payment->principal_payment);
-                $contract->provided_amount = max(0, $contract->provided_amount - $payment->principal_payment);
-                $payment->remaining = max(0, (float) $payment->remaining - $remainingAmount);
-
-//                $payment->principal_payment = 0;
-//                $payment->interest_payment = 0;
-//                $payment->remaining = max(
-//                    0,
-//                    (float) $contract->provided_amount - max(0, (float) $paidPrincipal - (float) $principalForLine)
-//                );
-
+                $contract->left = max(0, $contract->left - $principalForLine);
+                $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
+                $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
                 $cashAppliedToLine = $paidInterest + $principalForLine;
-
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
-
                 $earlyHandled = true;
-
-                // Update paidPrincipal to reflect only what was applied here;
-                // the overflow is handled separately by handleRemainingAmount.
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
+                if ($remainingInterestAmount > 0) {
+                    $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
+                    $remainingInterestAmount -= $paidInterest;
+                    $remainingAmount -= $paidInterest;
+                    $payment->interest_payment -= $paidInterest;
+                }
 
-                $paidInterest = min($remainingAmount, $remainingInterestPlan);
-                $remainingAmount -= $paidInterest;
+                if ($payment->to_date < now()->format('Y-m-d')) {
+                    $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
+                    $remainingAmount -= $paidPrincipal;
 
-                $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
-                $remainingAmount -= $paidPrincipal;
-
-                $contract->left = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-                $payment->principal_payment -= $paidPrincipal;
-                $payment->interest_payment -= $paidInterest;
-                $payment->remaining = max(0, (float) $payment->remaining - $remainingAmount);
-
+                    $contract->left = max(0, $contract->left - $paidPrincipal);
+                    $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                    $payment->principal_payment -= $paidPrincipal;
+                }
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
@@ -255,22 +256,38 @@ class PaymentService
         }
 
         if (!$earlyHandled) {
-            $totalRequiredForThisLine = $payment->amount + $penalty;
+            $totalRequiredForThisLine = $payment->amount;
             if ($amount >= $totalRequiredForThisLine) {
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
             } else {
                 $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
             }
         }
+        if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
+            $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
+            $now = $paymentDate
+                ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
+                : Carbon::now('Asia/Yerevan')->startOfDay();
+            if ($due->gt($now)) {
+                $remainingInitialPayments = Payment::where('contract_id', $contract->id)
+                    ->where('type', 'regular')
+                    ->where('status', 'initial')
+                    ->orderBy('date', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->get();
+                if ($remainingInitialPayments->isNotEmpty()) {
+                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments);
+                }
+            }
+        }
 
-//        $contract->collected += $amount;
         $contract->save();
         $payment->save();
         return [
             'interest_amount'  => $paidInterest,
             'principal_amount' => $paidPrincipal,
-            'penalty'          => $paidPenalty,
-            'amount'           => $remainingAmount
+            'amount'           => $remainingAmount,
+            'remaining_interest' => $remainingInterestAmount,
         ];
     }
 
@@ -279,24 +296,15 @@ class PaymentService
      * cash = past_interest + calcAmount(P - x, future_days) + x (same basis as ContractTrait::calcAmount).
      * Returns null when due date is today or past, or split does not apply.
      */
-    private function tryEarlyAmortizedPaymentSplit(Contract $contract, Payment $payment, float $cashAfterPenalty): ?array
+    private function tryEarlyAmortizedPaymentSplit(Contract $contract, Payment $payment, float $cashAfterPenalty, $paymentDate = null): ?array
     {
         if ($payment->type !== 'regular' || $payment->status !== 'initial') {
             return null;
         }
 
-        $firstInitial = Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')
-            ->where('status', 'initial')
-            ->orderBy('to_date')
-            ->orderBy('id')
-            ->first();
-        if (!$firstInitial || (int) $firstInitial->id !== (int) $payment->id) {
-            return null;
-        }
-
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
         $now = Carbon::now('Asia/Yerevan')->startOfDay();
+
         if (!$due->isFuture()) {
             return null;
         }
@@ -309,17 +317,16 @@ class PaymentService
         }
         $P = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
+
         if ($P <= 0 || $cashAfterPenalty <= 0) {
             return null;
         }
-
         $pastInterest = $P* $elapsedDays * $rate / 100;
         $kFuture = $futureDays * ($rate / 100);
         $denom = 1 - $kFuture;
         if (abs($denom) < 1e-9) {
             return null;
         }
-
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
 
         if ($x < 0) {
@@ -363,6 +370,9 @@ class PaymentService
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
         $payment->amount = 0;
+        $payment->interest_payment = 0;
+        $payment->principal_payment = 0;
+//        $payment->remaining  -= $principal_payment;
         $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
         $payment->principal_payment = 0;
         $payment->interest_payment = 0;
@@ -437,7 +447,9 @@ class PaymentService
     private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
     {
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
-            ->where('id', '!=', $payment_id)->first();
+            ->where('id', '!=', $payment_id)
+            ->orderBy('date', 'asc')->orderBy('id', 'asc')
+            ->first();
         $decrease = null;
         $oldAmount = null;
         $oldDate = null;
@@ -595,7 +607,8 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
-                $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+                $providedAmount = $contract->provided_amount - $partialAmount;
+                $contract->provided_amount = max(0, $providedAmount);
                 $contract->left = max(0, $contract->left - $partialAmount);
 //                $contract->collected += $partialAmount;
                 $contract->save();
@@ -693,25 +706,29 @@ class PaymentService
                 'old_principal' => $payment->principal_payment,
                 'old_date' => $payment->date,
                 'old_interest' => $payment->interest_payment,
+                'reduction' => $reduction,
             ];
 
-            $payment->amount -= $reduction;
+            // Mutate in-memory only — do NOT save yet.
+            // amount is intentionally left unchanged here; recalculateAmortizedInterestFromSchedule
+            // will set the correct value (new_principal + new_interest) and persist everything
+            // in a single pass, preventing a window where amount = old_interest + new_principal.
             $payment->paid += $reduction;
             $payment->principal_payment -= $reduction;
             $remainingPartial -= $reduction;
-
             $payment->save();
-            $changes[] = array_merge($oldData, [
-                'new_amount' => $payment->amount,
-                'new_paid' => $payment->paid,
-                'new_principal' => $payment->principal_payment,
-                'new_interest' => $payment->interest_payment,
-                'reduction' => $reduction,
-                'updated_at' => $now->toDateTimeString(),
-            ]);
+            $changes[] = $oldData;
         }
         if (!empty($changes)) {
-            $this->recalculateAmortizedInterestFromSchedule($contract, $payments);
+            $remainingInitialPayments = Payment::where('contract_id', $contract->id)
+                ->where('type', 'regular')
+                ->where('status', 'initial')
+                ->orderBy('to_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+            // Single save point: recalculates interest on the updated principals and persists
+            // all modified fields (paid, principal_payment, interest_payment, amount) atomically.
+            $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments);
         }
 
         foreach ($changes as &$change) {
@@ -737,15 +754,17 @@ class PaymentService
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
-dd($balance, $prevDate, $rate);
-
         foreach ($payments as $payment) {
-            $paymentDate = Carbon::parse($payment->to_date);
-            $fromDate = Carbon::parse($payment->from_date);
-            $days = max(1, $paymentDate->diffInDays($fromDate));
+            $payment = $this->normalizePaymentDates($payment, $contract);
+            $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
+            $fromDate = Carbon::parse($payment->from_date)->startOfDay();
+            $now = now()->startOfDay();
+
+            $selectedDate = $fromDate->lt($now) ? $now : $fromDate;
+
+            $days = max(1, $paymentDate->diffInDays($selectedDate));
 
             $prevDate = $paymentDate;
-
             $interest = $balance * $days * $rate / 100;
             $payment->interest_payment = $interest;
 
@@ -768,51 +787,6 @@ dd($balance, $prevDate, $rate);
         }
     }
 
-//    protected function processClassicPayments($payments, $contract, $partialAmount, $now)
-//    {
-//        $changes = [];
-//        $startedToChange = false;
-//
-//        foreach ($payments as $index => $payment) {
-//            if ($payment->amount <= 0) continue;
-//
-//            $dateToCheck = Carbon::parse($payment->date);
-//            if ($dateToCheck->gt($now)) {
-//                $oldPaid = $payment->paid;
-//                $oldAmount = $payment->amount;
-//                $oldDate = $payment->date;
-//                if ($startedToChange) {
-//                    $coeff = ($contract->left - $partialAmount) / $contract->left;
-//                    $newAmount = intval(ceil($oldAmount * $coeff / 10) * 10);
-//                } else {
-//                    $startedToChange = true;
-//                    $prevDate = $index === 0 ? $contract->date : $payments[$index - 1]->date;
-//                    $daysLeft = $payment->days - $now->diffInDays(Carbon::parse($prevDate));
-//
-//                    $newAmount = $oldAmount
-//                        - $this->calcAmount($contract->left, $daysLeft, $contract->interest_rate)
-//                        + $this->calcAmount($contract->left - $partialAmount, $daysLeft, $contract->interest_rate);
-//                }
-//
-//                $payment->amount = max(0, $newAmount);
-//                $payment->save();
-//
-//                $changes[] = [
-//                    'payment_id' => $payment->id,
-//                    'old_amount' => $oldAmount,
-//                    'new_amount' => $payment->amount,
-//                    'old_paid' =>  $oldPaid,
-//                    'old_date' => $oldDate,
-//                    'updated_at' => $now->toDateTimeString()
-//                ];
-//            }
-//
-//            if ($payment->last_payment) {
-//                $this->updateLastPayment($payment, $contract->left - $partialAmount, $changes);
-//            }
-//        }
-//        return $changes;
-//    }
     protected function processClassicPayments($payments, $contract, $partialAmount, $now)
     {
         $history = [
@@ -824,6 +798,7 @@ dd($balance, $prevDate, $rate);
         foreach ($payments as $index => $payment) {
             if ($payment->amount <= 0) continue;
 
+            $payment = $this->normalizePaymentDates($payment, $contract);
             $dateToCheck = Carbon::parse($payment->date);
             if ($dateToCheck->gt($now)) {
                 $oldPaid = $payment->paid;
@@ -910,7 +885,7 @@ dd($balance, $prevDate, $rate);
                 'document_number' => $nextDocNum,
                 'document_type' => DocumentJournal::PAY_MOTHER_AMOUNT,
                 'amount_amd' => $partialAmount,
-                'debit_partner_id' => $clientId,
+                'credit_partner_id' => $clientId,
                 'comment' => 'mother_amount_payment',
                 'debit_account_id' => $ruleMother->debit_account_id,
                 'credit_account_id' => $ruleMother->credit_account_id,
@@ -925,8 +900,8 @@ dd($balance, $prevDate, $rate);
                 'document_number' => $nextDocNum,
                 'document_type' => DocumentJournal::PAY_MOTHER_AMOUNT,
                 'debit_account_id' => $ruleMother->debit_account_id,
-                'debit_partner_id' => $clientId,
                 'credit_account_id' => $ruleMother->credit_account_id,
+                'credit_partner_id' => $clientId,
                 'amount_amd' => $partialAmount,
                 'comment' => 'mother_amount_payment',
                 'user_id' => auth()->id(),
@@ -983,7 +958,6 @@ dd($balance, $prevDate, $rate);
     }
     public function processFullPayment($contract, $amount, $payer, $cash, $deal_id = null)
     {
-
         Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
 

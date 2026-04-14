@@ -361,6 +361,12 @@ class DocumentJournalController
     }
     public function getContractDocsHistory(int $contractId): JsonResponse
     {
+        $contract = \App\Models\Contract::find($contractId);
+
+        if (!$contract) {
+            return response()->json(['message' => 'Պայմանագիրը չի գտնվել'], 404);
+        }
+
         $rootDoc = DocumentJournal::where('journalable_id', $contractId)
             ->whereIn('journalable_type', ['Contract', 'App\Models\Contract'])
             ->first();
@@ -371,7 +377,13 @@ class DocumentJournalController
 
         $allIds = $this->collectAllRelatedIds($rootDoc);
 
+        $clientId = $contract->client_id;
+
         $documents = DocumentJournal::whereIn('id', $allIds)
+            ->where(function ($q) use ($clientId) {
+                $q->where('debit_partner_id', $clientId)
+                  ->orWhere('credit_partner_id', $clientId);
+            })
             ->with(['debitAccount:id,code', 'creditAccount:id,code'])
             ->orderBy('id', 'asc')
             ->get();
