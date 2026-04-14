@@ -315,7 +315,6 @@ class PaymentService
         if ($futureDays < 1) {
             return null;
         }
-
         $P = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
 
@@ -329,6 +328,7 @@ class PaymentService
             return null;
         }
         $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
+
         if ($x < 0) {
             return null;
         }
@@ -353,6 +353,7 @@ class PaymentService
             'paid_interest' => (float) $paidInterest,
             'paid_principal' => (float) $paidPrincipal,
             'principal_for_line' => (float) $principalForLine,
+            'initial_principal' => (float) $payment->principal_payment,
             'remaining_cash' => (float) $remainingCash,
         ];
     }
@@ -373,7 +374,9 @@ class PaymentService
         $payment->principal_payment = 0;
 //        $payment->remaining  -= $principal_payment;
         $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
-
+        $payment->principal_payment = 0;
+        $payment->interest_payment = 0;
+//        $payment->remaining = 0;
         if ($payer) {
             $payment->another_payer = true;
             $payment->name = $payer['name'];
