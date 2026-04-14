@@ -225,21 +225,9 @@ class PaymentService
                 $principalForLine = $earlySplit['principal_for_line'];
                 $remainingAmount = $earlySplit['remaining_cash'];
 
-                // Only reduce contract balance by principalForLine (the scheduled
-                // principal for this installment). Any extra principal (x - scheduled)
-                // sits in remainingCash and flows through handleRemainingAmount →
-                // payPartial, which reduces future installments' principal and
-                // recalculates interest on the new running balance.
                 $contract->left = max(0, $contract->left - $principalForLine);
-                // Reduce principal for this installment only.
-                // Any remaining cash is forwarded to handleRemainingAmount()->payPartial(),
-                // which applies additional principal reduction to future installments.
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
-                //                $payment->principal_payment = max(0, (float) $payment->principal_payment - $principalForLine);
-//                $payment->interest_payment = max(0, (float) $payment->interest_payment - $paidInterest);
-
                 $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
-
                 $cashAppliedToLine = $paidInterest + $principalForLine;
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
                 $earlyHandled = true;
