@@ -124,7 +124,7 @@ trait FileTrait
             }elseif($request->payments){
                 $payments_count = 0;
                 foreach ($request -> payments as $item){
-
+dd($item);
                     $paymentFinal = $item['final'];
                     if($amount >= $paymentFinal){
                         $amount -= $paymentFinal;
@@ -223,7 +223,6 @@ trait FileTrait
     {
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
-        dd(23);
         $purpose = $this->getOrderPurposeNew($request,$payments);
         $amount = $this->getOrderAmountNew($request,$payments);
         $order_id = $this->getOrder($request->cash,'in');
