@@ -80,6 +80,7 @@ class PaymentControllerNew extends Controller
                 ->where('status', 'initial')
                 ->orderBy('date', 'asc')
                 ->orderBy('id', 'asc');
+            dd($paymentIds);
 
             if ($paymentIds->isNotEmpty()) {
                 $paymentsQuery->whereIn('id', $paymentIds->all());
@@ -106,7 +107,6 @@ class PaymentControllerNew extends Controller
                 ->where('journalable_id', $contract->id)
                 ->first();
             $forceScheduled = $paymentIds->isNotEmpty();
-            dd($payments);
             $result = $this->paymentService->processPayments(
                 $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate,$interestAmount
             );
