@@ -462,7 +462,7 @@ class FileController extends Controller
     }
     public function downloadContract($id)
     {
-        $contract = Contract::with(['category', 'client', 'items.category', 'pawnshop', 'payments', 'user','seller'])->findOrFail($id);
+        $contract = Contract::with(['category', 'client', 'items.category', 'pawnshop', 'payments', 'user','seller','guarantors'])->findOrFail($id);
 
         $client = $contract->client;
         $seller = $contract->seller;
@@ -605,6 +605,14 @@ class FileController extends Controller
         } elseif ($categoryName == 'car-purchase') {
             $typeSuffix = 'մեքենայի ձեռք բերման';
         }
+
+        if ($contract->guarantors && $contract->guarantors->count()) {
+
+            foreach ($contract->guarantors as $guarantor) {
+                [$guarantorFilePath] = $this->generateGuarantorDocx($contract, $guarantor);
+                $filesToZip[] = $guarantorFilePath;
+            }
+        }
         $contractFilename = $contract->num . '_' . $typeSuffix . '_պայմանագիր.docx';
         $contractPath = storage_path('app/tmp/' . $contractFilename);
 
@@ -638,6 +646,46 @@ class FileController extends Controller
         return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
+    private function generateGuarantorDocx($contract, $guarantor): array
+    {
+        $templatePath = public_path('files/guarantor_template.docx');
+
+        if (!file_exists($templatePath)) {
+            abort(404, "Guarantor template not found");
+        }
+
+        $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+
+        $guarantorName = $guarantor->name . ' ' . $guarantor->surname;
+
+        $templateProcessor->setValues([
+            'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
+
+            'guarantor' => $guarantorName,
+            'g_pass_ser' => $guarantor->passport_series,
+            'g_pass_val' => \Carbon\Carbon::parse($guarantor->passport_validity)->format('d.m.Y'),
+            'g_pass_iss' => $guarantor->passport_issued,
+            'g_soc_num' => $guarantor->social_card_number ?? $guarantor->tax_number ?? '',
+
+            'phone' => $guarantor->phone,
+            'bank_name' => $guarantor->bank_name,
+            'account_number' => $guarantor->account_number,
+            'card_number' => $guarantor->card_number,
+
+            'client' => $contract->client->name . ' ' . $contract->client->surname,
+        ]);
+
+        $fileName = $contract->num . '_երաշխավոր_' . $guarantor->id . '.docx';
+        $filePath = storage_path('app/tmp/' . $fileName);
+
+        if (!file_exists(dirname($filePath))) {
+            mkdir(dirname($filePath), 0775, true);
+        }
+
+        $templateProcessor->saveAs($filePath);
+
+        return [$filePath];
+    }
     private function generateIndividualSheetDocx(Contract $contract): array
     {
         $client = $contract->client;
