@@ -97,7 +97,7 @@ class UpdateClientClassifications implements ShouldQueue
 
                         Modification::create([
                             'subject_type' => Client::class,
-                            'subject_id' => $clientId->id,
+                            'subject_id' => $clientId,
                             'modification_type'  => 'Modificator',
                             'field_code' => 'RISK',
                             'element_code' => 'Risk',

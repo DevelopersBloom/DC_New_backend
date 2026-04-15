@@ -34,9 +34,9 @@ class ProcessDailyBankProvision implements ShouldQueue
             return;
         }
 
-        $balanceYesterday = $this->calculateBalanceUntil($bankAccountIds, $yesterday);
+        $balanceYesterday = 1000;// $this->calculateBalanceUntil($bankAccountIds, $yesterday);
 
-        $balanceToday = $this->calculateBalanceUntil($bankAccountIds, $today);
+        $balanceToday = 100;//$this->calculateBalanceUntil($bankAccountIds, $today);
 
         $netChange = $balanceToday - $balanceYesterday;
 
