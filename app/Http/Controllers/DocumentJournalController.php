@@ -367,20 +367,15 @@ class DocumentJournalController
             return response()->json(['message' => 'Պայմանագիրը չի գտնվել'], 404);
         }
 
-        $rootDocs = DocumentJournal::where('journalable_id', $contractId)
+        $rootDoc = DocumentJournal::where('journalable_id', $contractId)
             ->whereIn('journalable_type', ['Contract', 'App\Models\Contract'])
-            ->get();
+            ->first();
 
-        if ($rootDocs->isEmpty()) {
+        if (!$rootDoc) {
             return response()->json(['message' => 'Պայմանագրի հետ կապված փաստաթուղթ չի գտնվել'], 404);
         }
 
-        $allIds = [];
-        $visited = [];
-        foreach ($rootDocs as $rootDoc) {
-            $this->collectAllRelatedIds($rootDoc, $allIds, $visited);
-        }
-        $allIds = array_values(array_unique($allIds));
+        $allIds = $this->collectAllRelatedIds($rootDoc);
 
         $clientId = $contract->client_id;
 
@@ -396,13 +391,8 @@ class DocumentJournalController
         return response()->json(DocumentJournalResource::collection($documents));
     }
 
-    private function collectAllRelatedIds(DocumentJournal $doc, array &$ids = [], array &$visited = []): array
+    private function collectAllRelatedIds(DocumentJournal $doc, &$ids = []): array
     {
-        if (isset($visited[$doc->id])) {
-            return $ids;
-        }
-        $visited[$doc->id] = true;
-
         $ids[] = $doc->id;
 
         $children = DocumentJournal::where('journalable_id', $doc->id)
@@ -410,7 +400,7 @@ class DocumentJournalController
             ->get();
 
         foreach ($children as $child) {
-            $this->collectAllRelatedIds($child, $ids, $visited);
+            $this->collectAllRelatedIds($child, $ids);
         }
 
         return $ids;
