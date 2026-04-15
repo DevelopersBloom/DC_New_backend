@@ -59,6 +59,7 @@ class AcraController
             ->unique()
             ->toArray();
 
+        dd($contractsWithJournalActions);
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
             ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions) {
