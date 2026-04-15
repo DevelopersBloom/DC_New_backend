@@ -41,7 +41,7 @@ class Kernel extends ConsoleKernel
             ->dailyAt('23:23')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping(10)
-            ->appendOutputTo(storage_path('logs/schedule.log'));
+            ->appendOutputTo(storage_path('logs/laravel.log'));
     }
 
     /**
