@@ -37,14 +37,14 @@ class AcraController
 
         $contractsWithJournalActions = DocumentJournal::where(function ($query) use ($mainJournalIds, $mainContractsIds) {
 
-            $query->where(function ($q) use ($mainJournalIds) {
-                $q->where('journalable_type', DocumentJournal::class)
-                    ->whereIn('journalable_id', $mainJournalIds);
-            })
-                ->orWhere(function ($q) use ($mainContractsIds) {
-                    $q->where('journalable_type', Contract::class)
-                        ->whereIn('journalable_id', $mainContractsIds);
-                });
+//            $query->where(function ($q) use ($mainJournalIds) {
+//                $q->where('journalable_type', DocumentJournal::class)
+//                    ->whereIn('journalable_id', $mainJournalIds);
+//            })
+//                ->orWhere(function ($q) use ($mainContractsIds) {
+//                    $q->where('journalable_type', Contract::class)
+//                        ->whereIn('journalable_id', $mainContractsIds);
+//                });
 
         })
             ->whereIn('document_type', [
