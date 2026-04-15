@@ -35,7 +35,8 @@ class AcraController
         $mainJournalIds = $mainContractJournals->pluck('id')->toArray();
         $mainContractsIds = $mainContractJournals->pluck('journalable_id')->toArray();
 
-        $contractsWithJournalActions = DocumentJournal::where(function ($query) use ($mainJournalIds, $mainContractsIds) {
+        $contractsWithJournalActions = DocumentJournal::
+//        where(function ($query) use ($mainJournalIds, $mainContractsIds) {
 
 //            $query->where(function ($q) use ($mainJournalIds) {
 //                $q->where('journalable_type', DocumentJournal::class)
@@ -46,8 +47,10 @@ class AcraController
 //                        ->whereIn('journalable_id', $mainContractsIds);
 //                });
 
-        })
-            ->whereIn('document_type', [
+//        })
+
+//            ->
+        whereIn('document_type', [
                 DocumentJournal::PAY_MOTHER_AMOUNT,
                 DocumentJournal::INTEREST_REPAYMENT,
                 DocumentJournal::PAY_MOTHER_AMOUNT_CASH
