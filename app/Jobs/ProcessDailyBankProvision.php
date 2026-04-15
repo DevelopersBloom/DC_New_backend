@@ -118,6 +118,8 @@ class ProcessDailyBankProvision implements ShouldQueue
             'credit_account_id' => $creditAcc->id,
             'user_id'           => 1,
             'comment'           => $label . ' (Մնացորդի շարժի 1%) - ամփոփ',
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => 0,
         ]);
 
         Transaction::create([
