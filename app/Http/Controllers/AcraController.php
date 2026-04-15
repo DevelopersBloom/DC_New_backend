@@ -32,16 +32,27 @@ class AcraController
 
         $journalToContractMap = $mainContractJournals->pluck('journalable_id', 'id');
         $mainJournalIds = $mainContractJournals->pluck('id')->toArray();
+        $mainContractsIds = $mainContractJournals->pluck('journalable_id')->toArray();
 
-        $contractsWithJournalActions = DocumentJournal::where('journalable_type', DocumentJournal::class)
-            ->whereIn('journalable_id', $mainJournalIds)
+        $contractsWithJournalActions = DocumentJournal::where(function ($query) use ($mainJournalIds, $mainContractsIds) {
+
+            $query->where(function ($q) use ($mainJournalIds) {
+                $q->where('journalable_type', DocumentJournal::class)
+                    ->whereIn('journalable_id', $mainJournalIds);
+            })
+                ->orWhere(function ($q) use ($mainContractsIds) {
+                    $q->where('journalable_type', Contract::class)
+                        ->whereIn('journalable_id', $mainContractsIds);
+                });
+
+        })
             ->whereIn('document_type', [
                 DocumentJournal::PAY_MOTHER_AMOUNT,
                 DocumentJournal::INTEREST_REPAYMENT
             ])
             ->whereBetween('date', [$from, $to])
             ->get()
-            ->map(function($journal) use ($journalToContractMap) {
+            ->map(function ($journal) use ($journalToContractMap) {
                 return $journalToContractMap[$journal->journalable_id] ?? null;
             })
             ->filter()

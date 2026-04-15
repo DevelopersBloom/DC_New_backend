@@ -385,7 +385,7 @@ class DocumentJournalController
                   ->orWhere('credit_partner_id', $clientId);
             })
             ->with(['debitAccount:id,code', 'creditAccount:id,code'])
-            ->orderBy('id', 'asc')
+            ->orderBy('id', 'desc')
             ->get();
 
         return response()->json(DocumentJournalResource::collection($documents));
