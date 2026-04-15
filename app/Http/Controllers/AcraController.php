@@ -56,7 +56,7 @@ class AcraController
             ->whereBetween('date', [$from, $to])
             ->get()
             ->map(function ($journal) use ($journalToContractMap) {
-                dd($journalToContractMap,$journal);
+                dd($journalToContractMap,$journal,$journalToContractMap[$journal->journalable_id]);
                 return $journalToContractMap[$journal->journalable_id] ?? null;
             })
             ->filter()
