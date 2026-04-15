@@ -407,7 +407,7 @@ class DocumentJournalController
                         ->where('journalable_id', $contractId);
                 });
             }
-        })->get();
+        })->orderBy('id','desc')->get();
 
         foreach ($children as $child) {
             $this->collectAllRelatedIds($child,null, $ids);
