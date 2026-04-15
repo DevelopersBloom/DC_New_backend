@@ -662,7 +662,7 @@ class FileController extends Controller
             'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
 
             'num' => $contract->num,
-            'contr_amount' => $this->makeMoney($contract->amount),
+            'contr_amount' => $this->makeMoney($contract->contract_amount),
 
             'guarantor' => $guarantorName,
             'g_pass_ser' => $guarantor->passport_series,
