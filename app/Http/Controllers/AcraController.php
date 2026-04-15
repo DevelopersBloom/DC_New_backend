@@ -56,7 +56,7 @@ class AcraController
                 DocumentJournal::PAY_MOTHER_AMOUNT_CASH
 
             ])
-//            ->whereBetween('date', [$from, $to])
+            ->whereBetween('date', [$from, $to])
             ->get()
 //            ->map(function ($journal) use ($journalToContractMap) {
 //                return $journalToContractMap[$journal->journalable_id] ?? null;
