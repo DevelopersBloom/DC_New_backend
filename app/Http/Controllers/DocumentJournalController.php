@@ -367,15 +367,19 @@ class DocumentJournalController
             return response()->json(['message' => 'Պայմանագիրը չի գտնվել'], 404);
         }
 
-        $rootDoc = DocumentJournal::where('journalable_id', $contractId)
-            ->whereIn('journalable_type', ['Contract', 'App\Models\Contract'])
-            ->first();
+        $rootDocs = DocumentJournal::where('journalable_id', $contractId)
+            ->whereIn('journalable_type', ['Contract', \App\Models\Contract::class])
+            ->get();
 
-        if (!$rootDoc) {
-            return response()->json(['message' => 'Պայմանագրի հետ կապված փաստաթուղթ չի գտնվել'], 404);
+        if ($rootDocs->isEmpty()) {
+            return response()->json(DocumentJournalResource::collection(collect()));
         }
 
-        $allIds = $this->collectAllRelatedIds($rootDoc);
+        $allIds = [];
+        foreach ($rootDocs as $rootDoc) {
+            $allIds = $this->collectAllRelatedIds($rootDoc, $allIds);
+        }
+        $allIds = array_values(array_unique($allIds));
 
         $clientId = $contract->client_id;
 
