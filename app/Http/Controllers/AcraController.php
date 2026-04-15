@@ -56,14 +56,19 @@ class AcraController
             ->whereBetween('date', [$from, $to])
             ->get()
             ->map(function ($journal) use ($journalToContractMap) {
-                dd($journalToContractMap,$journal);
-                return $journalToContractMap[$journal->journalable_id] ?? null;
+                if ($journal->journalable_type === DocumentJournal::class) {
+                    return $journalToContractMap[$journal->journalable_id] ?? null;
+                }
+
+                if ($journal->journalable_type === Contract::class) {
+                    return $journal->journalable_id;
+                }
+                return null;
             })
             ->filter()
             ->unique()
             ->toArray();
 
-        dd($contractsWithInitialPayments,$contractsWithJournalActions,$mainJournalIds,$mainContractsIds);
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
             ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions) {
