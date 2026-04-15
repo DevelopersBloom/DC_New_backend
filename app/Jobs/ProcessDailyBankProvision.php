@@ -1,0 +1,138 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\ChartOfAccount;
+use App\Models\DocumentJournal;
+use App\Models\Transaction;
+use Carbon\Carbon;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class ProcessDailyBankProvision implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $tries = 3;
+
+    public function handle(): void
+    {
+        $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
+
+        Log::info("ProcessDailyBankProvision started. Comparing balance: {$yesterday->toDateString()} vs {$today->toDateString()}");
+
+        $bankAccountIds = ChartOfAccount::whereIn('code', ['102101', '102102'])->pluck('id');
+
+        if ($bankAccountIds->isEmpty()) {
+            Log::error("Bank accounts 102101/102102 not found in ChartOfAccount.");
+            return;
+        }
+
+        $balanceYesterday = $this->calculateBalanceUntil($bankAccountIds, $yesterday);
+
+        $balanceToday = $this->calculateBalanceUntil($bankAccountIds, $today);
+
+        $netChange = $balanceToday - $balanceYesterday;
+
+        Log::info("Balance Yesterday: {$balanceYesterday}, Balance Today: {$balanceToday}, Net Change: {$netChange}");
+
+        DB::beginTransaction();
+        try {
+            if ($netChange > 0) {
+                $provisionAmount = round($netChange * 0.01, 2);
+                $this->createConsolidatedProvisionEntry(
+                    $today->toDateString(),
+                    $provisionAmount,
+                    'Պահուստավորում',
+                    '730041',
+                    '15300PC'
+                );
+            } elseif ($netChange < 0) {
+                $provisionAmount = round(abs($netChange) * 0.01, 2);
+                $this->createConsolidatedProvisionEntry(
+                    $today->toDateString(),
+                    $provisionAmount,
+                    'Ապապահուստավորում',
+                    '15300PC',
+                    '63102'
+                );
+            } else {
+                Log::info("No net change in balance. Skipping provision.");
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error("ProcessDailyBankProvision failed: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+
+    private function calculateBalanceUntil($accountIds, Carbon $date): float
+    {
+        $endOfDate = $date->endOfDay()->toDateTimeString();
+
+        $debitSum = Transaction::whereIn('debit_account_id', $accountIds)
+            ->where('date', '<=', $endOfDate)
+            ->sum('amount_amd');
+
+        $creditSum = Transaction::whereIn('credit_account_id', $accountIds)
+            ->where('date', '<=', $endOfDate)
+            ->sum('amount_amd');
+
+        return (float) ($debitSum - $creditSum);
+    }
+
+    private function createConsolidatedProvisionEntry(
+        string $date,
+        float $amount,
+        string $label,
+        string $debitCode,
+        string $creditCode
+    ): void {
+        if ($amount <= 0) return;
+
+        $debitAcc  = ChartOfAccount::where('code', $debitCode)->first();
+        $creditAcc = ChartOfAccount::where('code', $creditCode)->first();
+
+        if (!$debitAcc || !$creditAcc) {
+            Log::warning("Provision accounts not found: {$debitCode} / {$creditCode}");
+            return;
+        }
+
+        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+
+        $journal = DocumentJournal::create([
+            'date'              => $date,
+            'document_type'     => $label,
+            'document_number'   => $nextDocNum,
+            'amount_amd'        => $amount,
+            'debit_account_id'  => $debitAcc->id,
+            'credit_account_id' => $creditAcc->id,
+            'user_id'           => 1,
+            'comment'           => $label . ' (Մնացորդի շարժի 1%) - ամփոփ',
+        ]);
+
+        Transaction::create([
+            'date'                 => $date,
+            'document_type'        => $label,
+            'document_number'      => $nextDocNum,
+            'debit_account_id'     => $debitAcc->id,
+            'credit_account_id'    => $creditAcc->id,
+            'amount_amd'           => $amount,
+            'user_id'              => 1,
+            'is_system'            => true,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $journal->id,
+        ]);
+
+        Log::info("Entry created: {$label} for amount {$amount}");
+    }
+}
