@@ -661,6 +661,8 @@ class FileController extends Controller
         $templateProcessor->setValues([
             'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
 
+            'num' => $contract->num,
+            'contr_amount' => $this->makeMoney($contract->amount),
             'guarantor' => $guarantorName,
             'g_pass_ser' => $guarantor->passport_series,
             'g_pass_val' => \Carbon\Carbon::parse($guarantor->passport_validity)->format('d.m.Y'),
