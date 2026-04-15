@@ -648,7 +648,7 @@ class FileController extends Controller
 
     private function generateGuarantorDocx($contract, $guarantor): array
     {
-        $templatePath = public_path('files/guarantor_template.docx');
+        $templatePath = public_path('files/guarantor_contract.docx');
 
         if (!file_exists($templatePath)) {
             abort(404, "Guarantor template not found");
