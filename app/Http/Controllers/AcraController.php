@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use PhpParser\Comment\Doc;
 
 class AcraController
 {
@@ -48,7 +49,9 @@ class AcraController
         })
             ->whereIn('document_type', [
                 DocumentJournal::PAY_MOTHER_AMOUNT,
-                DocumentJournal::INTEREST_REPAYMENT
+                DocumentJournal::INTEREST_REPAYMENT,
+                DocumentJournal::PAY_MOTHER_AMOUNT_CASH
+
             ])
             ->whereBetween('date', [$from, $to])
             ->get()
