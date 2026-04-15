@@ -368,16 +368,16 @@ class DocumentJournalController
         }
 
         $rootDocs = DocumentJournal::where('journalable_id', $contractId)
-            ->whereIn('journalable_type', ['Contract', \App\Models\Contract::class])
+            ->whereIn('journalable_type', ['Contract', 'App\Models\Contract'])
             ->get();
 
         if ($rootDocs->isEmpty()) {
-            return response()->json(DocumentJournalResource::collection(collect()));
+            return response()->json(['message' => 'Պայմանագրի հետ կապված փաստաթուղթ չի գտնվել'], 404);
         }
 
         $allIds = [];
         foreach ($rootDocs as $rootDoc) {
-            $allIds = $this->collectAllRelatedIds($rootDoc, $allIds);
+            $this->collectAllRelatedIds($rootDoc, $allIds);
         }
         $allIds = array_values(array_unique($allIds));
 
