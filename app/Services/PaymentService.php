@@ -239,7 +239,6 @@ class PaymentService
                     $remainingAmount -= $paidInterest;
                     $payment->interest_payment -= $paidInterest;
                 }
-                dd($remainingInterestPlan,$paidInterest,$remainingInterestAmount,$remainingAmount);
 
                 if ($payment->to_date < now()->format('Y-m-d')) {
                     $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
@@ -249,6 +248,7 @@ class PaymentService
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                     $payment->principal_payment -= $paidPrincipal;
                 }
+                dd($paidPrincipal,$remainingAmount);
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
