@@ -113,7 +113,6 @@ class PaymentService
                     $principal_amount += $result['principal_amount'];
                 }
             }
-            dd($amount,$interestAmount,$interest_amount,$principal_amount);
             if ($amount > 0) {
 
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id);
