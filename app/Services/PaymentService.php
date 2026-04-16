@@ -240,7 +240,7 @@ class PaymentService
                     $payment->interest_payment -= $paidInterest;
                 }
 
-                if ($payment->to_date < now()->format('Y-m-d')) {
+                if ($payment->to_date <= now()->format('Y-m-d')) {
                     $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
                     $remainingAmount -= $paidPrincipal;
 
