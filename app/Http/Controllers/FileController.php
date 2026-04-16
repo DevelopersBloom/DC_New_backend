@@ -282,12 +282,12 @@ class FileController extends Controller
 
         $templateProcessor = new TemplateProcessor($templatePath);
 
-        $clientName = $client->name . ' ' . $client->surname;
+        $clientName = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
         $userName = $user ? ($user->name . ' ' . $user->surname) : '';
         $sellerName = $seller ? ($seller->name . ' ' . $seller->surname) : '';
-        $yearlyRate = round($contract->interest_rate * 365, 5);
-        $effectiveRate = round($contract->effective_annual_rate, 5);
-        $lumpRate = round($contract->lump_rate, 3);
+        $yearlyRate = round($contract->interest_rate * 365, 2);
+        $effectiveRate = round($contract->effective_annual_rate, 2);
+        $lumpRate = round($contract->lump_rate, 2);
         $sellerCode = $seller
             ? ($seller->type === 'individual'
                 ? ($seller->social_card_number ?? '')
