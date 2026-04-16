@@ -370,7 +370,7 @@ class FileController extends Controller
                     'i_cw'       => $item->clear_weight,
                     'i_h'        => $item->hallmark,
                     'i_am'       => $this->makeMoney((int)$amount),
-                    't_i_am' => $this->makeMoney((int)$rowTotal),
+//                    't_i_am' => $this->makeMoney((int)$rowTotal),
                 ];
 
                 $totals['count']  += $count;
@@ -385,7 +385,7 @@ class FileController extends Controller
                     't_i_c' => $totals['count'],
                     't_i_w' => $totals['weight'],
                     't_i_cw' => $totals['clear_weight'],
-                    't_i_total_am' => $this->makeMoney((int)$totals['sum']),
+                    't_i_am' => $this->makeMoney((int)$totals['sum']),
                 ]);
             }
         }
