@@ -98,6 +98,19 @@ class PaymentService
             // If the entered amount can fully cover all selected rows, or the caller explicitly
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
+            $asOfDay = $paymentDate
+                ? Carbon::parse($paymentDate, 'Asia/Yerevan')->toDateString()
+                : Carbon::now('Asia/Yerevan')->toDateString();
+            $hasOverdueInstallment = Payment::query()
+                ->where('contract_id', $contract->id)
+                ->where('type', 'regular')
+                ->where('status', 'initial')
+                ->where('to_date', '<', $asOfDay)
+                ->where('amount', '>', 0)
+                ->exists();
+            // Strict schedule waterfall: any overdue line at payment time, or penalty settled in this payment.
+            $amortizedScheduleWaterfall = $contract->payment_type === 'amortized'
+                && ($hasOverdueInstallment || $payed_penalty > 0);
             foreach ($payments as $payment) {
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
@@ -112,7 +125,8 @@ class PaymentService
                         $deal_id,
                         $forceScheduledForSelected,
                         $paymentDate,
-                        $interestAmount
+                        $interestAmount,
+                        $amortizedScheduleWaterfall
                     );
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
@@ -245,7 +259,7 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null,$interestAmount = 0)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null, $interestAmount = 0, bool $amortizedScheduleWaterfall = false)
     {
         $remainingAmount = $amount;
         $remainingInterestAmount = $interestAmount;
@@ -256,13 +270,18 @@ class PaymentService
         $interestPayment = null;
         $history = [];
         $earlyHandled = false;
+        $lineCompletionHandled = false;
 
         if ($contract->payment_type == 'amortized') {
             $principalPayment = $payment->principal_payment;
             $interestPayment = $payment->interest_payment;
-            $dueSnapshot = (float) $payment->amount;
 
-            $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate) : null;
+            $allowEarlySplit = !$amortizedScheduleWaterfall
+                && !$forceScheduledForSelected
+                && $amount + 10 >= (float) $payment->amount;
+            $earlySplit = $allowEarlySplit
+                ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate)
+                : null;
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
@@ -272,42 +291,46 @@ class PaymentService
                 $contract->left = max(0, $contract->left - $principalForLine);
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
-                $cashAppliedToLine = $paidInterest + $principalForLine;
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
                 $earlyHandled = true;
                 $paidPrincipal = $principalForLine;
             } else {
-                $remainingInterestPlan = $payment->interest_payment;
-                // Interest booked on a single line must never exceed the cash
-                // still available in this payment; otherwise the deal's
-                // interest_amount can exceed the amount actually received
-                // (observed: 62,000 payment booked 63,229 interest).
-                if ($remainingInterestAmount > 0 && $remainingAmount > 0) {
-                    $paidInterest = min(
-                        $remainingInterestAmount,
-                        $remainingInterestPlan,
-                        $remainingAmount
-                    );
-                    $remainingInterestAmount -= $paidInterest;
-                    $remainingAmount -= $paidInterest;
-                    $payment->interest_payment -= $paidInterest;
-                }
+                // Payment schedule: accrued interest for the line (interest_payment), then principal.
+                // Cash walks installments in collection order; remainder flows to the next line.
+                $outstandingStart = (float) $payment->amount;
+                $availableInterest = max(0.0, (float) ($payment->interest_payment ?? 0));
+                $availablePrincipal = max(0.0, (float) ($payment->principal_payment ?? 0));
 
-                if ($payment->to_date < now()->format('Y-m-d')) {
-                    $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
-                    $remainingAmount -= $paidPrincipal;
+                $paidInterest = min($remainingAmount, $availableInterest);
+                $remainingAmount -= $paidInterest;
 
+                $paidPrincipal = min($remainingAmount, $availablePrincipal);
+                $remainingAmount -= $paidPrincipal;
+
+                if ($paidPrincipal > 0) {
                     $contract->left = max(0, $contract->left - $paidPrincipal);
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-                    $payment->principal_payment -= $paidPrincipal;
-                } else {
-                    // On due date (or future scheduled line), consume the installment amount
-                    // from remaining cash once. Otherwise the same money is treated as
-                    // "remaining" later and applied to principal a second time.
-                    $lineOutstanding = max(0, (float) $payment->amount - $paidInterest);
-                    $lineApplied = min($remainingAmount, $lineOutstanding);
-                    $remainingAmount -= $lineApplied;
                 }
+
+                if ($remainingInterestAmount > 0 && $paidInterest > 0) {
+                    $remainingInterestAmount = max(0.0, (float) $remainingInterestAmount - $paidInterest);
+                }
+
+                $appliedToLine = $paidInterest + $paidPrincipal;
+
+                if ($appliedToLine + 0.0001 >= $outstandingStart) {
+                    $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
+                } elseif ($appliedToLine > 0) {
+                    $payment->interest_payment = max(0, $availableInterest - $paidInterest);
+                    $payment->principal_payment = max(0, $availablePrincipal - $paidPrincipal);
+                    $this->partiallyCompletePayment($payment, $appliedToLine, $deal_id, [], $principalPayment, $interestPayment);
+                    $fee = (float) ($payment->service_fee_payment ?? 0);
+                    $payment->amount = max(
+                        0.0,
+                        (float) $payment->interest_payment + (float) $payment->principal_payment + $fee
+                    );
+                }
+                $lineCompletionHandled = true;
             }
         } else {
             $paidInterest = min($remainingAmount, $payment->amount);
@@ -315,7 +338,7 @@ class PaymentService
             $paidPrincipal = 0;
         }
 
-        if (!$earlyHandled) {
+        if (!$earlyHandled && !$lineCompletionHandled) {
             $totalRequiredForThisLine = $payment->amount;
             if ($amount >= $totalRequiredForThisLine) {
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
