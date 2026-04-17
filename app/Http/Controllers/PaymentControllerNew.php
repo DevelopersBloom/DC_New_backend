@@ -60,7 +60,7 @@ class PaymentControllerNew extends Controller
             $payer = $request->payer;
             $cash = $request->cash;
             $paymentDate = $request->input('payment_date');
-            $date = now()->format('Y-m-d');
+            $date = $request->date ?? now()->format('Y-m-d');
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
             if ($rawPaymentIds) {
                 $ispPaymentSelected = true;
@@ -107,7 +107,7 @@ class PaymentControllerNew extends Controller
                 ->first();
             $forceScheduled = $paymentIds->isNotEmpty();
             $result = $this->paymentService->processPayments(
-                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate,$interestAmount,$ispPaymentSelected
+                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate,$interestAmount,$ispPaymentSelected,$date
             );
             $newPaymentAmount = $oldPaymentAmount + $amount;
             $history->interest_amount = $result['interest_amount'];
@@ -138,7 +138,6 @@ class PaymentControllerNew extends Controller
             $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
 
             $document_type = DocumentJournal::PAY_INTEREST_AMOUNT;
-            $date = Carbon::now()->format('Y-m-d');
 
             $interestAmount = $result['interest_amount'];
             $principalAmount = $result['principal_amount'];

@@ -27,8 +27,9 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null,$interestAmount = 0,$ispPaymentSelected = false)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null,$interestAmount = 0,$ispPaymentSelected = false,$date = null)
     {
+        $date = $date ?? Carbon::now()->format('Y-m-d');
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
@@ -37,14 +38,13 @@ class PaymentService
         $old_left = $contract->left;
         $old_collected = $contract->collected;
 
-        $result_penalty = $this->countPenalty($contract->id);
+        $result_penalty = $this->countPenalty($contract->id,$date);
         $penalty = $result_penalty['penalty_amount'];
         $delay_days = $result_penalty['delay_days'];
         $parent_id = $result_penalty['parent_id'];
         $payed_penalty = 0;
-        $date = Carbon::now()->format('Y-m-d');
         if ($penalty > 0) {
-            $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id);
+            $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id,$date);
             $payed_penalty = $penaltyResult['penalty'];
             $amount = $penaltyResult['amount'];
             if ($payed_penalty > 0) {
@@ -105,7 +105,8 @@ class PaymentService
                         $deal_id,
                         $forceScheduledForSelected,
                         $paymentDate,
-                        $interestAmount
+                        $interestAmount,
+                        $date
                     );
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
@@ -177,11 +178,11 @@ class PaymentService
             'discount' => 0
         ];
     }
-    public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false)
+    public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false,$date = null)
     {
         if ($amount < $penalty) {
             $discountAmount = $isDiscount ? $amount : 0;
-            $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash, [], $deal_id, null, false, $parent_id, $discountAmount);
+            $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash, [], $deal_id, $date, false, $parent_id, $discountAmount);
             //return 0;
             return [
                 'penalty' => $amount,
@@ -190,7 +191,7 @@ class PaymentService
             ];
         } else {
             $discountAmount = $isDiscount ? $penalty : 0;
-            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash, [], $deal_id, null, true, $parent_id, $discountAmount);
+            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash, [], $deal_id, $date, true, $parent_id, $discountAmount,$date);
             //  return $amount - $penalty;
             return [
                 'penalty' => $penalty,
@@ -200,7 +201,7 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null,$interestAmount = 0)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null,$interestAmount = 0,$date = null)
     {
         $remainingAmount = $amount;
         $remainingInterestAmount = $interestAmount;
@@ -228,7 +229,7 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
                 $cashAppliedToLine = $paidInterest + $principalForLine;
-                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
+                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment,$date);
                 $earlyHandled = true;
                 $paidPrincipal = $principalForLine;
             } else {
@@ -258,7 +259,7 @@ class PaymentService
         if (!$earlyHandled) {
             $totalRequiredForThisLine = $payment->amount;
             if ($amount >= $totalRequiredForThisLine) {
-                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment);
+                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment,$date);
             } else {
                 $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
             }
@@ -357,7 +358,7 @@ class PaymentService
             'remaining_cash' => (float) $remainingCash,
         ];
     }
-    private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null,$principal_payment = null,$interest_payment = null): void
+    private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null,$principal_payment = null,$interest_payment = null,$date = null): void
     {
         $oldAmount = $payment['amount'];
         $oldPaid = $payment['paid'];
@@ -365,7 +366,7 @@ class PaymentService
         $payment->paid += $payment['amount'] + $payment['penalty'];
         //$payment->paid_date = Carbon::now()->format('Y.m.d');
         if ($payment->last_payment == 0) {
-            $payment->date = Carbon::now()->format('Y.m.d');
+            $payment->date = $date ?? Carbon::now()->format('Y.m.d');
         }
         $payment->penalty = $payment['penalty'];
         $payment->cash = $cash;
@@ -405,12 +406,12 @@ class PaymentService
             'amount' => $oldAmount,
             'type' => 'regular',
             'description' => 'Regular payment',
-            'date' => Carbon::now()->format('Y-m-d'),
+            'date' => $date ?? Carbon::now()->format('Y-m-d'),
             'history' => $history
         ]);
     }
 
-    private function partiallyCompletePayment($payment, $paid, $deal_id = null, $history = [],$principal_payment = null,$interest_payment = null): void
+    private function partiallyCompletePayment($payment, $paid, $deal_id = null, $history = [],$principal_payment = null,$interest_payment = null,$date = null): void
     {
         $oldPaid = $payment->paid;
         $oldAmount = $payment->amount;
@@ -439,7 +440,7 @@ class PaymentService
             'amount' => $paid,
             'type' => 'regular',
             'description' => 'Regular payment',
-            'date' => Carbon::now()->format('Y-m-d'),
+            'date' => $date ?? Carbon::now()->format('Y-m-d'),
             'history' => $history
         ]);
     }
