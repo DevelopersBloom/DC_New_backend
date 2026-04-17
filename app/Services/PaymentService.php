@@ -247,6 +247,13 @@ class PaymentService
                     $contract->left = max(0, $contract->left - $paidPrincipal);
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                     $payment->principal_payment -= $paidPrincipal;
+                } else {
+                    // On due date (or future scheduled line), consume the installment amount
+                    // from remaining cash once. Otherwise the same money is treated as
+                    // "remaining" later and applied to principal a second time.
+                    $lineOutstanding = max(0, (float) $payment->amount - $paidInterest);
+                    $lineApplied = min($remainingAmount, $lineOutstanding);
+                    $remainingAmount -= $lineApplied;
                 }
             }
         } else {
