@@ -168,6 +168,23 @@ class PaymentService
             ]);
         }
 
+        // Soft invariant: booked penalty + interest + principal must not exceed
+        // the cash actually received. This does NOT throw (to avoid breaking
+        // any edge case currently in production), it only records a warning
+        // so regressions are visible while the allocator is refactored.
+        $bookedTotal = (float) $payed_penalty + (float) $interest_amount + (float) $principal_amount;
+        if ($bookedTotal > (float) $initial_amount + 0.01) {
+            \Log::warning('Payment allocation invariant violated', [
+                'contract_id'      => $contract->id ?? null,
+                'deal_id'          => $deal_id,
+                'amount_received'  => $initial_amount,
+                'penalty'          => $payed_penalty,
+                'interest_amount'  => $interest_amount,
+                'principal_amount' => $principal_amount,
+                'booked_total'     => $bookedTotal,
+            ]);
+        }
+
         return [
             'payments_sum' => $payments_sum,
             'interest_amount' => $interest_amount,
@@ -233,8 +250,16 @@ class PaymentService
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
-                if ($remainingInterestAmount > 0) {
-                    $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
+                // Interest booked on a single line must never exceed the cash
+                // still available in this payment; otherwise the deal's
+                // interest_amount can exceed the amount actually received
+                // (observed: 62,000 payment booked 63,229 interest).
+                if ($remainingInterestAmount > 0 && $remainingAmount > 0) {
+                    $paidInterest = min(
+                        $remainingInterestAmount,
+                        $remainingInterestPlan,
+                        $remainingAmount
+                    );
                     $remainingInterestAmount -= $paidInterest;
                     $remainingAmount -= $paidInterest;
                     $payment->interest_payment -= $paidInterest;
