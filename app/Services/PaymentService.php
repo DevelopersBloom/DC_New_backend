@@ -121,6 +121,44 @@ class PaymentService
             }
 
         }
+
+        // Final allocation clamp (must run BEFORE contract->collected is
+        // increased and BEFORE any Modification is written, so that every
+        // downstream record sees the same clamped numbers we return).
+        // Booked penalty + interest + principal must NEVER exceed the cash
+        // actually received from the client.
+        $initialFloat   = (float) $initial_amount;
+        $penaltyFloat   = (float) $payed_penalty;
+        $principalFloat = (float) $principal_amount;
+        $interestFloat  = (float) $interest_amount;
+        $bookedTotal    = $penaltyFloat + $interestFloat + $principalFloat;
+
+        if ($bookedTotal > $initialFloat + 0.01) {
+            $allowedForInterest = max(0.0, $initialFloat - $penaltyFloat - $principalFloat);
+            $clampedInterest    = min($interestFloat, $allowedForInterest);
+
+            \Log::warning('Payment allocation invariant violated – clamping interest', [
+                'contract_id'            => $contract->id ?? null,
+                'deal_id'                => $deal_id,
+                'amount_received'        => $initialFloat,
+                'penalty'                => $penaltyFloat,
+                'principal_amount'       => $principalFloat,
+                'interest_amount_before' => $interestFloat,
+                'interest_amount_after'  => $clampedInterest,
+                'booked_total_before'    => $bookedTotal,
+            ]);
+
+            $interest_amount = $clampedInterest;
+
+            // Belt and suspenders: if principal + penalty still exceeds cash
+            // (should not happen – both branches already cap principal by the
+            // remaining cash – but keep the invariant bullet-proof).
+            $remainingCashAfterInterest = max(0.0, $initialFloat - $penaltyFloat - $interest_amount);
+            if ($principalFloat > $remainingCashAfterInterest + 0.01) {
+                $principal_amount = $remainingCashAfterInterest;
+            }
+        }
+
         $contract->collected += $interest_amount;
         $contract->save();
         if ($principal_amount > 0 && $contract->payment_type == 'amortized') {
@@ -165,23 +203,6 @@ class PaymentService
                 'old_value' => $old_collected !== null ? (string)$old_collected : null,
                 'new_value' => (string)max(0, $old_collected + $interest_amount),
                 'effective_date' => now()->toDateString(),
-            ]);
-        }
-
-        // Soft invariant: booked penalty + interest + principal must not exceed
-        // the cash actually received. This does NOT throw (to avoid breaking
-        // any edge case currently in production), it only records a warning
-        // so regressions are visible while the allocator is refactored.
-        $bookedTotal = (float) $payed_penalty + (float) $interest_amount + (float) $principal_amount;
-        if ($bookedTotal > (float) $initial_amount + 0.01) {
-            \Log::warning('Payment allocation invariant violated', [
-                'contract_id'      => $contract->id ?? null,
-                'deal_id'          => $deal_id,
-                'amount_received'  => $initial_amount,
-                'penalty'          => $payed_penalty,
-                'interest_amount'  => $interest_amount,
-                'principal_amount' => $principal_amount,
-                'booked_total'     => $bookedTotal,
             ]);
         }
 
