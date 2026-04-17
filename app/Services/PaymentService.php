@@ -84,6 +84,13 @@ class PaymentService
             }
         }
 
+        // calculateCurrentPayment() passes current_amount = accrued + penalty.
+        // Penalty is already taken from the same cash above, so the allocation
+        // budget for "accrued interest" must not still include that penalty.
+        if ($payed_penalty > 0 && $interestAmount > 0) {
+            $interestAmount = max(0.0, (float) $interestAmount - (float) $payed_penalty);
+        }
+
         if ($amount > 0) {
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
