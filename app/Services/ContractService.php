@@ -490,7 +490,8 @@ class   ContractService
             $prevPayDate    = $this->getNextWorkingDay(clone $prevRawDate);
             $paymentDate    = $this->getNextWorkingDay(clone $rawPaymentDate);
 
-            $daysPrev = $i == 0 ? $prevRawDate : $paymentDate;
+            $daysPrev = $i == 1 ? $prevRawDate : $prevPayDate;
+//            $daysInPeriod   = $paymentDate->diffInDays($prevRawDate);
             $daysInPeriod   = $paymentDate->diffInDays($daysPrev);
 
             $interestMonthlyRate = ($contract->interest_rate / 100) * $daysInPeriod;
