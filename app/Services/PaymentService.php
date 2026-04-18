@@ -228,6 +228,7 @@ class PaymentService
                 $earlyHandled = true;
                 $paidPrincipal = $principalForLine;
             } else {
+                dd(3);
                 $remainingInterestPlan = $payment->interest_payment;
                 if ($remainingInterestAmount > 0) {
                     $paidInterest = min($remainingInterestAmount, $remainingInterestPlan,$amount);
