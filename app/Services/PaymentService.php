@@ -107,6 +107,7 @@ class PaymentService
                         $interestAmount,
                         $date
                     );
+                    dd($result);
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
@@ -239,7 +240,6 @@ class PaymentService
                     $remainingAmount -= $paidInterest;
                     $payment->interest_payment -= $paidInterest;
                 }
-                dd($remainingInterestAmount,$remainingInterestPlan,$paidInterest);
 
 
                 if ($payment->to_date <= now()->format('Y-m-d')) {
