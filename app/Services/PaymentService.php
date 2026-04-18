@@ -37,7 +37,6 @@ class PaymentService
         $old_left = $contract->left;
         $old_collected = $contract->collected;
         $result_penalty = $this->countPenalty($contract->id,$date);
-        dd($result_penalty,$date);
         $penalty = $result_penalty['penalty_amount'];
         $delay_days = $result_penalty['delay_days'];
         $parent_id = $result_penalty['parent_id'];
@@ -82,7 +81,7 @@ class PaymentService
                 }
             }
         }
-
+dd($penalty,$amount);
         if ($amount > 0) {
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
