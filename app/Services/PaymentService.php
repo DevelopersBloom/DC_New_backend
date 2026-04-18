@@ -81,7 +81,6 @@ class PaymentService
                 }
             }
         }
-dd($penalty,$amount);
         if ($amount > 0) {
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
@@ -111,6 +110,7 @@ dd($penalty,$amount);
                     $principal_amount += $result['principal_amount'];
                 }
             }
+            dd($result);
             if ($amount > 0) {
 
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id,$date);
