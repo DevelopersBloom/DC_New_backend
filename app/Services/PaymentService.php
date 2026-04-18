@@ -95,6 +95,7 @@ class PaymentService
                     $result = $this->processSinglePayment(
                         $contract,
                         $payment,
+                        $amount,
                         $payer,
                         $cash,
                         $deal_id,
