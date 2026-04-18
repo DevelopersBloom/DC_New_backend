@@ -193,7 +193,7 @@ class PaymentControllerNew extends Controller
                 $debitMother = $ruleMotherAmount->debit_account_id;
                 $creditMother = $ruleMotherAmount->credit_account_id;
                 $documentTypePrincipal = DocumentJournal::PAY_MOTHER_AMOUNT;
-
+dd($date);
                 $journalDocPrincipal = DocumentJournal::create([
                     'date' => $date,
                     'document_number' => $nextDocNum,
