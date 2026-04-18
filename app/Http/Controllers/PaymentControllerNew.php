@@ -327,7 +327,7 @@ class PaymentControllerNew extends Controller
             $deal->payment_id = $paymentId;
             $deal->save();
             if ($motherAmount > 0) {
-                $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_cash';
+                $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_amount';
                 $docId = $this->createAccountingTransaction(
                     $contract, $motherAmount, $ruleKey, 'mother_amount_payment', $deal->id
                 );
