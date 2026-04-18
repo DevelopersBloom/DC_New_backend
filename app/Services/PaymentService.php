@@ -234,6 +234,7 @@ class PaymentService
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
+                dd($remainingInterestAmount,$paidInterest);
                 if ($remainingInterestAmount > 0) {
                     $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
                     $remainingInterestAmount -= $paidInterest;
