@@ -81,7 +81,6 @@ class PaymentService
                 }
             }
         }
-        dd($amount,$penalty);
         if ($amount > 0) {
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
@@ -92,7 +91,7 @@ class PaymentService
             foreach ($payments as $payment) {
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
-
+dd($payment);
                 if ($amount > 0) {
                     $result = $this->processSinglePayment(
                         $contract,
