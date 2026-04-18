@@ -113,7 +113,6 @@ class PaymentService
                     $principal_amount += $result['principal_amount'];
                 }
             }
-            dd($amount,$result);
             if ($amount > 0) {
 
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id,$date);
@@ -494,6 +493,7 @@ class PaymentService
 
         }
         if ($amount > 10) {
+            dd($amount);
             $this->payPartial($contract, $amount, false, $cash, $deal_id,$date,false,true);
         }
         return $decrease;
