@@ -213,7 +213,7 @@ class PaymentControllerNew extends Controller
                     'document_type' => $documentTypePrincipal,
 
                     'debit_account_id' => $debitMother,
-                    'debit_partner_id' => $clientId,
+                    'credit_partner_id' => $clientId,
                     'debit_currency_id' => 1,
 
                     'credit_account_id' => $creditMother,
