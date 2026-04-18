@@ -370,7 +370,6 @@ trait ContractTrait
         }
 
         $now = $import_date ? Carbon::parse($import_date) : now();
-        dd($now,$import_date);
         $overdue_payments = Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')
             ->where('type', '!=', 'penalty')
