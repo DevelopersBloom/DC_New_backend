@@ -107,14 +107,12 @@ class PaymentService
                         $interestAmount,
                         $date
                     );
-                    dd($result);
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
                     $principal_amount += $result['principal_amount'];
                 }
             }
-            dd($result,$amount);
             if ($amount > 0) {
 
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id,$date);
