@@ -716,7 +716,6 @@ class PaymentService
             $changes[] = $oldData;
         }
         if (!empty($changes)) {
-            dd($changes);
             $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                 ->where('type', 'regular')
                 ->where('status', 'initial')
