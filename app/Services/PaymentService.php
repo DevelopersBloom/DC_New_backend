@@ -493,7 +493,6 @@ class PaymentService
 
         }
         if ($amount > 10) {
-            dd($amount);
             $this->payPartial($contract, $amount, false, $cash, $deal_id,$date,false,true);
         }
         return $decrease;
