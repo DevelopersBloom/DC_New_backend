@@ -141,7 +141,7 @@ class PaymentControllerNew extends Controller
 
             $interestAmount = $result['interest_amount'];
             $principalAmount = $result['principal_amount'];
-            dd($date);
+            dd($interestAmount,$principalAmount);
             if ($interestAmount > 0) {
                 $journalDoc = DocumentJournal::create([
                     'date'               => $date,
