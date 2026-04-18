@@ -200,7 +200,6 @@ class PaymentService
     {
         $remainingAmount = $amount;
         $remainingInterestAmount = $interestAmount;
-        dd($interestAmount,$remainingInterestAmount);
         $paidInterest = 0;
         $paidPrincipal = 0;
 
