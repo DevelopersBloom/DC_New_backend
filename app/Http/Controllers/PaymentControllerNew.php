@@ -60,7 +60,8 @@ class PaymentControllerNew extends Controller
             $payer = $request->payer;
             $cash = $request->cash;
 //            $paymentDate = $request->input('payment_date');
-            $date = $request->contract_created_date ?? now()->format('Y-m-d');
+            $date = $request->contract_created_date;
+dd($date);
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
             if ($rawPaymentIds) {
                 $ispPaymentSelected = true;
