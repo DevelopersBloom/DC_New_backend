@@ -59,7 +59,7 @@ class PaymentControllerNew extends Controller
             $amount = $request->amount;
             $payer = $request->payer;
             $cash = $request->cash;
-            $paymentDate = $request->input('payment_date');
+//            $paymentDate = $request->input('payment_date');
             $date = $request->contract_created_date ?? now()->format('Y-m-d');
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
             if ($rawPaymentIds) {
