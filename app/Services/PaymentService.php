@@ -39,7 +39,7 @@ class PaymentService
         $old_collected = $contract->collected;
 
         $result_penalty = $this->countPenalty($contract->id,$date);
-        dd($result_penalty);
+        dd($result_penalty,$date);
         $penalty = $result_penalty['penalty_amount'];
         $delay_days = $result_penalty['delay_days'];
         $parent_id = $result_penalty['parent_id'];
