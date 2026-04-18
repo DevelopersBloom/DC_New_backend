@@ -29,7 +29,6 @@ class PaymentService
 
     public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false,$interestAmount = 0,$ispPaymentSelected = false,$date = null)
     {
-        dd(3);
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
@@ -82,6 +81,7 @@ class PaymentService
                 }
             }
         }
+        dd($amount,$penalty);
         if ($amount > 0) {
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
