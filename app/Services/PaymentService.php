@@ -751,7 +751,7 @@ class PaymentService
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
         foreach ($payments as $payment) {
-            $payment = $this->normalizePaymentDates($payment, $contract);
+//            $payment = $this->normalizePaymentDates($payment, $contract);
             $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
             $now = now()->startOfDay();
