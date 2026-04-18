@@ -107,7 +107,6 @@ class PaymentService
                         $interestAmount,
                         $date
                     );
-                    dd($result);
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
@@ -234,13 +233,14 @@ class PaymentService
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
-                dd($remainingInterestAmount,$paidInterest);
                 if ($remainingInterestAmount > 0) {
                     $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
                     $remainingInterestAmount -= $paidInterest;
                     $remainingAmount -= $paidInterest;
                     $payment->interest_payment -= $paidInterest;
                 }
+                dd($remainingInterestAmount,$remainingInterestPlan,$paidInterest);
+
 
                 if ($payment->to_date <= now()->format('Y-m-d')) {
                     $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
