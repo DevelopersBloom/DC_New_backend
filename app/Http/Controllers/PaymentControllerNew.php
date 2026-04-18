@@ -198,7 +198,7 @@ class PaymentControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypePrincipal,
                     'amount_amd' => $principalAmount,
-                    'debit_partner_id' => $clientId,
+                    'credit_partner_id' => $clientId,
                     'comment' => 'mother_amount_payment',
                     'debit_account_id' => $debitMother,
                     'credit_account_id' => $creditMother,
