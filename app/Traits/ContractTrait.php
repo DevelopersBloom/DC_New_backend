@@ -464,7 +464,6 @@ trait ContractTrait
             ->where('date', '<', $now->toDateTimeString())
             ->orderBy('date', 'asc')
             ->get();
-dd($overdue_payments);
         $total_penalty_amount = 0;
         $max_delay_days = 0;
         $first_penalty_start_date = null;
