@@ -272,7 +272,7 @@ class PaymentService
                     ->orderBy('id', 'asc')
                     ->get();
                 if ($remainingInitialPayments->isNotEmpty()) {
-                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments);
+                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments,$now);
                 }
             }
         }
@@ -544,7 +544,7 @@ class PaymentService
 
     public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null,$is_recount = false,$is_remaining_payment = false)
     {
-        $now = Carbon::now();
+        $now = $date ?? Carbon::now();
         $history = ['payment_changes' => []];
 
         $payments = Payment::where('contract_id', $contract->id)
@@ -724,7 +724,7 @@ class PaymentService
                 ->get();
             // Single save point: recalculates interest on the updated principals and persists
             // all modified fields (paid, principal_payment, interest_payment, amount) atomically.
-            $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments);
+            $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments,$now);
         }
 
         foreach ($changes as &$change) {
@@ -744,17 +744,17 @@ class PaymentService
      * Running balance: interest for each period = calcAmount(balance, days, rate) per schedule,
      * then balance -= principal_payment for that line.
      */
-    protected function recalculateAmortizedInterestFromSchedule(Contract $contract, $payments): void
+    protected function recalculateAmortizedInterestFromSchedule(Contract $contract, $payments,$date = null): void
     {
         $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
         $balance = (float) $contract->provided_amount;
         $rate = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
         foreach ($payments as $payment) {
-//            $payment = $this->normalizePaymentDates($payment, $contract);
+            $payment = $this->normalizePaymentDates($payment, $contract);
             $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
-            $now = now()->startOfDay();
+            $now = $date ?? now()->startOfDay();
 
             $selectedDate = $fromDate->lt($now) ? $now : $fromDate;
 
