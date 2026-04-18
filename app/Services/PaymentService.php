@@ -90,7 +90,10 @@ class PaymentService
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
                 $payment = $this->normalizePaymentDates($payment, $contract);
-                if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
+                if ($payment->from_date >= $date && !$ispPaymentSelected) {
+                    dd($payment->id);
+                    continue;
+                }
                 if ($amount > 0) {
                     $result = $this->processSinglePayment(
                         $contract,
@@ -234,7 +237,6 @@ class PaymentService
                     $remainingAmount -= $paidInterest;
                     $payment->interest_payment -= $paidInterest;
                 }
-dd($paidInterest,$payment->interest_payment);
 
                 if ($payment->to_date <= now()->format('Y-m-d')) {
                     $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
