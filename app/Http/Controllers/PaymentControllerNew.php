@@ -47,7 +47,8 @@ class PaymentControllerNew extends Controller
     public function makePayment(PaymentRequest $request): JsonResponse
     {
         $contract = Contract::findOrFail($request->contract_id);
-        $currentPaymentAmount = $this->calculateCurrentPayment($contract);
+        $date = $request->contract_created_date ?? now()->format('Y-m-d');
+        $currentPaymentAmount = $this->calculateCurrentPayment($contract,$date);
         $interestAmount = max(0.0, (float) ($currentPaymentAmount['current_amount'] ?? 0));
         $fullPaymentThreshold = $interestAmount + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
         if ((float) $request->amount >= $fullPaymentThreshold) {
@@ -60,7 +61,6 @@ class PaymentControllerNew extends Controller
             $payer = $request->payer;
             $cash = $request->cash;
 //            $paymentDate = $request->input('payment_date');
-            $date = $request->contract_created_date ?? now()->format('Y-m-d');
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
             if ($rawPaymentIds) {
                 $ispPaymentSelected = true;
