@@ -60,7 +60,8 @@ class PaymentControllerNew extends Controller
             $payer = $request->payer;
             $cash = $request->cash;
             $paymentDate = $request->input('payment_date');
-            $date = $request->date ?? now()->format('Y-m-d');
+            $date = $request->contract_created_date ?? now()->format('Y-m-d');
+            dd($date);
             $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
             if ($rawPaymentIds) {
                 $ispPaymentSelected = true;
@@ -107,7 +108,7 @@ class PaymentControllerNew extends Controller
                 ->first();
             $forceScheduled = $paymentIds->isNotEmpty();
             $result = $this->paymentService->processPayments(
-                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled, $paymentDate,$interestAmount,$ispPaymentSelected,$date
+                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled,$interestAmount,$ispPaymentSelected,$date
             );
             $newPaymentAmount = $oldPaymentAmount + $amount;
             $history->interest_amount = $result['interest_amount'];

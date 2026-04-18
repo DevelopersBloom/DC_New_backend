@@ -27,7 +27,7 @@ class PaymentService
         $this->contractService = $contractService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $paymentDate = null,$interestAmount = 0,$ispPaymentSelected = false,$date = null)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false,$interestAmount = 0,$ispPaymentSelected = false,$date = null)
     {
         $date = $date ?? Carbon::now()->format('Y-m-d');
         $payments_sum = 0;
