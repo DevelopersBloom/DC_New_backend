@@ -37,7 +37,6 @@ class PaymentService
         $old_provided = $contract->provided_amount;
         $old_left = $contract->left;
         $old_collected = $contract->collected;
-dd($date);
         $result_penalty = $this->countPenalty($contract->id,$date);
         dd($result_penalty,$date);
         $penalty = $result_penalty['penalty_amount'];
