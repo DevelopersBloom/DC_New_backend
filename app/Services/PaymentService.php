@@ -104,7 +104,6 @@ class PaymentService
                         $cash,
                         $deal_id,
                         $forceScheduledForSelected,
-                        $paymentDate,
                         $interestAmount,
                         $date
                     );
@@ -201,7 +200,7 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $paymentDate = null,$interestAmount = 0,$date = null)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false,$interestAmount = 0,$date = null)
     {
         $remainingAmount = $amount;
         $remainingInterestAmount = $interestAmount;
@@ -218,7 +217,7 @@ class PaymentService
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
 
-            $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $paymentDate) : null;
+            $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date) : null;
             if ($earlySplit !== null) {
                 $paidInterest = $earlySplit['paid_interest'];
                 $paidPrincipal = $earlySplit['paid_principal'];
