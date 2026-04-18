@@ -107,7 +107,6 @@ class PaymentService
                         $interestAmount,
                         $date
                     );
-                    dd($result);
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
@@ -235,7 +234,7 @@ class PaymentService
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
                 if ($remainingInterestAmount > 0) {
-                    $paidInterest = min($remainingInterestAmount, $remainingInterestPlan);
+                    $paidInterest = min($remainingInterestAmount, $remainingInterestPlan,$amount);
                     $remainingInterestAmount -= $paidInterest;
                     $remainingAmount -= $paidInterest;
                     $payment->interest_payment -= $paidInterest;
