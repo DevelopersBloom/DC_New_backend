@@ -115,7 +115,7 @@ class PaymentService
             }
             if ($amount > 0) {
 
-                $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id);
+                $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id,$date);
                 //$principal_amount += $amount;
                 $amount = 0;
             }
@@ -265,8 +265,8 @@ class PaymentService
         }
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
             $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-            $now = $paymentDate
-                ? Carbon::parse($paymentDate, 'Asia/Yerevan')->startOfDay()
+            $now = $date
+                ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
                 : Carbon::now('Asia/Yerevan')->startOfDay();
             if ($due->gt($now)) {
                 $remainingInitialPayments = Payment::where('contract_id', $contract->id)
@@ -444,7 +444,7 @@ class PaymentService
         ]);
     }
 
-    private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null)
+    private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null,$date = null)
     {
         $nextPayment = Payment::where('contract_id', $contract->id)->where('status', 'initial')
             ->where('id', '!=', $payment_id)
@@ -492,7 +492,7 @@ class PaymentService
 
         }
         if ($amount > 10) {
-            $this->payPartial($contract, $amount, false, $cash, $deal_id,null,false,true);
+            $this->payPartial($contract, $amount, false, $cash, $deal_id,$date,false,true);
         }
         return $decrease;
 
