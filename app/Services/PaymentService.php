@@ -603,7 +603,6 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
-                dd($partialAmount);
                 $providedAmount = $contract->provided_amount - $partialAmount;
                 $contract->provided_amount = max(0, $providedAmount);
                 $contract->left = max(0, $contract->left - $partialAmount);
@@ -717,6 +716,7 @@ class PaymentService
             $changes[] = $oldData;
         }
         if (!empty($changes)) {
+            dd($changes);
             $remainingInitialPayments = Payment::where('contract_id', $contract->id)
                 ->where('type', 'regular')
                 ->where('status', 'initial')
