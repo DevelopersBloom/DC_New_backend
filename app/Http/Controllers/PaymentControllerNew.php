@@ -141,6 +141,7 @@ class PaymentControllerNew extends Controller
 
             $interestAmount = $result['interest_amount'];
             $principalAmount = $result['principal_amount'];
+            dd($date);
             if ($interestAmount > 0) {
                 $journalDoc = DocumentJournal::create([
                     'date'               => $date,
@@ -193,7 +194,6 @@ class PaymentControllerNew extends Controller
                 $debitMother = $ruleMotherAmount->debit_account_id;
                 $creditMother = $ruleMotherAmount->credit_account_id;
                 $documentTypePrincipal = DocumentJournal::PAY_MOTHER_AMOUNT;
-dd($date);
                 $journalDocPrincipal = DocumentJournal::create([
                     'date' => $date,
                     'document_number' => $nextDocNum,
@@ -300,7 +300,7 @@ dd($date);
             $totalAmount = $request->amount;
             $payer = $request->payer;
             $cash = $request->cash;
-            $date = Carbon::now()->format('Y-m-d');
+            $date = $request->contract_created_date ?? Carbon::now()->format('Y-m-d');
 
             $currentPaymentData = $this->calculateCurrentPayment($contract);
 
@@ -323,7 +323,7 @@ dd($date);
 
             $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null);
             $oldPaymentAmount = $this->calcPaidAmount($contract);
-            $paymentId = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id);
+            $paymentId = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id,$date);
             $newPaymentAmount = $oldPaymentAmount + $totalAmount;
             $deal->payment_id = $paymentId;
             $deal->save();

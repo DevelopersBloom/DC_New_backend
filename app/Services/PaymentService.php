@@ -956,7 +956,7 @@ class PaymentService
             }
         }
     }
-    public function processFullPayment($contract, $amount, $payer, $cash, $deal_id = null)
+    public function processFullPayment($contract, $amount, $payer, $cash, $deal_id = null,$date = null)
     {
         Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')->delete();
@@ -982,7 +982,7 @@ class PaymentService
             'amount' => $contract->provided_amount,
             'amount_type' => 'provided_amount',
             'type' => 'out',
-            'date' => now()->toDateTimeString(),
+            'date' => $date ?? now()->toDateTimeString(),
             'deal_id' => $deal_id,
             'category_id' => $contract->category_id,
             'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
@@ -992,12 +992,12 @@ class PaymentService
             'amount' => $contract->estimated_amount,
             'amount_type' => 'estimated_amount',
             'type' => 'out',
-            'date' => now()->toDateTimeString(),
+            'date' => $date ?? now()->toDateTimeString(),
             'deal_id' => $deal_id,
             'category_id' => $contract->category_id,
             'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
         ]);
-        $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash, $history, $deal_id);
+        $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash, $history, $deal_id,$date);
 
         $contract->status = 'completed';
         $contract->left = 0;
