@@ -109,7 +109,6 @@ class PaymentControllerNew extends Controller
             $result = $this->paymentService->processPayments(
                 $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled,$interestAmount,$ispPaymentSelected,$date
             );
-            dd($result);
             $newPaymentAmount = $oldPaymentAmount + $amount;
             $history->interest_amount = $result['interest_amount'];
             $history->penalty = $result['penalty'];
