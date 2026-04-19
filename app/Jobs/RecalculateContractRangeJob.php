@@ -36,7 +36,6 @@ class RecalculateContractRangeJob implements ShouldQueue
                 $docIds = DocumentJournal::where('journalable_id', $journal->id)
                     ->whereBetween('date', [$this->from, $this->to])
                     ->whereIn('document_type',[DocumentJournal::EFFECTIVE_RATE_AMOUNT,DocumentJournal::INTEREST_RATE_AMOUNT,DocumentJournal::PENALTY_RATE_AMOUNT])
-                    ->where('is_system',true)
                     ->pluck('id');
 
                 Transaction::whereIn('transactionable_id', $docIds)->delete();
