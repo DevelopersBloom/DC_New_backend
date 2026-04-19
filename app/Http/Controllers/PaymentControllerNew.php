@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ExecuteItemRequest;
 use App\Http\Requests\PaymentRequest;
+use App\Jobs\RecalculateContractRangeJob;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\Contract;
@@ -250,6 +251,13 @@ class PaymentControllerNew extends Controller
 
 
             DB::commit();
+            if ($date < now()->toDateString()) {
+                RecalculateContractRangeJob::dispatch(
+                    $contract->id,
+                    $date,
+                    now()->toDateString()
+                );
+            }
             return response()->json([
                 'success' => 'success',
                 'message' => 'Successfully created payment!'
