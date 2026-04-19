@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class ContractDailyRateService
 {
+    use ContractTrait;
     public function processDay(Contract $contract, string $date): void
     {
         $journal = $this->getJournal($contract);
@@ -128,7 +129,7 @@ class ContractDailyRateService
 
     private function calculateOpeningBalance(Contract $contract)
     {
-        return app(ContractTrait::class)
-            ->calculateCurrentAmortizedBalance($contract);
+        return $this->calculateCurrentAmortizedBalance($contract);
     }
+
 }
