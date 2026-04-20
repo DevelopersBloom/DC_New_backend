@@ -54,10 +54,11 @@ class ProcessDailyBankProvision implements ShouldQueue
 
             $alreadyExists = Transaction::whereDate('date', $date)
                 ->whereIn('document_type', ['Պահուստավորում', 'Ապապահուստավորում'])
-                ->exists();
+                ->first();
 
             if ($alreadyExists) {
                 Log::warning("Provision already exists for {$date}");
+                Log::info($alreadyExists->id);
                 DB::rollBack();
                 return;
             }
