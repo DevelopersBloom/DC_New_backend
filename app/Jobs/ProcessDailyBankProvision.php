@@ -22,10 +22,10 @@ class ProcessDailyBankProvision implements ShouldQueue
 
     public function handle(): void
     {
-        $startOfToday = Carbon::today()->startOfDay();
+        $yesterday = Carbon::yesterday()->endOfDay();
         $endOfToday   = Carbon::today()->endOfDay();
 
-        Log::info($startOfToday->toDateString(), (array)$endOfToday->toDateString());
+        Log::info($yesterday->toDateString(), (array)$endOfToday->toDateString());
         Log::info("ProcessDailyBankProvision started for {$endOfToday->toDateString()}");
 
         $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
@@ -35,7 +35,7 @@ class ProcessDailyBankProvision implements ShouldQueue
             return;
         }
 
-        $balanceStart = $this->calculateBalanceUntil($bankAccountIds, $startOfToday);
+        $balanceStart = $this->calculateBalanceUntil($bankAccountIds, $yesterday);
         $balanceEnd   = $this->calculateBalanceUntil($bankAccountIds, $endOfToday);
 
 
