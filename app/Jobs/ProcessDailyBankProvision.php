@@ -25,7 +25,7 @@ class ProcessDailyBankProvision implements ShouldQueue
         $startOfToday = Carbon::today()->startOfDay();
         $endOfToday   = Carbon::today()->endOfDay();
 
-        Log::info($startOfToday,$endOfToday);
+        Log::info($startOfToday->toDateString(), (array)$endOfToday->toDateString());
         Log::info("ProcessDailyBankProvision started for {$endOfToday->toDateString()}");
 
         $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
