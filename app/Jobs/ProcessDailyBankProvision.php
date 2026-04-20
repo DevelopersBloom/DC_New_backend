@@ -20,13 +20,19 @@ class ProcessDailyBankProvision implements ShouldQueue
 
     public $tries = 3;
 
+    private float $provisionPercent;
+
+    public function __construct(float $provisionPercent = 0.01)
+    {
+        $this->provisionPercent = $provisionPercent;
+    }
+
     public function handle(): void
     {
-        $yesterday = Carbon::yesterday()->endOfDay();
-        $endOfToday   = Carbon::today()->endOfDay();
+        $startOfDay = Carbon::yesterday()->endOfDay();
+        $endOfDay   = Carbon::today()->endOfDay();
 
-        Log::info($yesterday->toDateString(), (array)$endOfToday->toDateString());
-        Log::info("ProcessDailyBankProvision started for {$endOfToday->toDateString()}");
+        Log::info("Bank Provision started for {$endOfDay->toDateString()}");
 
         $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
 
@@ -35,9 +41,8 @@ class ProcessDailyBankProvision implements ShouldQueue
             return;
         }
 
-        $balanceStart = $this->calculateBalanceUntil($bankAccountIds, $yesterday);
-        $balanceEnd   = $this->calculateBalanceUntil($bankAccountIds, $endOfToday);
-
+        $balanceStart = $this->calculateBalanceUntil($bankAccountIds, $startOfDay);
+        $balanceEnd   = $this->calculateBalanceUntil($bankAccountIds, $endOfDay);
 
         $netChange = $balanceEnd - $balanceStart;
 
@@ -49,24 +54,14 @@ class ProcessDailyBankProvision implements ShouldQueue
         }
 
         DB::beginTransaction();
+
         try {
-            $date = $endOfToday->toDateString();
-
-            $alreadyExists = Transaction::whereDate('date', $date)
-                ->whereIn('document_type', ['Պահուստավորում', 'Ապապահուստավորում'])
-                ->first();
-
-            if ($alreadyExists) {
-                Log::warning("Provision already exists for {$date}");
-                Log::info($alreadyExists->id);
-                DB::rollBack();
-                return;
-            }
+            $date = $endOfDay->toDateString();
 
             if ($netChange > 0) {
-                $amount = round($netChange * 0.01, 2);
+                $amount = round($netChange * $this->provisionPercent, 2);
 
-                $this->createEntry(
+                $this->createOrUpdateEntry(
                     $date,
                     $amount,
                     'Պահուստավորում',
@@ -74,9 +69,9 @@ class ProcessDailyBankProvision implements ShouldQueue
                     '15300PC'
                 );
             } else {
-                $amount = round(abs($netChange) * 0.01, 2);
+                $amount = round(abs($netChange) * $this->provisionPercent, 2);
 
-                $this->createEntry(
+                $this->createOrUpdateEntry(
                     $date,
                     $amount,
                     'Ապապահուստավորում',
@@ -86,35 +81,39 @@ class ProcessDailyBankProvision implements ShouldQueue
             }
 
             DB::commit();
+
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("ProcessDailyBankProvision failed: " . $e->getMessage());
+
+            Log::error("BankProvision failed: " . $e->getMessage());
+
             throw $e;
         }
     }
 
     private function calculateBalanceUntil($accountIds, Carbon $date): float
     {
-        $endOfDate = $date->toDateTimeString();
+        $end = $date->toDateTimeString();
 
-        $debitSum = Transaction::whereIn('debit_account_id', $accountIds)
-            ->where('date', '<=', $endOfDate)
+        $debit = Transaction::whereIn('debit_account_id', $accountIds)
+            ->where('date', '<=', $end)
             ->sum('amount_amd');
 
-        $creditSum = Transaction::whereIn('credit_account_id', $accountIds)
-            ->where('date', '<=', $endOfDate)
+        $credit = Transaction::whereIn('credit_account_id', $accountIds)
+            ->where('date', '<=', $end)
             ->sum('amount_amd');
 
-        return (float) ($debitSum - $creditSum);
+        return (float) ($debit - $credit);
     }
 
-    private function createEntry(
+    private function createOrUpdateEntry(
         string $date,
         float $amount,
         string $label,
         string $debitCode,
         string $creditCode
     ): void {
+
         if ($amount <= 0) return;
 
         $debitAcc  = ChartOfAccount::where('code', $debitCode)->first();
@@ -122,6 +121,31 @@ class ProcessDailyBankProvision implements ShouldQueue
 
         if (!$debitAcc || !$creditAcc) {
             Log::error("Accounts not found: {$debitCode} / {$creditCode}");
+            return;
+        }
+
+        $existing = Transaction::whereDate('date', $date)
+            ->where('document_type', $label)
+            ->lockForUpdate()
+            ->first();
+
+        if ($existing) {
+
+            $existing->update([
+                'amount_amd'        => $amount,
+                'debit_account_id'  => $debitAcc->id,
+                'credit_account_id' => $creditAcc->id,
+            ]);
+
+            DocumentJournal::where('id', $existing->transactionable_id)
+                ->update([
+                    'amount_amd'        => $amount,
+                    'debit_account_id'  => $debitAcc->id,
+                    'credit_account_id' => $creditAcc->id,
+                    'comment'           => $label . ' (Թարմացված % ' . ($this->provisionPercent * 100) . ')',
+                ]);
+
+            Log::info("{$label} updated: {$amount}");
             return;
         }
 
@@ -137,7 +161,7 @@ class ProcessDailyBankProvision implements ShouldQueue
             'debit_account_id'  => $debitAcc->id,
             'credit_account_id' => $creditAcc->id,
             'user_id'           => 1,
-            'comment'           => $label . ' (Օրվա փոփոխության 1%)',
+            'comment'           => $label . ' (Օրվա ' . ($this->provisionPercent * 100) . '%)',
             'journalable_type'  => DocumentJournal::class,
             'journalable_id'    => 0,
         ]);
