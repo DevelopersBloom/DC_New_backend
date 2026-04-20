@@ -3,6 +3,7 @@
 use App\Http\Controllers\AcraController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BankProvisionController;
 use App\Http\Controllers\BusinessEventController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DocumentJournalController;
@@ -178,6 +179,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/upload-file', [FileController::class, 'upload'])->middleware('can:upload_file');
         Route::get('/files/{id}/download', [FileController::class, 'download'])->middleware('can:download_file');
         Route::delete('/files/{id}', [FileController::class, 'destroy']);
+
+        Route::post('/bank-provision/run', [BankProvisionController::class, 'run']);
 
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
