@@ -125,7 +125,7 @@ class ProcessDailyBankProvision implements ShouldQueue
         }
 
         $existing = Transaction::whereDate('date', $date)
-            ->where('document_type', $label)
+            ->whereIn('document_type', ['Ապապահուստավորում','Պահուստավորում'])
             ->lockForUpdate()
             ->first();
 
@@ -135,6 +135,8 @@ class ProcessDailyBankProvision implements ShouldQueue
                 'amount_amd'        => $amount,
                 'debit_account_id'  => $debitAcc->id,
                 'credit_account_id' => $creditAcc->id,
+                'document_type'     => $label,
+
             ]);
 
             DocumentJournal::where('id', $existing->transactionable_id)
@@ -143,6 +145,8 @@ class ProcessDailyBankProvision implements ShouldQueue
                     'debit_account_id'  => $debitAcc->id,
                     'credit_account_id' => $creditAcc->id,
                     'comment'           => $label . ' (Թարմացված % ' . ($this->provisionPercent * 100) . ')',
+                    'document_type'     => $label,
+
                 ]);
 
             Log::info("{$label} updated: {$amount}");
