@@ -41,12 +41,13 @@ class ProcessDailyBankProvision implements ShouldQueue
             return;
         }
 
-        $balanceStart = $this->calculateBalanceUntil($bankAccountIds, $startOfDay);
+//        $balanceStart = $this->calculateBalanceUntil($bankAccountIds, $startOfDay);
         $balanceEnd   = $this->calculateBalanceUntil($bankAccountIds, $endOfDay);
 
-        $netChange = $balanceEnd - $balanceStart;
+//        $netChange = $balanceEnd - $balanceStart;
+        $netChange = $balanceEnd;
 
-        Log::info("Start: {$balanceStart}, End: {$balanceEnd}, Change: {$netChange}");
+        Log::info("End: {$balanceEnd}, Change: {$netChange}");
 
         if ($netChange == 0) {
             Log::info("No change, skipping.");

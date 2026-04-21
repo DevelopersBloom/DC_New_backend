@@ -505,7 +505,12 @@ class   ContractService
 
 //            $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
             $interestPayment = $this->calcAmount($loanAmount,$daysInPeriod,$contract->interest_rate/100);
-            $principalPayment = $monthlyPayment - $interestPayment;
+            $servicePayment = 0;
+            if ($feeAnnualPercent) {
+                $feeDailyPercent = $feeAnnualPercent / 365;
+                $servicePayment = $this->calcAmount($loanAmount,$daysInPeriod,$feeDailyPercent/100);
+            }
+            $principalPayment = $monthlyPayment - $interestPayment - $servicePayment;
             $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate, $i, $months, $loanAmount);
             $loanAmount -= $principalPayment;
 
