@@ -29,30 +29,24 @@ class ProcessDailyBankProvision implements ShouldQueue
 
     public function handle(): void
     {
-        $startOfDay = Carbon::yesterday()->endOfDay();
         $endOfDay   = Carbon::today()->endOfDay();
-
         Log::info("Bank Provision started for {$endOfDay->toDateString()}");
 
         $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
-
         if ($bankAccountIds->isEmpty()) {
             Log::error("Bank accounts 10210* not found.");
             return;
         }
 
-//        $balanceStart = $this->calculateBalanceUntil($bankAccountIds, $startOfDay);
-        $balanceEnd   = $this->calculateBalanceUntil($bankAccountIds, $endOfDay);
-
-//        $netChange = $balanceEnd - $balanceStart;
+        $balanceEnd = $this->calculateBalanceUntil($bankAccountIds, $endOfDay);
 
         $acc15300PC = ChartOfAccount::idByCode('15300PC');
-
         if (!$acc15300PC) {
-            Log::error("Bank accounts 15300PC not found.");
+            Log::error("Bank account 15300PC not found.");
             return;
         }
 
+        // Calculate current provision balance
         $balance15300PC = Transaction::where('debit_account_id', $acc15300PC)
                 ->whereDate('date', '<=', $endOfDay->format('Y-m-d'))
                 ->sum('amount_amd')
@@ -60,53 +54,34 @@ class ProcessDailyBankProvision implements ShouldQueue
                 ->whereDate('date', '<=', $endOfDay->format('Y-m-d'))
                 ->sum('amount_amd');
 
-        Log::info("End: {$balanceEnd},  15300PC: {$balance15300PC}");
+        $targetProvision = $balanceEnd * $this->provisionPercent;
 
-        $provisionAmount = $balanceEnd * $this->provisionPercent;
+        $diff = $targetProvision - $balance15300PC;
 
-        if ($provisionAmount == $balance15300PC) {
-            Log::info("No change, skipping.");
+        Log::info("Target: {$targetProvision}, Current: {$balance15300PC}, Diff: {$diff}");
+
+        // Use a small epsilon for float comparison to avoid precision issues
+        if (abs($diff) < 0.01) {
+            Log::info("Provision is already at 1%. Skipping.");
             return;
-        } else {
-            $provisionAmount = $balance15300PC - $provisionAmount;
         }
 
         DB::beginTransaction();
-
         try {
             $date = $endOfDay->toDateString();
 
-            if ($provisionAmount > 0) {
-
-                $this->createEntry(
-                    $date,
-                    $provisionAmount,
-                    'Պահուստավորում',
-                    '730041',
-                    '15300PC'
-                );
+            if ($diff > 0) {
+                $this->createEntry($date, abs($diff), 'Պահուստավորում', '730041', '15300PC');
             } else {
-
-                $this->createEntry(
-                    $date,
-                    $provisionAmount,
-                    'Ապապահուստավորում',
-                    '15300PC',
-                    '63102'
-                );
+                $this->createEntry($date, abs($diff), 'Ապապահուստավորում', '15300PC', '63102');
             }
-
             DB::commit();
-
         } catch (\Throwable $e) {
             DB::rollBack();
-
             Log::error("BankProvision failed: " . $e->getMessage());
-
             throw $e;
         }
     }
-
     private function calculateBalanceUntil($accountIds, Carbon $date): float
     {
         $end = $date->toDateTimeString();
