@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
 use App\Models\Transaction;
-use App\Traits\CalculatesAccountBalancesTrait;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,7 +17,6 @@ use Illuminate\Support\Facades\Log;
 class ProcessDailyBankProvision implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    use CalculatesAccountBalancesTrait;
 
     public $tries = 3;
 
@@ -50,11 +48,14 @@ class ProcessDailyBankProvision implements ShouldQueue
         }
 
         // Calculate current provision balance
-        $balance15300PC = $this->balancesSubquery($toDay)
-            ->where('code', '15300PC')
-            ->value('balance');
-
-        dd($balance15300PC);
+        $balance15300PC = Transaction::where('credit_account_id', $acc15300PC)
+                ->where('date', '<=', $toDay)
+                ->sum('amount_amd') -
+            Transaction::where('debit_account_id', $acc15300PC)
+                ->where('date', '<=', $toDay)
+                ->sum('amount_amd')
+        ;
+dd($balance15300PC);
         Log::info("Account: {$acc15300PC}, Balance: {$balance15300PC}, Today: {$toDay}");
         $targetProvision = $balanceEnd * $this->provisionPercent;
 
