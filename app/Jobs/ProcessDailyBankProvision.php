@@ -54,6 +54,7 @@ class ProcessDailyBankProvision implements ShouldQueue
             ->where('code', '15300PC')
             ->value('balance');
 
+        dd($balance15300PC);
         Log::info("Account: {$acc15300PC}, Balance: {$balance15300PC}, Today: {$toDay}");
         $targetProvision = $balanceEnd * $this->provisionPercent;
 
