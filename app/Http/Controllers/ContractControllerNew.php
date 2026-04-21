@@ -150,18 +150,6 @@ class ContractControllerNew extends Controller
 
         $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 
-//        $contract->written_off_amount = null;
-//
-//        if (($contract->client?->classification?->name) === 'loss') {
-//            $contract->written_off_amount = $contract->overdue_interest + $contract->unearned_interest;
-//        }
-
-        $this->activityService->log(
-            'view_contract_details',
-            "Viewed contract details",
-            Contract::class,
-            $id
-        );
         return new ContractDetailResource($contract);
     }
     public function getHistoryDetails(int $id)

@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
-    use HasFactory,SoftDeletes;
+    use SoftDeletes;
 
     protected $fillable = [
         'PGI_ID',
         'amount',
+        'original_amount',
         'paid',
         'penalty',
         'type',
@@ -34,7 +35,9 @@ class Payment extends Model
         'parent_id',
         'discount_amount',
         'principal_payment',
+        'original_principal_payment',
         'interest_payment',
+        'original_interest_payment',
         'remaining',
         'to_date',
         'effective_payment',
@@ -45,10 +48,13 @@ class Payment extends Model
     protected $casts = [
         'mother'             => 'decimal:2',
         'amount'             => 'decimal:2',
+        'original_amount'    => 'decimal:2',
         'paid'               => 'decimal:2',
         'effective_payment'  => 'decimal:2',
         'principal_payment'  => 'decimal:2',
+        'original_principal_payment'   => 'decimal:2',
         'interest_payment'   => 'decimal:2',
+        'original_interest_payment'    => 'decimal:2',
         'remaining'          => 'decimal:2',
         'kasko_amount'       => 'decimal:2',
         'kasko_paid'         => 'boolean'
