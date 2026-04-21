@@ -30,6 +30,7 @@ class ProcessDailyBankProvision implements ShouldQueue
     public function handle(): void
     {
         $endOfDay   = Carbon::today()->endOfDay();
+        $toDay      = Carbon::today()->format('Y-m-d');
         Log::info("Bank Provision started for {$endOfDay->toDateString()}");
 
         $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
@@ -48,10 +49,10 @@ class ProcessDailyBankProvision implements ShouldQueue
 
         // Calculate current provision balance
         $balance15300PC = Transaction::where('credit_account_id', $acc15300PC)
-                ->where('date', '<=', $endOfDay->format('Y-m-d'))
+                ->where('date', '<=', $toDay)
                 ->sum('amount_amd');
 
-Log::info($acc15300PC, $balance15300PC,$endOfDay->format('Y-m-d'));
+Log::info($acc15300PC, $balance15300PC);
         $targetProvision = $balanceEnd * $this->provisionPercent;
 
         $diff = $targetProvision - $balance15300PC;
