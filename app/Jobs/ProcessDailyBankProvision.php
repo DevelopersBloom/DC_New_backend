@@ -50,7 +50,11 @@ class ProcessDailyBankProvision implements ShouldQueue
         // Calculate current provision balance
         $balance15300PC = Transaction::where('credit_account_id', $acc15300PC)
                 ->where('date', '<=', $toDay)
-                ->sum('amount_amd');
+                ->sum('amount_amd') -
+            Transaction::where('debit_account_id', $acc15300PC)
+                ->where('date', '<=', $toDay)
+                ->sum('amount_amd')
+        ;
 
         Log::info("Account: {$acc15300PC}, Balance: {$balance15300PC}, Today: {$toDay}");
         $targetProvision = $balanceEnd * $this->provisionPercent;
