@@ -6,6 +6,7 @@ use App\Jobs\ProcessContractDailyRate;
 use App\Jobs\ProcessDailyBankProvision;
 use App\Jobs\ProcessDailyNdmInterest;
 use App\Jobs\UpdateClientClassifications;
+use App\Jobs\UpdateClientClassificationsOld;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
