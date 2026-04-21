@@ -53,10 +53,10 @@ class ProcessDailyBankProvision implements ShouldQueue
             return;
         }
 
-        $balance15300PC = Transaction::whereIn('debit_account_id', $acc15300PC)
+        $balance15300PC = Transaction::where('debit_account_id', $acc15300PC)
                 ->whereDate('date', '<=', $endOfDay->format('Y-m-d'))
                 ->sum('amount_amd')
-            - Transaction::whereIn('credit_account_id', $acc15300PC)
+            - Transaction::where('credit_account_id', $acc15300PC)
                 ->whereDate('date', '<=', $endOfDay->format('Y-m-d'))
                 ->sum('amount_amd');
 
