@@ -1420,8 +1420,8 @@ class ClientControllerNew extends Controller
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $diffPC > 0 ? $clientId : $diamondId ,
-                    creditPartnerId:$diffPC > 0 ? $diamondId  : $clientId,
+                    debitPartnerId: $diffPC > 0 ? $diamondId : $clientId ,
+                    creditPartnerId:$diffPC > 0 ? $clientId : $diamondId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($diffPC),
