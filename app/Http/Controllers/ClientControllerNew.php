@@ -1458,7 +1458,6 @@ class ClientControllerNew extends Controller
         } else {
             // ── NON-STANDARD ─────────────────────────────────────────────────
             // 16605PC → 0
-            Log::info("PC balance ---# : {$balance16605PC}");
             if (abs($balance16605PC) >= 0.01) {
 
                 $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
@@ -1498,8 +1497,8 @@ class ClientControllerNew extends Controller
                     clientId:       $clientId,
                     debitPartnerId: $diffPS > 0 ? $diamondId : $clientId,
                     creditPartnerId:$diffPS > 0 ? $clientId : $diamondId,
-                    debitAccountId: $debit,
-                    creditAccountId:$credit,
+                    debitAccountId: $credit,
+                    creditAccountId: $debit,
                     amount:         abs($diffPS),
                     documentType:   DocumentJournal::RESERVE_SPECIAL_AMOUNT,
                     comment:        "Reserve correction (non-standard) for client #{$clientId}",
