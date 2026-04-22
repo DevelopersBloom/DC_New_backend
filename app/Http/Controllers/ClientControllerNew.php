@@ -1415,13 +1415,13 @@ class ClientControllerNew extends Controller
                 $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
 
                 [$debit, $credit] = $diffPC > 0
-                    ? [$rule->debit_account_id, $rule->credit_account_id]
-                    : [$rule->credit_account_id, $rule->debit_account_id];
+                    ? [$rule->credit_account_id, $rule->debit_account_id]
+                    : [$rule->debit_account_id, $rule->credit_account_id];
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $diffPC > 0 ? $diamondId : $clientId,
-                    creditPartnerId:$diffPC > 0 ? $clientId  : $diamondId,
+                    debitPartnerId: $diffPC > 0 ? $clientId : $diamondId ,
+                    creditPartnerId:$diffPC > 0 ? $diamondId  : $clientId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($diffPC),
@@ -1438,13 +1438,13 @@ class ClientControllerNew extends Controller
                 $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
 
                 [$debit, $credit] = $balance16605PS > 0
-                    ? [$rule->debit_account_id, $rule->credit_account_id]
-                    : [$rule->credit_account_id, $rule->debit_account_id];
+                    ?[$rule->credit_account_id, $rule->debit_account_id]
+                    : [$rule->debit_account_id, $rule->credit_account_id];
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
                     debitPartnerId: $clientId,
-                    creditPartnerId:$clientId,
+                    creditPartnerId:$diamondId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($balance16605PS),
@@ -1464,13 +1464,13 @@ class ClientControllerNew extends Controller
 
 
                 [$debit, $credit] = $balance16605PC > 0
-                    ? [$rule->debit_account_id, $rule->credit_account_id]
-                    : [$rule->credit_account_id, $rule->debit_account_id];
+                    ? [$rule->credit_account_id, $rule->debit_account_id]
+                    : [$rule->debit_account_id, $rule->credit_account_id];
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
                     debitPartnerId: $clientId,
-                    creditPartnerId:$clientId,
+                    creditPartnerId:$diamondId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($balance16605PC),
@@ -1489,13 +1489,13 @@ class ClientControllerNew extends Controller
                 $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
 
                 [$debit, $credit] = $diffPS > 0
-                    ? [$rule->debit_account_id, $rule->credit_account_id]
-                    : [$rule->credit_account_id, $rule->debit_account_id];
+                    ? [$rule->credit_account_id, $rule->debit_account_id]
+                    : [$rule->debit_account_id, $rule->credit_account_id];
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $diffPS > 0 ? $diamondId : $clientId,
-                    creditPartnerId:$diffPS > 0 ? $clientId  : $diamondId,
+                    debitPartnerId: $diffPS > 0 ? $clientId : $diamondId,
+                    creditPartnerId:$diffPS > 0 ? $diamondId : $clientId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($diffPS),
