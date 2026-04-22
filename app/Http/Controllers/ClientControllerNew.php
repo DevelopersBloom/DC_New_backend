@@ -1485,7 +1485,6 @@ class ClientControllerNew extends Controller
             // 16605PS → targetAmount
             $diffPS = round($targetAmount - $balance16605PS, 2);
             if (abs($diffPS) >= 0.01) {
-
                 $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
 
                 [$debit, $credit] = $diffPS > 0
@@ -1494,8 +1493,8 @@ class ClientControllerNew extends Controller
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $diffPS > 0 ? $clientId : $diamondId,
-                    creditPartnerId:$diffPS > 0 ? $diamondId : $clientId,
+                    debitPartnerId: $diffPS > 0 ? $diamondId : $clientId,
+                    creditPartnerId:$diffPS > 0 ? $clientId : $diamondId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($diffPS),
