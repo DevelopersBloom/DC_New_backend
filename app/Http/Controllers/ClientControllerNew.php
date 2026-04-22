@@ -1469,8 +1469,8 @@ class ClientControllerNew extends Controller
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $diamondId,
-                    creditPartnerId:$clientId,
+                    debitPartnerId: $clientId,
+                    creditPartnerId:$diamondId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($balance16605PC),
