@@ -1458,6 +1458,7 @@ class ClientControllerNew extends Controller
         } else {
             // ── NON-STANDARD ─────────────────────────────────────────────────
             // 16605PC → 0
+            Log::info("PC balance ---# : {$balance16605PC}");
             if (abs($balance16605PC) >= 0.01) {
 
                 $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
