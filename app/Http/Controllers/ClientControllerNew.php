@@ -891,7 +891,7 @@ class ClientControllerNew extends Controller
 //        }
 //    }
 
-    public function updateClientClassification1(Request $request)
+    public function updateClientClassification(Request $request)
     {
         $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -1315,7 +1315,7 @@ class ClientControllerNew extends Controller
         }
     }
 
-    public function updateClientClassification(Request $request)
+    public function correctClientReserve(Request $request)
     {
         $request->validate([
             'client_id' => 'required|exists:clients,id',
@@ -1413,7 +1413,6 @@ class ClientControllerNew extends Controller
             $diffPC = round($targetAmount - $balance16605PC, 2);
             if (abs($diffPC) >= 0.01) {
                 $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
-Log::info("diffPC# :{$diffPC}");
                 [$debit, $credit] = $diffPC > 0
                     ? [$rule->debit_account_id, $rule->credit_account_id]
                     : [$rule->credit_account_id, $rule->debit_account_id];
