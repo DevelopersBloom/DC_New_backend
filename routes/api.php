@@ -188,7 +188,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/clients/search', [ClientControllerNew::class, 'search']);
 
     Route::get('/users/get-fullname',[UserController::class, 'getClientsFullName']);
-    Route::post('clients/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
+    Route::post('/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
 
     Route::prefix('clients')->group(function () {
         Route::put('/{id}/update', [ClientControllerNew::class, 'updateClientData'])->middleware('can:update_client');
