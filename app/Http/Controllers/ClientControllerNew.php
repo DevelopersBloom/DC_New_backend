@@ -1319,12 +1319,13 @@ class ClientControllerNew extends Controller
     {
         $request->validate([
             'client_id' => 'required|exists:clients,id',
-            'classification_id' => 'required|exists:client_classifications,id',
+            'classification' => 'required|string',
         ]);
 
         $client = Client::with('classification')->findOrFail($request->client_id);
-        $classification = ClientClassification::findOrFail($request->classification_id);
+        $classification = ClientClassification::where('name',$request->classification)->first();
 
+        if (!$classification) return response()->json(['message' => 'Client classification not found.']);
         $now = now()->format('Y-m-d');
 
         $acc16605PC = ChartOfAccount::idByCode('16605PC');
