@@ -1459,13 +1459,9 @@ class ClientControllerNew extends Controller
             // ── NON-STANDARD ─────────────────────────────────────────────────
             // 16605PC → 0
             if (abs($balance16605PC) >= 0.01) {
-                $ruleCode = $balance16605PC > 0
-                    ? 'reserve_general_reversal'
-                    : 'reserve_general_amount';
-                $rule = PostingRule::where('business_event_filter', $ruleCode)->first();
-                if (!$rule) {
-                    throw new \RuntimeException("Posting rule [{$ruleCode}] not found");
-                }
+
+                $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
+
 
                 [$debit, $credit] = $balance16605PC > 0
                     ? [$rule->debit_account_id, $rule->credit_account_id]
@@ -1489,13 +1485,8 @@ class ClientControllerNew extends Controller
             // 16605PS → targetAmount
             $diffPS = round($targetAmount - $balance16605PS, 2);
             if (abs($diffPS) >= 0.01) {
-                $ruleCode = $diffPS > 0
-                    ? 'reserve_special_amount'
-                    : 'reserve_special_reversal';
-                $rule = PostingRule::where('business_event_filter', $ruleCode)->first();
-                if (!$rule) {
-                    throw new \RuntimeException("Posting rule [{$ruleCode}] not found");
-                }
+
+                $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
 
                 [$debit, $credit] = $diffPS > 0
                     ? [$rule->debit_account_id, $rule->credit_account_id]
