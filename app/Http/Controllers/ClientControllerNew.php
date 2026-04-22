@@ -895,14 +895,14 @@ class ClientControllerNew extends Controller
     {
         $request->validate([
             'client_id' => 'required|exists:clients,id',
-            'classification_id' => 'required|exists:client_classifications,id',
+            'classification' => 'required|string',
         ]);
 
         $client = Client::with(['contracts' => function ($q) {
             $q->where('status', 'initial');
         }, 'classification'])->findOrFail($request->client_id);
 
-        $classification = ClientClassification::findOrFail($request->classification_id);
+        $classification = ClientClassification::where('name',$request->classification)->first();
 
         if ($client->classification_id === $classification->id) {
             return response()->json(['message' => 'Classification is already set to this value.']);
