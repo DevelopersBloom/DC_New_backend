@@ -20,7 +20,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->job(new UpdateClientClassifications)
+        $schedule->job(new UpdateClientClassificationsNew)
             ->dailyAt('00:00')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping(10)
