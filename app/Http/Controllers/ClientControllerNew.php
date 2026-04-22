@@ -1484,6 +1484,8 @@ class ClientControllerNew extends Controller
 
             // 16605PS → targetAmount
             $diffPS = round($targetAmount - $balance16605PS, 2);
+            Log::info("diffPS: {$diffPS}, targetAmount: {$targetAmount}, docNum: {$nextDocNum},balance16605PS : {$balance16605PS}");
+
             if (abs($diffPS) >= 0.01) {
                 $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
 
