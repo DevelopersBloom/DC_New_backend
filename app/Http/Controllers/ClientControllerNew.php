@@ -1319,7 +1319,7 @@ class ClientControllerNew extends Controller
     {
         $request->validate([
             'client_id' => 'required|exists:clients,id',
-            'classification' => 'required|exists:client_classifications,id',
+            'classification' => 'required|exists:clients_classification,id',
         ]);
         $client = Client::with('classification')->findOrFail($request->client_id);
 
