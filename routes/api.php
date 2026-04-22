@@ -188,7 +188,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/clients/search', [ClientControllerNew::class, 'search']);
 
     Route::get('/users/get-fullname',[UserController::class, 'getClientsFullName']);
-    Route::post('/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
 
     Route::prefix('clients')->group(function () {
         Route::put('/{id}/update', [ClientControllerNew::class, 'updateClientData'])->middleware('can:update_client');
@@ -197,6 +196,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/store-client', [ClientControllerNew::class, 'storeClient'])->middleware('can:create_client');
         Route::post('/store-non-client', [ClientControllerNew::class, 'storeNonClient'])->middleware('can:create_client');
         Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification'])->middleware('can:classify_client');
+        Route::post('/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
     });
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');
     Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index']);
