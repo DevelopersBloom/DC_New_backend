@@ -1413,10 +1413,10 @@ class ClientControllerNew extends Controller
             $diffPC = round($targetAmount - $balance16605PC, 2);
             if (abs($diffPC) >= 0.01) {
                 $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
-
+Log::info("diffPC# :{$diffPC}");
                 [$debit, $credit] = $diffPC > 0
-                    ? [$rule->credit_account_id, $rule->debit_account_id]
-                    : [$rule->debit_account_id, $rule->credit_account_id];
+                    ? [$rule->debit_account_id, $rule->credit_account_id]
+                    : [$rule->credit_account_id, $rule->debit_account_id];
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
@@ -1428,7 +1428,7 @@ class ClientControllerNew extends Controller
                     documentType:   DocumentJournal::RESERVE_GENERAL_AMOUNT,
                     comment:        "Reserve correction (standard) for client #{$clientId}",
                     journalId:      $journalId,
-                    nextDocNum:     $nextDocNum,
+                    nextDocNum:  $nextDocNum,
                     now:            $now,
                 );
             }
