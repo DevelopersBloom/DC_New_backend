@@ -108,6 +108,20 @@ class PostingRuleSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
+                'business_event_filter' => 'pay_penalty_amount',
+                'debit_account_id'  => $acc102101,
+                'credit_account_id' => $acc16201NI,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'pay_penalty_amount_cash',
+                'debit_account_id'  => $acc10000,
+                'credit_account_id' => $acc16200,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
                 'business_event_filter' => 'reserve_general_amount',
                 'debit_account_id'  => $acc73015,
                 'credit_account_id' => $acc16605PC,

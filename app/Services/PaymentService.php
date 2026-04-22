@@ -46,14 +46,18 @@ class PaymentService
             $payed_penalty = $penaltyResult['penalty'];
             $amount = $penaltyResult['amount'];
             if ($payed_penalty > 0) {
-                $rulePenalty = PostingRule::where('business_event_filter', 'penalty_rate_amount')->first();
+                if ($cash) {
+                    $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount_cash')->first();
+                } else {
+                    $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount')->first();
+                }
                 if ($rulePenalty) {
                     $userId = auth()->id();
                     $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
                     $journalDocPenalty = DocumentJournal::create([
                         'date' => $date,
                         'document_number' => $nextDocNum,
-                        'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
+                        'document_type' => DocumentJournal::PAY_PENALTY_AMOUNT,
                         'amount_amd' => $payed_penalty,
                         'credit_partner_id' => $contract->client_id,
                         'comment' => 'Daily penalty accrual for contract #' . $contract->id,
@@ -67,7 +71,7 @@ class PaymentService
                     Transaction::create([
                         'date' => $date,
                         'document_number' => $nextDocNum,
-                        'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
+                        'document_type' => DocumentJournal::PAY_PENALTY_AMOUNT,
                         'debit_account_id' => $rulePenalty->debit_account_id,
                         'credit_account_id' => $rulePenalty->credit_account_id,
                         'credit_partner_id' => $contract->client_id,
@@ -764,7 +768,6 @@ class PaymentService
             $interest = $balance * $days * $rate / 100;
             $diff = $payment->interest_payment - $interest;
             $payment->interest_payment = $interest;
-            dd($diff);
             $payment->original_interest_payment -= $diff;
 
             $principal = (float) $payment->principal_payment;
