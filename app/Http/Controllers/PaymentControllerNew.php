@@ -122,8 +122,13 @@ class PaymentControllerNew extends Controller
             $deal->delay_days = $result['delay_days'];
             $deal->save();
 
-            $ruleInterestPayment = PostingRule::where('business_event_filter', 'pay_interest_amount')
-                ->first();
+            if ($cash) {
+                $ruleInterestPayment = PostingRule::where('business_event_filter', 'pay_interest_amount_cash')
+                    ->first();
+            } else {
+                $ruleInterestPayment = PostingRule::where('business_event_filter', 'pay_interest_amount')
+                    ->first();
+            }
 
             if (!$ruleInterestPayment) {
                 throw new \RuntimeException('Posting rule for pay_interest_amount not found');
