@@ -1323,7 +1323,7 @@ class ClientControllerNew extends Controller
         ]);
         $client = Client::with('classification')->findOrFail($request->client_id);
 
-        $classification = ClientClassification::findOrFail($request->classification_id);
+        $classification = ClientClassification::findOrFail($request->classification);
 
 
 
