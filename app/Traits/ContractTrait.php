@@ -417,6 +417,7 @@ trait ContractTrait
         $totalPaid = DocumentJournal::where('journalable_id', $journalId)
             ->where('journalable_type','App\Models\DocumentJournal')
             ->where('document_type',DocumentJournal::PAY_INTEREST_AMOUNT)
+            ->where('date', '<=', $currentDate)
             ->sum('amount_amd');
         $currentAmount = $totalPayment - $totalPaid + $penaltyAmount['penalty_amount'];
 
