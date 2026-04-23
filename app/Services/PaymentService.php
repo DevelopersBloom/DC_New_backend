@@ -764,8 +764,8 @@ class PaymentService
             $days = max(1, $paymentDate->diffInDays($selectedDate));
 
             $prevDate = $paymentDate;
-            $interest = $balance * $days * $rate / 100;
-            dd($interest);
+            $interest = $balance * $days * ($rate / 100);
+            dd($interest,$balance,$days,$rate);
             $diff = $payment->interest_payment - $interest;
             $payment->interest_payment = $interest;
             $payment->original_interest_payment -= $diff;
