@@ -767,8 +767,8 @@ class PaymentService
             $interest = $balance * $days * $rate / 100;
             $diff = $payment->interest_payment - $interest;
             $payment->interest_payment = $interest;
-//            $payment->original_interest_payment -= $diff;
-
+            $payment->original_interest_payment -= $diff;
+dd($diff);
             $principal = (float) $payment->principal_payment;
             $fee = (float) ($payment->service_fee_payment ?? 0);
             $paid = (float) ($payment->paid ?? 0);
