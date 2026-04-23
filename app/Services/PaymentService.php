@@ -114,7 +114,6 @@ class PaymentService
                     $principal_amount += $result['principal_amount'];
                 }
             }
-            dd($amount,$result);
             if ($amount > 0) {
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id,$date);
                 //$principal_amount += $amount;
@@ -234,7 +233,6 @@ class PaymentService
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
-                dd($remainingInterestAmount);
                 if ($remainingInterestAmount > 0) {
                     $paidInterest = min($remainingInterestAmount, $remainingInterestPlan,$amount);
                     $remainingInterestAmount -= $paidInterest;
