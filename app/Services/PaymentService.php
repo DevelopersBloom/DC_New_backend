@@ -40,6 +40,7 @@ class PaymentService
         $penalty = $result_penalty['penalty_amount'];
         $delay_days = $result_penalty['delay_days'];
         $parent_id = $result_penalty['parent_id'];
+        dd($penalty,$result_penalty);
         $payed_penalty = 0;
         if ($penalty > 0) {
             $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id,$date);
