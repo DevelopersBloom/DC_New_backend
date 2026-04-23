@@ -769,11 +769,9 @@ class PaymentService
             $diff = $payment->interest_payment - $interest;
             $payment->interest_payment = $interest;
             $payment->original_interest_payment -= $diff;
-dd($payment->id,$payment->interest_payment,$interest,$balance,$days,$diff);
             $principal = (float) $payment->principal_payment;
             $fee = (float) ($payment->service_fee_payment ?? 0);
             $paid = (float) ($payment->paid ?? 0);
-            $payment->amount = max(0, $principal + $interest);
 
             if ((float) $payment->amount <= 0) {
                 $payment->status = 'completed';
