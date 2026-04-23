@@ -468,7 +468,7 @@ trait ContractTrait
         }
 
         $penaltyAmount = $this->countPenalty($contract->id, $calculationDate);
-
+        $penalty = $penaltyAmount['penalty_amount'];
         $contractEndDateRecord = Payment::where('last_payment', 1)
             ->where('contract_id', $contract->id)
             ->first();
@@ -521,7 +521,7 @@ trait ContractTrait
             ->where('date', '<=', $currentDate)
             ->sum('amount_amd');
 
-        $currentAmount = $totalAccruedInterest - $totalPaid + $penaltyAmount['penalty_amount'];
+        $interestAmount = $totalAccruedInterest - $totalPaid;
 
         // Future interest discount
         $futureInterestDiscount = 0.0;
@@ -549,8 +549,9 @@ trait ContractTrait
             "totalAccruedInterest"     => $totalAccruedInterest,
             "totalPaid"                => $totalPaid,
             "penaltyAmount"            => $penaltyAmount,
-            "current_amount"           => $currentAmount > 0 ? $currentAmount : 0,
-            "penalty_amount"           => $penaltyAmount['penalty_amount'],
+            "current_amount"           => $interestAmount + $penalty,
+            'interest_amount'          => $interestAmount,
+            "penalty_amount"           => $penalty,
             "delay_days"               => $penaltyAmount['delay_days'],
             "future_interest_discount" => round($futureInterestDiscount, 2),
         ];
