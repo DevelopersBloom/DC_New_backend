@@ -95,7 +95,7 @@ class PaymentService
             foreach ($payments as $payment) {
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
-
+dd($payments->count(),$payment->id,$interestAmount);
                 if ($amount > 0) {
                     $result = $this->processSinglePayment(
                         $contract,
