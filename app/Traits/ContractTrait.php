@@ -485,7 +485,7 @@ trait ContractTrait
             ->orderBy('from_date', 'asc')
             ->get();
 
-        $totalAccruedInterest = 0.0;
+        $interestAmount = 0.0;
 
         foreach ($scheduledPayments as $payment) {
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
@@ -498,11 +498,11 @@ trait ContractTrait
             $balance = (float) ($payment->remaining + $payment->principal_payment);
 
             if ($toDate->lte($currentDate)) {
-                $totalAccruedInterest += (float) $payment->interest_payment;
+                $interestAmount += (float) $payment->interest_payment;
             } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
 
-                $totalAccruedInterest += $this->calcAmount(
+                $interestAmount += $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
                     $contract->interest_rate / 100
@@ -515,13 +515,13 @@ trait ContractTrait
             ->where('journalable_type', 'App\Models\Contract')
             ->value('id');
 
-        $totalPaid = DocumentJournal::where('journalable_id', $journalId)
-            ->where('journalable_type', 'App\Models\DocumentJournal')
-            ->where('document_type', DocumentJournal::PAY_INTEREST_AMOUNT)
-            ->where('date', '<=', $currentDate)
-            ->sum('amount_amd');
+//        $totalPaid = DocumentJournal::where('journalable_id', $journalId)
+//            ->where('journalable_type', 'App\Models\DocumentJournal')
+//            ->where('document_type', DocumentJournal::PAY_INTEREST_AMOUNT)
+//            ->where('date', '<=', $currentDate)
+//            ->sum('amount_amd');
 
-        $interestAmount = $totalAccruedInterest - $totalPaid;
+//        $interestAmount = $totalAccruedInterest - $totalPaid;
 
         // Future interest discount
         $futureInterestDiscount = 0.0;
@@ -546,8 +546,8 @@ trait ContractTrait
 
         return [
             "endDate"                  => $currentDate,
-            "totalAccruedInterest"     => $totalAccruedInterest,
-            "totalPaid"                => $totalPaid,
+//            "totalAccruedInterest"     => $totalAccruedInterest,
+//            "totalPaid"                => $totalPaid,
             "penaltyAmount"            => $penaltyAmount,
             "current_amount"           => $interestAmount + $penalty,
             'interest_amount'          => $interestAmount,
