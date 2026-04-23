@@ -45,6 +45,7 @@ class PaymentService
             $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id,$date);
             $payed_penalty = $penaltyResult['penalty'];
             $amount = $penaltyResult['amount'];
+            dd($amount,$penaltyResult);
             if ($payed_penalty > 0) {
                 if ($cash) {
                     $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount_cash')->first();
@@ -111,6 +112,7 @@ class PaymentService
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
                     $principal_amount += $result['principal_amount'];
+                    dd($result);
                 }
             }
             if ($amount > 0) {
