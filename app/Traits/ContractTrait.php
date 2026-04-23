@@ -14,6 +14,8 @@ use App\Models\Payment;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\App;
+use PhpParser\Comment\Doc;
 
 trait ContractTrait
 {
@@ -404,11 +406,18 @@ trait ContractTrait
         $daysPassed = $lastPaymentDate->diffInDays($currentDate);
         $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
 
-        $totalPaid = Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')
-            ->where('date', '<=', $calculationDate)
-            ->sum('paid');
+//        $totalPaid = Payment::where('contract_id', $contract->id)
+//            ->where('type', 'regular')
+//            ->where('date', '<=', $calculationDate)
+//            ->sum('paid');
 
+        $journalId =  DocumentJournal::where('journalable_id', $contract->id)
+            ->where('journalable_type','App\Models\Contract')
+            ->value('id');
+        $totalPaid = DocumentJournal::where('journalable_id', $journalId)
+            ->where('journalable_type','App\Models\DocumentJournal')
+            ->where('document_type',DocumentJournal::PAY_INTEREST_AMOUNT)
+            ->sum('amount_amd');
         $currentAmount = $totalPayment - $totalPaid + $penaltyAmount['penalty_amount'];
 
         $futureInterestDiscount = 0.0;
