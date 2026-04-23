@@ -40,13 +40,11 @@ class PaymentService
         $penalty = $result_penalty['penalty_amount'];
         $delay_days = $result_penalty['delay_days'];
         $parent_id = $result_penalty['parent_id'];
-        dd($penalty,$result_penalty);
         $payed_penalty = 0;
         if ($penalty > 0) {
             $penaltyResult = $this->processPenalty($contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id,$date);
             $payed_penalty = $penaltyResult['penalty'];
             $amount = $penaltyResult['amount'];
-            dd($amount,$penaltyResult);
             if ($payed_penalty > 0) {
                 if ($cash) {
                     $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount_cash')->first();
