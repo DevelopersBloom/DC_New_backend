@@ -359,6 +359,102 @@ trait ContractTrait
 //        ];
 //
 //    }
+//    public function calculateCurrentPayment($contract, $date = null)
+//    {
+//        $calculationDate = $date ? Carbon::parse($date)->endOfDay() : Carbon::now();
+//
+//        if ($contract->closed_at && Carbon::parse($contract->closed_at)->lte($calculationDate)) {
+//            return [
+//                "current_amount" => 0,
+//                "penalty_amount" => 0,
+//                "future_interest_discount" => 0,
+//            ];
+//        }
+//
+//        $penaltyAmount = $this->countPenalty($contract->id, $calculationDate);
+//
+//        $contractEndDateRecord = Payment::where('last_payment', 1)
+//            ->where('contract_id', $contract->id)
+//            ->first();
+//
+//        if ($contractEndDateRecord) {
+//            $endDate = Carbon::parse($contractEndDateRecord->date);
+//            $currentDate = $endDate->lt($calculationDate) ? $endDate : $calculationDate;
+//        } else {
+//            $currentDate = $calculationDate;
+//        }
+//
+//        $partialPayments = Payment::where('contract_id', $contract->id)
+//            ->where('type', 'partial')
+//            ->where('date', '<=', $calculationDate)
+//            ->orderBy('date', 'asc')
+//            ->get();
+//
+//        $remainingAmount = $contract->mother;
+//        $totalPayment = 0;
+//        $lastPaymentDate = Carbon::parse($contract->date);
+//
+//        if ($partialPayments) {
+//            foreach ($partialPayments as $partialPayment) {
+//                $daysPassed = $lastPaymentDate->diffInDays($partialPayment->date);
+//                $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
+//                $remainingAmount -= $partialPayment->paid;
+//                $lastPaymentDate = Carbon::parse($partialPayment->date);
+//            }
+//        }
+//
+//        $daysPassed = $lastPaymentDate->diffInDays($currentDate);
+//        $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
+//
+////        $totalPaid = Payment::where('contract_id', $contract->id)
+////            ->where('type', 'regular')
+////            ->where('date', '<=', $calculationDate)
+////            ->sum('paid');
+//
+//        $journalId =  DocumentJournal::where('journalable_id', $contract->id)
+//            ->where('journalable_type','App\Models\Contract')
+//            ->value('id');
+//        $totalPaid = DocumentJournal::where('journalable_id', $journalId)
+//            ->where('journalable_type','App\Models\DocumentJournal')
+//            ->where('document_type',DocumentJournal::PAY_INTEREST_AMOUNT)
+//            ->where('date', '<=', $currentDate)
+//            ->sum('amount_amd');
+//        $currentAmount = $totalPayment - $totalPaid + $penaltyAmount['penalty_amount'];
+//
+//        $futureInterestDiscount = 0.0;
+//        $nextInitialRegularPayment = Payment::where('contract_id', $contract->id)
+//            ->where('type', 'regular')
+//            ->where('status', 'initial')
+//            ->where('to_date', '>', $calculationDate)
+//            ->orderBy('to_date')
+//            ->orderBy('id')
+//            ->first();
+//
+//        if ($nextInitialRegularPayment) {
+//            $dueDate = Carbon::parse($nextInitialRegularPayment->to_date ?? $nextInitialRegularPayment->date)
+//                ->startOfDay();
+//
+//            $futureDays = $calculationDate->diffInDays($dueDate, false);
+//
+//            if ($futureDays > 0) {
+//                $principalBase = max(0, (float) ($contract->provided_amount ?? 0));
+//                $dailyRate = (float) ($contract->interest_rate ?? 0) / 100;
+//                $futureInterestDiscount = $principalBase * $futureDays * $dailyRate;
+//            }
+//        }
+//
+//        return [
+//            "daysPassed" => $daysPassed,
+//            "endDate" => $currentDate,
+//            "totalPayment" => $totalPayment,
+//            "totalPaid" => $totalPaid,
+//            "penaltyAmount" => $penaltyAmount,
+//            "current_amount" => $currentAmount > 0 ? $currentAmount : 0,
+//            "penalty_amount" => $penaltyAmount['penalty_amount'],
+//            "delay_days" => $penaltyAmount['delay_days'],
+//            "future_interest_discount" => round($futureInterestDiscount, 2),
+//        ];
+//    }
     public function calculateCurrentPayment($contract, $date = null)
     {
         $calculationDate = $date ? Carbon::parse($date)->endOfDay() : Carbon::now();
@@ -384,43 +480,51 @@ trait ContractTrait
             $currentDate = $calculationDate;
         }
 
-        $partialPayments = Payment::where('contract_id', $contract->id)
-            ->where('type', 'partial')
-            ->where('date', '<=', $calculationDate)
-            ->orderBy('date', 'asc')
+        $scheduledPayments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->orderBy('from_date', 'asc')
             ->get();
 
-        $remainingAmount = $contract->mother;
-        $totalPayment = 0;
-        $lastPaymentDate = Carbon::parse($contract->date);
+        $totalAccruedInterest = 0.0;
 
-        if ($partialPayments) {
-            foreach ($partialPayments as $partialPayment) {
-                $daysPassed = $lastPaymentDate->diffInDays($partialPayment->date);
-                $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
-                $remainingAmount -= $partialPayment->paid;
-                $lastPaymentDate = Carbon::parse($partialPayment->date);
+        foreach ($scheduledPayments as $payment) {
+            $fromDate = Carbon::parse($payment->from_date)->startOfDay();
+            $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
+
+            if ($fromDate->gte($currentDate)) {
+                break;
+            }
+
+            $balance = (float) ($payment->remaining + $payment->principal_payment);
+
+            if ($toDate->lte($currentDate)) {
+                $totalAccruedInterest += (float) $payment->interest_payment;
+            } else {
+                $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
+
+                $totalAccruedInterest += $this->calcAmount(
+                    $balance,
+                    $daysIntoCurrentPeriod,
+                    $contract->interest_rate / 100
+                );
+                break;
             }
         }
 
-        $daysPassed = $lastPaymentDate->diffInDays($currentDate);
-        $totalPayment += $this->calcAmount($remainingAmount, $daysPassed, $contract->interest_rate);
-
-//        $totalPaid = Payment::where('contract_id', $contract->id)
-//            ->where('type', 'regular')
-//            ->where('date', '<=', $calculationDate)
-//            ->sum('paid');
-
-        $journalId =  DocumentJournal::where('journalable_id', $contract->id)
-            ->where('journalable_type','App\Models\Contract')
+        // Արդեն վճարված տոկոս
+        $journalId = DocumentJournal::where('journalable_id', $contract->id)
+            ->where('journalable_type', 'App\Models\Contract')
             ->value('id');
+
         $totalPaid = DocumentJournal::where('journalable_id', $journalId)
-            ->where('journalable_type','App\Models\DocumentJournal')
-            ->where('document_type',DocumentJournal::PAY_INTEREST_AMOUNT)
+            ->where('journalable_type', 'App\Models\DocumentJournal')
+            ->where('document_type', DocumentJournal::PAY_INTEREST_AMOUNT)
             ->where('date', '<=', $currentDate)
             ->sum('amount_amd');
-        $currentAmount = $totalPayment - $totalPaid + $penaltyAmount['penalty_amount'];
 
+        $currentAmount = $totalAccruedInterest - $totalPaid + $penaltyAmount['penalty_amount'];
+
+        // Future interest discount
         $futureInterestDiscount = 0.0;
         $nextInitialRegularPayment = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
@@ -431,31 +535,27 @@ trait ContractTrait
             ->first();
 
         if ($nextInitialRegularPayment) {
-            $dueDate = Carbon::parse($nextInitialRegularPayment->to_date ?? $nextInitialRegularPayment->date)
-                ->startOfDay();
-
+            $dueDate    = Carbon::parse($nextInitialRegularPayment->to_date ?? $nextInitialRegularPayment->date)->startOfDay();
             $futureDays = $calculationDate->diffInDays($dueDate, false);
 
             if ($futureDays > 0) {
                 $principalBase = max(0, (float) ($contract->provided_amount ?? 0));
-                $dailyRate = (float) ($contract->interest_rate ?? 0) / 100;
+                $dailyRate     = (float) ($contract->interest_rate ?? 0) / 100;
                 $futureInterestDiscount = $principalBase * $futureDays * $dailyRate;
             }
         }
 
         return [
-            "daysPassed" => $daysPassed,
-            "endDate" => $currentDate,
-            "totalPayment" => $totalPayment,
-            "totalPaid" => $totalPaid,
-            "penaltyAmount" => $penaltyAmount,
-            "current_amount" => $currentAmount > 0 ? $currentAmount : 0,
-            "penalty_amount" => $penaltyAmount['penalty_amount'],
-            "delay_days" => $penaltyAmount['delay_days'],
+            "endDate"                  => $currentDate,
+            "totalAccruedInterest"     => $totalAccruedInterest,
+            "totalPaid"                => $totalPaid,
+            "penaltyAmount"            => $penaltyAmount,
+            "current_amount"           => $currentAmount > 0 ? $currentAmount : 0,
+            "penalty_amount"           => $penaltyAmount['penalty_amount'],
+            "delay_days"               => $penaltyAmount['delay_days'],
             "future_interest_discount" => round($futureInterestDiscount, 2),
         ];
     }
-
     public function countPenalty($contract_id, $import_date = null)
     {
         $contract = Contract::find($contract_id);
