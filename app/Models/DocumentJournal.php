@@ -79,32 +79,32 @@ class DocumentJournal extends Model
     protected static function booted(): void
     {
         parent::booted();
-        static::created(function (DocumentJournal $journal) {
-            $journal->loadMissing(['debitAccount', 'creditAccount']);
-
-            $debitCode = $journal->debitAccount->code ?? '';
-            $creditCode = $journal->creditAccount->code ?? '';
-
-            $isDebitBank = str_starts_with($debitCode, '102101');
-            $isCreditBank = str_starts_with($creditCode, '102101');
-            if ($isDebitBank || $isCreditBank) {
-                $bankAccountIds = \App\Models\ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
-
-                $debitSum = Transaction::whereIn('debit_account_id', $bankAccountIds)->sum('amount_amd');
-                $creditSum = Transaction::whereIn('credit_account_id', $bankAccountIds)->sum('amount_amd');
-
-                $currentBalance = $debitSum - $creditSum;
-
-//                $provisionAmount = $currentBalance * 0.01;
-                $provisionAmount = $journal->amount_amd * 0.01;
-                $provisionAmount = max($provisionAmount, 0);
-                    if ($isDebitBank) {
-                        self::createProvisionEntry($journal, $provisionAmount, 'Պահուստավորում', '730041', '15300PC');
-                    } else {
-                        self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102');
-                    }
-            }
-        });
+//        static::created(function (DocumentJournal $journal) {
+//            $journal->loadMissing(['debitAccount', 'creditAccount']);
+//
+//            $debitCode = $journal->debitAccount->code ?? '';
+//            $creditCode = $journal->creditAccount->code ?? '';
+//
+//            $isDebitBank = str_starts_with($debitCode, '102101');
+//            $isCreditBank = str_starts_with($creditCode, '102101');
+//            if ($isDebitBank || $isCreditBank) {
+//                $bankAccountIds = \App\Models\ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
+//
+//                $debitSum = Transaction::whereIn('debit_account_id', $bankAccountIds)->sum('amount_amd');
+//                $creditSum = Transaction::whereIn('credit_account_id', $bankAccountIds)->sum('amount_amd');
+//
+//                $currentBalance = $debitSum - $creditSum;
+//
+////                $provisionAmount = $currentBalance * 0.01;
+//                $provisionAmount = $journal->amount_amd * 0.01;
+//                $provisionAmount = max($provisionAmount, 0);
+//                    if ($isDebitBank) {
+//                        self::createProvisionEntry($journal, $provisionAmount, 'Պահուստավորում', '730041', '15300PC');
+//                    } else {
+//                        self::createProvisionEntry($journal, $provisionAmount, 'Ապապահուստավորում', '15300PC', '63102');
+//                    }
+//            }
+//        });
         static::deleting(function (DocumentJournal $journal) {
             DB::transaction(function () use ($journal) {
                 // Avoid cascading deletion of all documents in a deal when deleting
