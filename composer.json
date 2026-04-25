@@ -7,6 +7,8 @@
     "require": {
         "php": "^8.0.2",
         "ext-bcmath": "*",
+        "ext-dom": "*",
+        "ext-soap": "*",
         "ext-zip": "*",
         "dompdf/dompdf": "^2.0",
         "guzzlehttp/guzzle": "^7.2",
@@ -19,10 +21,9 @@
         "predis/predis": "^2.2",
         "psr/simple-cache": "2.0",
         "pusher/pusher-php-server": "^7.2",
+        "spatie/laravel-backup": "8.0.0",
         "spatie/laravel-permission": "^6.24",
-        "tymon/jwt-auth": "^2.1",
-        "ext-dom": "*",
-        "ext-soap": "*"
+        "tymon/jwt-auth": "^2.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

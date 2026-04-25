@@ -41,7 +41,7 @@ class CreditRegistryController extends Controller
                 'exceptions' => true,
                 'cache_wsdl' => WSDL_CACHE_NONE,
                 'connection_timeout' => 20,
-                'location' => 'http://100.100.100.60:8889/DEGSHost',
+                'location' => 'https//100.100.100.60:8888/DEGSHost',
                 'soap_version' => SOAP_1_2,
             ];
 
