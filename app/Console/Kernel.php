@@ -21,7 +21,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('backup:clean')->dailyAt('01:00');
-        $schedule->command('backup:run')->dailyAt('16:13');
+        $schedule->command('backup:run')->dailyAt('16:23');
 
 
         $schedule->job(new UpdateClientClassificationsNew)
