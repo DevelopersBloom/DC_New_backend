@@ -486,7 +486,7 @@ trait ContractTrait
             ->get();
 
         $interestAmount = 0.0;
-
+        $count = 0;
         foreach ($scheduledPayments as $payment) {
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
             $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
@@ -494,7 +494,7 @@ trait ContractTrait
             if ($fromDate->gte($currentDate)) {
                 break;
             }
-
+            $count++;
             $balance = (float) ($payment->remaining + $payment->principal_payment);
 
             if ($toDate->lte($currentDate)) {
@@ -509,6 +509,7 @@ trait ContractTrait
                 );
                 break;
             }
+            dd($balance,$interestAmount,$toDate->lte($currentDate));
         }
 
         $journalId = DocumentJournal::where('journalable_id', $contract->id)
