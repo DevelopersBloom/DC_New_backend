@@ -510,7 +510,7 @@ trait ContractTrait
                 break;
             }
         }
-        dd($balance,$interestAmount,$daysIntoCurrentPeriod);
+        dd($balance,$interestAmount);
 
         $journalId = DocumentJournal::where('journalable_id', $contract->id)
             ->where('journalable_type', 'App\Models\Contract')
