@@ -507,7 +507,6 @@ trait ContractTrait
                     $daysIntoCurrentPeriod,
                     $contract->interest_rate
                 );
-                dd($interestAmount,$balance,$daysIntoCurrentPeriod,$contract->interest_rate);
                 break;
             }
         }
