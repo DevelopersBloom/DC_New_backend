@@ -505,7 +505,7 @@ trait ContractTrait
                 $interestAmount += $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
-                    $contract->interest_rate / 100
+                    $contract->interest_rate
                 );
                 break;
             }
