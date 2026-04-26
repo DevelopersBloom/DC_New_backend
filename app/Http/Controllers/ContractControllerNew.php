@@ -143,7 +143,7 @@ class ContractControllerNew extends Controller
             ->findOrFail($id);
 
         $currentPaymentAmount = $this->calculateCurrentPayment($contract);
-
+        $contract->interest_amount = $currentPaymentAmount['interest_amount'];
         $contract->current_payment_amount = $currentPaymentAmount['current_amount'];
         $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
         $contract->future_interest_discount = $currentPaymentAmount['future_interest_discount'] ?? 0;
