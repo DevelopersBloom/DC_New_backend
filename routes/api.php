@@ -181,8 +181,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('/files/{id}', [FileController::class, 'destroy']);
 
         Route::post('/bank-provision/run', [BankProvisionController::class, 'run']);
-        Route::post('clients/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
-        Route::post('clients/correct-all-reserves', [ClientControllerNew::class, 'correctAllClientReserves']);
+        Route::post('/clients/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
+        Route::post('/clients/correct-all-reserves', [ClientControllerNew::class, 'correctAllClientReserves']);
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search-partner', [ClientControllerNew::class, 'searchPartner']);
