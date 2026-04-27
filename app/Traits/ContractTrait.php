@@ -490,7 +490,6 @@ trait ContractTrait
         $count = 0;
         foreach ($scheduledPayments as $payment) {
             $payment = $this->normalizePaymentDates($payment, $contract);
-dd($payment);
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
             $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
             if ($fromDate->gte($currentDate)) {
