@@ -43,4 +43,8 @@ class Item extends Model
     {
         return $this->belongsToMany(Contract::class, 'contract_item');
     }
+    public function realEstate(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ItemRealEstate::class);
+    }
 }

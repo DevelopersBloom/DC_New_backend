@@ -132,28 +132,15 @@ class ContractDetailResource extends JsonResource
                 return [
                     'id'   => $history->id,
                     'type' => $history->type->title,
-//                    'date' => $history->date,
                     'date' => Carbon::parse($history->date)->format('d-m-Y'),
                     'interest_amount' => $history->interest_amount ?? 0,
                     'penalty_amount' => $history->penalty ?? 0,
                     'discount' => $history->discount ?? 0,
                     'delay_days' => $history->delay_days ?? 0,
                     'total' => $history->amount,
-//                    'total' => $history->interest_amount + $history->penalty + $history->discount,
-                   // 'total' => $history->order->amount,
-//
-//                    'user' => [
-//                        'id' => $history->user->id,
-//                        'name' => $history->user->name,
-//                        'surname' => $history->user->surname,
-//                        'role' => $history->user->role,
-//                        'email' => $history->user->email,
-//                    ],
                     'order' => [
                         'id' => $history->order->id ?? null,
                         'amount' => $history->order->amount ?? null,
-                       // 'status' => $history->order->status ?? null,
-//                        'created_at' => $history->order->date ?? null,
                     ]
 
                 ];
@@ -170,52 +157,60 @@ class ContractDetailResource extends JsonResource
             }),
             'items' => $this->items->map(function ($item) {
                 if ($item->category->name === 'electronics') {
+                    $re = $item->realEstate;
                     return [
-                        'id' => $item->id,
-                        'category' => $item->category->title,
-                        'subcategory' => $item->subcategory,
-                        'model' => $item->model,
-                        'description' => $this->description,
-                        'sn' => $item->sn,
-                        'imei' => $item->imei,
-                        'rated' => $item->provided_amount,
+                        'id'                         => $item->id,
+                        'category'                   => $item->category->title,
+                        'description'                => $item->description,
+                        'rated'                      => $item->provided_amount,
+                        'certificate_number'         => $re?->certificate_number,
+                        'certificate_password'       => $re?->certificate_password,
+                        'cadastral_code'             => $re?->cadastral_code,
+                        'area_sqm'                   => $re?->area_sqm,
+                        'appraiser_company'          => $re?->appraiser_company,
+                        'appraisal_report_number'    => $re?->appraisal_report_number,
+                        'appraisal_date'             => $re?->appraisal_date?->format('d-m-Y'),
+                        'appraised_value'            => $re?->appraised_value,
+                        'unified_reference_number'   => $re?->unified_reference_number,
+                        'unified_reference_password' => $re?->unified_reference_password,
+                        'is_joint'                   => $re?->is_joint ?? false,
                     ];
                 } elseif ($item->category->name === 'gold') {
                     return [
-                        'id' => $item->id,
-                        'category' => $item->category->title,
+                        'id'          => $item->id,
+                        'category'    => $item->category->title,
                         'subcategory' => $item->subcategory,
-                        'weight' => $item->weight,
-                        'clear_weight' => $item->clear_weight,
-                        'hallmark' => $item->hallmark,
+                        'weight'      => $item->weight,
+                        'clear_weight'=> $item->clear_weight,
+                        'hallmark'    => $item->hallmark,
                         'description' => $item->description,
-                        'rated' => $item->provided_amount,
+                        'rated'       => $item->provided_amount,
                     ];
                 } elseif ($item->category->name === 'car') {
                     return [
-                        'id' => $item->id,
-                        'category' => $item->category->title,
-                        'car_make' => $item->car_make,
-                        'model' => $item->model,
-                        'manufacture' => $item->manufacture,
-                        'power' => $item->power,
-                        'license_plate' => $item->license_plate,
-                        'color' => $item->color,
-                        'registration' => $item->registration,
-                        'identification' => $item->identification,
-                        'ownership' => $item->ownership,
-                        'issued_by' => $item->issued_by,
-                        'date_of_issuance' => $item->date_of_issuance,
-                        'description' => $item->description,
-                        'rated' => $item->provided_amount,
+                        'id'              => $item->id,
+                        'category'        => $item->category->title,
+                        'car_make'        => $item->car_make,
+                        'model'           => $item->model,
+                        'manufacture'     => $item->manufacture,
+                        'power'           => $item->power,
+                        'license_plate'   => $item->license_plate,
+                        'color'           => $item->color,
+                        'registration'    => $item->registration,
+                        'identification'  => $item->identification,
+                        'ownership'       => $item->ownership,
+                        'issued_by'       => $item->issued_by,
+                        'date_of_issuance'=> $item->date_of_issuance,
+                        'description'     => $item->description,
+                        'rated'           => $item->provided_amount,
                     ];
                 } else {
                     return [
-                        'id' => $item->id,
-                        'category' => $item->category->title,
+                        'id'          => $item->id,
+                        'category'    => $item->category->title,
                         'subcategory' => $item->subcategory,
-                        'model' => $item->model,
-                        'description' => $item->description
+                        'model'       => $item->model,
+                        'description' => $item->description,
                     ];
                 }
             }),

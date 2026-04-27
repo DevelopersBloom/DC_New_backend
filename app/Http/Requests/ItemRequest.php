@@ -51,6 +51,19 @@ class ItemRequest extends FormRequest
             'items.*.ownership_certificate' => 'required_if:items.*.category.name,car|nullable|string|max:50',
             'items.*.issued_by' => 'required_if:items.*.category.name,car|nullable|string|max:255',
             'items.*.date_of_issuance' => 'required_if:items.*.category.name,car|nullable|date',
+
+            // Real Estate
+            'items.*.certificate_number' => 'nullable|string|max:255',
+            'items.*.certificate_password' => 'nullable|string|max:255',
+            'items.*.cadastral_code' => 'nullable|string|max:255',
+            'items.*.area_sqm' => 'nullable|numeric|min:0',
+            'items.*.appraiser_company' => 'nullable|string|max:255',
+            'items.*.appraisal_report_number' => 'nullable|string|max:255',
+            'items.*.appraisal_date' => 'nullable|date',
+            'items.*.appraised_value' => 'nullable|numeric|min:0',
+            'items.*.unified_reference_number' => 'nullable|string|max:255',
+            'items.*.unified_reference_password' => 'nullable|string|max:255',
+            'items.*.is_joint' => 'nullable|boolean',
         ];
     }
 }

@@ -135,6 +135,8 @@ class ContractControllerNew extends Controller
                     ->orderBy('id', 'DESC');
             },
             'items',
+            'items.realEstate',
+            'items.category',
             'files',
             'deals',
         ])
