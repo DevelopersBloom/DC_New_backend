@@ -7,6 +7,7 @@ use App\Http\Requests\ClientRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Http\Resources\PartnerResource;
+use App\Jobs\CorrectAllClientReservesJob;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\ClientClassification;
@@ -1382,5 +1383,14 @@ class ClientControllerNew extends Controller
                 'error'   => $e->getMessage(),
             ], 500);
         }
+    }
+    public function correctAllClientReserves(): JsonResponse
+    {
+        dispatch(new CorrectAllClientReservesJob());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reserve recalculation job dispatched.',
+        ]);
     }
 }

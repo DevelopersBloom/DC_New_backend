@@ -771,7 +771,7 @@ class PaymentService
             $principal = (float) $payment->principal_payment;
             $fee = (float) ($payment->service_fee_payment ?? 0);
             $paid = (float) ($payment->paid ?? 0);
-
+            $payment->amount = $payment->interest_payment + $principal;
             if ((float) $payment->amount <= 0) {
                 $payment->status = 'completed';
             }
