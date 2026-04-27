@@ -493,6 +493,7 @@ trait ContractTrait
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
             $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
 
+            dd($fromDate);
             if ($fromDate->gte($currentDate)) {
                 break;
             }
