@@ -482,14 +482,15 @@ trait ContractTrait
 
         $scheduledPayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
-            ->orderBy('from_date', 'asc')
+            ->orderBy('id','asc')
+//            ->orderBy('from_date', 'asc')
             ->get();
 
         $interestAmount = 0.0;
         $count = 0;
         foreach ($scheduledPayments as $payment) {
             $payment = $this->normalizePaymentDates($payment, $contract);
-
+dd($payment);
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
             $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
             if ($fromDate->gte($currentDate)) {
