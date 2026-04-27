@@ -488,6 +488,8 @@ trait ContractTrait
         $interestAmount = 0.0;
         $count = 0;
         foreach ($scheduledPayments as $payment) {
+            $payment = $this->normalizePaymentDates($payment, $contract);
+
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
             $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
 
