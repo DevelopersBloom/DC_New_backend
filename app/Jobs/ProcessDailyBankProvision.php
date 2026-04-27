@@ -21,17 +21,20 @@ class ProcessDailyBankProvision implements ShouldQueue
     public $tries = 3;
 
     private float $provisionPercent;
+    private string $forDate;
 
-    public function __construct(float $provisionPercent = 0.01)
+    public function __construct(float $provisionPercent = 0.01, ?string $forDate = null)
     {
         $this->provisionPercent = $provisionPercent;
+        $this->forDate = $forDate ?? Carbon::today()->format('Y-m-d');
     }
 
     public function handle(): void
     {
-        $endOfDay   = Carbon::today()->endOfDay();
-        $toDay      = Carbon::today()->format('Y-m-d');
-        Log::info("Bank Provision started for {$endOfDay->toDateString()}");
+        $endOfDay = Carbon::parse($this->forDate)->endOfDay();
+        $toDay    = Carbon::parse($this->forDate)->format('Y-m-d');
+
+        Log::info("Bank Provision started for {$toDay}");
 
         $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
         if ($bankAccountIds->isEmpty()) {
