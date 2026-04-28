@@ -158,6 +158,7 @@ class ContractDetailResource extends JsonResource
             'items' => $this->items->map(function ($item) {
                 if ($item->category->name === 'electronics') {
                     $re = $item->realEstate;
+                    dd($item,$item->id, $re);
                     return [
                         'id'                         => $item->id,
                         'category'                   => $item->category->title,
