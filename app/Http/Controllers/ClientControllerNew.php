@@ -1446,4 +1446,48 @@ class ClientControllerNew extends Controller
                 : 'Մի քանի օրերի recalculation-ը ձախողվեց',
         ]);
     }
+    /**
+     * Retrieves the list of clients with the upcoming birthdays.
+     * It filters clients by the shortest days remaining until their birthday.
+     * If multiple clients share the same birthday, all of them are included.
+     *
+     * @return JsonResponse
+     */
+    public function getUpcomingBirthdays(): JsonResponse
+    {
+        $today = Carbon::today();
+
+        $clients = Client::whereNotNull('date_of_birth')->get();
+
+        $clientsWithDiff = $clients->map(function ($client) use ($today) {
+            $birthDate = Carbon::parse($client->date_of_birth);
+
+            $nextBirthday = $birthDate->copy()->year($today->year);
+
+            if ($nextBirthday->lt($today)) {
+                $nextBirthday->addYear();
+            }
+
+            $daysLeft = $today->diffInDays($nextBirthday);
+
+            return [
+                'name' => $client->name,
+                'surname' => $client->surname,
+                'birth_date' => $birthDate->format('Y-m-d'),
+                'days_left' => $daysLeft,
+            ];
+        });
+
+        $sorted = $clientsWithDiff->sortBy('days_left')->values();
+
+        $topDays = $sorted->pluck('days_left')->unique()->take(5);
+
+        $result = $sorted->filter(function ($client) use ($topDays) {
+            return $topDays->contains($client['days_left']);
+        })->values();
+
+        return response()->json([
+            'data' => $result
+        ]);
+    }
 }

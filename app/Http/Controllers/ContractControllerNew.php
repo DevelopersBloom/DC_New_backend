@@ -2,27 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\Acra\AcraExport;
 use App\Exports\ContractsCalcExport;
 use App\Exports\ContractsExport;
-use App\Exports\DailyExport;
 use App\Http\Requests\ClientRequest;
 use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
-use App\Models\ChartOfAccount;
 use App\Models\ClassificationHistory;
 use App\Models\Client;
 use App\Models\ClientClassification;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
-use App\Models\ContractReserveHistory;
 use App\Models\Deal;
 use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Order;
-use App\Models\Payment;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
@@ -893,7 +888,5 @@ class ContractControllerNew extends Controller
 //            $fileName
 //        );
 //    }
-
-
 
 }
