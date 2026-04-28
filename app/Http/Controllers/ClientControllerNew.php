@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Http\Resources\PartnerResource;
 use App\Jobs\CorrectAllClientReservesJob;
+use App\Jobs\ProcessDailyBankProvision;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\ClientClassification;
@@ -26,6 +27,7 @@ use App\Traits\CorrectReserveTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,7 +36,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ClientControllerNew extends Controller
 {
-    use CalculatesAccountBalancesTrait,CorrectReserveTrait;
+    use CalculatesAccountBalancesTrait, CorrectReserveTrait;
+
     protected ClientService $clientService;
 
     public function __construct(ClientService $clientService)
@@ -51,6 +54,7 @@ class ClientControllerNew extends Controller
     {
         return $this->storeClientData($request->validated(), false);
     }
+
     private function storeClientData(array $data, bool $hasContract): JsonResponse
     {
         $pawnshopId = Auth::user()->pawnshop_id ?? 1;
@@ -140,7 +144,7 @@ class ClientControllerNew extends Controller
 
         $client = Client::with(['contracts' => function ($query) use ($status) {
             $query->where('status', $status);
-        },  'classification' ])->find($clientId);
+        }, 'classification'])->find($clientId);
 
         if (!$client) {
             return response()->json(['error' => 'Client not found'], 404);
@@ -160,20 +164,20 @@ class ClientControllerNew extends Controller
         $status = $request->query('status');
 
         $clients = Client::select([
-            'id',  DB::raw("DATE_FORMAT(date, '%d-%m-%Y') as registration_date"), 'type','name', 'surname', 'middle_name', DB::raw("DATE_FORMAT(date_of_birth, '%d-%m-%Y') as date_of_birth"), 'country',
+            'id', DB::raw("DATE_FORMAT(date, '%d-%m-%Y') as registration_date"), 'type', 'name', 'surname', 'middle_name', DB::raw("DATE_FORMAT(date_of_birth, '%d-%m-%Y') as date_of_birth"), 'country',
             'city', 'street', 'building', 'passport_series', 'passport_validity',
-            'passport_issued', 'phone', 'additional_phone', 'email', 'has_contract','company_name','is_linked_to_company','is_company_employee'
+            'passport_issued', 'phone', 'additional_phone', 'email', 'has_contract', 'company_name', 'is_linked_to_company', 'is_company_employee'
         ])
-        ->whereHas('pawnshopClients', function ($query) use ($pawnshopId) {
-            $query->where('pawnshop_id', $pawnshopId);
-        })->when($status, function ($query, $statusValue) {
-            return $query->whereHas('classification', function ($q) use ($statusValue) {
-                $q->where('name', $statusValue);
-            });
-        })
-        ->filterByClient($request->only(['id','name', 'surname', 'patronymic', 'passport_series', 'phone', 'start_date', 'end_date','is_linked_to_company','is_company_employee']))
-        ->orderByDesc('date')
-        ->paginate(10);
+            ->whereHas('pawnshopClients', function ($query) use ($pawnshopId) {
+                $query->where('pawnshop_id', $pawnshopId);
+            })->when($status, function ($query, $statusValue) {
+                return $query->whereHas('classification', function ($q) use ($statusValue) {
+                    $q->where('name', $statusValue);
+                });
+            })
+            ->filterByClient($request->only(['id', 'name', 'surname', 'patronymic', 'passport_series', 'phone', 'start_date', 'end_date', 'is_linked_to_company', 'is_company_employee']))
+            ->orderByDesc('date')
+            ->paginate(10);
 //        ->get();
 
         $clientStats = Client::whereHas('pawnshopClients', function ($query) use ($pawnshopId) {
@@ -209,6 +213,7 @@ class ClientControllerNew extends Controller
 
         return ClientResource::collection($clients);
     }
+
     public function updateClientData(UpdateClientRequest $request, int $client_id): JsonResponse
     {
         $data = $request->validated();
@@ -246,7 +251,7 @@ class ClientControllerNew extends Controller
 
             $pawnshopId = Auth::user()->pawnshop_id ?? 1;
             ClientPawnshop::firstOrCreate([
-                'client_id'   => $client->id,
+                'client_id' => $client->id,
                 'pawnshop_id' => $pawnshopId,
             ]);
 
@@ -254,7 +259,7 @@ class ClientControllerNew extends Controller
 
             return response()->json([
                 'message' => 'Client data updated successfully',
-                'client'  => $client->fresh(),
+                'client' => $client->fresh(),
             ], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -264,6 +269,7 @@ class ClientControllerNew extends Controller
             ], 400);
         }
     }
+
     /**
      */
     public function exportClients()
@@ -904,7 +910,7 @@ class ClientControllerNew extends Controller
             $q->where('status', 'initial');
         }, 'classification'])->findOrFail($request->client_id);
 
-        $classification = ClientClassification::where('name',$request->classification)->first();
+        $classification = ClientClassification::where('name', $request->classification)->first();
 
         if ($client->classification_id === $classification->id) {
             return response()->json(['message' => 'Classification is already set to this value.']);
@@ -912,11 +918,11 @@ class ClientControllerNew extends Controller
 
         $now = now()->format('Y-m-d');
 
-        $acc16605PC     = ChartOfAccount::idByCode('16605PC');
-        $acc16605PS     = ChartOfAccount::idByCode('16605PS');
-        $acc16200NV     = ChartOfAccount::idByCode('16200NV');
-        $acc16200       = ChartOfAccount::idByCode('16200');
-        $acc16201NI     = ChartOfAccount::idByCode('16201NI');
+        $acc16605PC = ChartOfAccount::idByCode('16605PC');
+        $acc16605PS = ChartOfAccount::idByCode('16605PS');
+        $acc16200NV = ChartOfAccount::idByCode('16200NV');
+        $acc16200 = ChartOfAccount::idByCode('16200');
+        $acc16201NI = ChartOfAccount::idByCode('16201NI');
 
         $targetAccountIds = array_filter([
             ChartOfAccount::idByCode('16200NV'),
@@ -924,41 +930,41 @@ class ClientControllerNew extends Controller
             ChartOfAccount::idByCode('16200'),
         ]);
 
-        $diamondId  = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
+        $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
         $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
         DB::beginTransaction();
         try {
             // ── Save old values ───────────────────────────────────────────────
-            $oldClassificationName  = $client->classification?->name;
-            $oldClassificationId    = $client->classification?->id;
+            $oldClassificationName = $client->classification?->name;
+            $oldClassificationId = $client->classification?->id;
             $oldClassificationOrder = $client->classification?->order;
-            $oldReservePercent      = $client->classification?->reserve_percent ?? 0;
+            $oldReservePercent = $client->classification?->reserve_percent ?? 0;
 
             // ── Update client classification ──────────────────────────────────
             $client->classification_id = $classification->id;
             $client->save();
             $client->load('classification');
 
-            $newClassificationName  = $client->classification?->name;
-            $newReservePercent      = $client->classification?->reserve_percent ?? 0;
-            $newRiskWeight          = $client->classification?->risk_weight ?? 0;
+            $newClassificationName = $client->classification?->name;
+            $newReservePercent = $client->classification?->reserve_percent ?? 0;
+            $newRiskWeight = $client->classification?->risk_weight ?? 0;
             $newClassificationOrder = $client->classification?->order;
-            $clientId               = $client->id;
+            $clientId = $client->id;
 
             // ── Modification log ──────────────────────────────────────────────
             $oldRisk = $oldClassificationOrder !== null ? max(0, min(7, (int)$oldClassificationOrder)) : null;
             $newRisk = $newClassificationOrder !== null ? max(0, min(7, (int)$newClassificationOrder)) : 0;
 
             Modification::create([
-                'subject_type'     => Client::class,
-                'subject_id'       => $clientId,
-                'modification_type'=> 'Modificator',
-                'field_code'       => 'RISK',
-                'element_code'     => 'Risk',
-                'old_value'        => $oldRisk !== null ? (string)$oldRisk : null,
-                'new_value'        => (string)$newRisk,
-                'effective_date'   => now()->toDateString(),
+                'subject_type' => Client::class,
+                'subject_id' => $clientId,
+                'modification_type' => 'Modificator',
+                'field_code' => 'RISK',
+                'element_code' => 'Risk',
+                'old_value' => $oldRisk !== null ? (string)$oldRisk : null,
+                'new_value' => (string)$newRisk,
+                'effective_date' => now()->toDateString(),
             ]);
 
             $accountsSum = $this->getClientAccountsBalance($clientId, $targetAccountIds, $now);
@@ -975,20 +981,20 @@ class ClientControllerNew extends Controller
             // ── ContractReserveHistory (one per contract, same as Job) ────────
             foreach ($client->contracts as $contract) {
                 ContractReserveHistory::create([
-                    'client_id'          => $client->id,
-                    'classification_id'  => $classification->id,
-                    'contract_id'        => $contract->id,
-                    'risk_weight'        => $newRiskWeight,
-                    'reserve_percent'    => $newReservePercent,
-                    'reserve_amount'     => $amount,
-                    'total_reserve_amount'=> $amount,
-                    'provided_amount'    => $contract->provided_amount,
-                    'date'               => now()->toDateString(),
-                    'user_id'            => auth()->id() ?? 1,
-                    'meta'               => [
+                    'client_id' => $client->id,
+                    'classification_id' => $classification->id,
+                    'contract_id' => $contract->id,
+                    'risk_weight' => $newRiskWeight,
+                    'reserve_percent' => $newReservePercent,
+                    'reserve_amount' => $amount,
+                    'total_reserve_amount' => $amount,
+                    'provided_amount' => $contract->provided_amount,
+                    'date' => now()->toDateString(),
+                    'user_id' => auth()->id() ?? 1,
+                    'meta' => [
                         'old_reserve_percent' => $oldReservePercent,
-                        'old_reserve_amount'  => $existingReserve,
-                        'accounts_sum'        => $accountsSum,
+                        'old_reserve_amount' => $existingReserve,
+                        'accounts_sum' => $accountsSum,
                     ],
                 ]);
             }
@@ -1009,7 +1015,7 @@ class ClientControllerNew extends Controller
                 throw new \RuntimeException('Posting rule for reserve not found');
             }
 
-            $debitReserve  = $ruleReserve->debit_account_id;
+            $debitReserve = $ruleReserve->debit_account_id;
             $creditReserve = $ruleReserve->credit_account_id;
 
             if ($oldClassificationName === 'standard') {
@@ -1017,7 +1023,7 @@ class ClientControllerNew extends Controller
             } else {
                 $ruleClassification = PostingRule::where('business_event_filter', 'classification_special_to_general')->firstOrFail();
             }
-            $debitClassification  = $ruleClassification->debit_account_id;
+            $debitClassification = $ruleClassification->debit_account_id;
             $creditClassification = $ruleClassification->credit_account_id;
 
             $documentType = $newClassificationName === 'standard'
@@ -1033,54 +1039,54 @@ class ClientControllerNew extends Controller
 
             if ($amount > 0 && $journal) {
                 $docJournal = DocumentJournal::create([
-                    'date'             => now()->toDateString(),
-                    'document_number'  => $nextDocNum,
-                    'document_type'    => $documentType,
-                    'amount_amd'       => $amount,
+                    'date' => now()->toDateString(),
+                    'document_number' => $nextDocNum,
+                    'document_type' => $documentType,
+                    'amount_amd' => $amount,
                     'debit_partner_id' => $diamondId,
-                    'credit_partner_id'=> $clientId,
-                    'comment'          => "Reserve adjustment for client #{$clientId} due to classification change (manual)",
+                    'credit_partner_id' => $clientId,
+                    'comment' => "Reserve adjustment for client #{$clientId} due to classification change (manual)",
                     'debit_account_id' => $debitReserve,
-                    'credit_account_id'=> $creditReserve,
-                    'user_id'          => auth()->id() ?? 1,
+                    'credit_account_id' => $creditReserve,
+                    'user_id' => auth()->id() ?? 1,
                     'journalable_type' => DocumentJournal::class,
-                    'journalable_id'   => $journal->id,
+                    'journalable_id' => $journal->id,
                 ]);
 
                 Transaction::create([
-                    'date'                 => now()->toDateString(),
-                    'document_number'      => $nextDocNum,
-                    'document_type'        => $documentType,
-                    'debit_account_id'     => $debitReserve,
-                    'debit_partner_id'     => $diamondId,
-                    'debit_currency_id'    => 1,
-                    'credit_account_id'    => $creditReserve,
-                    'credit_currency_id'   => 1,
-                    'credit_partner_id'    => $clientId,
-                    'amount_amd'           => $amount,
-                    'comment'              => "Reserve adjustment for client #{$clientId} (manual)",
-                    'user_id'              => auth()->id() ?? 1,
-                    'is_system'            => true,
-                    'disbursement_date'    => now()->toDateString(),
+                    'date' => now()->toDateString(),
+                    'document_number' => $nextDocNum,
+                    'document_type' => $documentType,
+                    'debit_account_id' => $debitReserve,
+                    'debit_partner_id' => $diamondId,
+                    'debit_currency_id' => 1,
+                    'credit_account_id' => $creditReserve,
+                    'credit_currency_id' => 1,
+                    'credit_partner_id' => $clientId,
+                    'amount_amd' => $amount,
+                    'comment' => "Reserve adjustment for client #{$clientId} (manual)",
+                    'user_id' => auth()->id() ?? 1,
+                    'is_system' => true,
+                    'disbursement_date' => now()->toDateString(),
                     'transactionable_type' => DocumentJournal::class,
-                    'transactionable_id'   => $docJournal->id,
+                    'transactionable_id' => $docJournal->id,
                 ]);
 
                 ClassificationHistory::create([
-                    'client_id'        => $client->id,
-                    'classification_id'=> $classification->id,
-                    'risk_weight'      => $newRiskWeight,
-                    'reserve_percent'  => $newReservePercent,
-                    'comment'          => 'Client classification update manually',
-                    'actionable_type'  => DocumentJournal::class,
-                    'actionable_id'    => $docJournal->id,
-                    'user_id'          => auth()->id() ?? 1,
-                    'meta'             => [
-                        'old_classification_id'   => $oldClassificationId,
+                    'client_id' => $client->id,
+                    'classification_id' => $classification->id,
+                    'risk_weight' => $newRiskWeight,
+                    'reserve_percent' => $newReservePercent,
+                    'comment' => 'Client classification update manually',
+                    'actionable_type' => DocumentJournal::class,
+                    'actionable_id' => $docJournal->id,
+                    'user_id' => auth()->id() ?? 1,
+                    'meta' => [
+                        'old_classification_id' => $oldClassificationId,
                         'old_classification_name' => $oldClassificationName,
-                        'old_reserve_percent'     => $oldReservePercent,
-                        'old_reserve_amount'      => $existingReserve,
-                        'accounts_sum'            => $accountsSum,
+                        'old_reserve_percent' => $oldReservePercent,
+                        'old_reserve_amount' => $existingReserve,
+                        'accounts_sum' => $accountsSum,
                     ],
                     'date' => now(),
                 ]);
@@ -1091,37 +1097,37 @@ class ClientControllerNew extends Controller
             // ── Transfer general → special reserve (standard → non-standard) ──
             if ($existingGeneralReserve > 0 && $oldClassificationName === 'standard' && $journal) {
                 $classificationDoc = DocumentJournal::create([
-                    'date'             => now()->toDateString(),
-                    'document_number'  => $nextDocNum,
-                    'document_type'    => DocumentJournal::CLASSIFICATION,
-                    'amount_amd'       => $existingGeneralReserve,
+                    'date' => now()->toDateString(),
+                    'document_number' => $nextDocNum,
+                    'document_type' => DocumentJournal::CLASSIFICATION,
+                    'amount_amd' => $existingGeneralReserve,
                     'debit_partner_id' => $clientId,
-                    'credit_partner_id'=> $clientId,
-                    'comment'          => "Transfer general to special reserve for client #{$clientId} (manual)",
+                    'credit_partner_id' => $clientId,
+                    'comment' => "Transfer general to special reserve for client #{$clientId} (manual)",
                     'debit_account_id' => $debitClassification,
-                    'credit_account_id'=> $creditClassification,
-                    'user_id'          => auth()->id() ?? 1,
+                    'credit_account_id' => $creditClassification,
+                    'user_id' => auth()->id() ?? 1,
                     'journalable_type' => DocumentJournal::class,
-                    'journalable_id'   => $journal->id,
+                    'journalable_id' => $journal->id,
                 ]);
 
                 Transaction::create([
-                    'date'                 => now()->toDateString(),
-                    'document_number'      => $nextDocNum,
-                    'document_type'        => DocumentJournal::CLASSIFICATION,
-                    'debit_account_id'     => $debitClassification,
-                    'debit_partner_id'     => $clientId,
-                    'debit_currency_id'    => 1,
-                    'credit_account_id'    => $creditClassification,
-                    'credit_currency_id'   => 1,
-                    'credit_partner_id'    => $clientId,
-                    'amount_amd'           => $existingGeneralReserve,
-                    'comment'              => "Transfer general to special reserve for client #{$clientId} (manual)",
-                    'user_id'              => auth()->id() ?? 1,
-                    'is_system'            => true,
-                    'disbursement_date'    => now()->toDateString(),
+                    'date' => now()->toDateString(),
+                    'document_number' => $nextDocNum,
+                    'document_type' => DocumentJournal::CLASSIFICATION,
+                    'debit_account_id' => $debitClassification,
+                    'debit_partner_id' => $clientId,
+                    'debit_currency_id' => 1,
+                    'credit_account_id' => $creditClassification,
+                    'credit_currency_id' => 1,
+                    'credit_partner_id' => $clientId,
+                    'amount_amd' => $existingGeneralReserve,
+                    'comment' => "Transfer general to special reserve for client #{$clientId} (manual)",
+                    'user_id' => auth()->id() ?? 1,
+                    'is_system' => true,
+                    'disbursement_date' => now()->toDateString(),
                     'transactionable_type' => DocumentJournal::class,
-                    'transactionable_id'   => $classificationDoc->id,
+                    'transactionable_id' => $classificationDoc->id,
                 ]);
 
                 $nextDocNum++;
@@ -1138,37 +1144,37 @@ class ClientControllerNew extends Controller
                     }
 
                     $lossDoc = DocumentJournal::create([
-                        'date'             => now()->toDateString(),
-                        'document_number'  => $nextDocNum,
-                        'document_type'    => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'amount_amd'       => $existingSpecialReserve,
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'amount_amd' => $existingSpecialReserve,
                         'debit_partner_id' => $clientId,
-                        'credit_partner_id'=> $clientId,
-                        'comment'          => "Loss: zero special reserve for client #{$clientId} (manual)",
+                        'credit_partner_id' => $clientId,
+                        'comment' => "Loss: zero special reserve for client #{$clientId} (manual)",
                         'debit_account_id' => $ruleLossReserve->debit_account_id,
-                        'credit_account_id'=> $ruleLossReserve->credit_account_id,
-                        'user_id'          => auth()->id() ?? 1,
+                        'credit_account_id' => $ruleLossReserve->credit_account_id,
+                        'user_id' => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
-                        'journalable_id'   => $journal->id,
+                        'journalable_id' => $journal->id,
                     ]);
 
                     Transaction::create([
-                        'date'                 => now()->toDateString(),
-                        'document_number'      => $nextDocNum,
-                        'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'debit_account_id'     => $ruleLossReserve->debit_account_id,
-                        'debit_partner_id'     => $clientId,
-                        'debit_currency_id'    => 1,
-                        'credit_account_id'    => $ruleLossReserve->credit_account_id,
-                        'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $existingSpecialReserve,
-                        'comment'              => "Loss: zero special reserve for client #{$clientId} (manual)",
-                        'user_id'              => auth()->id() ?? 1,
-                        'is_system'            => true,
-                        'disbursement_date'    => now()->toDateString(),
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'debit_account_id' => $ruleLossReserve->debit_account_id,
+                        'debit_partner_id' => $clientId,
+                        'debit_currency_id' => 1,
+                        'credit_account_id' => $ruleLossReserve->credit_account_id,
+                        'credit_currency_id' => 1,
+                        'credit_partner_id' => $clientId,
+                        'amount_amd' => $existingSpecialReserve,
+                        'comment' => "Loss: zero special reserve for client #{$clientId} (manual)",
+                        'user_id' => auth()->id() ?? 1,
+                        'is_system' => true,
+                        'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id'   => $lossDoc->id,
+                        'transactionable_id' => $lossDoc->id,
                     ]);
 
                     $nextDocNum++;
@@ -1183,37 +1189,37 @@ class ClientControllerNew extends Controller
                     }
 
                     $lossEffDoc = DocumentJournal::create([
-                        'date'             => now()->toDateString(),
-                        'document_number'  => $nextDocNum,
-                        'document_type'    => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
-                        'amount_amd'       => $balance16200,
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                        'amount_amd' => $balance16200,
                         'debit_partner_id' => $clientId,
-                        'credit_partner_id'=> $clientId,
-                        'comment'          => "Loss: zero 16200 for client #{$clientId} (manual)",
+                        'credit_partner_id' => $clientId,
+                        'comment' => "Loss: zero 16200 for client #{$clientId} (manual)",
                         'debit_account_id' => $ruleLossEffective->debit_account_id,
-                        'credit_account_id'=> $ruleLossEffective->credit_account_id,
-                        'user_id'          => auth()->id() ?? 1,
+                        'credit_account_id' => $ruleLossEffective->credit_account_id,
+                        'user_id' => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
-                        'journalable_id'   => $journal->id,
+                        'journalable_id' => $journal->id,
                     ]);
 
                     Transaction::create([
-                        'date'                 => now()->toDateString(),
-                        'document_number'      => $nextDocNum,
-                        'document_type'        => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
-                        'debit_account_id'     => $ruleLossEffective->debit_account_id,
-                        'debit_partner_id'     => $clientId,
-                        'debit_currency_id'    => 1,
-                        'credit_account_id'    => $ruleLossEffective->credit_account_id,
-                        'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $balance16200,
-                        'comment'              => "Loss: zero 16200 for client #{$clientId} (manual)",
-                        'user_id'              => auth()->id() ?? 1,
-                        'is_system'            => true,
-                        'disbursement_date'    => now()->toDateString(),
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                        'debit_account_id' => $ruleLossEffective->debit_account_id,
+                        'debit_partner_id' => $clientId,
+                        'debit_currency_id' => 1,
+                        'credit_account_id' => $ruleLossEffective->credit_account_id,
+                        'credit_currency_id' => 1,
+                        'credit_partner_id' => $clientId,
+                        'amount_amd' => $balance16200,
+                        'comment' => "Loss: zero 16200 for client #{$clientId} (manual)",
+                        'user_id' => auth()->id() ?? 1,
+                        'is_system' => true,
+                        'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id'   => $lossEffDoc->id,
+                        'transactionable_id' => $lossEffDoc->id,
                     ]);
 
                     $nextDocNum++;
@@ -1223,37 +1229,37 @@ class ClientControllerNew extends Controller
                 $balance16200NV = $this->getClientAccountBalance($clientId, $acc16200NV, $now);
                 if ($balance16200NV > 0) {
                     $lossNVDoc = DocumentJournal::create([
-                        'date'             => now()->toDateString(),
-                        'document_number'  => $nextDocNum,
-                        'document_type'    => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'amount_amd'       => $balance16200NV,
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'amount_amd' => $balance16200NV,
                         'debit_partner_id' => $clientId,
-                        'credit_partner_id'=> $clientId,
-                        'comment'          => "Loss: zero 16200NV for client #{$clientId} (manual)",
+                        'credit_partner_id' => $clientId,
+                        'comment' => "Loss: zero 16200NV for client #{$clientId} (manual)",
                         'debit_account_id' => $acc16605PS,
-                        'credit_account_id'=> $acc16200NV,
-                        'user_id'          => auth()->id() ?? 1,
+                        'credit_account_id' => $acc16200NV,
+                        'user_id' => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
-                        'journalable_id'   => $journal->id,
+                        'journalable_id' => $journal->id,
                     ]);
 
                     Transaction::create([
-                        'date'                 => now()->toDateString(),
-                        'document_number'      => $nextDocNum,
-                        'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'debit_account_id'     => $acc16605PS,
-                        'debit_partner_id'     => $clientId,
-                        'debit_currency_id'    => 1,
-                        'credit_account_id'    => $acc16200NV,
-                        'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $balance16200NV,
-                        'comment'              => "Loss: zero 16200NV for client #{$clientId} (manual)",
-                        'user_id'              => auth()->id() ?? 1,
-                        'is_system'            => true,
-                        'disbursement_date'    => now()->toDateString(),
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'debit_account_id' => $acc16605PS,
+                        'debit_partner_id' => $clientId,
+                        'debit_currency_id' => 1,
+                        'credit_account_id' => $acc16200NV,
+                        'credit_currency_id' => 1,
+                        'credit_partner_id' => $clientId,
+                        'amount_amd' => $balance16200NV,
+                        'comment' => "Loss: zero 16200NV for client #{$clientId} (manual)",
+                        'user_id' => auth()->id() ?? 1,
+                        'is_system' => true,
+                        'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id'   => $lossNVDoc->id,
+                        'transactionable_id' => $lossNVDoc->id,
                     ]);
 
                     $nextDocNum++;
@@ -1268,37 +1274,37 @@ class ClientControllerNew extends Controller
                     }
 
                     $lossNIDoc = DocumentJournal::create([
-                        'date'             => now()->toDateString(),
-                        'document_number'  => $nextDocNum,
-                        'document_type'    => DocumentJournal::LOSS_RESERVE,
-                        'amount_amd'       => $balance16201NI,
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE,
+                        'amount_amd' => $balance16201NI,
                         'debit_partner_id' => $clientId,
-                        'credit_partner_id'=> $clientId,
-                        'comment'          => "Loss: zero 16201NI for client #{$clientId} (manual)",
+                        'credit_partner_id' => $clientId,
+                        'comment' => "Loss: zero 16201NI for client #{$clientId} (manual)",
                         'debit_account_id' => $ruleLoss->debit_account_id,
-                        'credit_account_id'=> $ruleLoss->credit_account_id,
-                        'user_id'          => auth()->id() ?? 1,
+                        'credit_account_id' => $ruleLoss->credit_account_id,
+                        'user_id' => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
-                        'journalable_id'   => $journal->id,
+                        'journalable_id' => $journal->id,
                     ]);
 
                     Transaction::create([
-                        'date'                 => now()->toDateString(),
-                        'document_number'      => $nextDocNum,
-                        'document_type'        => DocumentJournal::LOSS_RESERVE,
-                        'debit_account_id'     => $ruleLoss->debit_account_id,
-                        'debit_partner_id'     => $clientId,
-                        'debit_currency_id'    => 1,
-                        'credit_account_id'    => $ruleLoss->credit_account_id,
-                        'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $balance16201NI,
-                        'comment'              => "Loss: zero 16201NI for client #{$clientId} (manual)",
-                        'user_id'              => auth()->id() ?? 1,
-                        'is_system'            => true,
-                        'disbursement_date'    => now()->toDateString(),
+                        'date' => now()->toDateString(),
+                        'document_number' => $nextDocNum,
+                        'document_type' => DocumentJournal::LOSS_RESERVE,
+                        'debit_account_id' => $ruleLoss->debit_account_id,
+                        'debit_partner_id' => $clientId,
+                        'debit_currency_id' => 1,
+                        'credit_account_id' => $ruleLoss->credit_account_id,
+                        'credit_currency_id' => 1,
+                        'credit_partner_id' => $clientId,
+                        'amount_amd' => $balance16201NI,
+                        'comment' => "Loss: zero 16201NI for client #{$clientId} (manual)",
+                        'user_id' => auth()->id() ?? 1,
+                        'is_system' => true,
+                        'disbursement_date' => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id'   => $lossNIDoc->id,
+                        'transactionable_id' => $lossNIDoc->id,
                     ]);
 
                     $nextDocNum++;
@@ -1311,7 +1317,7 @@ class ClientControllerNew extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
-                'error'   => 'Failed to update classification',
+                'error' => 'Failed to update classification',
                 'details' => $e->getMessage(),
             ], 500);
         }
@@ -1328,7 +1334,6 @@ class ClientControllerNew extends Controller
         $classification = ClientClassification::findOrFail($request->classification);
 
 
-
         if (!$classification) return response()->json(['message' => 'Client classification not found.']);
         $now = now()->format('Y-m-d');
 
@@ -1341,7 +1346,7 @@ class ClientControllerNew extends Controller
             ChartOfAccount::idByCode('16200'),
         ]);
 
-        $diamondId  = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
+        $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
         $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
         $firstContract = $client->contracts()->where('status', 'initial')->first();
@@ -1356,16 +1361,16 @@ class ClientControllerNew extends Controller
 
         try {
             $this->correctClientReserveBalance(
-                clientId:         $client->id,
-                acc16605PC:       $acc16605PC,
-                acc16605PS:       $acc16605PS,
+                clientId: $client->id,
+                acc16605PC: $acc16605PC,
+                acc16605PS: $acc16605PS,
                 targetAccountIds: $targetAccountIds,
-                reservePercent:   $classification->reserve_percent,
-                classificationName:$classification->name,
-                diamondId:        $diamondId,
-                nextDocNum:       $nextDocNum,
-                journalId:        $journal?->id,
-                now:              $now,
+                reservePercent: $classification->reserve_percent,
+                classificationName: $classification->name,
+                diamondId: $diamondId,
+                nextDocNum: $nextDocNum,
+                journalId: $journal?->id,
+                now: $now,
             );
 
             DB::commit();
@@ -1380,17 +1385,65 @@ class ClientControllerNew extends Controller
 
             return response()->json([
                 'success' => false,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-    public function correctAllClientReserves(): JsonResponse
+
+    public function correctAllClientReservesOld(): JsonResponse
     {
         dispatch(new CorrectAllClientReservesJob());
 
         return response()->json([
             'success' => true,
             'message' => 'Reserve recalculation job dispatched.',
+        ]);
+    }
+
+    public function correctAllClientReserves(Request $request): JsonResponse
+    {
+        $request->validate([
+            'date_from' => 'required|date',
+            'date_to' => 'required|date|after_or_equal:date_from',
+        ]);
+
+        $from = Carbon::parse($request->date_from)->startOfDay();
+        $to = Carbon::parse($request->date_to)->startOfDay();
+
+        $processed = [];
+        $failed = [];
+
+        $current = $from->copy();
+
+        while ($current->lte($to)) {
+
+            $dateStr = $current->format('Y-m-d');
+
+            try {
+                CorrectAllClientReservesJob::dispatchSync($dateStr);
+
+                $processed[] = $dateStr;
+
+            } catch (\Throwable $e) {
+
+                Log::error("Client reserve failed for {$dateStr}: " . $e->getMessage());
+
+                $failed[] = [
+                    'date' => $dateStr,
+                    'error' => $e->getMessage(),
+                ];
+            }
+
+            $current->addDay();
+        }
+
+        return response()->json([
+            'success' => empty($failed),
+            'processed' => $processed,
+            'failed' => $failed,
+            'message' => empty($failed)
+                ? 'Բոլոր օրերի recalculation-ը կատարվեց'
+                : 'Մի քանի օրերի recalculation-ը ձախողվեց',
         ]);
     }
 }

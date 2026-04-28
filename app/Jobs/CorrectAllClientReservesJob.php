@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\Transaction;
 use App\Traits\CorrectReserveTrait;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,8 +20,21 @@ class CorrectAllClientReservesJob implements ShouldQueue
 {
     use Dispatchable, Queueable, SerializesModels;
     use CorrectReserveTrait;
+
+    private string $forDate;
+
+    public function __construct(?string $forDate = null)
+    {
+        $this->forDate = $forDate ?? now()->format('Y-m-d');
+    }
+
     public function handle(): void
     {
+        $date      = Carbon::parse($this->forDate)->endOfDay();
+        $dateStr   = $date->format('Y-m-d');
+
+        Log::info("Client reserve started for {$dateStr}");
+
         $acc16605PC = ChartOfAccount::idByCode('16605PC');
         $acc16605PS = ChartOfAccount::idByCode('16605PS');
 
@@ -31,7 +45,6 @@ class CorrectAllClientReservesJob implements ShouldQueue
         ]);
 
         $diamondId  = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-        $now        = now()->format('Y-m-d');
 
         $processed = 0;
         $failed    = [];
@@ -42,10 +55,9 @@ class CorrectAllClientReservesJob implements ShouldQueue
             ->whereHas('classification')
             ->chunkById(200, function ($clients) use (
                 $acc16605PC, $acc16605PS, $targetAccountIds,
-                $diamondId, $now, &$processed, &$failed, &$nextDocNum
+                $diamondId, $date, $dateStr, &$processed, &$failed, &$nextDocNum
             ) {
                 foreach ($clients as $client) {
-                    $nextDocNum++;
 
                     if (!$client->classification) {
                         continue;
@@ -66,7 +78,10 @@ class CorrectAllClientReservesJob implements ShouldQueue
                     }
 
                     DB::beginTransaction();
+
                     try {
+                        $nextDocNum++;
+
                         $this->correctClientReserveBalance(
                             clientId:           $client->id,
                             acc16605PC:         $acc16605PC,
@@ -77,7 +92,7 @@ class CorrectAllClientReservesJob implements ShouldQueue
                             diamondId:          $diamondId,
                             nextDocNum:         $nextDocNum,
                             journalId:          $journal->id,
-                            now:                $now,
+                            now:                $dateStr,
                         );
 
                         DB::commit();
@@ -85,14 +100,18 @@ class CorrectAllClientReservesJob implements ShouldQueue
 
                     } catch (\Throwable $e) {
                         DB::rollBack();
-                        Log::error("correctAllClientReserves failed for client #{$client->id}: " . $e->getMessage());
+
+                        Log::error("Client {$client->id} failed for {$dateStr}: " . $e->getMessage());
+
                         $failed[] = [
                             'client_id' => $client->id,
+                            'date'      => $dateStr,
                             'error'     => $e->getMessage(),
                         ];
                     }
                 }
             });
 
+        Log::info("Client reserve finished for {$dateStr}");
     }
 }
