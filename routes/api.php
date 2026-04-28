@@ -193,11 +193,11 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::prefix('clients')->group(function () {
         Route::put('/{id}/update', [ClientControllerNew::class, 'updateClientData'])->middleware('can:update_client');
         Route::get('/', [ClientControllerNew::class, 'index'])->middleware('can:view_clients');
+        Route::get('/upcoming-birthdays', [ClientControllerNew::class, 'getUpcomingBirthdays']);
         Route::get('/{id}',[ClientControllerNew::class,'show'])->middleware('can:view_clients');
         Route::post('/store-client', [ClientControllerNew::class, 'storeClient'])->middleware('can:create_client');
         Route::post('/store-non-client', [ClientControllerNew::class, 'storeNonClient'])->middleware('can:create_client');
         Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification'])->middleware('can:classify_client');
-        Route::get('/upcoming-birthdays', [ClientControllerNew::class, 'getUpcomingBirthdays']);
     });
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');
     Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index']);
