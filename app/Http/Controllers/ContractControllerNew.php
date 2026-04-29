@@ -844,7 +844,9 @@ class ContractControllerNew extends Controller
         $contracts = Contract::with([
             'client.classification',
             'payments',
-        ])->get();
+        ])
+            ->whereNotNull('provided_at')
+            ->get();
 
         $contracts->each(function (Contract $contract) use ($calcToday) {
             $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
