@@ -494,7 +494,7 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor($templatePath);
 
         $clientName = $client->name . ' ' . $client->surname;
-        $fullAddress = ($client->acctual_statement->address ?? $client->city)
+        $fullAddress = ($client->acctual_statement->address ?? $client->city) . ', '
             . ($client->actual_street_building ?? $client->street);
         $firstPayment = $contract->payments->where('status', 'initial')->first();
 
