@@ -552,7 +552,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                         Log::info("calculated classification is {$classification->id} ");
                         Log::info("calculated maxOverdue is {$maxOverdue} ");
 
-                        if ($client->classification_id === $classification->id) {
+                        if (($client->classification_id === $classification->id) || ($client->classification->order > $classification->order)) {
                             DB::commit();
                             continue;
                         }
