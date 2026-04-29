@@ -264,6 +264,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
                 ->orderBy('date', 'desc')
                 ->first();
             $clientClass = $contract->client->classification;
+            dd($closestReserve,$contract->id,$contract->calc_date,$clientClass);
             if ($closestReserve) {
 //                $contractData['reserve'] = $closestReserve->reserve_amount;
                 $contractData['risk_weight_percent'] = $closestReserve->classification->risk_weight ?? 0;
