@@ -191,18 +191,15 @@ class PaymentControllerNew extends Controller
                 $nextDocNum++;
             }
             if ($principalAmount > 0) {
-                if ($class == 'loss') {
-                    $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount_loss')
-                        ->first();
-                }
-                if ($cash) {
-                    $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount_cash')
-                        ->first();
+                if ($class === 'loss') {
+                    $eventFilter = 'pay_mother_amount_loss';
+                } elseif ($cash) {
+                    $eventFilter = 'pay_mother_amount_cash';
                 } else {
-                    $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount')
-                        ->first();
+                    $eventFilter = 'pay_mother_amount';
                 }
 
+                $ruleMotherAmount = PostingRule::where('business_event_filter', $eventFilter)->first();
 
                 if (!$ruleMotherAmount) {
                     throw new \RuntimeException('Posting rule for pay_mother_amount not found');
