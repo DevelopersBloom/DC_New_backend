@@ -464,6 +464,7 @@ trait ContractTrait
                 "current_amount" => 0,
                 "penalty_amount" => 0,
                 "future_interest_discount" => 0,
+                'interest_amount' => 0,
             ];
         }
 
