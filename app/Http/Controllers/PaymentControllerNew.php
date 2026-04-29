@@ -121,14 +121,16 @@ class PaymentControllerNew extends Controller
             $deal->discount = $result['discount'];
             $deal->delay_days = $result['delay_days'];
             $deal->save();
-
-            if ($cash) {
-                $ruleInterestPayment = PostingRule::where('business_event_filter', 'pay_interest_amount_cash')
-                    ->first();
+           $class = $contract->client->classification->name;
+            if ($class === 'loss') {
+                $eventFilter = 'pay_interest_amount_loss';
+            } elseif ($cash) {
+                $eventFilter = 'pay_interest_amount_cash';
             } else {
-                $ruleInterestPayment = PostingRule::where('business_event_filter', 'pay_interest_amount')
-                    ->first();
+                $eventFilter = 'pay_interest_amount';
             }
+
+            $ruleInterestPayment = PostingRule::where('business_event_filter', $eventFilter)->first();
 
             if (!$ruleInterestPayment) {
                 throw new \RuntimeException('Posting rule for pay_interest_amount not found');
@@ -189,6 +191,10 @@ class PaymentControllerNew extends Controller
                 $nextDocNum++;
             }
             if ($principalAmount > 0) {
+                if ($class == 'loss') {
+                    $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount_loss')
+                        ->first();
+                }
                 if ($cash) {
                     $ruleMotherAmount = PostingRule::where('business_event_filter', 'pay_mother_amount_cash')
                         ->first();
