@@ -769,5 +769,123 @@ trait ContractTrait
 
         return $netAmount + $effectiveAccrualsSum - $nominalAccrualsSum - $motherPaymentsSum;
     }
+    private function createJournalAndTransaction(
+        $date,
+        &$docNum,
+        $type,
+        $amount,
+        $comment,
+        $debitAccount,
+        $creditAccount,
+        $dealId,
+        $journalableId
+    ) {
+        $journal = DocumentJournal::create([
+            'date'               => $date,
+            'document_number'    => $docNum,
+            'document_type'      => $type,
+            'amount_amd'         => $amount,
+            'comment'            => $comment,
+            'debit_account_id'   => $debitAccount,
+            'credit_account_id'  => $creditAccount,
+            'user_id'            => auth()->id(),
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => $journalableId,
+            'deal_id'            => $dealId,
+        ]);
 
+        Transaction::create([
+            'date'               => $date,
+            'document_number'    => $docNum,
+            'document_type'      => $type,
+            'debit_account_id'   => $debitAccount,
+            'debit_currency_id'  => 1,
+            'credit_account_id'  => $creditAccount,
+            'credit_currency_id' => 1,
+            'amount_amd'         => $amount,
+            'comment'            => $comment,
+            'user_id'            => auth()->id(),
+            'is_system'          => false,
+            'disbursement_date'  => $date,
+            'transactionable_type'=> DocumentJournal::class,
+            'transactionable_id' => $journal->id,
+        ]);
+
+        $docNum++;
+
+        return $journal;
+    }
+
+    private function getPostingRule(string $filter): PostingRule
+    {
+        $rule = PostingRule::where('business_event_filter', $filter)->first();
+
+        if (!$rule) {
+            throw new \RuntimeException("Posting rule not found: {$filter}");
+        }
+
+        return $rule;
+    }
+
+    private function resolveEvent(string $base, string $class, bool $cash): string
+    {
+        if ($class === 'loss') {
+            return "{$base}_loss";
+        }
+
+        if ($cash) {
+            return "{$base}_cash";
+        }
+
+        return $base;
+    }
+    private function postEntry(
+        $date,
+        &$docNum,
+        $type,
+        $amount,
+        $comment,
+        $debit,
+        $credit,
+        $dealId,
+        $journalId,
+        $clientId = null
+    ) {
+        $journal = DocumentJournal::create([
+            'date' => $date,
+            'document_number' => $docNum,
+            'document_type' => $type,
+            'amount_amd' => $amount,
+            'credit_partner_id' => $clientId,
+            'comment' => $comment,
+            'debit_account_id' => $debit,
+            'credit_account_id' => $credit,
+            'user_id' => auth()->id(),
+            'journalable_type' => DocumentJournal::class,
+            'journalable_id' => $journalId,
+            'deal_id' => $dealId,
+        ]);
+
+        Transaction::create([
+            'date' => $date,
+            'document_number' => $docNum,
+            'document_type' => $type,
+            'debit_account_id' => $debit,
+            'credit_account_id' => $credit,
+            'credit_partner_id' => $clientId,
+            'debit_currency_id' => 1,
+            'credit_currency_id' => 1,
+            'amount_amd' => $amount,
+            'comment' => $comment,
+            'user_id' => auth()->id(),
+            'disbursement_date' => $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id' => $journal->id,
+        ]);
+
+        $docNum++;
+
+        return $journal;
+    }
 }
+

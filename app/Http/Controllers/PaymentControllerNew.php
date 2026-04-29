@@ -45,246 +45,508 @@ class PaymentControllerNew extends Controller
         $this->paymentService = $paymentService;
         $this->activityService = $activityService;
     }
+//    public function makePayment(PaymentRequest $request): JsonResponse
+//    {
+//        $contract = Contract::findOrFail($request->contract_id);
+//        $date = $request->contract_created_date ?? now()->format('Y-m-d');
+//        $currentPaymentAmount = $this->calculateCurrentPayment($contract,$date);
+//        $interestAmount = max(0.0, (float) ($currentPaymentAmount['interest_amount'] ?? 0));
+//        $fullPaymentThreshold = $interestAmount + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
+//        if ((float) $request->amount >= $fullPaymentThreshold) {
+//            return $this->makeFullPayment($request);
+//        }
+//        DB::beginTransaction();
+//        try {
+//            $ispPaymentSelected = false;
+//            $amount = $request->amount;
+//            $payer = $request->payer;
+//            $cash = $request->cash;
+////            $paymentDate = $request->input('payment_date');
+//            $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
+//            if ($rawPaymentIds) {
+//                $ispPaymentSelected = true;
+//            }
+//            $paymentIds = collect($rawPaymentIds)
+//                ->map(function ($value) {
+//                    if (is_array($value)) {
+//                        return $value['id'] ?? null;
+//                    }
+//                    return $value;
+//                })
+//                ->filter()
+//                ->map(fn ($id) => (int) $id)
+//                ->unique()
+//                ->values();
+//
+//            $paymentsQuery = Payment::query()
+//                ->where('contract_id', $contract->id)
+//                ->where('status', 'initial')
+//                ->orderBy('date', 'asc')
+//                ->orderBy('id', 'asc');
+//
+//            if ($paymentIds->isNotEmpty()) {
+//                $paymentsQuery->whereIn('id', $paymentIds->all());
+//            } else {
+//                $paymentsQuery->where('type', 'regular');
+//            }
+//            $payments = $paymentsQuery->get();
+//            if ($payments->isEmpty()) {
+//                throw new \RuntimeException('No payable rows found for this contract');
+//            }
+//            $order_id = null;
+//            if ($payments) {
+//                $order_id = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
+//            }
+//            $history = $this->createHistory($request, $order_id);
+//            $deal = $this->createDeal($amount,null,null,null,null,
+//                'in', $contract->id,$contract->client->id,
+//                $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,null,null,1);
+//
+//            $oldPaymentAmount = $this->calcPaidAmount($contract);
+//            $journal = DocumentJournal::where('journalable_type', Contract::class)
+//                ->where('journalable_id', $contract->id)
+//                ->first();
+//            $forceScheduled = $paymentIds->isNotEmpty();
+//            $result = $this->paymentService->processPayments(
+//                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled,$interestAmount,$ispPaymentSelected,$date
+//            );
+//            $newPaymentAmount = $oldPaymentAmount + $amount;
+//            $history->interest_amount = $result['interest_amount'];
+//            $history->penalty = $result['penalty'];
+//            $history->discount  = $result['discount'];
+//            $history->delay_days = $result['delay_days'];
+//            $history->save();
+//            $deal->interest_amount = $result['interest_amount'];
+//            $deal->penalty = $result['penalty'];
+//            $deal->discount = $result['discount'];
+//            $deal->delay_days = $result['delay_days'];
+//            $deal->save();
+//           $class = $contract->client->classification->name;
+//            if ($class === 'loss') {
+//                $eventFilter = 'pay_interest_amount_loss';
+//            } elseif ($cash) {
+//                $eventFilter = 'pay_interest_amount_cash';
+//            } else {
+//                $eventFilter = 'pay_interest_amount';
+//            }
+//
+//            $ruleInterestPayment = PostingRule::where('business_event_filter', $eventFilter)->first();
+//
+//            if (!$ruleInterestPayment) {
+//                throw new \RuntimeException('Posting rule for pay_interest_amount not found');
+//            }
+//
+//            $debitInterestPayment = $ruleInterestPayment->debit_account_id;
+//            $creditInterestPayment=  $ruleInterestPayment->credit_account_id;
+//
+//
+//            $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
+//            $creditPartnerId = $contract->client_id;
+//            $clientId = $contract->client_id;
+//            $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+//
+//            $document_type = DocumentJournal::PAY_INTEREST_AMOUNT;
+//
+//            $interestAmount = $result['interest_amount'];
+//            $principalAmount = $result['principal_amount'];
+//            if ($interestAmount > 0) {
+//                $journalDoc = DocumentJournal::create([
+//                    'date'               => $date,
+//                    'document_number'    => $nextDocNum,
+//                    'document_type'      => $document_type,
+//                    'amount_amd'         => $result['interest_amount'],
+//                    'credit_partner_id'   => $clientId,
+//                    'comment'            => 'interest_amount_payment',
+//                    'debit_account_id'   => $debitInterestPayment,
+//                    'credit_account_id'  => $creditInterestPayment,
+//                    'user_id'            => auth()->id(),
+//                    'journalable_type'   => DocumentJournal::class,
+//                    'journalable_id'     => $journal->id,
+//                    'deal_id'            => $deal->id,
+//                ]);
+//
+//
+//                Transaction::create([
+//                    'date'               => $date,
+//                    'document_number'    => $nextDocNum,
+//                    'document_type'      => $document_type,
+//
+//                    'debit_account_id'   => $debitInterestPayment,
+//                    'credit_partner_id'   => $clientId,
+//                    'debit_currency_id'  => 1,
+//
+//                    'credit_account_id'  => $creditInterestPayment,
+//                    'credit_currency_id' => 1,
+//
+//                    'amount_amd'         => $result['interest_amount'],
+//
+//                    'comment'            => 'interest_amount_payment',
+//                    'user_id'            => auth()->id(),
+//                    'is_system'          => false,
+//
+//                    'disbursement_date'    =>  $date,
+//                    'transactionable_type' => DocumentJournal::class,
+//                    'transactionable_id'   => $journalDoc->id,
+//                ]);
+//                $nextDocNum++;
+//            }
+//            if ($principalAmount > 0) {
+//                if ($class === 'loss') {
+//                    $eventFilter = 'pay_mother_amount_loss';
+//                } elseif ($cash) {
+//                    $eventFilter = 'pay_mother_amount_cash';
+//                } else {
+//                    $eventFilter = 'pay_mother_amount';
+//                }
+//
+//                $ruleMotherAmount = PostingRule::where('business_event_filter', $eventFilter)->first();
+//
+//                if (!$ruleMotherAmount) {
+//                    throw new \RuntimeException('Posting rule for pay_mother_amount not found');
+//                }
+//
+//                $debitMother = $ruleMotherAmount->debit_account_id;
+//                $creditMother = $ruleMotherAmount->credit_account_id;
+//                $documentTypePrincipal = DocumentJournal::PAY_MOTHER_AMOUNT;
+//                $journalDocPrincipal = DocumentJournal::create([
+//                    'date' => $date,
+//                    'document_number' => $nextDocNum,
+//                    'document_type' => $documentTypePrincipal,
+//                    'amount_amd' => $principalAmount,
+//                    'credit_partner_id' => $clientId,
+//                    'comment' => 'mother_amount_payment',
+//                    'debit_account_id' => $debitMother,
+//                    'credit_account_id' => $creditMother,
+//                    'user_id' => auth()->id(),
+//                    'journalable_type' => DocumentJournal::class,
+//                    'journalable_id' => $journal->id,
+//                    'deal_id' => $deal->id,
+//                ]);
+//                Transaction::create([
+//                    'date' => $date,
+//                    'document_number' => $nextDocNum,
+//                    'document_type' => $documentTypePrincipal,
+//
+//                    'debit_account_id' => $debitMother,
+//                    'credit_partner_id' => $clientId,
+//                    'debit_currency_id' => 1,
+//
+//                    'credit_account_id' => $creditMother,
+//                    'credit_currency_id' => 1,
+//
+//                    'amount_amd' => $principalAmount,
+//
+//                    'comment' => 'mother_amount_payment',
+//                    'user_id' => auth()->id(),
+//                    'is_system' => false,
+//
+//                    'disbursement_date' => $date,
+//                    'transactionable_type' => DocumentJournal::class,
+//                    'transactionable_id' => $journalDocPrincipal->id
+//                ]);
+//            }
+//
+//            if ($class === 'loss') {
+//                $offBalanceType = DocumentJournal::OFF_BALANCE_OUTGOING;
+//
+//                $rules = PostingRule::whereIn('business_event_filter', [
+//                    'off_balance_interest',
+//                    'off_balance_principal'
+//                ])->get()->keyBy('business_event_filter');
+//
+//                if ($interestAmount > 0) {
+//                    $rule = $rules['off_balance_interest'] ?? null;
+//
+//                    if (!$rule) {
+//                        throw new \RuntimeException('off_balance_interest rule not found');
+//                    }
+//
+//                    $this->createJournalAndTransaction(
+//                        $date,
+//                        $nextDocNum,
+//                        $offBalanceType,
+//                        $interestAmount,
+//                        'interest_amount_payment_off_balance',
+//                        $rule->debit_account_id,
+//                        $rule->credit_account_id,
+//                        $deal->id,
+//                        $journalDoc->id
+//                    );
+//                }
+//
+//                if ($principalAmount > 0) {
+//                    $rule = $rules['off_balance_principal'] ?? null;
+//
+//                    if (!$rule) {
+//                        throw new \RuntimeException('off_balance_principal rule not found');
+//                    }
+//
+//                    $this->createJournalAndTransaction(
+//                        $date,
+//                        $nextDocNum,
+//                        $offBalanceType,
+//                        $principalAmount,
+//                        'mother_amount_payment_off_balance',
+//                        $rule->debit_account_id,
+//                        $rule->credit_account_id,
+//                        $deal->id,
+//                        $journalDocPrincipal->id
+//                    );
+//                }
+//            }
+//            Modification::create([
+//                'subject_type' => Contract::class,
+//                'subject_id' => $contract->id,
+//                'modification_type' => 'Modificator',
+//                'field_code' => 'AmountsPaid',
+//                'element_code' => 'Amount',
+//                'old_value' => (string)$oldPaymentAmount,
+//                'new_value' => (string)($newPaymentAmount),
+//                'effective_date' => now()->toDateString(),
+//            ]);
+//            $this->activityService->log(
+//                'make_payment',
+//                "Payment made: {$amount} AMD for contract #{$contract->id}, and deal #{$deal->id}",
+//                Contract::class,
+//                $contract->id
+//            );
+//
+//
+//            DB::commit();
+//            if ($date < now()->toDateString()) {
+//                RecalculateContractRangeJob::dispatch(
+//                    $contract->id,
+//                    $date,
+//                    now()->toDateString()
+//                );
+//            }
+//            return response()->json([
+//                'success' => 'success',
+//                'message' => 'Successfully created payment!'
+//            ]);
+//        } catch (\Throwable $e) {
+//            DB::rollBack();
+//            return response()->json([
+//                'success' => false,
+//                'message' => 'Payment failed: ' . $e->getMessage()
+//            ], 500);
+//        }
+//    }
     public function makePayment(PaymentRequest $request): JsonResponse
     {
         $contract = Contract::findOrFail($request->contract_id);
-        $date = $request->contract_created_date ?? now()->format('Y-m-d');
-        $currentPaymentAmount = $this->calculateCurrentPayment($contract,$date);
-        $interestAmount = max(0.0, (float) ($currentPaymentAmount['interest_amount'] ?? 0));
-        $fullPaymentThreshold = $interestAmount + $currentPaymentAmount['penalty_amount'] + (float) $contract->provided_amount;
-        if ((float) $request->amount >= $fullPaymentThreshold) {
+        $date = $request->contract_created_date ?? now()->toDateString();
+
+        $current = $this->calculateCurrentPayment($contract, $date);
+        $interestAmount = max(0.0, (float) ($current['interest_amount'] ?? 0));
+
+        $fullThreshold = $interestAmount + $current['penalty_amount'] + (float) $contract->provided_amount;
+
+        if ((float) $request->amount >= $fullThreshold) {
             return $this->makeFullPayment($request);
         }
+
         DB::beginTransaction();
+
         try {
-            $ispPaymentSelected = false;
             $amount = $request->amount;
-            $payer = $request->payer;
-            $cash = $request->cash;
-//            $paymentDate = $request->input('payment_date');
-            $rawPaymentIds = $request->input('payment_ids', $request->input('payments', []));
-            if ($rawPaymentIds) {
-                $ispPaymentSelected = true;
-            }
-            $paymentIds = collect($rawPaymentIds)
-                ->map(function ($value) {
-                    if (is_array($value)) {
-                        return $value['id'] ?? null;
-                    }
-                    return $value;
-                })
+            $payer  = $request->payer;
+            $cash   = $request->cash;
+
+            // ===== Payments =====
+            $paymentIds = collect($request->input('payment_ids', $request->input('payments', [])))
+                ->map(fn($v) => is_array($v) ? ($v['id'] ?? null) : $v)
                 ->filter()
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int)$id)
                 ->unique()
                 ->values();
 
-            $paymentsQuery = Payment::query()
+            $payments = Payment::query()
                 ->where('contract_id', $contract->id)
                 ->where('status', 'initial')
-                ->orderBy('date', 'asc')
-                ->orderBy('id', 'asc');
+                ->when($paymentIds->isNotEmpty(),
+                    fn($q) => $q->whereIn('id', $paymentIds),
+                    fn($q) => $q->where('type', 'regular')
+                )
+                ->orderBy('date')
+                ->orderBy('id')
+                ->get();
 
-            if ($paymentIds->isNotEmpty()) {
-                $paymentsQuery->whereIn('id', $paymentIds->all());
-            } else {
-                $paymentsQuery->where('type', 'regular');
-            }
-            $payments = $paymentsQuery->get();
             if ($payments->isEmpty()) {
-                throw new \RuntimeException('No payable rows found for this contract');
+                throw new \RuntimeException('No payable rows found');
             }
-            $order_id = null;
-            if ($payments) {
-                $order_id = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
-            }
-            $history = $this->createHistory($request, $order_id);
-            $deal = $this->createDeal($amount,null,null,null,null,
-                'in', $contract->id,$contract->client->id,
-                $order_id, $cash,null,Contract::REGULAR_PAYMENT,'payment',$history->id,null,null,1);
 
-            $oldPaymentAmount = $this->calcPaidAmount($contract);
+            // ===== Order / Deal =====
+            $orderId = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
+
+            $history = $this->createHistory($request, $orderId);
+
+            $deal = $this->createDeal(
+                $amount, null, null, null, null,
+                'in',
+                $contract->id,
+                $contract->client->id,
+                $orderId,
+                $cash,
+                null,
+                Contract::REGULAR_PAYMENT,
+                'payment',
+                $history->id,
+                null,
+                null,
+                1
+            );
+
             $journal = DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $contract->id)
-                ->first();
-            $forceScheduled = $paymentIds->isNotEmpty();
+                ->firstOrFail();
+
+            // ===== Payment Logic =====
             $result = $this->paymentService->processPayments(
-                $contract, $amount, $payer, $cash, $payments, $deal->id, $journal->id, $forceScheduled,$interestAmount,$ispPaymentSelected,$date
+                $contract,
+                $amount,
+                $payer,
+                $cash,
+                $payments,
+                $deal->id,
+                $journal->id,
+                $paymentIds->isNotEmpty(),
+                $interestAmount,
+                $paymentIds->isNotEmpty(),
+                $date
             );
-            $newPaymentAmount = $oldPaymentAmount + $amount;
-            $history->interest_amount = $result['interest_amount'];
-            $history->penalty = $result['penalty'];
-            $history->discount  = $result['discount'];
-            $history->delay_days = $result['delay_days'];
+
+            // ===== Update History & Deal =====
+            foreach (['interest_amount','penalty','discount','delay_days'] as $field) {
+                $history->$field = $result[$field] ?? 0;
+                $deal->$field    = $result[$field] ?? 0;
+            }
+
             $history->save();
-            $deal->interest_amount = $result['interest_amount'];
-            $deal->penalty = $result['penalty'];
-            $deal->discount = $result['discount'];
-            $deal->delay_days = $result['delay_days'];
             $deal->save();
-           $class = $contract->client->classification->name;
-            if ($class === 'loss') {
-                $eventFilter = 'pay_interest_amount_loss';
-            } elseif ($cash) {
-                $eventFilter = 'pay_interest_amount_cash';
-            } else {
-                $eventFilter = 'pay_interest_amount';
-            }
 
-            $ruleInterestPayment = PostingRule::where('business_event_filter', $eventFilter)->first();
-
-            if (!$ruleInterestPayment) {
-                throw new \RuntimeException('Posting rule for pay_interest_amount not found');
-            }
-
-            $debitInterestPayment = $ruleInterestPayment->debit_account_id;
-            $creditInterestPayment=  $ruleInterestPayment->credit_account_id;
-
-
-            $debetPartnerId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
-            $creditPartnerId = $contract->client_id;
+            // ===== Posting =====
+            $class    = $contract->client->classification->name;
             $clientId = $contract->client_id;
-            $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+            $docNum   = (int)(Transaction::max('document_number') ?? 0) + 1;
 
-            $document_type = DocumentJournal::PAY_INTEREST_AMOUNT;
+            $interest = $result['interest_amount'];
+            $principal= $result['principal_amount'];
 
-            $interestAmount = $result['interest_amount'];
-            $principalAmount = $result['principal_amount'];
-            if ($interestAmount > 0) {
-                $journalDoc = DocumentJournal::create([
-                    'date'               => $date,
-                    'document_number'    => $nextDocNum,
-                    'document_type'      => $document_type,
-                    'amount_amd'         => $result['interest_amount'],
-                    'credit_partner_id'   => $clientId,
-                    'comment'            => 'interest_amount_payment',
-                    'debit_account_id'   => $debitInterestPayment,
-                    'credit_account_id'  => $creditInterestPayment,
-                    'user_id'            => auth()->id(),
-                    'journalable_type'   => DocumentJournal::class,
-                    'journalable_id'     => $journal->id,
-                    'deal_id'            => $deal->id,
-                ]);
+            // ---- Interest ----
+            if ($interest > 0) {
+                $rule = $this->getPostingRule($this->resolveEvent('pay_interest_amount', $class, $cash));
 
-
-                Transaction::create([
-                    'date'               => $date,
-                    'document_number'    => $nextDocNum,
-                    'document_type'      => $document_type,
-
-                    'debit_account_id'   => $debitInterestPayment,
-                    'credit_partner_id'   => $clientId,
-                    'debit_currency_id'  => 1,
-
-                    'credit_account_id'  => $creditInterestPayment,
-                    'credit_currency_id' => 1,
-
-                    'amount_amd'         => $result['interest_amount'],
-
-                    'comment'            => 'interest_amount_payment',
-                    'user_id'            => auth()->id(),
-                    'is_system'          => false,
-
-                    'disbursement_date'    =>  $date,
-                    'transactionable_type' => DocumentJournal::class,
-                    'transactionable_id'   => $journalDoc->id,
-                ]);
-                $nextDocNum++;
+                $journalInterest = $this->postEntry(
+                    $date,
+                    $docNum,
+                    DocumentJournal::PAY_INTEREST_AMOUNT,
+                    $interest,
+                    'interest_amount_payment',
+                    $rule->debit_account_id,
+                    $rule->credit_account_id,
+                    $deal->id,
+                    $journal->id,
+                    $clientId
+                );
             }
-            if ($principalAmount > 0) {
-                if ($class === 'loss') {
-                    $eventFilter = 'pay_mother_amount_loss';
-                } elseif ($cash) {
-                    $eventFilter = 'pay_mother_amount_cash';
-                } else {
-                    $eventFilter = 'pay_mother_amount';
+
+            // ---- Principal ----
+            if ($principal > 0) {
+                $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash));
+
+                $journalPrincipal = $this->postEntry(
+                    $date,
+                    $docNum,
+                    DocumentJournal::PAY_MOTHER_AMOUNT,
+                    $principal,
+                    'mother_amount_payment',
+                    $rule->debit_account_id,
+                    $rule->credit_account_id,
+                    $deal->id,
+                    $journal->id,
+                    $clientId
+                );
+            }
+
+            // ---- Off Balance ----
+            if ($class === 'loss') {
+                $rules = PostingRule::whereIn('business_event_filter', [
+                    'off_balance_interest',
+                    'off_balance_principal'
+                ])->get()->keyBy('business_event_filter');
+
+                if ($interest > 0) {
+                    $this->postEntry(
+                        $date,
+                        $docNum,
+                        DocumentJournal::OFF_BALANCE_OUTGOING,
+                        $interest,
+                        'interest_amount_payment_off_balance',
+                        $rules['off_balance_interest']->debit_account_id,
+                        $rules['off_balance_interest']->credit_account_id,
+                        $deal->id,
+                        $journalInterest->id
+                    );
                 }
 
-                $ruleMotherAmount = PostingRule::where('business_event_filter', $eventFilter)->first();
-
-                if (!$ruleMotherAmount) {
-                    throw new \RuntimeException('Posting rule for pay_mother_amount not found');
+                if ($principal > 0) {
+                    $this->postEntry(
+                        $date,
+                        $docNum,
+                        DocumentJournal::OFF_BALANCE_OUTGOING,
+                        $principal,
+                        'mother_amount_payment_off_balance',
+                        $rules['off_balance_principal']->debit_account_id,
+                        $rules['off_balance_principal']->credit_account_id,
+                        $deal->id,
+                        $journalPrincipal->id
+                    );
                 }
-
-                $debitMother = $ruleMotherAmount->debit_account_id;
-                $creditMother = $ruleMotherAmount->credit_account_id;
-                $documentTypePrincipal = DocumentJournal::PAY_MOTHER_AMOUNT;
-                $journalDocPrincipal = DocumentJournal::create([
-                    'date' => $date,
-                    'document_number' => $nextDocNum,
-                    'document_type' => $documentTypePrincipal,
-                    'amount_amd' => $principalAmount,
-                    'credit_partner_id' => $clientId,
-                    'comment' => 'mother_amount_payment',
-                    'debit_account_id' => $debitMother,
-                    'credit_account_id' => $creditMother,
-                    'user_id' => auth()->id(),
-                    'journalable_type' => DocumentJournal::class,
-                    'journalable_id' => $journal->id,
-                    'deal_id' => $deal->id,
-                ]);
-                Transaction::create([
-                    'date' => $date,
-                    'document_number' => $nextDocNum,
-                    'document_type' => $documentTypePrincipal,
-
-                    'debit_account_id' => $debitMother,
-                    'credit_partner_id' => $clientId,
-                    'debit_currency_id' => 1,
-
-                    'credit_account_id' => $creditMother,
-                    'credit_currency_id' => 1,
-
-                    'amount_amd' => $principalAmount,
-
-                    'comment' => 'mother_amount_payment',
-                    'user_id' => auth()->id(),
-                    'is_system' => false,
-
-                    'disbursement_date' => $date,
-                    'transactionable_type' => DocumentJournal::class,
-                    'transactionable_id' => $journalDocPrincipal->id
-                ]);
             }
+
+            // ===== Modification =====
+            $old = $this->calcPaidAmount($contract);
+            $new = $old + $amount;
 
             Modification::create([
                 'subject_type' => Contract::class,
-                'subject_id' => $contract->id,
+                'subject_id'   => $contract->id,
                 'modification_type' => 'Modificator',
-                'field_code' => 'AmountsPaid',
+                'field_code'   => 'AmountsPaid',
                 'element_code' => 'Amount',
-                'old_value' => (string)$oldPaymentAmount,
-                'new_value' => (string)($newPaymentAmount),
-                'effective_date' => now()->toDateString(),
+                'old_value'    => (string)$old,
+                'new_value'    => (string)$new,
+                'effective_date'=> now()->toDateString(),
             ]);
+
             $this->activityService->log(
                 'make_payment',
-                "Payment made: {$amount} AMD for contract #{$contract->id}, and deal #{$deal->id}",
+                "Payment: {$amount} AMD (contract #{$contract->id})",
                 Contract::class,
                 $contract->id
             );
 
-
             DB::commit();
+
             if ($date < now()->toDateString()) {
-                RecalculateContractRangeJob::dispatch(
-                    $contract->id,
-                    $date,
-                    now()->toDateString()
-                );
+                RecalculateContractRangeJob::dispatch($contract->id, $date, now()->toDateString());
             }
+
             return response()->json([
-                'success' => 'success',
+                'success' => true,
                 'message' => 'Successfully created payment!'
             ]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Payment failed: ' . $e->getMessage()
+                'message' => 'Payment failed: '.$e->getMessage()
             ], 500);
         }
     }
-
     private function updateContractStatus($contract)
     {
         $paymentsLeft = $contract->payments->where('status', 'initial');

@@ -91,9 +91,6 @@ class ReportV01Controller extends Controller
                     17 => (float)($row->rub_non_resident ?? 0),
                 ];
 
-//                foreach ($nums as $colIndex => $val) {
-//                    $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val/1000, DataType::TYPE_NUMERIC);
-//                }
                 foreach ($nums as $colIndex => $val) {
                     if (abs($val) < 0.0001) {
                         $sheet->setCellValueByColumnAndRow($colIndex, $currentRow, null);
@@ -104,42 +101,6 @@ class ReportV01Controller extends Controller
 
                 $currentRow++;
             }
-//            foreach ($rows as $row) {
-//                $code = (string)$row->code;
-//
-//                if (preg_match('/^\d+$/', $code)) {
-//                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, (float)$code, DataType::TYPE_NUMERIC);
-//                } else {
-//                    $sheet->setCellValueExplicitByColumnAndRow(1, $currentRow, $code, DataType::TYPE_STRING);
-//                }
-//
-//                $sheet->setCellValueExplicitByColumnAndRow(2, $currentRow, (string)($row->name ?? ''), DataType::TYPE_STRING);
-//
-//                $nums = [
-//                    6 => (float)($row->amd_resident ?? 0),
-//                    7 => (float)($row->amd_non_resident ?? 0),
-//                    8 => (float)($row->fx_group1_resident ?? 0),
-//                    9 => (float)($row->fx_group1_non_resident ?? 0),
-//                    10 => (float)($row->usd_resident ?? 0),
-//                    11 => (float)($row->usd_non_resident ?? 0),
-//                    12 => (float)($row->eur_resident ?? 0),
-//                    13 => (float)($row->eur_non_resident ?? 0),
-//                    14 => (float)($row->fx_group2_resident ?? 0),
-//                    15 => (float)($row->fx_group2_non_resident ?? 0),
-//                    16 => (float)($row->rub_resident ?? 0),
-//                    17 => (float)($row->rub_non_resident ?? 0),
-//                ];
-//
-//                foreach ($nums as $colIndex => $val) {
-//                    if (abs($val) < 0.0001) {
-//                        $sheet->setCellValueByColumnAndRow($colIndex, $currentRow, null);
-//                    } else {
-//                        $sheet->setCellValueExplicitByColumnAndRow($colIndex, $currentRow, $val/1000, DataType::TYPE_NUMERIC);
-//                    }
-//                }
-//
-//                $currentRow++;
-//            }
         }
 
         $writer = new XlsxWriter($spreadsheet);
