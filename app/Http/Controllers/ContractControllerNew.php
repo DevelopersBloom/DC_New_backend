@@ -859,8 +859,8 @@ class ContractControllerNew extends Controller
                 ->whereDate('date', '<=', $calcToday)
                 ->sum('amount');
 
-            $dynamicProvidedAmount = $providedAmountSum - $paymentAmountSum;
-            $contract->setAttribute('provided_amount', $dynamicProvidedAmount);
+//            $dynamicProvidedAmount = $providedAmountSum - $paymentAmountSum;
+            $contract->setAttribute('provided_amount', $contract->provided_amount);
 
             $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
             $deadlineDate = $contract->deadline ? Carbon::parse($contract->deadline)->startOfDay() : null;
