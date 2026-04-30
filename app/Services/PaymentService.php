@@ -490,7 +490,7 @@ class PaymentService
             //$contract->collected += $decrease;
 
         }
-        if ($amount > 10) {
+        if ($amount >= 1) {
             $this->payPartial($contract, $amount, false, $cash, $deal_id,$date,false,true);
         }
         return $decrease;
@@ -671,7 +671,7 @@ class PaymentService
         }
 
         $this->recordContractHistory($contract, $partialAmount, $deal_id);
-        $this->handleAccountingForPartial($contract, $partialAmount, $date,$deal_id);
+        $this->handleAccountingForPartial($contract, $partialAmount, $date,$deal_id,$cash);
 
         if ($contract->payment_type == 'classic') {
             return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
@@ -867,7 +867,7 @@ class PaymentService
         $payment->save();
     }
 
-    private function handleAccountingForPartial($contract, $partialAmount, $date,$deal_id=null)
+    private function handleAccountingForPartial($contract, $partialAmount, $date,$deal_id=null,$cash = null)
     {
         $diamondId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
         $clientId = $contract->client_id;
@@ -875,8 +875,8 @@ class PaymentService
         $journal = DocumentJournal::where('journalable_type', Contract::class)
             ->where('journalable_id', $contract->id)
             ->first();
-
-        $ruleMother = PostingRule::where('business_event_filter', 'pay_mother_amount')->first();
+        $filter = $cash ? 'pay_mother_amount_cash' : 'pay_mother_amount';
+        $ruleMother = PostingRule::where('business_event_filter', $filter)->first();
         if ($ruleMother && $partialAmount > 0) {
             $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
             $journalDoc = DocumentJournal::create([
