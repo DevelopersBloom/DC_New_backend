@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ChartOfAccount;
+use App\Models\ClassificationHistory;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
@@ -62,7 +63,10 @@ class CorrectAllClientReservesJob implements ShouldQueue
                     if (!$client->classification) {
                         continue;
                     }
-
+                    $clientClassification = ClassificationHistory::where('client_id',$client->id)
+                        ->where('date', '<=', $dateStr)
+                        ->orderBy('date','desc')
+                        ->first() ?? $client->classification;
                     $firstContract = $client->contracts()
                         ->where('status', 'initial')
                         ->first();
@@ -87,8 +91,8 @@ class CorrectAllClientReservesJob implements ShouldQueue
                             acc16605PC:         $acc16605PC,
                             acc16605PS:         $acc16605PS,
                             targetAccountIds:   $targetAccountIds,
-                            reservePercent:     $client->classification->reserve_percent,
-                            classificationName: $client->classification->name,
+                            reservePercent:     $clientClassification->reserve_percent,
+                            classificationName: $clientClassification->classification->name,
                             diamondId:          $diamondId,
                             nextDocNum:         $nextDocNum,
                             journalId:          $journal->id,
