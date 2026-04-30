@@ -3,6 +3,7 @@
 namespace App\Exports\Reports;
 
 use App\Models\ChartOfAccount;
+use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -166,7 +167,14 @@ class V03Export
 
             foreach ($journals as $j) {
                 if ($j->journalable->status != 'initial') continue;
-                $classification = optional(optional($j->journalable)->client)->classification;
+                $client = optional($j->journalable)->client;
+                if (!$client) continue;
+
+                $classification = ClassificationHistory::where('client_id', $client->id)
+                    ->where('date', '<=', $current->format('Y-m-d'))
+                    ->orderBy('date', 'desc')
+                    ->first() ?: $client->classification;
+                //$classification = optional(optional($j->journalable)->client)->classification;
                 if ($classification && isset($riskColumns[(int)$classification->risk_weight])) {
                     $riskKey = (int)$classification->risk_weight;
                     $amount = $j->amount_amd;
