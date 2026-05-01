@@ -234,7 +234,8 @@ class V03Export
                 ->having('balance', '>', 0)
                 ->get()
                 ->keyBy('partner_id');
-            foreach ($partnerBalances as $partnerId => $row) {
+            foreach ($partnerBalances as $row) {
+                $partnerId = $row->partner_id;
                 if (!$partnerId) continue;
 
                 $classification = ClassificationHistory::where('client_id', $partnerId)
