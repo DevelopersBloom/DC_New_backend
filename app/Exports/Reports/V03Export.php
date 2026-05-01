@@ -259,7 +259,7 @@ class V03Export
                 $dailyData[$riskKey]['amount'] += $amount;
                 $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
             }
-
+dd($dailyData);
             foreach ($dailyData as $risk => $values) {
                 $col = $riskColumns[$risk];
                 $sheet3->setCellValue($col . $row, $values['amount'] / 1000);
