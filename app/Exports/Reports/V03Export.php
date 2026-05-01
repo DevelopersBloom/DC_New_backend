@@ -200,14 +200,14 @@ class V03Export
                 ->whereIn('t.debit_account_id', $acc16Ids)
                 ->whereDate('t.date', '<=', $end->format('Y-m-d'))
                 ->selectRaw("
-        t.debit_partner_id as partner_id,
-        SUM(
-            CASE
-                WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
-                ELSE -t.amount_amd
-            END
-        ) as amount
-    ")
+                    t.debit_partner_id as partner_id,
+                    SUM(
+                        CASE
+                            WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
+                            ELSE -t.amount_amd
+                        END
+                    ) as amount
+                ")
                 ->groupBy('t.debit_partner_id');
 
             $credit = DB::table('transactions as t')
@@ -217,27 +217,26 @@ class V03Export
                 ->whereIn('t.credit_account_id', $acc16Ids)
                 ->whereDate('t.date', '<=', $end->format('Y-m-d'))
                 ->selectRaw("
-        t.credit_partner_id as partner_id,
-        SUM(
-            CASE
-                WHEN a.type IN ('active','expense','off_balance') THEN -t.amount_amd
-                ELSE t.amount_amd
-            END
-        ) as amount
-    ")
+                    t.credit_partner_id as partner_id,
+                    SUM(
+                        CASE
+                            WHEN a.type IN ('active','expense','off_balance') THEN -t.amount_amd
+                            ELSE t.amount_amd
+                        END
+                    ) as amount
+                ")
                 ->groupBy('t.credit_partner_id');
 
             $partnerBalances = DB::query()
                 ->fromSub($debit->unionAll($credit), 'x')
                 ->selectRaw("
-        partner_id,
-        SUM(amount) as balance
-    ")
+                    partner_id,
+                    SUM(amount) as balance
+                ")
                 ->groupBy('partner_id')
                 ->having('balance', '>', 0)
                 ->get()
                 ->keyBy('partner_id');
-            dd($partnerBalances);
             foreach ($partnerBalances as $partnerId => $row) {
                 if (!$partnerId) continue;
 
