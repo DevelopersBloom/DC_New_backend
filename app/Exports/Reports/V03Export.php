@@ -261,8 +261,8 @@ class V03Export
             }
 
             foreach ($dailyData as $risk => $values) {
-dd($risk,$values);
                 $col = $riskColumns[$risk];
+                dd($col);
                 $sheet3->setCellValue($col . $row, $values['amount'] / 1000);
 
                 $nextCol = ++$col;
