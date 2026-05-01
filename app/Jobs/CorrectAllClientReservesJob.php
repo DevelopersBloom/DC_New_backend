@@ -64,7 +64,7 @@ class CorrectAllClientReservesJob implements ShouldQueue
                         continue;
                     }
                     $clientClassification = ClassificationHistory::where('client_id',$client->id)
-                        ->where('date', '<=', $dateStr)
+                        ->where('date', '<=', $date)
                         ->orderBy('date','desc')
                         ->first();
                         if ($client->id == 6) {
