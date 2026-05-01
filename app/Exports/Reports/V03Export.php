@@ -255,10 +255,11 @@ class V03Export
 
                 $amount = (float) $row->balance;
                 $reservePercent = (float) ($classification->reserve_percent ?? 0);
-                dd($amount,$riskKey,$col);
 
                 $dailyData[$riskKey]['amount'] += $amount;
                 $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
+                dd($dailyData);
+
             }
 
             foreach ($dailyData as $risk => $values) {
