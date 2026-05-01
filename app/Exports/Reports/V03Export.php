@@ -234,7 +234,6 @@ class V03Export
                 ->having('balance', '>', 0)
                 ->get()
                 ->keyBy('partner_id');
-            dd($partnerBalances);
             foreach ($partnerBalances as $partnerData) {
                 $partnerId = $partnerData->partner_id;
                 if (!$partnerId) continue;
@@ -259,8 +258,8 @@ class V03Export
 
                 $dailyData[$riskKey]['amount'] += $amount;
                 $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
+                dd($dailyData);
             }
-dd($dailyData);
             foreach ($dailyData as $risk => $values) {
                 $col = $riskColumns[$risk];
                 $sheet3->setCellValue($col . $row, $values['amount'] / 1000);
