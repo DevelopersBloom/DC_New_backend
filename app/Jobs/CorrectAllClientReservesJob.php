@@ -67,6 +67,9 @@ class CorrectAllClientReservesJob implements ShouldQueue
                         ->where('date', '<=', $dateStr)
                         ->orderBy('date','desc')
                         ->first() ?? $client->classification;
+                    if ($client->id == 6) {
+                        dd($clientClassification);
+                    }
                     $firstContract = $client->contracts()
                         ->where('status', 'initial')
                         ->first();
