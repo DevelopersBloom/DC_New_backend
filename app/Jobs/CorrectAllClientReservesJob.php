@@ -72,6 +72,9 @@ class CorrectAllClientReservesJob implements ShouldQueue
                         Log::error("Client {$client->id} classification does not exist for {$dateStr}");
                         continue;
                     }
+                    if ($client->id == 2) {
+                        dd($clientClassification->classification->name);
+                    }
                     $firstContract = $client->contracts()
                         ->where('status', 'initial')
                         ->first();
