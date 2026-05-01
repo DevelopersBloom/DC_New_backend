@@ -243,7 +243,7 @@ class V03Export
 
                 $currentBalances[$t->partner_id] += (float) $t->delta;
             }
-dd($currentBalances,$initialBalances,$dailyTransactions);
+dd($from,$currentBalances,$initialBalances,$dailyTransactions);
             /**
              * 5. APPLY TO DAILY DATA
              */
