@@ -186,93 +186,44 @@ class V03Export
 //                    $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
 //                }
 //            }
-            $acc16Ids = ChartOfAccount::where('code', 'like', '16%')
-                ->pluck('id')
-                ->toArray();
 
-            $initialBalances = DB::table('transactions as t')
+            $acc16Ids = ChartOfAccount::where('code', 'like', '16%')->pluck('id', 'id')->toArray();
+
+            $partnerBalances = DB::table('transactions as t')
                 ->whereNull('t.deleted_at')
-                ->whereDate('t.date', '<', $from)
+                ->whereDate('t.date', '<=', $current->format('Y-m-d'))
                 ->where(function ($q) use ($acc16Ids) {
                     $q->whereIn('t.debit_account_id', $acc16Ids)
                         ->orWhereIn('t.credit_account_id', $acc16Ids);
                 })
                 ->selectRaw("
-                    COALESCE(t.debit_partner_id, t.credit_partner_id) as partner_id,
-                    SUM(CASE WHEN t.debit_account_id IN (" . implode(',', $acc16Ids) . ")
-                        THEN t.amount_amd ELSE 0 END)
-                    -
-                    SUM(CASE WHEN t.credit_account_id IN (" . implode(',', $acc16Ids) . ")
-                        THEN t.amount_amd ELSE 0 END) as balance
-                ")
-                            ->groupBy(DB::raw('COALESCE(t.debit_partner_id, t.credit_partner_id)'))
-                            ->pluck('balance', 'partner_id')
-                            ->toArray();
-
-            $classificationCache = [];
-
-            $dailyTransactions = DB::table('transactions as t')
-                ->whereNull('t.deleted_at')
-                ->whereDate('t.date', $current->format('Y-m-d'))
-                ->where(function ($q) use ($acc16Ids) {
-                    $q->whereIn('t.debit_account_id', $acc16Ids)
-                        ->orWhereIn('t.credit_account_id', $acc16Ids);
-                })
-                ->selectRaw("
-                    COALESCE(t.debit_partner_id, t.credit_partner_id) as partner_id,
-                    SUM(CASE WHEN t.debit_account_id IN (" . implode(',', $acc16Ids) . ")
-                        THEN t.amount_amd ELSE 0 END)
-                    -
-                    SUM(CASE WHEN t.credit_account_id IN (" . implode(',', $acc16Ids) . ")
-                        THEN t.amount_amd ELSE 0 END) as delta
-                ")
+                        COALESCE(t.debit_partner_id, t.credit_partner_id) as partner_id,
+                        SUM(CASE WHEN t.debit_account_id IN (" . implode(',', $acc16Ids) . ") THEN t.amount_amd ELSE 0 END) -
+                        SUM(CASE WHEN t.credit_account_id IN (" . implode(',', $acc16Ids) . ") THEN t.amount_amd ELSE 0 END) as balance
+                    ")
                 ->groupBy(DB::raw('COALESCE(t.debit_partner_id, t.credit_partner_id)'))
-                ->get();
+                ->having('balance', '>', 0)
+                ->get()
+                ->keyBy('partner_id');
+            foreach ($partnerBalances as $partnerId => $row) {
+                if (!$partnerId) continue;
 
-            /**
-             * 4. BUILD CUMULATIVE BALANCE
-             */
-            $currentBalances = $initialBalances;
+                $classification = ClassificationHistory::where('client_id', $partnerId)
+                    ->where('date', '<=', $current->format('Y-m-d'))
+                    ->orderBy('date', 'desc')
+                    ->first();
 
-            foreach ($dailyTransactions as $t) {
-                if (!$t->partner_id) continue;
-
-                if (!isset($currentBalances[$t->partner_id])) {
-                    $currentBalances[$t->partner_id] = 0;
+                if (!$classification) {
+                    $client = \App\Models\Client::find($partnerId);
+                    $classification = $client?->classification;
                 }
 
-                $currentBalances[$t->partner_id] += (float) $t->delta;
-            }
-dd($from,$currentBalances,$initialBalances,$dailyTransactions);
-            /**
-             * 5. APPLY TO DAILY DATA
-             */
-            foreach ($currentBalances as $partnerId => $amount) {
-                if (!$partnerId || $amount <= 0) continue;
-
-                /**
-                 * classification cache (NO N+1)
-                 */
-                if (!isset($classificationCache[$partnerId])) {
-                    $classification = ClassificationHistory::where('client_id', $partnerId)
-                        ->where('date', '<=', $current->format('Y-m-d'))
-                        ->orderBy('date', 'desc')
-                        ->first();
-
-                    if (!$classification) {
-                        $client = \App\Models\Client::find($partnerId);
-                        $classification = $client?->classification;
-                    }
-
-                    $classificationCache[$partnerId] = $classification;
-                }
-
-                $classification = $classificationCache[$partnerId];
                 if (!$classification) continue;
 
                 $riskKey = (int) $classification->risk_weight;
                 if (!isset($riskColumns[$riskKey])) continue;
 
+                $amount = (float) $row->balance;
                 $reservePercent = (float) ($classification->reserve_percent ?? 0);
 
                 $dailyData[$riskKey]['amount'] += $amount;
