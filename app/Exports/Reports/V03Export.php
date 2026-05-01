@@ -186,9 +186,6 @@ class V03Export
 //                    $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
 //                }
 //            }
-
-            $acc16Ids = ChartOfAccount::where('code', 'like', '16%')->pluck('id', 'id')->toArray();
-
             $acc16Ids = ChartOfAccount::where('code', 'like', '16%')
                 ->pluck('id')
                 ->toArray();
@@ -198,7 +195,7 @@ class V03Export
                 ->whereNull('t.deleted_at')
                 ->whereNotNull('t.debit_partner_id')
                 ->whereIn('t.debit_account_id', $acc16Ids)
-                ->whereDate('t.date', '<=', $end->format('Y-m-d'))
+                ->whereDate('t.date', '<=', $current->format('Y-m-d'))
                 ->selectRaw("
                     t.debit_partner_id as partner_id,
                     SUM(
@@ -215,7 +212,7 @@ class V03Export
                 ->whereNull('t.deleted_at')
                 ->whereNotNull('t.credit_partner_id')
                 ->whereIn('t.credit_account_id', $acc16Ids)
-                ->whereDate('t.date', '<=', $end->format('Y-m-d'))
+                ->whereDate('t.date', '<=', $current->format('Y-m-d'))
                 ->selectRaw("
                     t.credit_partner_id as partner_id,
                     SUM(
