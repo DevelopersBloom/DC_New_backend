@@ -6,6 +6,7 @@ use App\Models\ChartOfAccount;
 use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -164,26 +165,71 @@ class V03Export
                 ->where('date', '<=', $current->format('Y-m-d'))
                 ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
                 ->get();
+//
+//            foreach ($journals as $j) {
+//                if ($j->journalable->status != 'initial') continue;
+//                $client = optional($j->journalable)->client;
+//                if (!$client) continue;
+//
+//                $classification = ClassificationHistory::where('client_id', $client->id)
+//                    ->where('date', '<=', $current->format('Y-m-d'))
+//                    ->orderBy('date', 'desc')
+//                    ->first() ?: $client->classification;
+//                //$classification = optional(optional($j->journalable)->client)->classification;
+//                if ($classification && isset($riskColumns[(int)$classification->risk_weight])) {
+//                    $riskKey = (int)$classification->risk_weight;
+//                    $amount = $j->amount_amd;
+//
+//                    $dailyData[$riskKey]['amount'] += $amount;
+//
+//                    $reservePercent = $classification->reserve_percent ?? 0;
+//                    $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
+//                }
+//            }
 
-            foreach ($journals as $j) {
-                if ($j->journalable->status != 'initial') continue;
-                $client = optional($j->journalable)->client;
-                if (!$client) continue;
+            $acc16Ids = ChartOfAccount::where('code', 'like', '16%')->pluck('id', 'id')->toArray();
 
-                $classification = ClassificationHistory::where('client_id', $client->id)
+            $partnerBalances = DB::table('transactions as t')
+                ->whereNull('t.deleted_at')
+                ->whereDate('t.date', '<=', $current->format('Y-m-d'))
+                ->where(function ($q) use ($acc16Ids) {
+                    $q->whereIn('t.debit_account_id', $acc16Ids)
+                        ->orWhereIn('t.credit_account_id', $acc16Ids);
+                })
+                ->selectRaw("
+                        COALESCE(t.debit_partner_id, t.credit_partner_id) as partner_id,
+                        SUM(CASE WHEN t.debit_account_id IN (" . implode(',', $acc16Ids) . ") THEN t.amount_amd ELSE 0 END) -
+                        SUM(CASE WHEN t.credit_account_id IN (" . implode(',', $acc16Ids) . ") THEN t.amount_amd ELSE 0 END) as balance
+                    ")
+                ->groupBy(DB::raw('COALESCE(t.debit_partner_id, t.credit_partner_id)'))
+                ->having('balance', '>', 0)
+                ->get()
+                ->keyBy('partner_id');
+
+            dd($partnerBalances);
+            foreach ($partnerBalances as $partnerId => $row) {
+                if (!$partnerId) continue;
+
+                $classification = ClassificationHistory::where('client_id', $partnerId)
                     ->where('date', '<=', $current->format('Y-m-d'))
                     ->orderBy('date', 'desc')
-                    ->first() ?: $client->classification;
-                //$classification = optional(optional($j->journalable)->client)->classification;
-                if ($classification && isset($riskColumns[(int)$classification->risk_weight])) {
-                    $riskKey = (int)$classification->risk_weight;
-                    $amount = $j->amount_amd;
+                    ->first();
 
-                    $dailyData[$riskKey]['amount'] += $amount;
-
-                    $reservePercent = $classification->reserve_percent ?? 0;
-                    $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
+                if (!$classification) {
+                    $client = \App\Models\Client::find($partnerId);
+                    $classification = $client?->classification;
                 }
+
+                if (!$classification) continue;
+
+                $riskKey = (int) $classification->risk_weight;
+                if (!isset($riskColumns[$riskKey])) continue;
+
+                $amount = (float) $row->balance;
+                $reservePercent = (float) ($classification->reserve_percent ?? 0);
+
+                $dailyData[$riskKey]['amount'] += $amount;
+                $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
             }
 
             foreach ($dailyData as $risk => $values) {
