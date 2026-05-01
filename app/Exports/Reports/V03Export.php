@@ -205,6 +205,7 @@ class V03Export
                 ->having('balance', '>', 0)
                 ->get()
                 ->keyBy('partner_id');
+            dd($partnerBalances);
             foreach ($partnerBalances as $partnerId => $row) {
                 if (!$partnerId) continue;
 
