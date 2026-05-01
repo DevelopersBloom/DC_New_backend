@@ -66,7 +66,7 @@ class CorrectAllClientReservesJob implements ShouldQueue
                     $clientClassification = ClassificationHistory::where('client_id',$client->id)
                         ->where('date', '<=', $dateStr)
                         ->orderBy('date','desc')
-                        ->first() ?? $client->classification;
+                        ->first();
                         if ($client->id == 6) {
                             dd($client->id,$clientClassification);
                         }
