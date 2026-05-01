@@ -189,19 +189,51 @@ class V03Export
 
             $acc16Ids = ChartOfAccount::where('code', 'like', '16%')->pluck('id', 'id')->toArray();
 
-            $partnerBalances = DB::table('transactions as t')
+            $acc16Ids = ChartOfAccount::where('code', 'like', '16%')
+                ->pluck('id')
+                ->toArray();
+
+            $debit = DB::table('transactions as t')
+                ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
                 ->whereNull('t.deleted_at')
+                ->whereNotNull('t.debit_partner_id')
+                ->whereIn('t.debit_account_id', $acc16Ids)
                 ->whereDate('t.date', '<=', $end->format('Y-m-d'))
-                ->where(function ($q) use ($acc16Ids) {
-                    $q->whereIn('t.debit_account_id', $acc16Ids)
-                        ->orWhereIn('t.credit_account_id', $acc16Ids);
-                })
                 ->selectRaw("
-                        COALESCE(t.debit_partner_id, t.credit_partner_id) as partner_id,
-                        SUM(CASE WHEN t.debit_account_id IN (" . implode(',', $acc16Ids) . ") THEN t.amount_amd ELSE 0 END) -
-                        SUM(CASE WHEN t.credit_account_id IN (" . implode(',', $acc16Ids) . ") THEN t.amount_amd ELSE 0 END) as balance
-                    ")
-                ->groupBy(DB::raw('COALESCE(t.debit_partner_id, t.credit_partner_id)'))
+        t.debit_partner_id as partner_id,
+        SUM(
+            CASE
+                WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
+                ELSE -t.amount_amd
+            END
+        ) as amount
+    ")
+                ->groupBy('t.debit_partner_id');
+
+            $credit = DB::table('transactions as t')
+                ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
+                ->whereNull('t.deleted_at')
+                ->whereNotNull('t.credit_partner_id')
+                ->whereIn('t.credit_account_id', $acc16Ids)
+                ->whereDate('t.date', '<=', $end->format('Y-m-d'))
+                ->selectRaw("
+        t.credit_partner_id as partner_id,
+        SUM(
+            CASE
+                WHEN a.type IN ('active','expense','off_balance') THEN -t.amount_amd
+                ELSE t.amount_amd
+            END
+        ) as amount
+    ")
+                ->groupBy('t.credit_partner_id');
+
+            $partnerBalances = DB::query()
+                ->fromSub($debit->unionAll($credit), 'x')
+                ->selectRaw("
+        partner_id,
+        SUM(amount) as balance
+    ")
+                ->groupBy('partner_id')
                 ->having('balance', '>', 0)
                 ->get()
                 ->keyBy('partner_id');
