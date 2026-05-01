@@ -253,7 +253,7 @@ class V03Export
                 $riskKey = (int) $classification->risk_weight;
                 if (!isset($riskColumns[$riskKey])) continue;
 
-                $amount = (float) $row->balance;
+                $amount = (float) $partnerData->balance;
                 $reservePercent = (float) ($classification->reserve_percent ?? 0);
 
                 $dailyData[$riskKey]['amount'] += $amount;
