@@ -68,6 +68,10 @@ class CorrectAllClientReservesJob implements ShouldQueue
                         ->orderBy('date','desc')
                         ->first();
 
+                    if (!$clientClassification) {
+                        Log::error("Client {$client->id} classification does not exist for {$dateStr}");
+                        continue;
+                    }
                     $firstContract = $client->contracts()
                         ->where('status', 'initial')
                         ->first();
