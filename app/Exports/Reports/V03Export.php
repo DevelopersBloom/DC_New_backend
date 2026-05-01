@@ -191,7 +191,7 @@ class V03Export
 
             $partnerBalances = DB::table('transactions as t')
                 ->whereNull('t.deleted_at')
-                ->whereDate('t.date', '<=', $current->format('Y-m-d'))
+                ->whereDate('t.date', '<=', $end->format('Y-m-d'))
                 ->where(function ($q) use ($acc16Ids) {
                     $q->whereIn('t.debit_account_id', $acc16Ids)
                         ->orWhereIn('t.credit_account_id', $acc16Ids);
