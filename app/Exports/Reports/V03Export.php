@@ -255,6 +255,7 @@ class V03Export
 
                 $amount = (float) $row->balance;
                 $reservePercent = (float) ($classification->reserve_percent ?? 0);
+                dd($amount,$riskKey,$col);
 
                 $dailyData[$riskKey]['amount'] += $amount;
                 $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
@@ -262,7 +263,6 @@ class V03Export
 
             foreach ($dailyData as $risk => $values) {
                 $col = $riskColumns[$risk];
-dd($values,$riskKey,$col);
                 $sheet3->setCellValue($col . $row, $values['amount'] / 1000);
 
                 $nextCol = ++$col;
