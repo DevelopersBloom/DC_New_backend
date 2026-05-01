@@ -161,11 +161,11 @@ class V03Export
                 $dailyData[$riskKey]['reserve'] += ($balance * 0.01);
             }
 
-            $journals = DocumentJournal::with(['journalable.client.classification'])
-                ->where('date', '<=', $current->format('Y-m-d'))
-                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-                ->get();
-//
+//            $journals = DocumentJournal::with(['journalable.client.classification'])
+//                ->where('date', '<=', $current->format('Y-m-d'))
+//                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+//                ->get();
+////
 //            foreach ($journals as $j) {
 //                if ($j->journalable->status != 'initial') continue;
 //                $client = optional($j->journalable)->client;
@@ -234,8 +234,8 @@ class V03Export
                 ->having('balance', '>', 0)
                 ->get()
                 ->keyBy('partner_id');
-            foreach ($partnerBalances as $row) {
-                $partnerId = $row->partner_id;
+            foreach ($partnerBalances as $partnerData) {
+                $partnerId = $partnerData->partner_id;
                 if (!$partnerId) continue;
 
                 $classification = ClassificationHistory::where('client_id', $partnerId)
