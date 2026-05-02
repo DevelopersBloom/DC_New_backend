@@ -73,17 +73,24 @@ class CorrectAllClientReservesJob implements ShouldQueue
                         continue;
                     }
 
-                    $firstContract = $client->contracts()
+                    $initialContractIds = $client->contracts()
                         ->where('status', 'initial')
+                        ->orderBy('id')
+                        ->pluck('id');
+
+                    if ($initialContractIds->isEmpty()) {
+                        continue;
+                    }
+
+                    $journal = DocumentJournal::where('journalable_type', Contract::class)
+                        ->whereIn('journalable_id', $initialContractIds)
+                        ->orderBy('journalable_id')
                         ->first();
 
-                    $journal = $firstContract
-                        ? DocumentJournal::where('journalable_type', Contract::class)
-                            ->where('journalable_id', $firstContract->id)
-                            ->first()
-                        : null;
-
                     if (!$journal) {
+                        Log::warning("Client {$client->id} reserve skipped for {$dateStr}: no DocumentJournal for any initial contract", [
+                            'initial_contract_ids' => $initialContractIds->all(),
+                        ]);
                         continue;
                     }
 
