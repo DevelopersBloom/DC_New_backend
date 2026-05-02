@@ -102,8 +102,8 @@ trait CorrectReserveTrait
                 [$debit, $credit] = $balance16605PC > 0
                     ?[$rule->credit_account_id, $rule->debit_account_id]
                     : [$rule->debit_account_id, $rule->credit_account_id];
-                $debitClientId = $balance16605PS > 0 ? null : $clientId;
-                $creditClientId = $balance16605PS > 0 ? $clientId : null;
+                $debitClientId = $balance16605PC > 0 ? null : $clientId;
+                $creditClientId = $balance16605PC > 0 ? $clientId : null;
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
@@ -144,8 +144,8 @@ trait CorrectReserveTrait
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $diffPS > 0 ? $diamondId : $clientId,
-                    creditPartnerId:$diffPS > 0 ? $clientId : $diamondId,
+                    debitPartnerId: $diffPS > 0 ? $clientId : null,
+                    creditPartnerId:$diffPS > 0 ? null : $clientId,
                     debitAccountId: $credit,
                     creditAccountId: $debit,
                     amount:         abs($diffPS),
