@@ -162,7 +162,7 @@ trait CorrectReserveTrait
 
     private function postCorrectionEntry(
         int    $clientId,
-        int    $debitPartnerId,
+        ?int    $debitPartnerId,
         ?int    $creditPartnerId,
         int    $debitAccountId,
         int   $creditAccountId,
