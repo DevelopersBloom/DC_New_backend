@@ -41,15 +41,15 @@ trait CorrectReserveTrait
             // 16605PC → targetAmount
             $diffPC = round($targetAmount - $balance16605PC, 2);
             if (abs($diffPC) >= 0.01) {
-                $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
+                $rule = PostingRule::where('business_event_filter', 'provide_general_amount_change')->first();
                 [$debit, $credit] = $diffPC > 0
                     ? [$rule->debit_account_id, $rule->credit_account_id]
                     : [$rule->credit_account_id, $rule->debit_account_id];
-
+                $creditClientId = null;
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
                     debitPartnerId: $diffPC > 0 ? $diamondId : $clientId ,
-                    creditPartnerId:$diffPC > 0 ? $clientId : $diamondId,
+                    creditPartnerId:$creditClientId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($diffPC),
@@ -88,7 +88,7 @@ trait CorrectReserveTrait
             // 16605PC → 0
             if (abs($balance16605PC) >= 0.01) {
 
-                $rule = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
+                $rule = PostingRule::where('business_event_filter', 'provide_general_amount_change')->first();
 
 
                 [$debit, $credit] = $balance16605PC > 0
@@ -98,6 +98,7 @@ trait CorrectReserveTrait
                 [$debitClientId, $creditClientId] = $balance16605PS > 0
                     ? [$diamondId,$clientId]
                     : [$clientId, $diamondId];
+                $creditClientId = null;
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
                     debitPartnerId: $debitClientId,
@@ -108,7 +109,7 @@ trait CorrectReserveTrait
                     documentType:   DocumentJournal::RESERVE_GENERAL_AMOUNT,
                     comment:        "Zero 16605PC (non-standard correction) for client #{$clientId}",
                     journalId:      $journalId,
-                    nextDocNum:     $nextDocNum,
+                    nextDocNum:   $nextDocNum,
                     now:            $now,
                 );
             }
@@ -145,9 +146,9 @@ trait CorrectReserveTrait
     private function postCorrectionEntry(
         int    $clientId,
         int    $debitPartnerId,
-        int    $creditPartnerId,
+        ?int    $creditPartnerId,
         int    $debitAccountId,
-        int    $creditAccountId,
+        int   $creditAccountId,
         float  $amount,
         string $documentType,
         string $comment,
