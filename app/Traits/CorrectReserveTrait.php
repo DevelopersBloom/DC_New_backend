@@ -40,7 +40,7 @@ trait CorrectReserveTrait
             // ── STANDARD ────────────────────────────────────────────────────
             // 16605PC → targetAmount
 
-            $diffPC = round($targetAmount - $balance16605PC, 2);
+            $diffPC = round((-$targetAmount) - $balance16605PC, 2);
             if (abs($diffPC) >= 0.01) {
                 $rule = $diffPC > 0 ? PostingRule::where('business_event_filter', 'provide_general_amount_change')->first()
                                     : PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
