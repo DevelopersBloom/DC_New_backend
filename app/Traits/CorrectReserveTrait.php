@@ -121,7 +121,7 @@ trait CorrectReserveTrait
             }
 
             // 16605PS → targetAmount
-            $diffPS = round($targetAmount - $balance16605PS, 2);
+            $diffPS = round((-$targetAmount) - $balance16605PS, 2);
             Log::info("diffPS: {$diffPS}, targetAmount: {$targetAmount}, docNum: {$nextDocNum},balance16605PS : {$balance16605PS}");
 
             //100,

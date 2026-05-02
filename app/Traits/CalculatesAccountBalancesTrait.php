@@ -317,7 +317,7 @@ trait CalculatesAccountBalancesTrait
             ->when($date, fn($q) => $q->where('date', '<=', $date))
             ->sum('amount_amd');
 
-        return (float)$credit - (float)$debit;
+        return (float)$debit - (float)$credit;
     }
 }
 
