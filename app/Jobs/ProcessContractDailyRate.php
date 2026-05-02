@@ -295,7 +295,7 @@ class ProcessContractDailyRate implements ShouldQueue
                     ->where('journalable_id', $contract->id)
                     ->first();
 
-                if (!$journal) {
+                if (!$journal || $contract->client->classifiaction->name == 'loss') {
                     DB::rollBack();
                     continue;
                 }
