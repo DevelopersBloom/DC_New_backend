@@ -39,17 +39,24 @@ trait CorrectReserveTrait
         if ($classificationName === 'standard') {
             // ── STANDARD ────────────────────────────────────────────────────
             // 16605PC → targetAmount
+
             $diffPC = round($targetAmount - $balance16605PC, 2);
             if (abs($diffPC) >= 0.01) {
-                $rule = PostingRule::where('business_event_filter', 'provide_general_amount_change')->first();
-                [$debit, $credit] = $diffPC > 0
-                    ? [$rule->debit_account_id, $rule->credit_account_id]
-                    : [$rule->credit_account_id, $rule->debit_account_id];
-                $creditClientId = null;
+                $rule = $diffPC > 0 ? PostingRule::where('business_event_filter', 'provide_general_amount_change')->first()
+                                    : PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
+
+//                16605PC, 63015
+//                73015, 16605PC,
+                $debit = $rule->debit_account_id;
+                $credit = $rule->credit_account_id;
+
+                $debitPartnerId = $diffPC > 0 ? $clientId : null;
+                $creditPartnerId = $diffPC > 0 ? null : $clientId;
+
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $diffPC > 0 ? $diamondId : $clientId ,
-                    creditPartnerId:$creditClientId,
+                    debitPartnerId: $debitPartnerId,
+                    creditPartnerId:$creditPartnerId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($diffPC),
@@ -63,16 +70,17 @@ trait CorrectReserveTrait
 
             // 16605PS → 0
             if (abs($balance16605PS) >= 0.01) {
-                $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
-
+                $rule = PostingRule::where('business_event_filter', 'provide_special_amount_change')->first();
+//$acc16605PS,63015
                 [$debit, $credit] = $balance16605PS > 0
                     ?[$rule->credit_account_id, $rule->debit_account_id]
                     : [$rule->debit_account_id, $rule->credit_account_id];
-
+                $debitClientId = $balance16605PS > 0 ? null : $clientId;
+                $creditClientId = $balance16605PS > 0 ? $clientId : null;
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
-                    debitPartnerId: $clientId,
-                    creditPartnerId:$diamondId,
+                    debitPartnerId: $debitClientId,
+                    creditPartnerId:$creditClientId,
                     debitAccountId: $debit,
                     creditAccountId:$credit,
                     amount:         abs($balance16605PS),
@@ -90,15 +98,13 @@ trait CorrectReserveTrait
 
                 $rule = PostingRule::where('business_event_filter', 'provide_general_amount_change')->first();
 
-
+                //$acc16605PC, 63015
                 [$debit, $credit] = $balance16605PC > 0
-                    ? [$rule->credit_account_id, $rule->debit_account_id]
+                    ?[$rule->credit_account_id, $rule->debit_account_id]
                     : [$rule->debit_account_id, $rule->credit_account_id];
+                $debitClientId = $balance16605PS > 0 ? null : $clientId;
+                $creditClientId = $balance16605PS > 0 ? $clientId : null;
 
-                [$debitClientId, $creditClientId] = $balance16605PS > 0
-                    ? [$diamondId,$clientId]
-                    : [$clientId, $diamondId];
-                $creditClientId = null;
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
                     debitPartnerId: $debitClientId,
@@ -118,12 +124,23 @@ trait CorrectReserveTrait
             $diffPS = round($targetAmount - $balance16605PS, 2);
             Log::info("diffPS: {$diffPS}, targetAmount: {$targetAmount}, docNum: {$nextDocNum},balance16605PS : {$balance16605PS}");
 
+            //100,
+            //-100
             if (abs($diffPS) >= 0.01) {
-                $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
 
-                [$debit, $credit] = $diffPS > 0
-                    ? [$rule->credit_account_id, $rule->debit_account_id]
-                    : [$rule->debit_account_id, $rule->credit_account_id];
+                $rule = $diffPS > 0 ? PostingRule::where('business_event_filter', 'provide_special_amount_change')->first()
+                    : PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
+//-100,-90
+//                , 16605PS,63015
+//                73015, $acc16605PS,
+
+                $debit = $rule->credit_account_id;
+                $credit = $rule->debit_account_id;
+//                $rule = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
+//
+//                [$debit, $credit] = $diffPS > 0
+//                    ? [$rule->credit_account_id, $rule->debit_account_id]
+//                    : [$rule->debit_account_id, $rule->credit_account_id];
 
                 $this->postCorrectionEntry(
                     clientId:       $clientId,
