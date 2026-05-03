@@ -83,16 +83,35 @@ foreach ($xpath->query('//*[@wsu:Id]') as $node) {
 // Verify IDs հասանելի են
 echo "=== ID Registration Check ===\n";
 foreach (['id-ts', 'id-to', 'id-body', $bstId] as $id) {
-    $found = $dom->getElementById($id);
-    echo "  getElementById('$id'): " . ($found ? $found->localName : 'NOT FOUND') . "\n";
-}
+    $node = $dom->getElementById($id);
 
+    if (!$node) {
+        throw new Exception("ID not found: $id");
+    }
+
+    $dsig->addReference(
+        $node,
+        XMLSecurityDSig::SHA256,
+        ['http://www.w3.org/2001/10/xml-exc-c14n#'],
+        ['uri' => '#' . $id]
+    );
+}
 // ─── Sign ─────────────────────────────────────────────────────────────────────
 $secNode = $dom->getElementsByTagNameNS($secNs, 'Security')->item(0);
 
 $dsig = new XMLSecurityDSig('');
 $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
-
+$dsig->addReference(
+    $node,
+    XMLSecurityDSig::SHA256,
+    [
+        'http://www.w3.org/2001/10/xml-exc-c14n#'
+    ],
+    [
+        'uri' => '#' . $id,
+        'inclusiveNamespacesPrefixList' => 's a o'
+    ]
+);
 // Ստորագրել Timestamp + To + Body
 foreach (['#id-ts', '#id-to', '#id-body'] as $ref) {
     $dsig->addReference(
@@ -106,8 +125,8 @@ foreach (['#id-ts', '#id-to', '#id-body'] as $ref) {
 $privKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
 $privKey->loadKey($keyPath, true);
 $dsig->sign($privKey);
-$dsig->appendSignature($secNode);
-
+$timestampNode = $dom->getElementsByTagNameNS($uNs, 'Timestamp')->item(0);
+$dsig->insertSignature($secNode, $timestampNode->nextSibling);
 // ─── KeyInfo — ThumbprintSHA1 ─────────────────────────────────────────────────
 $sigNode = $secNode->getElementsByTagNameNS($dsigNs, 'Signature')->item(0);
 echo "\nSignature node: " . ($sigNode ? "OK" : "NOT FOUND") . "\n";
