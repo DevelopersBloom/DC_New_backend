@@ -276,13 +276,12 @@ class CreditRegistrySoapClient
             CURLOPT_POSTFIELDS     => $xml,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 60,
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,  // ← ԱՎԵԼԱՑՆԵԼ
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/soap+xml; charset=utf-8; action="' . $actionUrl . '"',
             ],
-            // mTLS — client certificate (հաղորդագրություն ստորագրելու ԵՐԿՐՈՐԴ կիրառություն)
             CURLOPT_SSLCERT        => self::CERT_PATH,
             CURLOPT_SSLKEY         => self::KEY_PATH,
-            // Server certificate verification
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_CAINFO         => self::CA_PATH,
             CURLOPT_SSL_VERIFYHOST => 0,
@@ -305,7 +304,6 @@ class CreditRegistrySoapClient
 
         return (string) $response;
     }
-
     // ================================================================
     // Helpers
     // ================================================================
