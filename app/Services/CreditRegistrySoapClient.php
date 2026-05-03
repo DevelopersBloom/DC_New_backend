@@ -62,20 +62,21 @@ class CreditRegistrySoapClient
     public function isAlive(): bool
     {
         try {
-            $bodyContent = '<tns:IsAlive xmlns:tns="http://tempuri.org/"/>';
-            $response    = $this->dispatch('IsAlive', $bodyContent);
-            $dom         = new DOMDocument();
-            $dom->loadXML($response);
-            $xpath = new DOMXPath($dom);
-            $nodes = $xpath->query('//*[local-name()="IsAliveResult"]');
+            // Փորձենք ուղարկել առանց ստորագրության (Dispatch-ի փոխարեն ուղղակի sendViaCurl)
+            $body = '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing">'
+                . '<s:Header>'
+                . '<a:Action>http://tempuri.org/IDegsNSS/IsAlive</a:Action>'
+                . '<a:To>'.self::ENDPOINT.'</a:To>'
+                . '</s:Header>'
+                . '<s:Body><IsAlive xmlns="http://tempuri.org/"/></s:Body>'
+                . '</s:Envelope>';
 
-            return $nodes->length > 0 && strtolower(trim($nodes->item(0)->textContent)) === 'true';
+            $response = $this->sendViaCurl('IsAlive', $body);
+            return str_contains($response, 'true');
         } catch (\Throwable $e) {
-            \Log::error('DEGS isAlive failed', ['error' => $e->getMessage()]);
             return false;
         }
     }
-
     // -------------------------------------------------------------------------
     // Internal — SendRequest wrapper
     // -------------------------------------------------------------------------
