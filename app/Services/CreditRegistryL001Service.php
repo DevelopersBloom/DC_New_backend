@@ -28,23 +28,25 @@ class CreditRegistryL001Service
     public function generateL001Xml(Contract $contract): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->formatOutput = false;
+        $dom->formatOutput = false; // Խիստ կարևոր է ստորագրության համար
         $dom->preserveWhiteSpace = false;
-        $root = $dom->createElementNS(self::NS, 'lnreg3:L001');
+
+        // Ստեղծում ենք արմատային տեգը առանց պրեֆիքսի (default namespace)
+        // Սա թույլ կտա բոլոր երեխա տեգերին ժառանգել սա առանց lnreg3: գրելու
+        $root = $dom->createElementNS(self::NS, 'L001');
         $dom->appendChild($root);
 
         // ReportHeader
-        $header = $dom->createElement('lnreg3:ReportHeader');
-        $header->appendChild($dom->createElement('lnreg3:OrganisationCode', self::ORGANISATION_CODE));
-        $header->appendChild($dom->createElement('lnreg3:OrganisationBranchCode', self::ORGANISATION_BRANCH_CODE));
-        $header->appendChild($dom->createElement('lnreg3:OrganizationStatus', (string) self::ORGANIZATION_STATUS));
+        $header = $dom->createElement('ReportHeader');
+        $header->appendChild($dom->createElement('OrganisationCode', self::ORGANISATION_CODE));
+        $header->appendChild($dom->createElement('OrganisationBranchCode', self::ORGANISATION_BRANCH_CODE));
+        $header->appendChild($dom->createElement('OrganizationStatus', (string) self::ORGANIZATION_STATUS));
 
         $now = Carbon::now();
-        $sendDateTime = $dom->createElement('lnreg3:SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('lnreg3:Date', $now->format('Y-m-d')));
-        $sendDateTime->appendChild($dom->createElement('lnreg3:Time', $now->format('H:i:s')));
+        $sendDateTime = $dom->createElement('SendDateTime');
+        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
         $header->appendChild($sendDateTime);
-
         $root->appendChild($header);
 
         // CreditCode
@@ -55,9 +57,10 @@ class CreditRegistryL001Service
         $checksum = $this->calculateCbaChecksum($base);
         $formattedCode = sprintf("%s-%s-%s%d", $orgCode, $datePart, $sequence, $checksum);
 
-        $root->appendChild($dom->createElement('lnreg3:CreditCode', $formattedCode));
+        $root->appendChild($dom->createElement('CreditCode', $formattedCode));
 
-        $loanData = $dom->createElement('lnreg3:LoanData');
+        // LoanData
+        $loanData = $this->createLoanData($dom, $contract);
         $root->appendChild($loanData);
 
         return $dom->saveXML($dom->documentElement);
