@@ -4,36 +4,36 @@ require '/var/www/html/test-diamond-credit/vendor/autoload.php';
 use RobRichards\XMLSecLibs\XMLSecurityDSig;
 use RobRichards\XMLSecLibs\XMLSecurityKey;
 
-// ─── Config ───────────────────────────────────────────────────────────────────
 $certPath = '/etc/ssl/degs/client.crt';
 $keyPath  = '/etc/ssl/degs/client.key';
 $caPath   = '/etc/ssl/certs/DEGSTESTRootCA.pem';
 $endpoint = 'https://100.100.100.60:8888/DEGSHost';
-$action   = 'IsAlive';
-$actionUrl = 'http://tempuri.org/IDegsNSS/' . $action;
+$actionUrl = 'http://tempuri.org/IDegsNSS/IsAlive';
 
-// ─── UUID helper ──────────────────────────────────────────────────────────────
-function uuid(): string {
+function makeUuid(): string {
     return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
         mt_rand(0,0xffff),mt_rand(0,0xffff),mt_rand(0,0xffff),
         mt_rand(0,0x0fff)|0x4000, mt_rand(0,0x3fff)|0x8000,
         mt_rand(0,0xffff),mt_rand(0,0xffff),mt_rand(0,0xffff));
 }
 
-// ─── Certificate ──────────────────────────────────────────────────────────────
+// Certificate — DER format
 $certPem = file_get_contents($certPath);
 $certDer = base64_decode(str_replace(
     ['-----BEGIN CERTIFICATE-----','-----END CERTIFICATE-----',"\n","\r",' '],
     '', $certPem
 ));
-$certB64 = base64_encode($certDer);
+$certB64    = base64_encode($certDer);
+$thumbprint = base64_encode(hash('sha1', $certDer, true)); // ThumbprintSHA1
 
-$msgId = 'urn:uuid:' . uuid();
-$bstId = 'bst-' . uuid();
+$msgId = 'urn:uuid:' . makeUuid();
+$bstId = 'bst-' . makeUuid();
 $now   = gmdate('Y-m-d\TH:i:s\Z');
 $exp   = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
 
-// ─── Build envelope ───────────────────────────────────────────────────────────
+echo "Thumbprint (SHA1): $thumbprint\n";
+
+// ─── Build Envelope ───────────────────────────────────────────────────────────
 $envelope = '<?xml version="1.0" encoding="UTF-8"?>'
     . '<s:Envelope'
     .     ' xmlns:s="http://www.w3.org/2003/05/soap-envelope"'
@@ -91,29 +91,37 @@ $dsig->appendSignature($secNode);
 
 $sigNode = $secNode->getElementsByTagNameNS($dsigNs, 'Signature')->item(0);
 if (!$sigNode) {
-    die("ERROR: Signature node not found after appendSignature\n");
+    die("ERROR: Signature node not found\n");
 }
 
-// Replace KeyInfo with SecurityTokenReference
+// Հին KeyInfo հեռացնել
 $oldKeyInfo = $sigNode->getElementsByTagNameNS($dsigNs, 'KeyInfo')->item(0);
 if ($oldKeyInfo) {
     $sigNode->removeChild($oldKeyInfo);
 }
 
+// KeyInfo → SecurityTokenReference → KeyIdentifier (ThumbprintSHA1)
+// WSDL policy: sp:RequireThumbprintReference
 $keyInfo = $dom->createElementNS($dsigNs, 'ds:KeyInfo');
 $str     = $dom->createElementNS($secNs, 'o:SecurityTokenReference');
-$bstRef  = $dom->createElementNS($secNs, 'o:Reference');
-$bstRef->setAttribute('URI', '#' . $bstId);
-$bstRef->setAttribute('ValueType',
-    'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3');
-$str->appendChild($bstRef);
+$kid     = $dom->createElementNS($secNs, 'o:KeyIdentifier');
+$kid->setAttribute(
+    'ValueType',
+    'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1'
+);
+$kid->setAttribute(
+    'EncodingType',
+    'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary'
+);
+$kid->nodeValue = $thumbprint;
+$str->appendChild($kid);
 $keyInfo->appendChild($str);
 $sigNode->appendChild($keyInfo);
 
 $signedXml = $dom->saveXML();
 
 // ─── Send ─────────────────────────────────────────────────────────────────────
-echo "Sending signed IsAlive...\n";
+echo "Sending signed IsAlive (ThumbprintSHA1)...\n";
 
 $ch = curl_init();
 curl_setopt_array($ch, [
