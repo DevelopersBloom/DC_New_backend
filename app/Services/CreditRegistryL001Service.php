@@ -11,138 +11,126 @@ use DOMElement;
  * Generates L001 XML for Credit Registry (CBA lnreg3).
  * Root: L001, namespace: urn:cba-am:lnreg3
  * Children order: ReportHeader, CreditCode, LoanData
+ *
+ * XSD: urn:cba-am:lnreg3
+ * Date format: dd/MM/yyyy  (stDate)
+ * Time format: HH:mm:ss    (stTime)
+ * CreditCode: NNNNN-NNNNNNNN-NNNNNN (5 bank + 8 date + 5 seq + 1 checksum)
  */
 class CreditRegistryL001Service
 {
     private const NS = 'urn:cba-am:lnreg3';
 
-    /** OrganisationCode: Վարկատու կազմակերպության գրանցման համարը */
+    /** Վարկատու կազմակերպության գրանցման համարը (5 թիվ) */
     private const ORGANISATION_CODE = '66100';
 
-    /** OrganisationBranchCode: Մասնաճյուղի կոդը */
-    private const ORGANISATION_BRANCH_CODE = '0001';
+    /** Մասնաճյուղի կոդը (5 թիվ) */
+    private const ORGANISATION_BRANCH_CODE = '00001';
 
-    /** OrganizationStatus: Վարկատուի կարգավիճակը (1-4), 1 = Գործող է */
+    /** Վարկատուի կարգավիճակը: 1=Գործող, 2=Սնանկ, 3=Լուծ. փուլ, 4=Լուծ. */
     private const ORGANIZATION_STATUS = 1;
+
+    // -------------------------------------------------------------------------
+    // Public API
+    // -------------------------------------------------------------------------
 
     public function generateL001Xml(Contract $contract): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->formatOutput = false; // Խիստ կարևոր է ստորագրության համար
-        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput        = false; // կարևոր է XML ստորագրության համար
+        $dom->preserveWhiteSpace  = false;
 
-        // Ստեղծում ենք արմատային տեգը առանց պրեֆիքսի (default namespace)
-        // Սա թույլ կտա բոլոր երեխա տեգերին ժառանգել սա առանց lnreg3: գրելու
+        // Root — default namespace, բոլոր երեխաները ժառանգում են
         $root = $dom->createElementNS(self::NS, 'L001');
         $dom->appendChild($root);
 
-        // ReportHeader
-        $header = $dom->createElement('ReportHeader');
-        $header->appendChild($dom->createElement('OrganisationCode', self::ORGANISATION_CODE));
-        $header->appendChild($dom->createElement('OrganisationBranchCode', self::ORGANISATION_BRANCH_CODE));
-        $header->appendChild($dom->createElement('OrganizationStatus', (string) self::ORGANIZATION_STATUS));
+        // 1. ReportHeader
+        $root->appendChild($this->createReportHeader($dom));
 
-        $now = Carbon::now();
-        $sendDateTime = $dom->createElement('SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
-        $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
-        $header->appendChild($sendDateTime);
-        $root->appendChild($header);
+        // 2. CreditCode
+        $root->appendChild($dom->createElement('CreditCode', $this->buildCreditCode($contract)));
 
-        // CreditCode
-        $orgCode = self::ORGANISATION_CODE;
-        $datePart = Carbon::parse($contract->date)->format('Ymd');
-        $sequence = str_pad(substr($contract->num, -5), 5, '0', STR_PAD_LEFT);
-        $base = $orgCode . $datePart . $sequence;
-        $checksum = $this->calculateCbaChecksum($base);
-        $formattedCode = sprintf("%s-%s-%s%d", $orgCode, $datePart, $sequence, $checksum);
-
-        $root->appendChild($dom->createElement('CreditCode', $formattedCode));
-
-        // LoanData
-        $loanData = $this->createLoanData($dom, $contract);
-        $root->appendChild($loanData);
+        // 3. LoanData
+        $root->appendChild($this->createLoanData($dom, $contract));
 
         return $dom->saveXML($dom->documentElement);
     }
+
+    // -------------------------------------------------------------------------
+    // ReportHeader
+    // -------------------------------------------------------------------------
+
     private function createReportHeader(DOMDocument $dom): DOMElement
     {
         $header = $dom->createElement('ReportHeader');
 
-        $header->appendChild($dom->createElement('OrganisationCode', self::ORGANISATION_CODE));
+        $header->appendChild($dom->createElement('OrganisationCode',       self::ORGANISATION_CODE));
         $header->appendChild($dom->createElement('OrganisationBranchCode', self::ORGANISATION_BRANCH_CODE));
-        $header->appendChild($dom->createElement('OrganizationStatus', (string) self::ORGANIZATION_STATUS));
+        $header->appendChild($dom->createElement('OrganizationStatus',     (string) self::ORGANIZATION_STATUS));
 
-        $now = Carbon::now();
+        // stDate = dd/MM/yyyy, stTime = HH:mm:ss
+        $now          = Carbon::now();
         $sendDateTime = $dom->createElement('SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
         $header->appendChild($sendDateTime);
 
         return $header;
     }
 
-//    private function createCreditCode(DOMDocument $dom, Contract $contract): DOMElement
-//    {
-//        $creditCode = $dom->createElement('CreditCode');
-//        // Minimal placeholder; expand when full CreditCode XSD is available
-//        $creditCode->appendChild($dom->createTextNode($contract->num ?? (string) $contract->id));
-//        return $creditCode;
-//    }
+    // -------------------------------------------------------------------------
+    // CreditCode — NNNNN-NNNNNNNN-NNNNNN
+    // -------------------------------------------------------------------------
+
     /**
-     * Generates the compliant CreditCode: NNNNN-NNNNNNNN-NNNNNN
-     * 1-5: Bank Code
-     * 7-14: YYYYMMDD
-     * 16-20: Sequence
-     * 21: Checksum (Luhn mod 10)
+     * Ձևաչափ: {bank(5)}-{yyyymmdd(8)}-{seq(5)}{checksum(1)}
+     * Ստուգիչ նիշ — CBA Luhn mod 10 (18 թվանշան, checksum-ն ընդ. չի)
      */
-    private function createCreditCode(DOMDocument $dom, Contract $contract): DOMElement
+    private function buildCreditCode(Contract $contract): string
     {
-        $orgCode = self::ORGANISATION_CODE; // 5 digits
-        $datePart = Carbon::parse($contract->date)->format('Ymd'); // 8 digits
+        $orgCode  = self::ORGANISATION_CODE;                              // 5 թիվ
+        $datePart = Carbon::parse($contract->date)->format('Ymd');        // 8 թիվ
+        $sequence = str_pad((string) ($contract->id % 99999), 5, '0', STR_PAD_LEFT); // 5 թիվ
 
-        // Pad the contract ID or a sequence number to 5 digits
-        $sequence = str_pad(substr($contract->num, -5), 5, '0', STR_PAD_LEFT);
+        $base     = $orgCode . $datePart . $sequence;                     // 18 թիվ
+        $checksum = $this->calculateCbaChecksum($base);                   // 1 թիվ
 
-        // Combine for checksum calculation (excluding hyphens and the 21st digit)
-        $base = $orgCode . $datePart . $sequence;
-
-        $checksum = $this->calculateCbaChecksum($base);
-
-        // Final format: 80500-20161228-123785
-        $formattedCode = sprintf("%s-%s-%s%d", $orgCode, $datePart, $sequence, $checksum);
-
-        return $dom->createElement('CreditCode', $formattedCode);
+        // Ձևաչափ: 66100-20240115-123785  (= 5+8+5+1 = 19 թիվ + 2 գծ)
+        return sprintf('%s-%s-%s%d', $orgCode, $datePart, $sequence, $checksum);
     }
 
     /**
-     * CBA Specific Luhn Mod 10
-     * Phase I: Double digits at positions 1, 3, 5... (from the right)
-     * Phase II: Sum all digits of results + remaining digits
-     * Phase III: Subtract from next multiple of 10
+     * CBA Luhn Mod 10:
+     * I.   Աջ կողմից՝ 1., 3., 5. ... դիրքերի թվանշանները կրկնապատկել
+     * II.  Բոլոր թվանշանների (կրկնապատկվածների բոլոր թվերի) գումարը
+     * III. Մոտ 10-ի բազմապատիկ − գումար = ստուգիչ նիշ (0 եթե ≡ 0)
      */
     private function calculateCbaChecksum(string $input): int
     {
-        $sum = 0;
+        $sum      = 0;
         $reversed = strrev($input);
+        $len      = strlen($reversed);
 
-        for ($i = 0; $i < strlen($reversed); $i++) {
-            $digit = (int)$reversed[$i];
+        for ($i = 0; $i < $len; $i++) {
+            $digit = (int) $reversed[$i];
 
-            // Phase I: Double digits at 1st, 3rd, 5th... positions (index 0, 2, 4...)
             if ($i % 2 === 0) {
+                // Կրկնապատկել և գումարել թվանշանները (16 → 1+6=7)
                 $doubled = $digit * 2;
-                // Phase II: Sum individual digits (e.g., 16 becomes 1 + 6 = 7)
-                $sum += array_sum(str_split((string)$doubled));
+                $sum    += array_sum(str_split((string) $doubled));
             } else {
                 $sum += $digit;
             }
         }
 
-        // Phase III
         $remainder = $sum % 10;
         return ($remainder === 0) ? 0 : (10 - $remainder);
     }
+
+    // -------------------------------------------------------------------------
+    // LoanData (ctLoan)
+    // -------------------------------------------------------------------------
+
     private function createLoanData(DOMDocument $dom, Contract $contract): DOMElement
     {
         $contract->loadMissing(['client', 'currency']);
@@ -150,92 +138,122 @@ class CreditRegistryL001Service
 
         $loanData = $dom->createElement('LoanData');
 
-        // 1. DebtorID = borrower identifier (social_card_number for individual, tax_number for legal)
-        $debtorId = $client
-            ? ($client->type === 'legal' ? ($client->tax_number ?? '') : ($client->social_card_number ?? ''))
-            : '';
-        $loanData->appendChild($dom->createElement('DebtorID', $this->escape($debtorId)));
+        // 1. DebtorID — 13 թվանշան (stClientID)
+        //    Ֆիզ. անձ → social_card_number, ՍՊԸ/ԲԲԸ → tax_number
+        $debtorId = '';
+        if ($client) {
+            $debtorId = $client->type === 'legal'
+                ? ($client->tax_number          ?? '')
+                : ($client->social_card_number   ?? '');
+        }
+        $loanData->appendChild($dom->createElement('DebtorID', $this->esc($debtorId)));
 
-        // 2. IsPE (optional) - whether person borrowed as individual entrepreneur; N when unknown
-        $loanData->appendChild($dom->createElement('IsPE', 'N'));
+        // 2. IsPE — ֆիզ. անձը վերցրել է որպես ԱՁ (Y/N), ոչ պարտ.
+        $isPe = ($client && !empty($client->is_individual_entrepreneur)) ? 'Y' : 'N';
+        $loanData->appendChild($dom->createElement('IsPE', $isPe));
 
-        // 3. AffectionWithCreditor = Կապակցված է ընկերությանը, Y/N
-        $affection = $client && $client->is_linked_to_company ? 'Y' : 'N';
+        // 3. AffectionWithCreditor — կապված է վարկատուին (Y/N)
+        $affection = ($client && !empty($client->is_linked_to_company)) ? 'Y' : 'N';
         $loanData->appendChild($dom->createElement('AffectionWithCreditor', $affection));
 
-        // 4. ContractType = Վարկային պայմանագրի տեսակը
-        $loanData->appendChild($dom->createElement('ContractType', $this->escape($contract->contract_kind ?? '')));
+        // 4. ContractType — 1=Պարզ, 2=Համատեղ, 3=Խմբային (stContractType: 1–3)
+        $contractType = (int) ($contract->contract_kind ?? 1);
+        $contractType = max(1, min(3, $contractType));
+        $loanData->appendChild($dom->createElement('ContractType', (string) $contractType));
 
-        // 5. ContractNumber = Վարկային պայմանագրի համարը
-        $loanData->appendChild($dom->createElement('ContractNumber', $this->escape($contract->num ?? (string) $contract->id)));
+        // 5. ContractNumber — max 20 նիշ
+        $contractNum = substr($contract->num ?? (string) $contract->id, 0, 20);
+        $loanData->appendChild($dom->createElement('ContractNumber', $this->esc($contractNum)));
 
-        // 6. ContractDate = Վարկային պայմանագրի կնքման ամսաթիվը
-        $contractDate = $contract->date ? Carbon::parse($contract->date)->format('Y-m-d') : '';
+        // 6. ContractDate — stDate: dd/MM/yyyy
+        $contractDate = $contract->date
+            ? Carbon::parse($contract->date)->format('d/m/Y')
+            : '';
         $loanData->appendChild($dom->createElement('ContractDate', $contractDate));
 
-        // 7. RepaymentDate = Վարկի վերջնական մարման ամսաթիվը
-        $repaymentDate = $contract->deadline ? Carbon::parse($contract->deadline)->format('Y-m-d') : '';
+        // 7. RepaymentDate — stDate: dd/MM/yyyy (ըստ պայմ.)
+        $repaymentDate = $contract->deadline
+            ? Carbon::parse($contract->deadline)->format('d/m/Y')
+            : '';
         $loanData->appendChild($dom->createElement('RepaymentDate', $repaymentDate));
 
-        // 8. LoanType = Վարկի տեսակը
-        $loanData->appendChild($dom->createElement('LoanType', $this->escape($contract->loan_type ?? '')));
+        // 8. LoanType — 0–18 (stLoanType)
+        $loanType = (int) ($contract->loan_type ?? 0);
+        $loanType = max(0, min(18, $loanType));
+        $loanData->appendChild($dom->createElement('LoanType', (string) $loanType));
 
-        // 9. Currency = Վարկի արժույթը
-        $currencyCode = $contract->currency ? $contract->currency->code : 'AMD';
-        $loanData->appendChild($dom->createElement('Currency', $this->escape($currencyCode)));
+        // 9. Currency — ISO 4217 Alpha-3 (stCurrency: [A-Z]{3})
+        $currencyCode = $contract->currency ? strtoupper($contract->currency->code) : 'AMD';
+        $loanData->appendChild($dom->createElement('Currency', $currencyCode));
 
-        // 10. ContractAmount = Պայմանագրով նախատեսված վարկի գումարը
-        $contractAmount = $contract->contract_amount ?? 0;
-        $loanData->appendChild($dom->createElement('ContractAmount', $this->formatAmount($contractAmount)));
+        // 10. ContractAmount — > 0, 2 տասնորդ (stAmountNonZero)
+        $contractAmount = (float) ($contract->contract_amount ?? 0);
+        $loanData->appendChild($dom->createElement('ContractAmount', $this->fmtAmount($contractAmount)));
 
-        // 11. ContractModifiedAmount = Վարկի մայր գումարի մնացորդը (remaining principal)
-        $modifiedAmount = $contract->provided_amount ?? 0;
-        $loanData->appendChild($dom->createElement('ContractModifiedAmount', $this->formatAmount($modifiedAmount)));
+        // 11. ContractModifiedAmount — > 0, 2 տասնորդ (փոփոխված սահմ.)
+        $modifiedAmount = (float) ($contract->provided_amount ?? $contractAmount);
+        $loanData->appendChild($dom->createElement('ContractModifiedAmount', $this->fmtAmount($modifiedAmount)));
 
-        // 12. AnnualInterestRate = Նոմինալ տոկոսադրույք
-        $annualRate = $contract->interest_rate * 365 ?? 0;
-        $loanData->appendChild($dom->createElement('AnnualInterestRate', $this->formatRate($annualRate)));
+        // 12. AnnualInterestRate — 0–100, 2 տասնորդ (անվ. տոկ.)
+        //     contract->interest_rate-ն օրային տոկոս ենթ. → × 365
+        $annualRate = (float) ($contract->interest_rate ?? 0) * 365;
+        $loanData->appendChild($dom->createElement('AnnualInterestRate', $this->fmtPercent($annualRate)));
 
-        // 13. ActualInterestRate = Էֆեկտիվ տոկոսադրույք
-        $actualRate = $contract->effective_annual_rate ?? 0;
-        $loanData->appendChild($dom->createElement('ActualInterestRate', $this->formatRate($actualRate)));
+        // 13. ActualInterestRate — 0–100, 2 տասնորդ (փաստ. տոկ.)
+        $actualRate = (float) ($contract->effective_annual_rate ?? $annualRate);
+        $loanData->appendChild($dom->createElement('ActualInterestRate', $this->fmtPercent($actualRate)));
 
-        // 14. InterestRateType = Վարկի անվանական տոկոսադրույքի տեսակը
-        $loanData->appendChild($dom->createElement('InterestRateType', $this->escape($contract->interest_rate_type ?? '')));
+        // 14. InterestRateType — 1=Լողացող, 2=Ֆիքսված, 3=Փոփոխվող
+        $rateType = (int) ($contract->interest_rate_type ?? 2);
+        $rateType = max(1, min(3, $rateType));
+        $loanData->appendChild($dom->createElement('InterestRateType', (string) $rateType));
 
-        // 15. IsInterestSubsidy = always N
+        // 15. IsInterestSubsidy — Y=սուբ., N=ոչ
         $loanData->appendChild($dom->createElement('IsInterestSubsidy', 'N'));
 
-//        // 16. ProvisionOfCredit = required, Y/N (source/program flag)
-//        $loanData->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
-//
-//        // 17. LoanUseField = required, loan use sector
-//        $loanUseField = $client?->activity_field ?? '';
-//        $loanData->appendChild($dom->createElement('LoanUseField', $this->escape($loanUseField)));
+        // 16. ProvisionOfCredit — Y=Միջ. ծրագ., N=ոչ  *** ՊԱՐՏ. ***
+        $loanData->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
 
-        // 18. LoanUseCountry = Վարկի օգտագործման երկիրը
-        $loanUseCountry = 'ARM';
-        $loanData->appendChild($dom->createElement('LoanUseCountry', $this->escape($loanUseCountry)));
+        // 17. LoanUseField — NN.NN.N ձևաչափ  *** ՊԱՐՏ. ***
+        //     Appendix - Reference Book.xlsx-ից ճիշտ կոդ
+        $loanUseField = $contract->loan_use_field
+            ?? ($client?->activity_field ?? '00.00.0');
+        $loanData->appendChild($dom->createElement('LoanUseField', $this->esc($loanUseField)));
 
-        // 19. LoanUseRegion = Վարկի օգտագործման մարզը
-        $loanUseRegion = $client?->actual_province ?? $client?->region_code ?? '';
-        $loanData->appendChild($dom->createElement('LoanUseRegion', $this->escape($loanUseRegion)));
+        // 18. LoanUseCountry — ISO 3166 Alpha-3 ([A-Z]{3})
+        $loanData->appendChild($dom->createElement('LoanUseCountry', 'ARM'));
+
+        // 19. LoanUseRegion — 8 թիվ (stRegion)
+        $loanUseRegion = $client?->region_code ?? $client?->actual_province ?? '01000000';
+        $loanData->appendChild($dom->createElement('LoanUseRegion', $this->esc($loanUseRegion)));
 
         return $loanData;
     }
 
-    private function escape(string $value): string
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /** XML-safe escape */
+    private function esc(string $value): string
     {
         return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
-    private function formatAmount($value): string
+    /** stAmount / stAmountNonZero — 2 տասնորդ, min 0.01 */
+    private function fmtAmount(float $value): string
     {
-        return number_format((float) $value, 2, '.', '');
+        $v = round($value, 2);
+        if ($v <= 0) {
+            $v = 0.01; // stAmountNonZero պահանջ > 0
+        }
+        return number_format($v, 2, '.', '');
     }
 
-    private function formatRate($value): string
+    /** stPercent — 0–100, 2 տասնորդ */
+    private function fmtPercent(float $value): string
     {
-        return number_format((float) $value, 1, '.', '');
+        $v = round(max(0.0, min(100.0, $value)), 2);
+        return number_format($v, 2, '.', '');
     }
 }
