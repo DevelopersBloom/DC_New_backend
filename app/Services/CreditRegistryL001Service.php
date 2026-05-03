@@ -158,7 +158,7 @@ class CreditRegistryL001Service
 
         // 1. DebtorID — stClientID: [0-9]{13}
         //    ԿԲ-ի bank_id (13 թ.) — ՈՉ social_card, ՈՉ tax_number
-        $debtorId = (string) ($client?->bank_id ?? '');
+        $debtorId = (string) ($client?->bank_client_id ?? '');
         if (!preg_match('/^[0-9]{13}$/', $debtorId)) {
             throw new \InvalidArgumentException(
                 'DebtorID (bank_id) must be exactly 13 digits, got: "' . $debtorId . '"'
