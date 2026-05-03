@@ -46,14 +46,13 @@ echo 'Cert valid NOW    : ' . ($now >= $validFrom && $now <= $validTo ? 'YES ✓
 
 // Key matches cert?
 $keyRes  = openssl_pkey_get_private('file://' . $KEY_PATH);
-$keyData = $keyRes ? openssl_pkey_details($keyRes) : null;
+$keyData = $keyRes ? openssl_pkey_get_details($keyRes) : null;
 echo 'Private key readable: ' . ($keyData ? 'YES ✓' : 'NO ❌') . "\n";
 
 if ($keyData && $certData) {
-    // Public key from cert vs public key from private key
     $certPubKey  = openssl_pkey_get_public($certPem);
-    $certPubData = openssl_pkey_details($certPubKey);
-    $match = ($keyData['key'] === ($certPubData['key'] ?? ''));
+    $certPubData = $certPubKey ? openssl_pkey_get_details($certPubKey) : null;
+    $match = $certPubData && ($keyData['key'] === $certPubData['key']);
     echo 'Key matches cert  : ' . ($match ? 'YES ✓' : 'NO ❌ MISMATCH') . "\n";
 }
 
