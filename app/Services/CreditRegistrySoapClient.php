@@ -2,16 +2,12 @@
 
 namespace App\Services;
 
-use RobRichards\XMLSecLibs\XMLSecurityDSig;
-use RobRichards\XMLSecLibs\XMLSecurityKey;
 use DOMDocument;
 use DOMXPath;
+use DOMElement;
 
 class CreditRegistrySoapClient
 {
-    // ----------------------------------------------------------------
-    // Configuration
-    // ----------------------------------------------------------------
     private const ENDPOINT  = 'https://100.100.100.60:8888/DEGSHost';
     private const ACTION_NS = 'http://tempuri.org/IDegsNSS/';
     private const APP_NAME  = 'ACREDIT';
@@ -51,16 +47,14 @@ class CreditRegistrySoapClient
 
     public function isResponsePrepared(int $requestId): bool
     {
-        $body = '<tns:IsResponsePrepared xmlns:tns="http://tempuri.org/">'
+        $body     = '<tns:IsResponsePrepared xmlns:tns="http://tempuri.org/">'
             . '<tns:requsetId>' . $requestId . '</tns:requsetId>'
             . '</tns:IsResponsePrepared>';
-
         $response = $this->dispatch('IsResponsePrepared', $body);
         $dom      = new DOMDocument();
         $dom->loadXML($response);
         $xpath = new DOMXPath($dom);
         $nodes = $xpath->query('//*[local-name()="IsResponsePreparedResult"]');
-
         return $nodes->length > 0
             && strtolower(trim($nodes->item(0)->textContent)) === 'true';
     }
@@ -70,7 +64,6 @@ class CreditRegistrySoapClient
         $body = '<tns:GetResponse xmlns:tns="http://tempuri.org/">'
             . '<tns:requsetId>' . $requestId . '</tns:requsetId>'
             . '</tns:GetResponse>';
-
         return $this->dispatch('GetResponse', $body);
     }
 
@@ -83,7 +76,6 @@ class CreditRegistrySoapClient
             @$dom->loadXML($response);
             $xpath = new DOMXPath($dom);
             $nodes = $xpath->query('//*[local-name()="IsAliveResult"]');
-
             return $nodes->length > 0
                 && strtolower(trim($nodes->item(0)->textContent)) === 'true';
         } catch (\Throwable $e) {
@@ -98,7 +90,6 @@ class CreditRegistrySoapClient
 
     private function sendRequest(string $docType, string $xmlContent, bool $dryRun): int
     {
-        // CDATA-ի փոխարեն htmlspecialchars — WCF-ը CDATA-ն ճիշտ չի parse անում
         $escapedXml = htmlspecialchars($xmlContent, ENT_XML1 | ENT_QUOTES, 'UTF-8');
 
         $body = '<tns:SendRequest xmlns:tns="http://tempuri.org/">'
@@ -116,7 +107,6 @@ class CreditRegistrySoapClient
         }
 
         $response = $this->dispatch('SendRequest', $body);
-
         return $this->extractSendRequestResult($response);
     }
 
@@ -128,7 +118,6 @@ class CreditRegistrySoapClient
     {
         $envelope = $this->buildEnvelope($action, $bodyContent);
         $signed   = $this->signEnvelope($envelope);
-
         return $this->sendViaCurl($action, $signed);
     }
 
@@ -142,118 +131,137 @@ class CreditRegistrySoapClient
         $msgId       = 'urn:uuid:' . $this->uuid4();
         $now         = gmdate('Y-m-d\TH:i:s\Z');
         $expires     = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
-        $this->bstId = 'bst-' . $this->uuid4();
+        $this->bstId = 'X509-' . $this->uuid4(); // Ոմանք "X509-" prefix ակնկալում են
 
-        // Մաքուր DER certificate
+        // Certificate-ը DER base64-ով
         $rawPem = file_get_contents(self::CERT_PATH);
-        openssl_x509_export(openssl_x509_read($rawPem), $cleanPem);
-        $certDer = base64_decode(
-            preg_replace('/-----[^-]+-----|[\r\n\s]/', '', $cleanPem)
-        );
-        $certB64 = base64_encode($certDer);
+        if (!openssl_x509_export(openssl_x509_read($rawPem), $cleanPem)) {
+            throw new \RuntimeException('DEGS: client.crt-ը parse չեղավ');
+        }
+        $certB64 = preg_replace('/-----[^-]+-----|[\r\n\s]/', '', $cleanPem);
 
-        return '<?xml version="1.0" encoding="UTF-8"?>'
-            . '<s:Envelope'
-            .   ' xmlns:s="'  . self::SOAP_NS . '"'
-            .   ' xmlns:a="'  . self::WSA_NS  . '"'
-            .   ' xmlns:u="'  . self::WSU_NS  . '"'
-            .   ' xmlns:o="'  . self::WSSE_NS . '">'
-            .   '<s:Header>'
-            .     '<a:Action s:mustUnderstand="1">' . $actionUrl . '</a:Action>'
-            .     '<a:MessageID>' . $msgId . '</a:MessageID>'
-            .     '<a:To s:mustUnderstand="1">' . self::ENDPOINT . '</a:To>'
-            .     '<o:Security s:mustUnderstand="1">'
-            .       '<u:Timestamp u:Id="_ts">'
-            .         '<u:Created>' . $now     . '</u:Created>'
-            .         '<u:Expires>' . $expires . '</u:Expires>'
-            .       '</u:Timestamp>'
-            .       '<o:BinarySecurityToken'
-            .         ' u:Id="'         . $this->bstId          . '"'
-            .         ' ValueType="'    . self::X509_VALUETYPE   . '"'
-            .         ' EncodingType="' . self::B64_ENCODINGTYPE . '">'
-            .         $certB64
-            .       '</o:BinarySecurityToken>'
-            .     '</o:Security>'
-            .   '</s:Header>'
-            .   '<s:Body u:Id="_body">' . $bodyContent . '</s:Body>'
-            . '</s:Envelope>';
+        // SOAP 1.2 Envelope — whitespace-ը controlled
+        return <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="{$this->ns('SOAP_NS')}" xmlns:a="{$this->ns('WSA_NS')}" xmlns:u="{$this->ns('WSU_NS')}" xmlns:o="{$this->ns('WSSE_NS')}">
+  <s:Header>
+    <a:Action s:mustUnderstand="1">{$actionUrl}</a:Action>
+    <a:MessageID>{$msgId}</a:MessageID>
+    <a:To s:mustUnderstand="1">{$this->ns('ENDPOINT')}</a:To>
+    <o:Security s:mustUnderstand="1">
+      <u:Timestamp u:Id="_ts">
+        <u:Created>{$now}</u:Created>
+        <u:Expires>{$expires}</u:Expires>
+      </u:Timestamp>
+      <o:BinarySecurityToken u:Id="{$this->bstId}" ValueType="{$this->ns('X509_VALUETYPE')}" EncodingType="{$this->ns('B64_ENCODINGTYPE')}">{$certB64}</o:BinarySecurityToken>
+    </o:Security>
+  </s:Header>
+  <s:Body u:Id="_body">{$bodyContent}</s:Body>
+</s:Envelope>
+XML;
+    }
+
+    // namespace helper
+    private function ns(string $const): string
+    {
+        return constant('self::' . $const);
     }
 
     // ================================================================
-    // Step 2 — WS-Security XML Signature (RSA-SHA256 + EXC-C14N)
+    // Step 2 — WS-Security XML Signature (ամբողջովին ձեռքով)
     // ================================================================
 
     private function signEnvelope(string $envelopeXml): string
     {
         $dom = new DOMDocument();
-        $dom->preserveWhiteSpace = false;
+        $dom->preserveWhiteSpace = true;
         $dom->loadXML($envelopeXml);
 
         $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace('u', self::WSU_NS);
-        $xpath->registerNamespace('o', self::WSSE_NS);
-        $xpath->registerNamespace('s', self::SOAP_NS);
+        $xpath->registerNamespace('s',  self::SOAP_NS);
+        $xpath->registerNamespace('u',  self::WSU_NS);
+        $xpath->registerNamespace('o',  self::WSSE_NS);
+        $xpath->registerNamespace('a',  self::WSA_NS);
 
-        // 1. Ստեղծում ենք ստորագրող օբյեկտը
-        $dsig = new XMLSecurityDSig('');
-        $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
+        // ---- 1. Nodes to sign ----
+        $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
+        $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
 
-        // 2. Մանուալ ավելացնում ենք Reference-ները՝ օգտագործելով XPath
-        $targets = [
-            '_ts'   => '//u:Timestamp[@u:Id="_ts"]',
-            '_body' => '//s:Body[@u:Id="_body"]',
-        ];
-
-        foreach ($targets as $id => $query) {
-            $node = $xpath->query($query)->item(0);
-            if (!$node) {
-                throw new \RuntimeException("DEGS: Node with Id $id not found via XPath.");
-            }
-
-            // Կանոնիկացնում ենք node-ը (Exclusive C14N)
-            $canonicalNode = $node->C14N(true, false);
-            // Հաշվում ենք SHA256 digest-ը
-            $digestValue = base64_encode(hash('sha256', $canonicalNode, true));
-
-            // Ավելացնում ենք Reference-ը xmlseclibs-ին
-            $dsig->addReference(
-                $dom,
-                XMLSecurityDSig::SHA256,
-                [XMLSecurityDSig::EXC_C14N],
-                [
-                    'uri' => '#' . $id,
-                    'force_uri' => true,
-                    'digest_value' => $digestValue // Փոխանցում ենք մեր հաշվարկածը
-                ]
-            );
+        if (!$tsNode || !$bodyNode) {
+            throw new \RuntimeException('DEGS: Timestamp կամ Body node-ը չի գտնվել');
         }
 
-        // 3. Ստորագրում ենք Private Key-ով
-        $objKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
-        $objKey->loadKey(self::KEY_PATH, true);
-        $dsig->sign($objKey);
+        // ---- 2. Exclusive C14N + SHA256 digest ----
+        $tsC14n   = $tsNode->C14N(true, false);   // exclusive=true, withComments=false
+        $bodyC14n = $bodyNode->C14N(true, false);
 
-        // 4. Կցում ենք ստորագրությունը Security տեգին
+        $tsDigest   = base64_encode(hash('sha256', $tsC14n,   true));
+        $bodyDigest = base64_encode(hash('sha256', $bodyC14n, true));
+
+        // ---- 3. SignedInfo կառուցել ----
+        $signedInfoXml = '<SignedInfo xmlns="' . self::DSIG_NS . '">'
+            . '<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
+            . '<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
+            . '<Reference URI="#_ts">'
+            .   '<Transforms>'
+            .     '<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
+            .   '</Transforms>'
+            .   '<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
+            .   '<DigestValue>' . $tsDigest . '</DigestValue>'
+            . '</Reference>'
+            . '<Reference URI="#_body">'
+            .   '<Transforms>'
+            .     '<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
+            .   '</Transforms>'
+            .   '<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
+            .   '<DigestValue>' . $bodyDigest . '</DigestValue>'
+            . '</Reference>'
+            . '</SignedInfo>';
+
+        // ---- 4. SignedInfo-ի C14N ----
+        $siDom = new DOMDocument();
+        $siDom->loadXML($signedInfoXml);
+        $signedInfoC14n = $siDom->documentElement->C14N(true, false);
+
+        // ---- 5. RSA-SHA256 ստորագրություն ----
+        $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
+        if (!$privateKey) {
+            throw new \RuntimeException('DEGS: client.key-ը load չեղավ: ' . openssl_error_string());
+        }
+
+        if (!openssl_sign($signedInfoC14n, $rawSignature, $privateKey, OPENSSL_ALGO_SHA256)) {
+            throw new \RuntimeException('DEGS: Ստորագրությունը ձախողվեց: ' . openssl_error_string());
+        }
+
+        $signatureValue = base64_encode($rawSignature);
+
+        // ---- 6. KeyInfo — BST Reference ----
+        $keyInfoXml = '<KeyInfo xmlns="' . self::DSIG_NS . '">'
+            . '<o:SecurityTokenReference xmlns:o="' . self::WSSE_NS . '">'
+            .   '<o:Reference URI="#' . $this->bstId . '" ValueType="' . self::X509_VALUETYPE . '"/>'
+            . '</o:SecurityTokenReference>'
+            . '</KeyInfo>';
+
+        // ---- 7. Ամբողջ Signature element ----
+        $signatureXml = '<Signature xmlns="' . self::DSIG_NS . '">'
+            . $signedInfoXml
+            . '<SignatureValue>' . $signatureValue . '</SignatureValue>'
+            . $keyInfoXml
+            . '</Signature>';
+
+        // ---- 8. Security node-ի ներս ավելացնել ----
         $secNode = $xpath->query('//o:Security')->item(0);
-        $dsig->appendSignature($secNode);
+        if (!$secNode) {
+            throw new \RuntimeException('DEGS: Security node-ը չի գտնվել');
+        }
 
-        // 5. Կարգավորում ենք KeyInfo-ն BST Reference-ի համար
-        $sigNode = $secNode->getElementsByTagNameNS(self::DSIG_NS, 'Signature')->item(0);
-        $oldKI = $sigNode->getElementsByTagNameNS(self::DSIG_NS, 'KeyInfo')->item(0);
-        if ($oldKI) { $sigNode->removeChild($oldKI); }
-
-        $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
-        $str = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
-        $ref = $dom->createElementNS(self::WSSE_NS, 'o:Reference');
-        $ref->setAttribute('URI', '#' . $this->bstId);
-        $ref->setAttribute('ValueType', self::X509_VALUETYPE);
-
-        $str->appendChild($ref);
-        $keyInfo->appendChild($str);
-        $sigNode->appendChild($keyInfo);
+        $sigFrag = $dom->createDocumentFragment();
+        $sigFrag->appendXML($signatureXml);
+        $secNode->appendChild($sigFrag);
 
         return $dom->saveXML();
     }
+
     // ================================================================
     // Step 3 — cURL (HTTPS + mTLS)
     // ================================================================
@@ -270,14 +278,15 @@ class CreditRegistrySoapClient
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 60,
             CURLOPT_HTTPHEADER     => [
-                // SOAP 1.2 — action Content-Type-ի մեջ (ոչ SOAPAction header)
                 'Content-Type: application/soap+xml; charset=utf-8; action="' . $actionUrl . '"',
             ],
+            // mTLS — client certificate (հաղորդագրություն ստորագրելու ԵՐԿՐՈՐԴ կիրառություն)
             CURLOPT_SSLCERT        => self::CERT_PATH,
             CURLOPT_SSLKEY         => self::KEY_PATH,
+            // Server certificate verification
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_CAINFO         => self::CA_PATH,
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSL_VERIFYHOST => 2, // 2 = ճիշտ արժեք, 0-ն անվտանգ չէ production-ում
         ]);
 
         $response = curl_exec($ch);
@@ -308,16 +317,13 @@ class CreditRegistrySoapClient
         if (!@$dom->loadXML($xml)) {
             throw new \RuntimeException('DEGS: Invalid XML response: ' . substr($xml, 0, 300));
         }
-
         $xpath = new DOMXPath($dom);
         $nodes = $xpath->query('//*[local-name()="SendRequestResult"]');
-
         if ($nodes->length === 0) {
             throw new \RuntimeException(
                 'DEGS: SendRequestResult not found. Response: ' . substr($xml, 0, 500)
             );
         }
-
         return (int) $nodes->item(0)->textContent;
     }
 
@@ -327,13 +333,11 @@ class CreditRegistrySoapClient
         if (!@$dom->loadXML($xml)) {
             return substr($xml, 0, 500);
         }
-
         $xpath = new DOMXPath($dom);
         $parts = [];
         foreach ($xpath->query('//*[local-name()="Text"]')   as $n) { $parts[] = trim($n->textContent); }
         foreach ($xpath->query('//*[local-name()="Value"]')  as $n) { $parts[] = trim($n->textContent); }
         foreach ($xpath->query('//*[local-name()="Detail"]') as $n) { $parts[] = trim($n->textContent); }
-
         return $parts
             ? implode(' | ', array_unique(array_filter($parts)))
             : substr($xml, 0, 500);
