@@ -1,7 +1,6 @@
 <?php
 require '/var/www/html/test-diamond-credit/vendor/autoload.php';
 
-use RobRichards\XMLSecLibs\XMLSecurityDSig;
 use RobRichards\XMLSecLibs\XMLSecurityKey;
 
 $certPath = '/etc/ssl/degs/client.crt';
@@ -17,20 +16,39 @@ function makeUuid(): string {
         mt_rand(0,0xffff),mt_rand(0,0xffff),mt_rand(0,0xffff));
 }
 
-// ─── Certificate ──────────────────────────────────────────────────────────────
-$certPem = file_get_contents($certPath);
-$certDer = base64_decode(str_replace(
-    ['-----BEGIN CERTIFICATE-----','-----END CERTIFICATE-----',"\n","\r",' '],
-    '', $certPem
-));
-$certB64    = base64_encode($certDer);
-$thumbprint = base64_encode(hash('sha1', $certDer, true));
+/**
+ * Exc-C14N canonicalize a DOM node
+ */
+function excC14N(\DOMNode $node): string {
+    $doc = new DOMDocument();
+    $doc->appendChild($doc->importNode($node, true));
+    // Use C14N with exclusive flag
+    return $node->C14N(true, false);
+}
 
-$msgId = 'urn:uuid:' . makeUuid();
-$bstId = 'bst-' . makeUuid();
-$tsId  = 'ts-'  . makeUuid();
-$toId  = 'to-'  . makeUuid();
-$bodyId = 'body-' . makeUuid();
+/**
+ * SHA-256 digest of a string, base64 encoded
+ */
+function sha256b64(string $data): string {
+    return base64_encode(hash('sha256', $data, true));
+}
+
+/**
+ * Sign data with RSA-SHA256 private key, return base64
+ */
+function rsaSha256Sign(string $data, string $keyPath): string {
+    $privKey = openssl_pkey_get_private(file_get_contents($keyPath));
+    openssl_sign($data, $signature, $privKey, OPENSSL_ALGO_SHA256);
+    return base64_encode($signature);
+}
+
+// ─── IDs ──────────────────────────────────────────────────────────────────────
+$msgId  = 'urn:uuid:' . makeUuid();
+$tsId   = '_ts_' . str_replace('-', '', makeUuid());
+$toId   = '_to_' . str_replace('-', '', makeUuid());
+$bodyId = '_body_' . str_replace('-', '', makeUuid());
+$bstId  = '_bst_' . str_replace('-', '', makeUuid());
+$sigId  = '_sig_' . str_replace('-', '', makeUuid());
 
 $now = gmdate('Y-m-d\TH:i:s\Z');
 $exp = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
@@ -41,7 +59,18 @@ $dsigNs = 'http://www.w3.org/2000/09/xmldsig#';
 $soapNs = 'http://www.w3.org/2003/05/soap-envelope';
 $addrNs = 'http://www.w3.org/2005/08/addressing';
 
-// ─── Build envelope ───────────────────────────────────────────────────────────
+// ─── Certificate ──────────────────────────────────────────────────────────────
+$certPem = file_get_contents($certPath);
+$certDer = base64_decode(str_replace(
+    ['-----BEGIN CERTIFICATE-----','-----END CERTIFICATE-----',"\n","\r",' '],
+    '', $certPem
+));
+$certB64    = base64_encode($certDer);
+$thumbprint = base64_encode(hash('sha1', $certDer, true));
+
+echo "Thumbprint: $thumbprint\n";
+
+// ─── Step 1: Build envelope WITHOUT signature ─────────────────────────────────
 $envelope = '<?xml version="1.0" encoding="UTF-8"?>'
     . '<s:Envelope'
     .     ' xmlns:s="' . $soapNs . '"'
@@ -70,106 +99,127 @@ $envelope = '<?xml version="1.0" encoding="UTF-8"?>'
     .   '</s:Body>'
     . '</s:Envelope>';
 
-// ─── Parse DOM ────────────────────────────────────────────────────────────────
+// ─── Step 2: Parse and canonicalize each node to sign ─────────────────────────
 $dom = new DOMDocument();
 $dom->loadXML($envelope);
 
-// ԿԱՐԵՎՈՐ: u:Id attribute-ները register անել որպես XML ID
-// Հակառակ դեպքում xmlseclibs-ի getElementById-ը չի գտնի նոդերը
 $xpath = new DOMXPath($dom);
-$xpath->registerNamespace('u', $wsuNs);
 $xpath->registerNamespace('s', $soapNs);
 $xpath->registerNamespace('a', $addrNs);
+$xpath->registerNamespace('u', $wsuNs);
 $xpath->registerNamespace('o', $secNs);
 
-// Բոլոր u:Id attribute ունեցող նոդերը register անել
-foreach ($xpath->query('//*[@u:Id]') as $node) {
-    $node->setIdAttributeNS($wsuNs, 'Id', true);
+// Find nodes by their u:Id attribute value using XPath (not getElementById)
+$tsNode   = $xpath->query('//*[@u:Id="' . $tsId . '"]')->item(0);
+$toNode   = $xpath->query('//*[@u:Id="' . $toId . '"]')->item(0);
+$bodyNode = $xpath->query('//*[@u:Id="' . $bodyId . '"]')->item(0);
+
+echo "XPath node check:\n";
+echo '  Timestamp: ' . ($tsNode   ? $tsNode->nodeName   : 'NOT FOUND') . "\n";
+echo '  To:        ' . ($toNode   ? $toNode->nodeName   : 'NOT FOUND') . "\n";
+echo '  Body:      ' . ($bodyNode ? $bodyNode->nodeName : 'NOT FOUND') . "\n\n";
+
+if (!$tsNode || !$toNode || !$bodyNode) {
+    die("ERROR: Could not find nodes to sign\n");
 }
 
-// Verify registration
-$tsNode   = $dom->getElementById($tsId);
-$toNode   = $dom->getElementById($toId);
-$bodyNode = $dom->getElementById($bodyId);
-$bstNode  = $dom->getElementById($bstId);
+// Canonicalize each node (Exclusive C14N)
+$tsC14N   = $tsNode->C14N(true, false);
+$toC14N   = $toNode->C14N(true, false);
+$bodyC14N = $bodyNode->C14N(true, false);
 
-echo "ID registration check:\n";
-echo "  Timestamp [$tsId]: "   . ($tsNode   ? 'OK' : 'FAIL') . "\n";
-echo "  To        [$toId]: "   . ($toNode   ? 'OK' : 'FAIL') . "\n";
-echo "  Body      [$bodyId]: " . ($bodyNode ? 'OK' : 'FAIL') . "\n";
-echo "  BST       [$bstId]: "  . ($bstNode  ? 'OK' : 'FAIL') . "\n\n";
+echo "C14N lengths: ts=" . strlen($tsC14N) . " to=" . strlen($toC14N) . " body=" . strlen($bodyC14N) . "\n\n";
 
-// ─── Sign ─────────────────────────────────────────────────────────────────────
+// Compute digests
+$tsDigest   = sha256b64($tsC14N);
+$toDigest   = sha256b64($toC14N);
+$bodyDigest = sha256b64($bodyC14N);
+
+echo "Digests:\n  ts=$tsDigest\n  to=$toDigest\n  body=$bodyDigest\n\n";
+
+// ─── Step 3: Build SignedInfo ─────────────────────────────────────────────────
+$c14nMethod = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+$sigMethod  = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+$digestMeth = 'http://www.w3.org/2001/04/xmlenc#sha256';
+
+$signedInfo = '<ds:SignedInfo xmlns:ds="' . $dsigNs . '">'
+    . '<ds:CanonicalizationMethod Algorithm="' . $c14nMethod . '"/>'
+    . '<ds:SignatureMethod Algorithm="' . $sigMethod . '"/>'
+    . '<ds:Reference URI="#' . $tsId . '">'
+    .   '<ds:Transforms>'
+    .     '<ds:Transform Algorithm="' . $c14nMethod . '"/>'
+    .   '</ds:Transforms>'
+    .   '<ds:DigestMethod Algorithm="' . $digestMeth . '"/>'
+    .   '<ds:DigestValue>' . $tsDigest . '</ds:DigestValue>'
+    . '</ds:Reference>'
+    . '<ds:Reference URI="#' . $toId . '">'
+    .   '<ds:Transforms>'
+    .     '<ds:Transform Algorithm="' . $c14nMethod . '"/>'
+    .   '</ds:Transforms>'
+    .   '<ds:DigestMethod Algorithm="' . $digestMeth . '"/>'
+    .   '<ds:DigestValue>' . $toDigest . '</ds:DigestValue>'
+    . '</ds:Reference>'
+    . '<ds:Reference URI="#' . $bodyId . '">'
+    .   '<ds:Transforms>'
+    .     '<ds:Transform Algorithm="' . $c14nMethod . '"/>'
+    .   '</ds:Transforms>'
+    .   '<ds:DigestMethod Algorithm="' . $digestMeth . '"/>'
+    .   '<ds:DigestValue>' . $bodyDigest . '</ds:DigestValue>'
+    . '</ds:Reference>'
+    . '</ds:SignedInfo>';
+
+// ─── Step 4: Canonicalize SignedInfo and sign ─────────────────────────────────
+$siDom = new DOMDocument();
+$siDom->loadXML($signedInfo);
+$siC14N = $siDom->documentElement->C14N(true, false);
+
+$signatureValue = rsaSha256Sign($siC14N, $keyPath);
+echo "SignatureValue (first 40): " . substr($signatureValue, 0, 40) . "...\n\n";
+
+// ─── Step 5: Build full Signature element ─────────────────────────────────────
+$signatureXml = '<ds:Signature xmlns:ds="' . $dsigNs . '" Id="' . $sigId . '">'
+    . $signedInfo
+    . '<ds:SignatureValue>' . $signatureValue . '</ds:SignatureValue>'
+    . '<ds:KeyInfo>'
+    .   '<o:SecurityTokenReference xmlns:o="' . $secNs . '">'
+    .     '<o:KeyIdentifier'
+    .         ' ValueType="http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1"'
+    .         ' EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">'
+    .       $thumbprint
+    .     '</o:KeyIdentifier>'
+    .   '</o:SecurityTokenReference>'
+    . '</ds:KeyInfo>'
+    . '</ds:Signature>';
+
+// ─── Step 6: Insert Signature into Security node ──────────────────────────────
+$sigDom = new DOMDocument();
+$sigDom->loadXML($signatureXml);
+$sigNode = $dom->importNode($sigDom->documentElement, true);
+
 $secNode = $dom->getElementsByTagNameNS($secNs, 'Security')->item(0);
+$secNode->appendChild($sigNode);
 
-$dsig = new XMLSecurityDSig('');
-$dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
+$finalXml = $dom->saveXML();
 
-// WSDL policy: SignedParts → To header. Plus Timestamp and Body.
-foreach (['#' . $tsId, '#' . $toId, '#' . $bodyId] as $ref) {
-    $dsig->addReference(
-        $dom,
-        XMLSecurityDSig::SHA256,
-        ['http://www.w3.org/2001/10/xml-exc-c14n#'],
-        ['uri' => $ref, 'overwrite' => false]
-    );
-}
+file_put_contents('/tmp/signed_manual.xml', $finalXml);
+echo "Saved: /tmp/signed_manual.xml\n";
 
-$privKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
-$privKey->loadKey($keyPath, true);
-$dsig->sign($privKey);
-$dsig->appendSignature($secNode);
-
-// ─── Fix KeyInfo ──────────────────────────────────────────────────────────────
-$sigNode = $secNode->getElementsByTagNameNS($dsigNs, 'Signature')->item(0);
-if (!$sigNode) {
-    die("ERROR: Signature node missing after appendSignature!\n");
-}
-echo "Signature node: OK\n";
-
-// Remove auto-generated KeyInfo
-$oldKI = $sigNode->getElementsByTagNameNS($dsigNs, 'KeyInfo')->item(0);
-if ($oldKI) $sigNode->removeChild($oldKI);
-
-// Add ThumbprintSHA1 KeyInfo (WSDL: RequireThumbprintReference)
-$keyInfo = $dom->createElementNS($dsigNs, 'ds:KeyInfo');
-$str     = $dom->createElementNS($secNs, 'o:SecurityTokenReference');
-$kid     = $dom->createElementNS($secNs, 'o:KeyIdentifier');
-$kid->setAttribute('ValueType',
-    'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1');
-$kid->setAttribute('EncodingType',
-    'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary');
-$kid->nodeValue = $thumbprint;
-$str->appendChild($kid);
-$keyInfo->appendChild($str);
-$sigNode->appendChild($keyInfo);
-
-$signedXml = $dom->saveXML();
-
-// ─── Verify references count ──────────────────────────────────────────────────
+// Quick check
 $checkDom = new DOMDocument();
-$checkDom->loadXML($signedXml);
-$checkXpath = new DOMXPath($checkDom);
-$refs = $checkXpath->query('//*[local-name()="Reference"]');
-echo "Signed references count: " . $refs->length . " (expected 3)\n";
+$checkDom->loadXML($finalXml);
+$refs = $checkDom->getElementsByTagNameNS($dsigNs, 'Reference');
+echo "References in final XML: " . $refs->length . "\n";
 foreach ($refs as $r) {
-    echo "  - " . $r->getAttribute('URI') . "\n";
+    echo "  URI=" . $r->getAttribute('URI') . "\n";
 }
 
-// Check Signature exists
-$sigs = $checkXpath->query('//*[local-name()="Signature"]');
-echo "Signature elements: " . $sigs->length . " (expected 1)\n\n";
-
-file_put_contents('/tmp/signed_v2.xml', $signedXml);
-echo "Saved: /tmp/signed_v2.xml\n\n";
-
-// ─── Send ─────────────────────────────────────────────────────────────────────
-echo "Sending...\n";
+// ─── Step 7: Send ─────────────────────────────────────────────────────────────
+echo "\nSending...\n";
 $ch = curl_init();
 curl_setopt_array($ch, [
     CURLOPT_URL            => $endpoint,
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => $signedXml,
+    CURLOPT_POSTFIELDS     => $finalXml,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 30,
     CURLOPT_HTTPHEADER     => [
