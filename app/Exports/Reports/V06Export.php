@@ -42,10 +42,12 @@ class V06Export
         $carContractCount = 0;
         $goldContractCount = 0;
         $electronicsContractCount = 0;
+        $category2ContractCount = 0;
 
         $carContractAmount = 0;
         $goldContractAmount = 0;
         $electronicsContractAmount = 0;
+        $category2ContractAmount = 0;
         $expiredCarContractAmount = 0;
         $expiredGoldContractAmount = 0;
         $expiredElectronicsContractAmount = 0;
@@ -56,6 +58,7 @@ class V06Export
         $groupsCar = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
         $groupsGold = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
         $groupsElect = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
+        $groupsCategory2 = ['B' => 0, 'D' => 0, 'F' => 0, 'H' => 0, 'J' => 0, 'L' => 0];
 
         $classificationCounts = ['standard' => 0, 'monitored' => 0, 'substandard' => 0, 'suspicious' => 0, 'loss' => 0];
         $amountsByClassification = ['standard' => 0, 'monitored' => 0, 'substandard' => 0, 'suspicious' => 0, 'loss' => 0];
@@ -174,6 +177,11 @@ class V06Export
                     }
                 }
             }
+            if ((int) $contract->category_id === 2) {
+                $category2ContractCount++;
+                $category2ContractAmount += $amount;
+                $groupsCategory2[$col] += $net16200NV;
+            }
             if ($hasExpiredPayment) {
                 $groupsExpired[$col] += $net16200NV;
             } else {
@@ -233,6 +241,10 @@ class V06Export
             $sheet->setCellValue($col . '112', $value / 1000);
             $sheet->getStyle($col . '112')->getNumberFormat()->setFormatCode('#,##0');
         }
+        foreach ($groupsCategory2 as $col => $value) {
+            $sheet->setCellValue($col . '113', $value / 1000);
+            $sheet->getStyle($col . '113')->getNumberFormat()->setFormatCode('#,##0');
+        }
 
         foreach ($groupsCar as $col => $value) {
             $goldValue = $groupsGold[$col] ?? 0;
@@ -255,6 +267,8 @@ class V06Export
         $sheet->getStyle('P111')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('P112', $goldContractAmount);
         $sheet->getStyle('P112')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('P113', $category2ContractAmount / 1000);
+        $sheet->getStyle('P113')->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->setCellValue('R108',($carContractCount + $goldContractCount + $electronicsContractCount));
         $sheet->getStyle('R108')->getNumberFormat()->setFormatCode('#,##0');
@@ -266,6 +280,8 @@ class V06Export
         $sheet->getStyle('R111')->getNumberFormat()->setFormatCode('#,##0');
         $sheet->setCellValue('R112', $goldContractCount);
         $sheet->getStyle('R112')->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->setCellValue('R113', $category2ContractCount);
+        $sheet->getStyle('R113')->getNumberFormat()->setFormatCode('#,##0');
 
         $rows = [125, 126, 127, 128, 129];
         $classificationKeys = ['standard', 'monitored', 'substandard', 'suspicious', 'loss'];
