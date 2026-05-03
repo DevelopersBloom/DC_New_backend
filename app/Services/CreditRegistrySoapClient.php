@@ -171,23 +171,34 @@ class CreditRegistrySoapClient
         $dom->loadXML($envelopeXml);
 
         $dsig = new XMLSecurityDSig('');
+        // ԿԱՐԵՎՈՐ: Օգտագործում ենք EXC_C14N
         $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
 
-        // Շատ կարևոր է՝ DEGS-ը սիրում է Exclusive C14N
         $transforms = [XMLSecurityDSig::EXC_C14N];
 
-        // Ստորագրում ենք բոլոր անհրաժեշտ մասերը
+        // Ստորագրում ենք ID-ներով նշված հատվածները
         $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_ts']);
         $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_to']);
         $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_body']);
 
         $objKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
         $objKey->loadKey(self::KEY_PATH, true);
+
+        // Ստորագրում ենք
         $dsig->sign($objKey);
 
-        $secNode = $dom->getElementsByTagNameNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'Security')->item(0);
+        // Գտնում ենք Security տեգը
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('o', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd');
+        $secNode = $xpath->query('//o:Security')->item(0);
+
+        if (!$secNode) {
+            throw new \RuntimeException("Security node not found in envelope");
+        }
+
         $dsig->appendSignature($secNode);
 
+        // Ավելացնում ենք KeyInfo-ն, որը հղվում է մեր BinarySecurityToken-ին
         $sigNode = $secNode->getElementsByTagNameNS(XMLSecurityDSig::XMLDSIGNS, 'Signature')->item(0);
         $keyInfo = $dom->createElementNS(XMLSecurityDSig::XMLDSIGNS, 'ds:KeyInfo');
         $str = $dom->createElementNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'o:SecurityTokenReference');
@@ -200,8 +211,7 @@ class CreditRegistrySoapClient
         $sigNode->appendChild($keyInfo);
 
         return $dom->saveXML();
-    }    // -------------------------------------------------------------------------
-    // Step 3 — Send via cURL (mTLS)
+    }
     // -------------------------------------------------------------------------
 
     private function sendViaCurl(string $action, string $signedXml): string
