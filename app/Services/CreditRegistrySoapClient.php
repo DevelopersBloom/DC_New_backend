@@ -150,13 +150,14 @@ class CreditRegistrySoapClient
     {
         $dom = new DOMDocument();
         $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false;
         $dom->loadXML($envelopeXml);
 
         $dsig = new XMLSecurityDSig('');
-        // Փոխում ենք EXC_C14N-ից սովորական C14N
+        // Փոխում ենք EXC_C14N-ից C14N-ի
         $dsig->setCanonicalMethod(XMLSecurityDSig::C14N);
 
-        // Օգտագործում ենք սովորական C14N տրանսֆորմացիան
+        // Կարևոր է. Չենք օգտագործում EXC_C14N տրանսֆորմացիան
         $transforms = [XMLSecurityDSig::C14N];
 
         $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_ts']);
@@ -173,6 +174,7 @@ class CreditRegistrySoapClient
 
         $dsig->appendSignature($secNode);
 
+        // KeyInfo-ի ձևավորումը
         $sigNode = $secNode->getElementsByTagNameNS(XMLSecurityDSig::XMLDSIGNS, 'Signature')->item(0);
         $keyInfo = $dom->createElementNS(XMLSecurityDSig::XMLDSIGNS, 'ds:KeyInfo');
         $str = $dom->createElementNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'o:SecurityTokenReference');
@@ -184,7 +186,7 @@ class CreditRegistrySoapClient
         $keyInfo->appendChild($str);
         $sigNode->appendChild($keyInfo);
 
-        return $dom->saveXML();
+        return $dom->saveXML($dom->documentElement);
     }
     private function sendViaCurl(string $action, string $signedXml): string
     {
