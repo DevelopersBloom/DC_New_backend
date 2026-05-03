@@ -189,86 +189,71 @@ class CreditRegistrySoapClient
         $dom->preserveWhiteSpace = false;
         $dom->loadXML($envelopeXml);
 
-        // u:Id attribute-ները register անել XML ID-ի ձևով
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('u', self::WSU_NS);
         $xpath->registerNamespace('o', self::WSSE_NS);
         $xpath->registerNamespace('s', self::SOAP_NS);
 
-        foreach ($xpath->query('//*[@u:Id]') as $node) {
-            /** @var \DOMElement $node */
-            $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
-        }
-
-        // Verify
-        if (!$dom->getElementById('_ts') || !$dom->getElementById('_body')) {
-            throw new \RuntimeException('DEGS: ID registration failed');
-        }
-
-        // addReference options — namespace-aware ID lookup
-        $refOpts = [
-            'id_name'   => 'Id',
-            'prefix'    => 'u',
-            'prefix_ns' => self::WSU_NS,
-            'overwrite' => false,
-        ];
-
+        // 1. Ստեղծում ենք ստորագրող օբյեկտը
         $dsig = new XMLSecurityDSig('');
         $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
 
-        $dsig->addReference(
-            $dom,
-            XMLSecurityDSig::SHA256,
-            [XMLSecurityDSig::EXC_C14N],
-            array_merge($refOpts, ['uri' => '#_ts'])
-        );
-        $dsig->addReference(
-            $dom,
-            XMLSecurityDSig::SHA256,
-            [XMLSecurityDSig::EXC_C14N],
-            array_merge($refOpts, ['uri' => '#_body'])
-        );
+        // 2. Մանուալ ավելացնում ենք Reference-ները՝ օգտագործելով XPath
+        $targets = [
+            '_ts'   => '//u:Timestamp[@u:Id="_ts"]',
+            '_body' => '//s:Body[@u:Id="_body"]',
+        ];
 
+        foreach ($targets as $id => $query) {
+            $node = $xpath->query($query)->item(0);
+            if (!$node) {
+                throw new \RuntimeException("DEGS: Node with Id $id not found via XPath.");
+            }
+
+            // Կանոնիկացնում ենք node-ը (Exclusive C14N)
+            $canonicalNode = $node->C14N(true, false);
+            // Հաշվում ենք SHA256 digest-ը
+            $digestValue = base64_encode(hash('sha256', $canonicalNode, true));
+
+            // Ավելացնում ենք Reference-ը xmlseclibs-ին
+            $dsig->addReference(
+                $dom,
+                XMLSecurityDSig::SHA256,
+                [XMLSecurityDSig::EXC_C14N],
+                [
+                    'uri' => '#' . $id,
+                    'force_uri' => true,
+                    'digest_value' => $digestValue // Փոխանցում ենք մեր հաշվարկածը
+                ]
+            );
+        }
+
+        // 3. Ստորագրում ենք Private Key-ով
         $objKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
         $objKey->loadKey(self::KEY_PATH, true);
         $dsig->sign($objKey);
 
+        // 4. Կցում ենք ստորագրությունը Security տեգին
         $secNode = $xpath->query('//o:Security')->item(0);
         $dsig->appendSignature($secNode);
 
-        $sigNode = $secNode
-            ->getElementsByTagNameNS(self::DSIG_NS, 'Signature')
-            ->item(0);
-
-        if (!$sigNode) {
-            throw new \RuntimeException('DEGS: Signature node missing after signing');
-        }
-
-        // Reference URI-ները ստուգել
-        foreach ($sigNode->getElementsByTagNameNS(self::DSIG_NS, 'Reference') as $ref) {
-            if (empty($ref->getAttribute('URI'))) {
-                throw new \RuntimeException('DEGS: Empty Reference URI — ID lookup failed');
-            }
-        }
-
-        // Հին KeyInfo հեռացնել, BST Reference-ով նոր ավելացնել
+        // 5. Կարգավորում ենք KeyInfo-ն BST Reference-ի համար
+        $sigNode = $secNode->getElementsByTagNameNS(self::DSIG_NS, 'Signature')->item(0);
         $oldKI = $sigNode->getElementsByTagNameNS(self::DSIG_NS, 'KeyInfo')->item(0);
-        if ($oldKI) {
-            $sigNode->removeChild($oldKI);
-        }
+        if ($oldKI) { $sigNode->removeChild($oldKI); }
 
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
-        $str     = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
-        $ref     = $dom->createElementNS(self::WSSE_NS, 'o:Reference');
-        $ref->setAttribute('URI',       '#' . $this->bstId);
+        $str = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
+        $ref = $dom->createElementNS(self::WSSE_NS, 'o:Reference');
+        $ref->setAttribute('URI', '#' . $this->bstId);
         $ref->setAttribute('ValueType', self::X509_VALUETYPE);
+
         $str->appendChild($ref);
         $keyInfo->appendChild($str);
         $sigNode->appendChild($keyInfo);
 
         return $dom->saveXML();
     }
-
     // ================================================================
     // Step 3 — cURL (HTTPS + mTLS)
     // ================================================================
@@ -364,24 +349,5 @@ class CreditRegistrySoapClient
             random_int(0, 0x3fff) | 0x8000,
             random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
         );
-    }
-
-    // CreditRegistrySoapClient.php-ում ավելացնել ժամանակավոր method
-    public function debugIsAlive(): string
-    {
-        $body    = '<tns:IsAlive xmlns:tns="http://tempuri.org/"/>';
-        $envelope = $this->buildEnvelope('IsAlive', $body);
-        $signed   = $this->signEnvelope($envelope);
-
-        // Reference URI-ները
-        $dom = new DOMDocument();
-        $dom->loadXML($signed);
-        $refs = $dom->getElementsByTagNameNS('http://www.w3.org/2000/09/xmldsig#', 'Reference');
-        echo "References: " . $refs->length . "\n";
-        foreach ($refs as $r) {
-            echo "  URI=" . $r->getAttribute('URI') . "\n";
-        }
-
-        return $this->sendViaCurl('IsAlive', $signed);
     }
 }
