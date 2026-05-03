@@ -173,95 +173,89 @@ XML;
 
     private function signEnvelope(string $envelopeXml): string
     {
+        // ── 1. Parse — whitespace OFF (C14N-ի ճիշտ հաշվի համար) ──────
         $dom = new DOMDocument();
-        $dom->preserveWhiteSpace = true;
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput       = false;
         $dom->loadXML($envelopeXml);
 
         $xpath = new DOMXPath($dom);
-        $xpath->registerNamespace('s',  self::SOAP_NS);
-        $xpath->registerNamespace('u',  self::WSU_NS);
-        $xpath->registerNamespace('o',  self::WSSE_NS);
-        $xpath->registerNamespace('a',  self::WSA_NS);
+        $xpath->registerNamespace('s', self::SOAP_NS);
+        $xpath->registerNamespace('u', self::WSU_NS);
+        $xpath->registerNamespace('o', self::WSSE_NS);
 
-        // ---- 1. Nodes to sign ----
+        // ── 2. Sign թիրախ nodes ──────────────────────────────────────
         $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
 
         if (!$tsNode || !$bodyNode) {
-            throw new \RuntimeException('DEGS: Timestamp կամ Body node-ը չի գտնվել');
+            throw new \RuntimeException('DEGS sign: Timestamp կամ Body node-ը չի գտնվել');
         }
 
-        // ---- 2. Exclusive C14N + SHA256 digest ----
-        $tsC14n   = $tsNode->C14N(true, false);   // exclusive=true, withComments=false
-        $bodyC14n = $bodyNode->C14N(true, false);
+        // Exclusive C14N — namespace prefix list EMPTY = standard exc-c14n
+        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
+        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
 
-        $tsDigest   = base64_encode(hash('sha256', $tsC14n,   true));
-        $bodyDigest = base64_encode(hash('sha256', $bodyC14n, true));
-
-        // ---- 3. SignedInfo կառուցել ----
+        // ── 3. SignedInfo XML ─────────────────────────────────────────
         $signedInfoXml = '<SignedInfo xmlns="' . self::DSIG_NS . '">'
             . '<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
             . '<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
             . '<Reference URI="#_ts">'
-            .   '<Transforms>'
-            .     '<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
-            .   '</Transforms>'
+            .   '<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></Transforms>'
             .   '<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
             .   '<DigestValue>' . $tsDigest . '</DigestValue>'
             . '</Reference>'
             . '<Reference URI="#_body">'
-            .   '<Transforms>'
-            .     '<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
-            .   '</Transforms>'
+            .   '<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></Transforms>'
             .   '<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
             .   '<DigestValue>' . $bodyDigest . '</DigestValue>'
             . '</Reference>'
             . '</SignedInfo>';
 
-        // ---- 4. SignedInfo-ի C14N ----
+        // ── 4. SignedInfo-ի C14N → sign ──────────────────────────────
         $siDom = new DOMDocument();
+        $siDom->preserveWhiteSpace = false;
         $siDom->loadXML($signedInfoXml);
         $signedInfoC14n = $siDom->documentElement->C14N(true, false);
 
-        // ---- 5. RSA-SHA256 ստորագրություն ----
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
         if (!$privateKey) {
-            throw new \RuntimeException('DEGS: client.key-ը load չեղավ: ' . openssl_error_string());
+            throw new \RuntimeException('DEGS: Private key load ձախողվեց: ' . openssl_error_string());
         }
-
-        if (!openssl_sign($signedInfoC14n, $rawSignature, $privateKey, OPENSSL_ALGO_SHA256)) {
-            throw new \RuntimeException('DEGS: Ստորագրությունը ձախողվեց: ' . openssl_error_string());
+        if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
+            throw new \RuntimeException('DEGS: Sign ձախողվեց: ' . openssl_error_string());
         }
+        $signatureValue = base64_encode($rawSig);
 
-        $signatureValue = base64_encode($rawSignature);
-
-        // ---- 6. KeyInfo — BST Reference ----
-        $keyInfoXml = '<KeyInfo xmlns="' . self::DSIG_NS . '">'
-            . '<o:SecurityTokenReference xmlns:o="' . self::WSSE_NS . '">'
-            .   '<o:Reference URI="#' . $this->bstId . '" ValueType="' . self::X509_VALUETYPE . '"/>'
-            . '</o:SecurityTokenReference>'
-            . '</KeyInfo>';
-
-        // ---- 7. Ամբողջ Signature element ----
+        // ── 5. Ամբողջ <Signature> element ────────────────────────────
         $signatureXml = '<Signature xmlns="' . self::DSIG_NS . '">'
             . $signedInfoXml
             . '<SignatureValue>' . $signatureValue . '</SignatureValue>'
-            . $keyInfoXml
+            . '<KeyInfo>'
+            .   '<o:SecurityTokenReference xmlns:o="' . self::WSSE_NS . '">'
+            .     '<o:Reference URI="#' . $this->bstId . '"'
+            .       ' ValueType="' . self::X509_VALUETYPE . '"/>'
+            .   '</o:SecurityTokenReference>'
+            . '</KeyInfo>'
             . '</Signature>';
 
-        // ---- 8. Security node-ի ներս ավելացնել ----
+        // ── 6. Signature-ը Security-ի ՆԵՐՍ ավելացնել ────────────────
+        //    appendXML-ը ոչ reliable — importNode օգտագործել
         $secNode = $xpath->query('//o:Security')->item(0);
         if (!$secNode) {
             throw new \RuntimeException('DEGS: Security node-ը չի գտնվել');
         }
 
-        $sigFrag = $dom->createDocumentFragment();
-        $sigFrag->appendXML($signatureXml);
-        $secNode->appendChild($sigFrag);
+        $sigDoc = new DOMDocument();
+        $sigDoc->preserveWhiteSpace = false;
+        $sigDoc->loadXML($signatureXml);
+
+        // importNode(node, deep=true) → DOM-ի ներս import
+        $importedSig = $dom->importNode($sigDoc->documentElement, true);
+        $secNode->appendChild($importedSig);  // Security-ի ՎԵՐՋԻՆ child-ը կդառնա
 
         return $dom->saveXML();
     }
-
     // ================================================================
     // Step 3 — cURL (HTTPS + mTLS)
     // ================================================================
