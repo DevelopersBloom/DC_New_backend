@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  L001 թեստ XML — CBA lnreg3 XSD-ին 100% համապատասխան
+  -------------------------------------------------------
+  CreditCode հաշվարկ:
+    base  = 66100 + 20260301 + 00005  = "661002026030100005"  (18 թ.)
+    Luhn  → sum = 65, checksum = 5
+    code  = 66100-20260301-000055
+
+  stDate ձևաչափ : dd/MM/yyyy
+  stTime ձևաչափ : HH:mm:ss
+  DebtorID      : 13 թ. BankID (ԿԲ տրամ.)
+  LoanUseRegion : 8 թ. կոդ (01002104 = Երևան, Ավան)
+-->
+<L001 xmlns="urn:cba-am:lnreg3">
+
+    <ReportHeader>
+        <OrganisationCode>66100</OrganisationCode>
+        <OrganisationBranchCode>00001</OrganisationBranchCode>
+        <OrganizationStatus>1</OrganizationStatus>
+        <SendDateTime>
+            <Date>03/05/2026</Date>
+            <Time>17:00:00</Time>
+        </SendDateTime>
+    </ReportHeader>
+
+    <CreditCode>66100-20260301-000055</CreditCode>
+
+    <LoanData>
+
+        <!-- DebtorID: stClientID = [0-9]{13} — ԿԲ BankID -->
+        <DebtorID>0000000000001</DebtorID>
+
+        <!-- IsPE: ոչ պարտ. — ֆիզ. անձ ԱՁ-ո՞վ -->
+        <IsPE>N</IsPE>
+
+        <!-- AffectionWithCreditor: կապված վարկատուին -->
+        <AffectionWithCreditor>N</AffectionWithCreditor>
+
+        <!-- ContractType: 1=Պարզ, 2=Համատեղ, 3=Խմբային -->
+        <ContractType>1</ContractType>
+
+        <!-- ContractNumber: min1, max20 -->
+        <ContractNumber>G-26-00001</ContractNumber>
+
+        <!-- ContractDate: stDate dd/MM/yyyy -->
+        <ContractDate>01/03/2026</ContractDate>
+
+        <!-- RepaymentDate: stDate dd/MM/yyyy -->
+        <RepaymentDate>01/03/2027</RepaymentDate>
+
+        <!-- LoanType: 4=Ոսկյա գրավ (stLoanType 0–18) -->
+        <LoanType>4</LoanType>
+
+        <!-- Currency: ISO 4217 Alpha-3 -->
+        <Currency>AMD</Currency>
+
+        <!-- ContractAmount: stAmountNonZero > 0, 2 decimal -->
+        <ContractAmount>1000000.00</ContractAmount>
+
+        <!-- ContractModifiedAmount: փոփ. սահ., > 0 -->
+        <ContractModifiedAmount>1000000.00</ContractModifiedAmount>
+
+        <!-- AnnualInterestRate: 0.14 օր/օր × 365 = 51.10 -->
+        <AnnualInterestRate>51.10</AnnualInterestRate>
+
+        <!-- ActualInterestRate: effective_annual_rate -->
+        <ActualInterestRate>64.92</ActualInterestRate>
+
+        <!-- InterestRateType: 1=Լող., 2=Ֆիքս., 3=Փոփ. -->
+        <InterestRateType>2</InterestRateType>
+
+        <!-- IsInterestSubsidy: Y/N -->
+        <IsInterestSubsidy>N</IsInterestSubsidy>
+
+        <!-- ProvisionOfCredit: Y=Միջ. ծրագ., N=ոչ -->
+        <ProvisionOfCredit>N</ProvisionOfCredit>
+
+        <!-- LoanUseField: [0-9]{2}.[0-9]{2}.[0-9]{1} — Ref.Book -->
+        <LoanUseField>10.01.1</LoanUseField>
+
+        <!-- LoanUseCountry: ISO 3166 Alpha-3 -->
+        <LoanUseCountry>ARM</LoanUseCountry>
+
+        <!-- LoanUseRegion: [0-9]{8} — ARM_Regions_Districts.pdf -->
+        <!-- 01002104 = Երևան / Ավան համայնք / Ավան թաղ. -->
+        <LoanUseRegion>01002104</LoanUseRegion>
+
+    </LoanData>
+
+</L001>
