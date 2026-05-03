@@ -149,17 +149,19 @@ class CreditRegistrySoapClient
     private function signEnvelope(string $envelopeXml): string
     {
         $dom = new DOMDocument();
+        $dom->preserveWhiteSpace = false;
         $dom->loadXML($envelopeXml);
 
         $dsig = new XMLSecurityDSig('');
-        $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
+        // Փոխում ենք EXC_C14N-ից սովորական C14N
+        $dsig->setCanonicalMethod(XMLSecurityDSig::C14N);
 
-        // ԿԲ-ն հաճախ պահանջում է, որ Namespace-ները լինեն սպիտակ ցուցակում
-        $prefixList = ['a', 's', 'u', 'o'];
+        // Օգտագործում ենք սովորական C14N տրանսֆորմացիան
+        $transforms = [XMLSecurityDSig::C14N];
 
-        $dsig->addReference($dom, XMLSecurityDSig::SHA256, [XMLSecurityDSig::EXC_C14N], ['uri' => '#_ts', 'prefix_list' => $prefixList]);
-        $dsig->addReference($dom, XMLSecurityDSig::SHA256, [XMLSecurityDSig::EXC_C14N], ['uri' => '#_to', 'prefix_list' => $prefixList]);
-        $dsig->addReference($dom, XMLSecurityDSig::SHA256, [XMLSecurityDSig::EXC_C14N], ['uri' => '#_body', 'prefix_list' => $prefixList]);
+        $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_ts']);
+        $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_to']);
+        $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_body']);
 
         $objKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
         $objKey->loadKey(self::KEY_PATH, true);
@@ -171,7 +173,6 @@ class CreditRegistrySoapClient
 
         $dsig->appendSignature($secNode);
 
-        // Հղումը սերտիֆիկատին
         $sigNode = $secNode->getElementsByTagNameNS(XMLSecurityDSig::XMLDSIGNS, 'Signature')->item(0);
         $keyInfo = $dom->createElementNS(XMLSecurityDSig::XMLDSIGNS, 'ds:KeyInfo');
         $str = $dom->createElementNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'o:SecurityTokenReference');
