@@ -173,68 +173,46 @@ class CreditRegistrySoapClient
 
     private function signEnvelope(string $envelopeXml): string
     {
-        $secNs  = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
-        $dsigNs = 'http://www.w3.org/2000/09/xmldsig#';
-
         $dom = new DOMDocument();
         $dom->loadXML($envelopeXml);
 
-        // Security node — signature-ն այստեղ կդրվի
-        $secNode = $dom->getElementsByTagNameNS($secNs, 'Security')->item(0);
-        if (!$secNode) {
-            throw new \RuntimeException('DEGS: Security node not found in envelope');
-        }
-
-        // XMLSecurityDSig
         $dsig = new XMLSecurityDSig('');
         $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
 
-        // Ստորագրել՝ Timestamp + To + Body
-        foreach (['#_ts', '#_to', '#_body'] as $refUri) {
-            $dsig->addReference(
-                $dom,
-                XMLSecurityDSig::SHA256,
-                ['http://www.w3.org/2001/10/xml-exc-c14n#'],
-                ['uri' => $refUri, 'overwrite' => false]
-            );
-        }
+        // 1. Ավելացնում ենք Reference-ներ (Body, Timestamp, To)
+        // Այս ID-ները (_body, _ts, _to) պետք է նախապես դրված լինեն buildEnvelope-ում
+        $dsig->addReference(
+            $dom,
+            XMLSecurityDSig::SHA256,
+            ['http://www.w3.org/2001/10/xml-exc-c14n#'],
+            ['uri' => '#_body']
+        );
+        $dsig->addReference($dom, XMLSecurityDSig::SHA256, ['http://www.w3.org/2001/10/xml-exc-c14n#'], ['uri' => '#_ts']);
+        $dsig->addReference($dom, XMLSecurityDSig::SHA256, ['http://www.w3.org/2001/10/xml-exc-c14n#'], ['uri' => '#_to']);
 
-        // Private key
-        $privKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
-        $privKey->loadKey(self::KEY_PATH, true);
-        $dsig->sign($privKey);
+        // 2. Ստորագրում ենք Private Key-ով
+        $objKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
+        $objKey->loadKey(self::KEY_PATH, true);
+        $dsig->sign($objKey);
 
-        // appendSignature — Security node-ի մեջ տեղադրել
+        // 3. Տեղադրում ենք ստորագրությունը Security բաժնում
+        $secNode = $dom->getElementsByTagNameNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'Security')->item(0);
         $dsig->appendSignature($secNode);
 
-        // Signature node վերցնել (հենց appendSignature-ից հետո)
-        $sigNode = $secNode->getElementsByTagNameNS($dsigNs, 'Signature')->item(0);
-        if (!$sigNode) {
-            throw new \RuntimeException('DEGS: Signature node not found after signing');
-        }
+        // 4. Կցում ենք BinarySecurityToken-ի հղումը (KeyInfo)
+        $sigNode = $secNode->getElementsByTagNameNS('http://www.w3.org/2000/09/xmldsig#', 'Signature')->item(0);
+        $keyInfo = $dom->createElementNS('http://www.w3.org/2000/09/xmldsig#', 'ds:KeyInfo');
+        $str = $dom->createElementNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'o:SecurityTokenReference');
+        $reference = $dom->createElementNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'o:Reference');
+        $reference->setAttribute('URI', '#' . $this->bstId); // buildEnvelope-ում սարքած ID-ն
+        $reference->setAttribute('ValueType', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3');
 
-        // Հին KeyInfo հեռացնել (եթե կա)
-        $oldKeyInfo = $sigNode->getElementsByTagNameNS($dsigNs, 'KeyInfo')->item(0);
-        if ($oldKeyInfo) {
-            $sigNode->removeChild($oldKeyInfo);
-        }
-
-        // Նոր KeyInfo → SecurityTokenReference → Reference to BinarySecurityToken
-        $keyInfo = $dom->createElementNS($dsigNs, 'ds:KeyInfo');
-        $str     = $dom->createElementNS($secNs, 'o:SecurityTokenReference');
-        $bstRef  = $dom->createElementNS($secNs, 'o:Reference');
-        $bstRef->setAttribute('URI', '#' . $this->bstId);
-        $bstRef->setAttribute(
-            'ValueType',
-            'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3'
-        );
-        $str->appendChild($bstRef);
+        $str->appendChild($reference);
         $keyInfo->appendChild($str);
         $sigNode->appendChild($keyInfo);
 
         return $dom->saveXML();
     }
-
     // -------------------------------------------------------------------------
     // Step 3 — Send via cURL (mTLS)
     // -------------------------------------------------------------------------
