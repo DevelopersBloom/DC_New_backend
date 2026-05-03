@@ -203,6 +203,3 @@ if ($tlsErr) {
     echo '   ✅ TLS connected (HTTP ' . $httpCode . ')' . PHP_EOL;
 }
 
-echo PHP_EOL . '=== Summary ===' . PHP_EOL;
-echo 'Եթե բոլոր ✅ — խնդիրը ԿԲ կողմից certificate գրանցված չէ։' . PHP_EOL;
-echo 'Եթե կա ❌ — կոդ ուղարկեք։' . PHP_EOL;

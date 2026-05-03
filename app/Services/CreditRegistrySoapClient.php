@@ -4,7 +4,6 @@ namespace App\Services;
 
 use DOMDocument;
 use DOMXPath;
-use DOMElement;
 
 class CreditRegistrySoapClient
 {
@@ -135,11 +134,10 @@ class CreditRegistrySoapClient
 
         $rawPem = file_get_contents(self::CERT_PATH);
         if (!openssl_x509_export(openssl_x509_read($rawPem), $cleanPem)) {
-            throw new \RuntimeException('DEGS: client.crt-ը parse չեղավ');
+            throw new \RuntimeException('DEGS: client.crtparse does not work');
         }
         $certB64 = preg_replace('/-----[^-]+-----|[\r\n\s]/', '', $cleanPem);
 
-        // ՈՉ heredoc, ՈՉ newline/indent — մաքուր inline XML
         return '<?xml version="1.0" encoding="UTF-8"?>'
             . '<s:Envelope'
             .   ' xmlns:s="' . self::SOAP_NS  . '"'
@@ -172,13 +170,8 @@ class CreditRegistrySoapClient
         return constant('self::' . $const);
     }
 
-    // ================================================================
-    // Step 2 — WS-Security XML Signature (ամբողջովին ձեռքով)
-    // ================================================================
-
     private function signEnvelope(string $envelopeXml): string
     {
-        // ── 1. Parse — whitespace OFF (C14N-ի ճիշտ հաշվի համար) ──────
         $dom = new DOMDocument();
         $dom->preserveWhiteSpace = false;
         $dom->formatOutput       = false;
@@ -189,12 +182,11 @@ class CreditRegistrySoapClient
         $xpath->registerNamespace('u', self::WSU_NS);
         $xpath->registerNamespace('o', self::WSSE_NS);
 
-        // ── 2. Sign թիրախ nodes ──────────────────────────────────────
         $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
 
         if (!$tsNode || !$bodyNode) {
-            throw new \RuntimeException('DEGS sign: Timestamp կամ Body node-ը չի գտնվել');
+            throw new \RuntimeException('DEGS sign: Timestamp or Body node not found');
         }
 
         // Exclusive C14N — namespace prefix list EMPTY = standard exc-c14n
@@ -225,14 +217,13 @@ class CreditRegistrySoapClient
 
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
         if (!$privateKey) {
-            throw new \RuntimeException('DEGS: Private key load ձախողվեց: ' . openssl_error_string());
+            throw new \RuntimeException('DEGS: Private key load  does not work: ' . openssl_error_string());
         }
         if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
-            throw new \RuntimeException('DEGS: Sign ձախողվեց: ' . openssl_error_string());
+            throw new \RuntimeException('DEGS: Sign does not work: ' . openssl_error_string());
         }
         $signatureValue = base64_encode($rawSig);
 
-        // ── 5. Ամբողջ <Signature> element ────────────────────────────
         $signatureXml = '<Signature xmlns="' . self::DSIG_NS . '">'
             . $signedInfoXml
             . '<SignatureValue>' . $signatureValue . '</SignatureValue>'
@@ -244,20 +235,17 @@ class CreditRegistrySoapClient
             . '</KeyInfo>'
             . '</Signature>';
 
-        // ── 6. Signature-ը Security-ի ՆԵՐՍ ավելացնել ────────────────
-        //    appendXML-ը ոչ reliable — importNode օգտագործել
         $secNode = $xpath->query('//o:Security')->item(0);
         if (!$secNode) {
-            throw new \RuntimeException('DEGS: Security node-ը չի գտնվել');
+            throw new \RuntimeException('DEGS: Security node does not exist');
         }
 
         $sigDoc = new DOMDocument();
         $sigDoc->preserveWhiteSpace = false;
         $sigDoc->loadXML($signatureXml);
 
-        // importNode(node, deep=true) → DOM-ի ներս import
         $importedSig = $dom->importNode($sigDoc->documentElement, true);
-        $secNode->appendChild($importedSig);  // Security-ի ՎԵՐՋԻՆ child-ը կդառնա
+        $secNode->appendChild($importedSig);
 
         return $dom->saveXML();
     }
@@ -276,7 +264,7 @@ class CreditRegistrySoapClient
             CURLOPT_POSTFIELDS     => $xml,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 60,
-            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,  // ← ԱՎԵԼԱՑՆԵԼ
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/soap+xml; charset=utf-8; action="' . $actionUrl . '"',
             ],
