@@ -83,7 +83,6 @@ class CreditRegistryController extends Controller
             return response()->json([
                 'request_id' => $requestId,
                 'status'     => 'sent',
-                'message'    => 'Request send successfully'
             ], 202);
 
         } catch (\Throwable $e) {
