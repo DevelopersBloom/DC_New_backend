@@ -168,41 +168,38 @@ class CreditRegistrySoapClient
     {
         $dom = new DOMDocument();
         $dom->preserveWhiteSpace = false;
+        $dom->formatOutput = false; // Խիստ կարևոր է
         $dom->loadXML($envelopeXml);
 
         $dsig = new XMLSecurityDSig('');
-        // ԿԱՐԵՎՈՐ: Օգտագործում ենք EXC_C14N
         $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
 
+        // ԿԲ-ն հաճախ պահանջում է, որ Namespace-ները հստակ լինեն տրանսֆորմացիայի ժամանակ
         $transforms = [XMLSecurityDSig::EXC_C14N];
 
-        // Ստորագրում ենք ID-ներով նշված հատվածները
+        // Ստորագրում ենք բլոկները
         $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_ts']);
         $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_to']);
         $dsig->addReference($dom, XMLSecurityDSig::SHA256, $transforms, ['uri' => '#_body']);
 
         $objKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
         $objKey->loadKey(self::KEY_PATH, true);
-
-        // Ստորագրում ենք
         $dsig->sign($objKey);
 
-        // Գտնում ենք Security տեգը
+        // Գտնում ենք Security տեգը XPath-ով՝ սխալներից խուսափելու համար
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('o', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd');
         $secNode = $xpath->query('//o:Security')->item(0);
 
-        if (!$secNode) {
-            throw new \RuntimeException("Security node not found in envelope");
-        }
-
         $dsig->appendSignature($secNode);
 
-        // Ավելացնում ենք KeyInfo-ն, որը հղվում է մեր BinarySecurityToken-ին
+        // Կարևոր ուղղում KeyInfo-ի համար
         $sigNode = $secNode->getElementsByTagNameNS(XMLSecurityDSig::XMLDSIGNS, 'Signature')->item(0);
         $keyInfo = $dom->createElementNS(XMLSecurityDSig::XMLDSIGNS, 'ds:KeyInfo');
+
         $str = $dom->createElementNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'o:SecurityTokenReference');
         $ref = $dom->createElementNS('http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd', 'o:Reference');
+
         $ref->setAttribute('URI', '#' . $this->bstId);
         $ref->setAttribute('ValueType', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3');
 
@@ -210,9 +207,9 @@ class CreditRegistrySoapClient
         $keyInfo->appendChild($str);
         $sigNode->appendChild($keyInfo);
 
-        return $dom->saveXML();
-    }
-    // -------------------------------------------------------------------------
+        // Վերադարձնում ենք առանց ավելորդ բացատների
+        return $dom->saveXML($dom->documentElement);
+    }    // -------------------------------------------------------------------------
 
     private function sendViaCurl(string $action, string $signedXml): string
     {

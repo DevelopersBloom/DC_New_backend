@@ -28,7 +28,8 @@ class CreditRegistryL001Service
     public function generateL001Xml(Contract $contract): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
-
+        $dom->formatOutput = false;
+        $dom->preserveWhiteSpace = false;
         $root = $dom->createElementNS(self::NS, 'lnreg3:L001');
         $dom->appendChild($root);
 
