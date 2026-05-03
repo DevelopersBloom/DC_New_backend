@@ -365,4 +365,23 @@ class CreditRegistrySoapClient
             random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
         );
     }
+
+    // CreditRegistrySoapClient.php-ում ավելացնել ժամանակավոր method
+    public function debugIsAlive(): string
+    {
+        $body    = '<tns:IsAlive xmlns:tns="http://tempuri.org/"/>';
+        $envelope = $this->buildEnvelope('IsAlive', $body);
+        $signed   = $this->signEnvelope($envelope);
+
+        // Reference URI-ները
+        $dom = new DOMDocument();
+        $dom->loadXML($signed);
+        $refs = $dom->getElementsByTagNameNS('http://www.w3.org/2000/09/xmldsig#', 'Reference');
+        echo "References: " . $refs->length . "\n";
+        foreach ($refs as $r) {
+            echo "  URI=" . $r->getAttribute('URI') . "\n";
+        }
+
+        return $this->sendViaCurl('IsAlive', $signed);
+    }
 }
