@@ -80,22 +80,15 @@ class CreditRegistrySoapClient
     // Internal — SendRequest wrapper
     // -------------------------------------------------------------------------
 
+    // ... ներսում փոխեք հետևյալ մեթոդը
     private function sendRequest(string $docType, string $xmlContent, bool $dryRun): int
     {
-        $escapedXml  = htmlspecialchars($xmlContent, ENT_XML1 | ENT_QUOTES, 'UTF-8');
         $bodyContent = '<tns:SendRequest xmlns:tns="http://tempuri.org/">'
             . '<tns:AppName>' . self::APP_NAME . '</tns:AppName>'
             . '<tns:DocType>' . $docType . '</tns:DocType>'
             . '<tns:IsDelay>false</tns:IsDelay>'
-            . '<tns:xml>' . $escapedXml . '</tns:xml>'
+            . '<tns:xml>' . $xmlContent . '</tns:xml>'
             . '</tns:SendRequest>';
-
-        if ($dryRun) {
-            $envelope  = $this->buildEnvelope('SendRequest', $bodyContent);
-            $signed    = $this->signEnvelope($envelope);
-            \Log::debug('DEGS DryRun', ['xml' => $signed]);
-            return 0;
-        }
 
         $response = $this->dispatch('SendRequest', $bodyContent);
 

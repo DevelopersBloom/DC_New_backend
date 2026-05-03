@@ -28,19 +28,39 @@ class CreditRegistryL001Service
     public function generateL001Xml(Contract $contract): string
     {
         $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->formatOutput = true;
 
-        $root = $dom->createElementNS(self::NS, 'L001');
-        $root->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns', self::NS);
+        $root = $dom->createElementNS(self::NS, 'lnreg3:L001');
         $dom->appendChild($root);
 
-        $root->appendChild($this->createReportHeader($dom));
-        $root->appendChild($this->createCreditCode($dom, $contract));
-        $root->appendChild($this->createLoanData($dom, $contract));
+        // ReportHeader
+        $header = $dom->createElement('lnreg3:ReportHeader');
+        $header->appendChild($dom->createElement('lnreg3:OrganisationCode', self::ORGANISATION_CODE));
+        $header->appendChild($dom->createElement('lnreg3:OrganisationBranchCode', self::ORGANISATION_BRANCH_CODE));
+        $header->appendChild($dom->createElement('lnreg3:OrganizationStatus', (string) self::ORGANIZATION_STATUS));
 
-        return $dom->saveXML();
+        $now = Carbon::now();
+        $sendDateTime = $dom->createElement('lnreg3:SendDateTime');
+        $sendDateTime->appendChild($dom->createElement('lnreg3:Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('lnreg3:Time', $now->format('H:i:s')));
+        $header->appendChild($sendDateTime);
+
+        $root->appendChild($header);
+
+        // CreditCode
+        $orgCode = self::ORGANISATION_CODE;
+        $datePart = Carbon::parse($contract->date)->format('Ymd');
+        $sequence = str_pad(substr($contract->num, -5), 5, '0', STR_PAD_LEFT);
+        $base = $orgCode . $datePart . $sequence;
+        $checksum = $this->calculateCbaChecksum($base);
+        $formattedCode = sprintf("%s-%s-%s%d", $orgCode, $datePart, $sequence, $checksum);
+
+        $root->appendChild($dom->createElement('lnreg3:CreditCode', $formattedCode));
+
+        $loanData = $dom->createElement('lnreg3:LoanData');
+        $root->appendChild($loanData);
+
+        return $dom->saveXML($dom->documentElement);
     }
-
     private function createReportHeader(DOMDocument $dom): DOMElement
     {
         $header = $dom->createElement('ReportHeader');
