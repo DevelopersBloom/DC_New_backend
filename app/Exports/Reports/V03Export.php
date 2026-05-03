@@ -186,78 +186,83 @@ class V03Export
 //                    $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
 //                }
 //            }
-            $acc16Ids = ChartOfAccount::where('code', 'like', '16%')
-                ->pluck('id')
-                ->toArray();
+            // Partner block: only 16200, 16200NV, 16201NI (not all 16% chart accounts).
+            $loanPortionIds = array_values(array_filter([
+                ChartOfAccount::idByCode('16200'),
+                ChartOfAccount::idByCode('16200NV'),
+                ChartOfAccount::idByCode('16201NI'),
+            ]));
 
-            $debit = DB::table('transactions as t')
-                ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
-                ->whereNull('t.deleted_at')
-                ->whereNotNull('t.debit_partner_id')
-                ->whereIn('t.debit_account_id', $acc16Ids)
-                ->whereDate('t.date', '<=', $current->format('Y-m-d'))
-                ->selectRaw("
-                    t.debit_partner_id as partner_id,
-                    SUM(
-                        CASE
-                            WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
-                            ELSE -t.amount_amd
-                        END
-                    ) as amount
-                ")
-                ->groupBy('t.debit_partner_id');
+            if ($loanPortionIds !== []) {
+                $debit = DB::table('transactions as t')
+                    ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
+                    ->whereNull('t.deleted_at')
+                    ->whereNotNull('t.debit_partner_id')
+                    ->whereIn('t.debit_account_id', $loanPortionIds)
+                    ->whereDate('t.date', '<=', $current->format('Y-m-d'))
+                    ->selectRaw("
+                        t.debit_partner_id as partner_id,
+                        SUM(
+                            CASE
+                                WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
+                                ELSE -t.amount_amd
+                            END
+                        ) as amount
+                    ")
+                    ->groupBy('t.debit_partner_id');
 
-            $credit = DB::table('transactions as t')
-                ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
-                ->whereNull('t.deleted_at')
-                ->whereNotNull('t.credit_partner_id')
-                ->whereIn('t.credit_account_id', $acc16Ids)
-                ->whereDate('t.date', '<=', $current->format('Y-m-d'))
-                ->selectRaw("
-                    t.credit_partner_id as partner_id,
-                    SUM(
-                        CASE
-                            WHEN a.type IN ('active','expense','off_balance') THEN -t.amount_amd
-                            ELSE t.amount_amd
-                        END
-                    ) as amount
-                ")
-                ->groupBy('t.credit_partner_id');
+                $credit = DB::table('transactions as t')
+                    ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
+                    ->whereNull('t.deleted_at')
+                    ->whereNotNull('t.credit_partner_id')
+                    ->whereIn('t.credit_account_id', $loanPortionIds)
+                    ->whereDate('t.date', '<=', $current->format('Y-m-d'))
+                    ->selectRaw("
+                        t.credit_partner_id as partner_id,
+                        SUM(
+                            CASE
+                                WHEN a.type IN ('active','expense','off_balance') THEN -t.amount_amd
+                                ELSE t.amount_amd
+                            END
+                        ) as amount
+                    ")
+                    ->groupBy('t.credit_partner_id');
 
-            $partnerBalances = DB::query()
-                ->fromSub($debit->unionAll($credit), 'x')
-                ->selectRaw("
-                    partner_id,
-                    SUM(amount) as balance
-                ")
-                ->groupBy('partner_id')
-                ->having('balance', '>', 0)
-                ->get()
-                ->keyBy('partner_id');
-            foreach ($partnerBalances as $partnerData) {
-                $partnerId = $partnerData->partner_id;
-                if (!$partnerId) continue;
+                $partnerBalances = DB::query()
+                    ->fromSub($debit->unionAll($credit), 'x')
+                    ->selectRaw("
+                        partner_id,
+                        SUM(amount) as balance
+                    ")
+                    ->groupBy('partner_id')
+                    ->having('balance', '>', 0)
+                    ->get()
+                    ->keyBy('partner_id');
+                foreach ($partnerBalances as $partnerData) {
+                    $partnerId = $partnerData->partner_id;
+                    if (!$partnerId) continue;
 
-                $classification = ClassificationHistory::where('client_id', $partnerId)
-                    ->where('date', '<=', $current->format('Y-m-d'))
-                    ->orderBy('date', 'desc')
-                    ->first();
+                    $classification = ClassificationHistory::where('client_id', $partnerId)
+                        ->whereDate('date', '<=', $current->format('Y-m-d'))
+                        ->orderBy('date', 'desc')
+                        ->first();
 
-                if (!$classification) {
-                    $client = \App\Models\Client::find($partnerId);
-                    $classification = $client?->classification;
+                    if (!$classification) {
+                        $client = \App\Models\Client::find($partnerId);
+                        $classification = $client?->classification;
+                    }
+
+                    if (!$classification) continue;
+
+                    $riskKey = (int) $classification->risk_weight;
+                    if (!isset($riskColumns[$riskKey])) continue;
+
+                    $amount = (float) $partnerData->balance;
+                    $reservePercent = (float) ($classification->reserve_percent ?? 0);
+
+                    $dailyData[$riskKey]['amount'] += $amount;
+                    $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
                 }
-
-                if (!$classification) continue;
-
-                $riskKey = (int) $classification->risk_weight;
-                if (!isset($riskColumns[$riskKey])) continue;
-
-                $amount = (float) $partnerData->balance;
-                $reservePercent = (float) ($classification->reserve_percent ?? 0);
-
-                $dailyData[$riskKey]['amount'] += $amount;
-                $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
             }
             foreach ($dailyData as $risk => $values) {
                 $col = $riskColumns[$risk];
