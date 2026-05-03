@@ -131,36 +131,41 @@ class CreditRegistrySoapClient
         $msgId       = 'urn:uuid:' . $this->uuid4();
         $now         = gmdate('Y-m-d\TH:i:s\Z');
         $expires     = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
-        $this->bstId = 'X509-' . $this->uuid4(); // Ոմանք "X509-" prefix ակնկալում են
+        $this->bstId = 'X509-' . $this->uuid4();
 
-        // Certificate-ը DER base64-ով
         $rawPem = file_get_contents(self::CERT_PATH);
         if (!openssl_x509_export(openssl_x509_read($rawPem), $cleanPem)) {
             throw new \RuntimeException('DEGS: client.crt-ը parse չեղավ');
         }
         $certB64 = preg_replace('/-----[^-]+-----|[\r\n\s]/', '', $cleanPem);
 
-        // SOAP 1.2 Envelope — whitespace-ը controlled
-        return <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="{$this->ns('SOAP_NS')}" xmlns:a="{$this->ns('WSA_NS')}" xmlns:u="{$this->ns('WSU_NS')}" xmlns:o="{$this->ns('WSSE_NS')}">
-  <s:Header>
-    <a:Action s:mustUnderstand="1">{$actionUrl}</a:Action>
-    <a:MessageID>{$msgId}</a:MessageID>
-    <a:To s:mustUnderstand="1">{$this->ns('ENDPOINT')}</a:To>
-    <o:Security s:mustUnderstand="1">
-      <u:Timestamp u:Id="_ts">
-        <u:Created>{$now}</u:Created>
-        <u:Expires>{$expires}</u:Expires>
-      </u:Timestamp>
-      <o:BinarySecurityToken u:Id="{$this->bstId}" ValueType="{$this->ns('X509_VALUETYPE')}" EncodingType="{$this->ns('B64_ENCODINGTYPE')}">{$certB64}</o:BinarySecurityToken>
-    </o:Security>
-  </s:Header>
-  <s:Body u:Id="_body">{$bodyContent}</s:Body>
-</s:Envelope>
-XML;
+        // ՈՉ heredoc, ՈՉ newline/indent — մաքուր inline XML
+        return '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<s:Envelope'
+            .   ' xmlns:s="' . self::SOAP_NS  . '"'
+            .   ' xmlns:a="' . self::WSA_NS   . '"'
+            .   ' xmlns:u="' . self::WSU_NS   . '"'
+            .   ' xmlns:o="' . self::WSSE_NS  . '">'
+            .   '<s:Header>'
+            .     '<a:Action s:mustUnderstand="1">' . $actionUrl . '</a:Action>'
+            .     '<a:MessageID>' . $msgId . '</a:MessageID>'
+            .     '<a:To s:mustUnderstand="1">' . self::ENDPOINT . '</a:To>'
+            .     '<o:Security s:mustUnderstand="1">'
+            .       '<u:Timestamp u:Id="_ts">'
+            .         '<u:Created>' . $now     . '</u:Created>'
+            .         '<u:Expires>' . $expires . '</u:Expires>'
+            .       '</u:Timestamp>'
+            .       '<o:BinarySecurityToken'
+            .         ' u:Id="'         . $this->bstId          . '"'
+            .         ' ValueType="'    . self::X509_VALUETYPE   . '"'
+            .         ' EncodingType="' . self::B64_ENCODINGTYPE . '">'
+            .         $certB64
+            .       '</o:BinarySecurityToken>'
+            .     '</o:Security>'
+            .   '</s:Header>'
+            .   '<s:Body u:Id="_body">' . $bodyContent . '</s:Body>'
+            . '</s:Envelope>';
     }
-
     // namespace helper
     private function ns(string $const): string
     {
