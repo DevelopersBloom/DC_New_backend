@@ -117,13 +117,15 @@ if ($old) $sigNode->removeChild($old);
 
 $keyInfo = $dom->createElementNS($dsigNs, 'ds:KeyInfo');
 $str     = $dom->createElementNS($secNs, 'o:SecurityTokenReference');
-$kid     = $dom->createElementNS($secNs, 'o:KeyIdentifier');
-$kid->setAttribute('ValueType',
-    'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1');
-$kid->setAttribute('EncodingType',
-    'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary');
-$kid->nodeValue = $thumbprint;
-$str->appendChild($kid);
+
+$ref = $dom->createElementNS($secNs, 'o:Reference');
+$ref->setAttribute('URI', '#' . $bstId);
+$ref->setAttribute(
+    'ValueType',
+    'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3'
+);
+
+$str->appendChild($ref);
 $keyInfo->appendChild($str);
 $sigNode->appendChild($keyInfo);
 
