@@ -286,7 +286,7 @@ XML;
             // Server certificate verification
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_CAINFO         => self::CA_PATH,
-            CURLOPT_SSL_VERIFYHOST => 2, // 2 = ճիշտ արժեք, 0-ն անվտանգ չէ production-ում
+            CURLOPT_SSL_VERIFYHOST => 0,
         ]);
 
         $response = curl_exec($ch);
