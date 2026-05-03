@@ -9,249 +9,237 @@ use DOMXPath;
 
 class CreditRegistrySoapClient
 {
-    private const ENDPOINT   = 'https://100.100.100.60:8888/DEGSHost';
-    private const ACTION_NS  = 'http://tempuri.org/IDegsNSS/';
-    private const CERT_PATH  = '/etc/ssl/degs/client.crt';
-    private const KEY_PATH   = '/etc/ssl/degs/client.key';
-    private const CA_PATH    = '/etc/ssl/certs/DEGSTESTRootCA.pem';
-    private const APP_NAME   = 'ACREDIT';
+    private const ENDPOINT  = 'https://100.100.100.60:8888/DEGSHost';
+    private const ACTION_NS = 'http://tempuri.org/IDegsNSS/';
+    private const CERT_PATH = '/etc/ssl/degs/client.crt';
+    private const KEY_PATH  = '/etc/ssl/degs/client.key';
+    private const CA_PATH   = '/etc/ssl/certs/DEGSTESTRootCA.pem';
+    private const APP_NAME  = 'ACREDIT';
 
+    // -------------------------------------------------------------------------
+    // Public API
+    // -------------------------------------------------------------------------
 
     public function sendL001(string $xmlContent, bool $dryRun = false): int
     {
-        return $this->sendRequest('L001', $xmlContent, false, $dryRun);
+        return $this->sendRequest('L001', $xmlContent, $dryRun);
     }
 
     public function sendL002(string $xmlContent, bool $dryRun = false): int
     {
-        return $this->sendRequest('L002', $xmlContent, false, $dryRun);
+        return $this->sendRequest('L002', $xmlContent, $dryRun);
     }
 
     public function sendL003(string $xmlContent, bool $dryRun = false): int
     {
-        return $this->sendRequest('L003', $xmlContent, false, $dryRun);
+        return $this->sendRequest('L003', $xmlContent, $dryRun);
     }
-
 
     public function isResponsePrepared(int $requestId): bool
     {
-        $body = '<tns:IsResponsePrepared xmlns:tns="http://tempuri.org/">
-                    <tns:requsetId>' . $requestId . '</tns:requsetId>
-                 </tns:IsResponsePrepared>';
+        $bodyContent = '<tns:IsResponsePrepared xmlns:tns="http://tempuri.org/"><tns:requsetId>'
+            . $requestId
+            . '</tns:requsetId></tns:IsResponsePrepared>';
 
-        $responseXml = $this->callSoap('IsResponsePrepared', $body);
-        $dom = new DOMDocument();
-        $dom->loadXML($responseXml);
+        $response = $this->dispatch('IsResponsePrepared', $bodyContent);
+        $dom      = new DOMDocument();
+        $dom->loadXML($response);
         $xpath = new DOMXPath($dom);
         $nodes = $xpath->query('//*[local-name()="IsResponsePreparedResult"]');
 
-        return $nodes->length > 0 && strtolower($nodes->item(0)->textContent) === 'true';
+        return $nodes->length > 0 && strtolower(trim($nodes->item(0)->textContent)) === 'true';
     }
-
 
     public function getResponse(int $requestId): string
     {
-        $body = '<tns:GetResponse xmlns:tns="http://tempuri.org/">
-                    <tns:requsetId>' . $requestId . '</tns:requsetId>
-                 </tns:GetResponse>';
+        $bodyContent = '<tns:GetResponse xmlns:tns="http://tempuri.org/"><tns:requsetId>'
+            . $requestId
+            . '</tns:requsetId></tns:GetResponse>';
 
-        return $this->callSoap('GetResponse', $body);
+        return $this->dispatch('GetResponse', $bodyContent);
     }
-
 
     public function isAlive(): bool
     {
-        $body = '<tns:IsAlive xmlns:tns="http://tempuri.org/"/>';
         try {
-            $response = $this->callSoap('IsAlive', $body);
-            $dom = new DOMDocument();
+            $bodyContent = '<tns:IsAlive xmlns:tns="http://tempuri.org/"/>';
+            $response    = $this->dispatch('IsAlive', $bodyContent);
+            $dom         = new DOMDocument();
             $dom->loadXML($response);
             $xpath = new DOMXPath($dom);
             $nodes = $xpath->query('//*[local-name()="IsAliveResult"]');
-            return $nodes->length > 0 && strtolower($nodes->item(0)->textContent) === 'true';
-        } catch (\Throwable) {
+
+            return $nodes->length > 0 && strtolower(trim($nodes->item(0)->textContent)) === 'true';
+        } catch (\Throwable $e) {
+            \Log::error('DEGS isAlive failed', ['error' => $e->getMessage()]);
             return false;
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Internal — SendRequest wrapper
+    // -------------------------------------------------------------------------
 
-    private function sendRequest(
-        string $docType,
-        string $xmlContent,
-        bool   $isDelay,
-        bool   $dryRun
-    ): int {
-        $escapedXml = htmlspecialchars($xmlContent, ENT_XML1 | ENT_QUOTES, 'UTF-8');
-
-        $body = sprintf(
-            '<tns:SendRequest xmlns:tns="http://tempuri.org/">
-                <tns:AppName>%s</tns:AppName>
-                <tns:DocType>%s</tns:DocType>
-                <tns:IsDelay>%s</tns:IsDelay>
-                <tns:xml>%s</tns:xml>
-             </tns:SendRequest>',
-            self::APP_NAME,
-            $docType,
-            $isDelay ? 'true' : 'false',
-            $escapedXml
-        );
+    private function sendRequest(string $docType, string $xmlContent, bool $dryRun): int
+    {
+        $escapedXml  = htmlspecialchars($xmlContent, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        $bodyContent = '<tns:SendRequest xmlns:tns="http://tempuri.org/">'
+            . '<tns:AppName>' . self::APP_NAME . '</tns:AppName>'
+            . '<tns:DocType>' . $docType . '</tns:DocType>'
+            . '<tns:IsDelay>false</tns:IsDelay>'
+            . '<tns:xml>' . $escapedXml . '</tns:xml>'
+            . '</tns:SendRequest>';
 
         if ($dryRun) {
-            $envelope = $this->buildEnvelope('SendRequest', $body);
-            $signed   = $this->signEnvelope($envelope);
-            \Log::debug('DEGS DryRun SOAP Envelope', ['xml' => $signed]);
+            $envelope  = $this->buildEnvelope('SendRequest', $bodyContent);
+            $signed    = $this->signEnvelope($envelope);
+            \Log::debug('DEGS DryRun', ['xml' => $signed]);
             return 0;
         }
 
-        $responseXml = $this->callSoap('SendRequest', $body);
+        $response = $this->dispatch('SendRequest', $bodyContent);
 
-        return $this->extractSendRequestResult($responseXml);
+        return $this->extractSendRequestResult($response);
     }
 
-    private function callSoap(string $action, string $bodyContent): string
+    // -------------------------------------------------------------------------
+    // Internal — build → sign → send
+    // -------------------------------------------------------------------------
+
+    private function dispatch(string $action, string $bodyContent): string
     {
-        $envelope = $this->buildEnvelope($action, $bodyContent);
-        $signed   = $this->signEnvelope($envelope);
-
-        return $this->sendViaCurl($signed, $action);
+        $envelope  = $this->buildEnvelope($action, $bodyContent);
+        $signed    = $this->signEnvelope($envelope);
+        return $this->sendViaCurl($action, $signed);
     }
 
+    // -------------------------------------------------------------------------
+    // Step 1 — Build SOAP envelope
+    // -------------------------------------------------------------------------
 
     private function buildEnvelope(string $action, string $bodyContent): string
     {
-        $msgId    = 'urn:uuid:' . $this->uuid();
-        $now      = gmdate('Y-m-d\TH:i:s\Z');
-        $expires  = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
-        $endpoint = self::ENDPOINT;
         $actionUrl = self::ACTION_NS . $action;
+        $endpoint  = self::ENDPOINT;
+        $msgId     = 'urn:uuid:' . $this->uuid();
+        $now       = gmdate('Y-m-d\TH:i:s\Z');
+        $expires   = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
 
-        return <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope
-    xmlns:s="http://www.w3.org/2003/05/soap-envelope"
-    xmlns:a="http://www.w3.org/2005/08/addressing"
-    xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
-  <s:Header>
-    <a:Action s:mustUnderstand="1">{$actionUrl}</a:Action>
-    <a:MessageID>{$msgId}</a:MessageID>
-    <a:To s:mustUnderstand="1" u:Id="_to">{$endpoint}</a:To>
-    <o:Security
-        s:mustUnderstand="1"
-        xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-      <u:Timestamp u:Id="_ts">
-        <u:Created>{$now}</u:Created>
-        <u:Expires>{$expires}</u:Expires>
-      </u:Timestamp>
-    </o:Security>
-  </s:Header>
-  <s:Body u:Id="_body">
-    {$bodyContent}
-  </s:Body>
-</s:Envelope>
-XML;
+        // Certificate — base64 DER for BinarySecurityToken
+        $certPem = file_get_contents(self::CERT_PATH);
+        $certDer = base64_decode(str_replace(
+            ['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\n", "\r", ' '],
+            '',
+            $certPem
+        ));
+        $certB64     = base64_encode($certDer);
+        $this->bstId = 'bst-' . $this->uuid(); // save for signEnvelope
+
+        return '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<s:Envelope'
+            .     ' xmlns:s="http://www.w3.org/2003/05/soap-envelope"'
+            .     ' xmlns:a="http://www.w3.org/2005/08/addressing"'
+            .     ' xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">'
+            .   '<s:Header>'
+            .     '<a:Action s:mustUnderstand="1">' . $actionUrl . '</a:Action>'
+            .     '<a:MessageID>' . $msgId . '</a:MessageID>'
+            .     '<a:To s:mustUnderstand="1" u:Id="_to">' . $endpoint . '</a:To>'
+            .     '<o:Security'
+            .         ' s:mustUnderstand="1"'
+            .         ' xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">'
+            .       '<u:Timestamp u:Id="_ts">'
+            .         '<u:Created>' . $now . '</u:Created>'
+            .         '<u:Expires>' . $expires . '</u:Expires>'
+            .       '</u:Timestamp>'
+            .       '<o:BinarySecurityToken'
+            .           ' u:Id="' . $this->bstId . '"'
+            .           ' ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3"'
+            .           ' EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">'
+            .         $certB64
+            .       '</o:BinarySecurityToken>'
+            .     '</o:Security>'
+            .   '</s:Header>'
+            .   '<s:Body u:Id="_body">'
+            .     $bodyContent
+            .   '</s:Body>'
+            . '</s:Envelope>';
     }
 
+    // -------------------------------------------------------------------------
+    // Step 2 — Sign envelope (WS-Security X.509, SHA-256)
+    // -------------------------------------------------------------------------
+
+    private string $bstId = '';
 
     private function signEnvelope(string $envelopeXml): string
     {
+        $secNs  = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
+        $dsigNs = 'http://www.w3.org/2000/09/xmldsig#';
+
         $dom = new DOMDocument();
         $dom->loadXML($envelopeXml);
 
+        // Security node — signature-ն այստեղ կդրվի
+        $secNode = $dom->getElementsByTagNameNS($secNs, 'Security')->item(0);
+        if (!$secNode) {
+            throw new \RuntimeException('DEGS: Security node not found in envelope');
+        }
+
+        // XMLSecurityDSig
         $dsig = new XMLSecurityDSig('');
         $dsig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
 
-        // WSDL policy: SignedParts → Header "To" + Body
-        $dsig->addReference(
-            $dom,
-            XMLSecurityDSig::SHA256,
-            ['http://www.w3.org/2001/10/xml-exc-c14n#'],
-            ['uri' => '#_body', 'overwrite' => false]
-        );
+        // Ստորագրել՝ Timestamp + To + Body
+        foreach (['#_ts', '#_to', '#_body'] as $refUri) {
+            $dsig->addReference(
+                $dom,
+                XMLSecurityDSig::SHA256,
+                ['http://www.w3.org/2001/10/xml-exc-c14n#'],
+                ['uri' => $refUri, 'overwrite' => false]
+            );
+        }
 
-        $dsig->addReference(
-            $dom,
-            XMLSecurityDSig::SHA256,
-            ['http://www.w3.org/2001/10/xml-exc-c14n#'],
-            ['uri' => '#_to', 'overwrite' => false]
-        );
+        // Private key
+        $privKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
+        $privKey->loadKey(self::KEY_PATH, true);
+        $dsig->sign($privKey);
 
-        $dsig->addReference(
-            $dom,
-            XMLSecurityDSig::SHA256,
-            ['http://www.w3.org/2001/10/xml-exc-c14n#'],
-            ['uri' => '#_ts', 'overwrite' => false]
-        );
+        // appendSignature — Security node-ի մեջ տեղադրել
+        $dsig->appendSignature($secNode);
 
-        // Private key load
-        $key = new XMLSecurityKey(XMLSecurityKey::RSA_SHA256, ['type' => 'private']);
-        $key->loadKey(self::KEY_PATH, true);
+        // Signature node վերցնել (հենց appendSignature-ից հետո)
+        $sigNode = $secNode->getElementsByTagNameNS($dsigNs, 'Signature')->item(0);
+        if (!$sigNode) {
+            throw new \RuntimeException('DEGS: Signature node not found after signing');
+        }
 
-        $dsig->sign($key);
+        // Հին KeyInfo հեռացնել (եթե կա)
+        $oldKeyInfo = $sigNode->getElementsByTagNameNS($dsigNs, 'KeyInfo')->item(0);
+        if ($oldKeyInfo) {
+            $sigNode->removeChild($oldKeyInfo);
+        }
 
-        // Certificate — ThumbprintReference (WSDL policy-ն սա է պահանջում)
-        $certPem = file_get_contents(self::CERT_PATH);
-        $certDer = base64_decode(
-            str_replace(
-                ['-----BEGIN CERTIFICATE-----', '-----END CERTIFICATE-----', "\n", "\r", " "],
-                '',
-                $certPem
-            )
-        );
-        $thumbprint = base64_encode(hash('sha1', $certDer, true));
-
-        $secNs = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
-        $secNode = $dom->getElementsByTagNameNS($secNs, 'Security')->item(0);
-
-        // BinarySecurityToken
-        $bstId  = 'uuid-' . $this->uuid();
-        $bst    = $dom->createElementNS($secNs, 'o:BinarySecurityToken');
-        $bst->setAttribute('u:Id', $bstId);
-        $bst->setAttribute(
+        // Նոր KeyInfo → SecurityTokenReference → Reference to BinarySecurityToken
+        $keyInfo = $dom->createElementNS($dsigNs, 'ds:KeyInfo');
+        $str     = $dom->createElementNS($secNs, 'o:SecurityTokenReference');
+        $bstRef  = $dom->createElementNS($secNs, 'o:Reference');
+        $bstRef->setAttribute('URI', '#' . $this->bstId);
+        $bstRef->setAttribute(
             'ValueType',
             'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3'
         );
-        $bst->setAttribute(
-            'EncodingType',
-            'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary'
-        );
-        $bst->nodeValue = base64_encode($certDer);
-        $secNode->insertBefore($bst, $secNode->firstChild);
-
-        $sigNode = $dom->getElementsByTagNameNS('http://www.w3.org/2000/09/xmldsig#', 'Signature')->item(0);
-        if ($sigNode) {
-            $keyInfo = $dom->createElementNS('http://www.w3.org/2000/09/xmldsig#', 'ds:KeyInfo');
-
-            $str = $dom->createElementNS($secNs, 'o:SecurityTokenReference');
-            $str->setAttributeNS(
-                'http://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd',
-                'o11:TokenType',
-                'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3'
-            );
-
-            $kid = $dom->createElementNS($secNs, 'o:KeyIdentifier');
-            $kid->setAttribute(
-                'ValueType',
-                'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1'
-            );
-            $kid->setAttribute(
-                'EncodingType',
-                'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary'
-            );
-            $kid->nodeValue = $thumbprint;
-
-            $str->appendChild($kid);
-            $keyInfo->appendChild($str);
-            $sigNode->appendChild($keyInfo);
-
-            $secNode->appendChild($sigNode);
-        }
+        $str->appendChild($bstRef);
+        $keyInfo->appendChild($str);
+        $sigNode->appendChild($keyInfo);
 
         return $dom->saveXML();
     }
 
-    // ─── cURL sender (mTLS) ───────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
+    // Step 3 — Send via cURL (mTLS)
+    // -------------------------------------------------------------------------
 
-    private function sendViaCurl(string $signedXml, string $action): string
+    private function sendViaCurl(string $action, string $signedXml): string
     {
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -264,13 +252,14 @@ XML;
                 'Content-Type: application/soap+xml; charset=utf-8',
                 'SOAPAction: "' . self::ACTION_NS . $action . '"',
             ],
-            // mTLS
+            // mTLS — client certificate
             CURLOPT_SSLCERT        => self::CERT_PATH,
             CURLOPT_SSLKEY         => self::KEY_PATH,
-            // CA verification
+            // CA verification — server cert-ը ստուգել
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_CAINFO         => self::CA_PATH,
-            CURLOPT_SSL_VERIFYHOST => 2,
+            // 0 = IP-ով կապվելիս hostname match չի ստուգվի
+            CURLOPT_SSL_VERIFYHOST => 0,
         ]);
 
         $response = curl_exec($ch);
@@ -279,31 +268,34 @@ XML;
         curl_close($ch);
 
         if ($curlErr) {
-            throw new \RuntimeException("cURL error: {$curlErr}");
+            throw new \RuntimeException('DEGS cURL error: ' . $curlErr);
         }
 
         if ($httpCode >= 400) {
-            $fault = $this->extractFault($response);
-            throw new \RuntimeException("SOAP HTTP {$httpCode}: {$fault}");
+            throw new \RuntimeException(
+                'DEGS SOAP error HTTP ' . $httpCode . ': ' . $this->extractFault($response)
+            );
         }
 
         return $response;
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
     private function extractSendRequestResult(string $xml): int
     {
         $dom = new DOMDocument();
         if (!@$dom->loadXML($xml)) {
-            throw new \RuntimeException('Invalid XML response: ' . substr($xml, 0, 300));
+            throw new \RuntimeException('DEGS: Invalid XML response: ' . substr($xml, 0, 300));
         }
 
         $xpath = new DOMXPath($dom);
         $nodes = $xpath->query('//*[local-name()="SendRequestResult"]');
 
         if ($nodes->length === 0) {
-            throw new \RuntimeException('SendRequestResult not found in response');
+            throw new \RuntimeException('DEGS: SendRequestResult not found. Response: ' . substr($xml, 0, 500));
         }
 
         return (int) $nodes->item(0)->textContent;
@@ -315,13 +307,18 @@ XML;
         if (!@$dom->loadXML($xml)) {
             return substr($xml, 0, 500);
         }
+
         $xpath = new DOMXPath($dom);
-        $texts = $xpath->query('//*[local-name()="Text"] | //*[local-name()="Value"]');
         $parts = [];
-        foreach ($texts as $t) {
-            $parts[] = $t->textContent;
+
+        foreach ($xpath->query('//*[local-name()="Text"]') as $node) {
+            $parts[] = $node->textContent;
         }
-        return implode(' | ', $parts) ?: $xml;
+        foreach ($xpath->query('//*[local-name()="Value"]') as $node) {
+            $parts[] = $node->textContent;
+        }
+
+        return $parts ? implode(' | ', array_unique($parts)) : substr($xml, 0, 500);
     }
 
     private function uuid(): string
