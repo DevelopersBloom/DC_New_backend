@@ -188,7 +188,7 @@ class V06Export
 
             $weightedByClassification[$name] += $interest;
             $reserve_percent = $contract->client->classification->reserve_percent ?? 0;
-            $reserveByClassification[$name] += ($contract->mother ?? 0) * $reserve_percent / 100;
+            $reserveByClassification[$name] += $amount * $reserve_percent / 100;
         }
 
         $rowsOnTime = [15, 16];
