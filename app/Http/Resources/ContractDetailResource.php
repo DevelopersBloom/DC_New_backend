@@ -71,9 +71,9 @@ class ContractDetailResource extends JsonResource
                 'name'              => $this->client->name,
                 'surname'           => $this->client->surname,
                 'middle_name'       => $this->client->middle_name,
-                'country'           => $this->client->country,
-                'city'              => $this->client->city,
-                'street'            => $this->client->street,
+                'country'           => $this->client->country ?? $this->client->actual_country,
+                'city'              => $this->client->city ?? $this->client->actual_community,
+                'street'            => $this->client->street ?? $this->client->actual_street_building,
                 'building'          => $this->client->building,
                 'phone'             => $this->client->phone,
                 'additional_phone'  => $this->client->additional_phone,
@@ -92,6 +92,7 @@ class ContractDetailResource extends JsonResource
                 'tax_number' => $this->client->tax_number,
                 'residency_status' => $this->client->residency_status,
                 'type' => $this->client->type,
+                'gender' => $this->client->gender,
             ],
             'guarantors' => $this->guarantors->map(function ($guarantor) {
                 return [
