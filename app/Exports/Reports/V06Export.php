@@ -370,16 +370,18 @@ class V06Export
         $rowGold = 91;
         $rowCategory2 = 92;
 
-        // Sheet2 column B: snapshot as of day before report `from`, using last class(3/4/5) within report period.
+        // Sheet2 column B: snapshot as of day before report `from`, using effective class on that snapshot date.
         $sheet2SnapshotDate = Carbon::parse($from)->subDay()->format('Y-m-d');
-        $sheet2ClientClassById = $this->sheet2ClientClassificationsBetween($dateFrom, $date);
+        $sheet2ClientClassById = $this->sheet2ClientClassificationsAsOf($sheet2SnapshotDate);
 
         $goldAmountBefore = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2SnapshotDate, $sheet2ClientClassById);
         $carAmountBefore = $this->sumSheet2ColumnBNetByCategory('car', $sheet2SnapshotDate, $sheet2ClientClassById);
         $category2AmountBefore = $this->sumSheet2ColumnBNetByCategory('category2', $sheet2SnapshotDate, $sheet2ClientClassById);
 
         $sheet2ReportDate = Carbon::parse($to)->format('Y-m-d');
-        $sheet2ClientClassByIdTo = $this->sheet2ClientClassificationsBetween($dateFrom, $sheet2ReportDate);
+        // Sheet2 column D must include clients whose effective class is 3/4/5 by report end,
+        // even if the class change happened before the report period.
+        $sheet2ClientClassByIdTo = $this->sheet2ClientClassificationsAsOf($sheet2ReportDate);
 
         $goldAmountBetween = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2ReportDate, $sheet2ClientClassByIdTo);
         $carAmountBetween = $this->sumSheet2ColumnBNetByCategory('car', $sheet2ReportDate, $sheet2ClientClassByIdTo);
