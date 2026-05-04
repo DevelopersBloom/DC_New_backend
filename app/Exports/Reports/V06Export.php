@@ -368,24 +368,29 @@ class V06Export
         $sheet2 = $spreadsheet->getSheetByName('Sheet2');
         $rowCar = 89;
         $rowGold = 91;
+        $rowCategory2 = 92;
 
-        // Sheet2 column B: snapshot as of day before report `from` (effective class 3/4/5 from history; initial contracts open that day; net 162* amounts).
+        // Sheet2 column B: snapshot as of day before report `from` (effective class 3/4/5; class 3–4 net162, class 5 net86000+net86001).
         $sheet2SnapshotDate = Carbon::parse($from)->subDay()->format('Y-m-d');
         $sheet2ClientClassById = $this->sheet2ClientClassificationsAsOf($sheet2SnapshotDate);
 
         $goldAmountBefore = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2SnapshotDate, $sheet2ClientClassById);
         $carAmountBefore = $this->sumSheet2ColumnBNetByCategory('car', $sheet2SnapshotDate, $sheet2ClientClassById);
+        $category2AmountBefore = $this->sumSheet2ColumnBNetByCategory('category2', $sheet2SnapshotDate, $sheet2ClientClassById);
 
         $goldAmountBetween = $this->sumByCategoryBetween('gold', $dateFrom, $date);
         $carAmountBetween = $this->sumByCategoryBetween('car', $dateFrom, $date);
+        $category2AmountBetween = $this->sumByCategoryBetween('category2', $dateFrom, $date);
 
         $sheet2->setCellValue("B{$rowCar}", $carAmountBefore /1000);
         $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore/1000);
-        $sheet2->setCellValue("B87", ($carAmountBefore + $goldAmountBefore) / 1000);
+        $sheet2->setCellValue("B{$rowCategory2}", $category2AmountBefore / 1000);
+        $sheet2->setCellValue("B87", ($carAmountBefore + $goldAmountBefore + $category2AmountBefore) / 1000);
 
         $sheet2->setCellValue("D{$rowCar}", $carAmountBetween / 1000);
         $sheet2->setCellValue("D{$rowGold}", $goldAmountBetween / 1000);
-        $sheet2->setCellValue("D87", ($carAmountBetween + $goldAmountBetween) / 1000);
+        $sheet2->setCellValue("D{$rowCategory2}", $category2AmountBetween / 1000);
+        $sheet2->setCellValue("D87", ($carAmountBetween + $goldAmountBetween + $category2AmountBetween) / 1000);
 
         $acc89860001 = ChartOfAccount::idByCode('89860001');
         $acc91860001 = ChartOfAccount::idByCode('91860001');
@@ -491,8 +496,8 @@ class V06Export
     }
 
     /**
-     * Sheet2 column B: by car/gold, journals through the day before the last assignment to effective class 3/4/5.
-     * Classes 3–4: net16200NV + net16201NI + net16200 (same as Sheet1). Class 5: net86000 + net86001 (86000/86001 debit−credit).
+     * Sheet2 column B: by car/gold/category_id=2, journals through the day before the last assignment to effective class 3/4/5.
+     * Class 3–4: net162 (16200NV + 16201NI + 16200). Class 5: net86000 + net86001.
      */
     private function sumSheet2ColumnBNetByCategory(string $categoryName, string $snapshotDate, array $clientIdToClass): float
     {
@@ -511,12 +516,16 @@ class V06Export
                 $q->whereNull('closed_at')
                     ->orWhereDate('closed_at', '>=', $snapshotDate);
             })
-            ->whereHas('category', function ($q) use ($categoryName) {
-                if ($categoryName === 'car') {
-                    $q->whereIn('name', ['car', 'car-purchase']);
-                } else {
-                    $q->where('name', 'gold');
-                }
+            ->when($categoryName === 'category2', function ($q) {
+                $q->where('category_id', 2);
+            }, function ($q) use ($categoryName) {
+                $q->whereHas('category', function ($q2) use ($categoryName) {
+                    if ($categoryName === 'car') {
+                        $q2->whereIn('name', ['car', 'car-purchase']);
+                    } else {
+                        $q2->where('name', 'gold');
+                    }
+                });
             })
             ->get();
 
@@ -553,8 +562,8 @@ class V06Export
             }
             if ($classId === 5) {
                 $sum += $this->contractNet86000Plus86001AtDate($doc, $contract, $asOf, $acc86000, $acc86001);
-            } else {
-                $sum += $this->contractNetPortfolioAtDate($doc, $contract, $asOf, $acc16200NV, $acc16201NI, $acc16200);
+            } elseif (in_array($classId, [3, 4], true)) {
+                $sum += $this->contractNet162AtDate($doc, $contract, $asOf, $acc16200NV, $acc16201NI, $acc16200);
             }
         }
 
@@ -562,9 +571,9 @@ class V06Export
     }
 
     /**
-     * Same net bundle as Sheet1 loop: net16200NV + net16201NI + net16200 from document journals through $asOfDate.
+     * Net162 for Sheet2 (classification ids 3–4): net16200NV + net16201NI + net16200 through $asOfDate (same rules as Sheet1).
      */
-    private function contractNetPortfolioAtDate(
+    private function contractNet162AtDate(
         DocumentJournal $doc,
         Contract $contract,
         string $asOfDate,
@@ -684,9 +693,17 @@ class V06Export
                 $q->whereHas('client.classification', function ($q2) {
                     $q2->whereNotIn('name', ['standard', 'monitored']);
                 });
-                $q->whereHas('category', function ($q3) use ($categoryName) {
-                    $q3->where('name', $categoryName);
-                });
+                if ($categoryName === 'category2') {
+                    $q->where('category_id', 2);
+                } else {
+                    $q->whereHas('category', function ($q3) use ($categoryName) {
+                        if ($categoryName === 'car') {
+                            $q3->whereIn('name', ['car', 'car-purchase']);
+                        } else {
+                            $q3->where('name', $categoryName);
+                        }
+                    });
+                }
             })
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->sum('amount_amd');
