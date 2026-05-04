@@ -395,29 +395,30 @@ class V06Export
         $sheet2->setCellValue("D{$rowCategory2}", $category2AmountBetween / 1000);
         $sheet2->setCellValue("D87", ($carAmountBetween + $goldAmountBetween + $category2AmountBetween) / 1000);
 
-        $acc89860001 = ChartOfAccount::idByCode('89860001');
-        $acc91860001 = ChartOfAccount::idByCode('91860001');
+        $acc86000 = ChartOfAccount::idByCode('86000');
+        $acc860001 = ChartOfAccount::idByCode('86001') ?: ChartOfAccount::idByCode('860001');
 
-        $balance89860001 = $this->sumAccountBefore($acc89860001, 'debit_account_id', $dateFrom);
-        $balance91860001 = $this->sumAccountBefore($acc91860001, 'debit_account_id', $dateFrom);
+        // Column H is opening balance at period start (before date_from).
+        $balance86000 = $this->balanceAccountBefore($acc86000, $dateFrom);
+        $balance860001 = $this->balanceAccountBefore($acc860001, $dateFrom);
 
-        $sheet2->setCellValue("H89", $balance89860001 / 1000);
-        $sheet2->setCellValue("H91", $balance91860001 / 1000);
-        $sheet2->setCellValue("H87", ($balance89860001 + $balance91860001) / 1000);
+        $sheet2->setCellValue("H89", ($balance86000 + $balance860001) / 1000);
+        $sheet2->setCellValue("H91", 0);
+        $sheet2->setCellValue("H87", ($balance86000 + $balance860001) / 1000);
 
-        $balance89860001_J = $this->sumAccountBetween($acc89860001, 'debit_account_id', $dateFrom, $date);
-        $balance91860001_J = $this->sumAccountBetween($acc91860001, 'debit_account_id', $dateFrom, $date);
+        $debit86000_J = $this->sumAccountBetween($acc86000, 'debit_account_id', $dateFrom, $date);
+        $debit860001_J = $this->sumAccountBetween($acc860001, 'debit_account_id', $dateFrom, $date);
 
-        $credit89860001_J = $this->sumAccountBetween($acc89860001, 'credit_account_id', $dateFrom, $date);
-        $credit91860001_J = $this->sumAccountBetween($acc91860001, 'credit_account_id', $dateFrom, $date);
+        $credit86000_J = $this->sumAccountBetween($acc86000, 'credit_account_id', $dateFrom, $date);
+        $credit860001_J = $this->sumAccountBetween($acc860001, 'credit_account_id', $dateFrom, $date);
 
-        $sheet2->setCellValue("J89", $balance89860001_J / 1000);
-        $sheet2->setCellValue("J91", $balance91860001_J / 1000);
-        $sheet2->setCellValue("J87", ($balance89860001_J + $balance91860001_J) / 1000);
+        $sheet2->setCellValue("J89", ($debit86000_J + $debit860001_J) / 1000);
+        $sheet2->setCellValue("J91", 0);
+        $sheet2->setCellValue("J87", ($debit86000_J + $debit860001_J) / 1000);
 
-        $sheet2->setCellValue("L89", $credit89860001_J / 1000);
-        $sheet2->setCellValue("L91", $credit91860001_J / 1000);
-        $sheet2->setCellValue("L87", ($credit89860001_J + $credit91860001_J) / 1000);
+        $sheet2->setCellValue("L89", ($credit86000_J + $credit860001_J) / 1000);
+        $sheet2->setCellValue("L91", 0);
+        $sheet2->setCellValue("L87", ($credit86000_J + $credit860001_J) / 1000);
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
@@ -750,8 +751,29 @@ class V06Export
     {
         if (!$accountId) return 0;
         return DocumentJournal::where($column, $accountId)
-            ->whereDate('date', '<=', $dateFrom)
+            // Opening balance at period start must exclude same-day movements.
+            ->whereDate('date', '<', $dateFrom)
             ->sum('amount_amd');
+    }
+
+    /**
+     * Opening balance for one account before period start (debit - credit).
+     */
+    private function balanceAccountBefore($accountId, string $dateFrom): float
+    {
+        if (!$accountId) {
+            return 0;
+        }
+
+        $debit = DocumentJournal::where('debit_account_id', $accountId)
+            ->whereDate('date', '<', $dateFrom)
+            ->sum('amount_amd');
+
+        $credit = DocumentJournal::where('credit_account_id', $accountId)
+            ->whereDate('date', '<', $dateFrom)
+            ->sum('amount_amd');
+
+        return (float) $debit - (float) $credit;
     }
 
     /**
