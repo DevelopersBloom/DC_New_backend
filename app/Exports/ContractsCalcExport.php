@@ -170,6 +170,7 @@
 namespace App\Exports;
 
 use App\Http\Resources\ContractDetailResource;
+use App\Models\ClassificationHistory;
 use App\Models\ContractReserveHistory;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -259,15 +260,19 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
                 ? $contract->calc_date->format('d-m-Y')
                 : '';
 
-            $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
-                ->where('date', '<=', $contract->calc_date)
-                ->orderBy('date', 'desc')
+//            $closestReserve = ContractReserveHistory::where('contract_id', $contract->id)
+//                ->where('date', '<=', $contract->calc_date)
+//                ->orderBy('date', 'desc')
+//                ->first();
+            $classHistory = ClassificationHistory::where('client_id', $contract->client_id)
+                ->where('date','<=', $contract->calc_date)
+                ->orderBy('date','desc')
                 ->first();
-            $clientClass = $contract->client->classification;
-            if ($closestReserve) {
+
+            if ($classHistory) {
 //                $contractData['reserve'] = $closestReserve->reserve_amount;
-                $contractData['risk_weight_percent'] = $closestReserve->classification->risk_weight ?? 0;
-                $contractData['reserve_percent'] = $closestReserve->classification->reserve_percent ?? 0;
+                $contractData['risk_weight_percent'] = $classHistory->risk_weight ?? 0;
+                $contractData['reserve_percent'] = $classHistory->reserve_percent ?? 0;
             } else {
 //                $contractData['reserve'] = 0;
                 $contractData['risk_weight_percent'] = $clientClass->risk_weight ?? 0;
