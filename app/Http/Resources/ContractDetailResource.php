@@ -93,6 +93,7 @@ class ContractDetailResource extends JsonResource
                 'residency_status' => $this->client->residency_status,
                 'type' => $this->client->type,
                 'gender' => $this->client->gender,
+                'document_type' => $this->client->document_type,
             ],
             'guarantors' => $this->guarantors->map(function ($guarantor) {
                 return [
