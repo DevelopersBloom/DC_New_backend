@@ -370,16 +370,16 @@ class V06Export
         $rowGold = 91;
         $rowCategory2 = 92;
 
-        // Sheet2 column B: snapshot as of day before report `from` (effective class 3/4/5; class 3–4 net162, class 5 net86000+net86001).
+        // Sheet2 column B: snapshot as of day before report `from`, using last class(3/4/5) within report period.
         $sheet2SnapshotDate = Carbon::parse($from)->subDay()->format('Y-m-d');
-        $sheet2ClientClassById = $this->sheet2ClientClassificationsAsOf($sheet2SnapshotDate);
+        $sheet2ClientClassById = $this->sheet2ClientClassificationsBetween($dateFrom, $date);
 
         $goldAmountBefore = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2SnapshotDate, $sheet2ClientClassById);
         $carAmountBefore = $this->sumSheet2ColumnBNetByCategory('car', $sheet2SnapshotDate, $sheet2ClientClassById);
         $category2AmountBefore = $this->sumSheet2ColumnBNetByCategory('category2', $sheet2SnapshotDate, $sheet2ClientClassById);
 
         $sheet2ReportDate = Carbon::parse($to)->format('Y-m-d');
-        $sheet2ClientClassByIdTo = $this->sheet2ClientClassificationsAsOf($sheet2ReportDate);
+        $sheet2ClientClassByIdTo = $this->sheet2ClientClassificationsBetween($dateFrom, $sheet2ReportDate);
 
         $goldAmountBetween = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2ReportDate, $sheet2ClientClassByIdTo);
         $carAmountBetween = $this->sumSheet2ColumnBNetByCategory('car', $sheet2ReportDate, $sheet2ClientClassByIdTo);
@@ -463,6 +463,37 @@ class V06Export
     }
 
     /**
+     * Sheet2 column D: map client_id => last classification_id (3/4/5) inside report period [$dateFrom, $dateTo].
+     *
+     * @return array<int, int> client_id => classification_id
+     */
+    private function sheet2ClientClassificationsBetween(string $dateFrom, string $dateTo): array
+    {
+        $maxDates = DB::table('classification_histories')
+            ->select('client_id', DB::raw('MAX(`date`) as max_date'))
+            ->whereBetween(DB::raw('DATE(`date`)'), [$dateFrom, $dateTo])
+            ->whereNull('deleted_at')
+            ->groupBy('client_id');
+
+        $latestRowIds = DB::table('classification_histories as ch')
+            ->joinSub($maxDates, 'md', function ($join) {
+                $join->on('ch.client_id', '=', 'md.client_id')
+                    ->on('ch.date', '=', 'md.max_date');
+            })
+            ->whereNull('ch.deleted_at')
+            ->groupBy('ch.client_id')
+            ->select('ch.client_id', DB::raw('MAX(ch.id) as latest_id'));
+
+        return DB::table('classification_histories as ch')
+            ->joinSub($latestRowIds, 'lr', function ($join) {
+                $join->on('ch.id', '=', 'lr.latest_id');
+            })
+            ->whereIn('ch.classification_id', [3, 4, 5])
+            ->pluck('ch.classification_id', 'ch.client_id')
+            ->all();
+    }
+
+    /**
      * Calendar date of the most recent classification_histories row (on or before $snapshotDate) where the
      * client was set to $classificationId (journal nets run through the day before this date).
      */
@@ -495,7 +526,7 @@ class V06Export
             return $snapshotDate;
         }
 
-        return Carbon::parse($assigned)->subDay()->format('Y-m-d');
+        return Carbon::parse($assigned)->format('Y-m-d');
     }
 
     /**
@@ -559,7 +590,7 @@ class V06Export
             if (!in_array($classId, [3, 4, 5], true)) {
                 continue;
             }
-            $asOf = $this->sheet2JournalAsOfDate($classId, $snapshotDate, (int) $contract->client_id);
+            $asOf = $snapshotDate;
             if (Carbon::parse($contract->date)->format('Y-m-d') > $asOf) {
                 continue;
             }
