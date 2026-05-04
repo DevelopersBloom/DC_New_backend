@@ -368,48 +368,61 @@ class V06Export
         $sheet2 = $spreadsheet->getSheetByName('Sheet2');
         $rowCar = 89;
         $rowGold = 91;
+        $rowCategory2 = 92;
 
-        // Sheet2 column B: snapshot as of day before report `from` (effective class 3/4/5 from history; initial contracts open that day; net 162* amounts).
+        // Sheet2 column B: snapshot as of day before report `from`, using effective class on that snapshot date.
         $sheet2SnapshotDate = Carbon::parse($from)->subDay()->format('Y-m-d');
         $sheet2ClientClassById = $this->sheet2ClientClassificationsAsOf($sheet2SnapshotDate);
 
         $goldAmountBefore = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2SnapshotDate, $sheet2ClientClassById);
         $carAmountBefore = $this->sumSheet2ColumnBNetByCategory('car', $sheet2SnapshotDate, $sheet2ClientClassById);
+        $category2AmountBefore = $this->sumSheet2ColumnBNetByCategory('category2', $sheet2SnapshotDate, $sheet2ClientClassById);
 
-        $goldAmountBetween = $this->sumByCategoryBetween('gold', $dateFrom, $date);
-        $carAmountBetween = $this->sumByCategoryBetween('car', $dateFrom, $date);
+        $sheet2ReportDate = Carbon::parse($to)->format('Y-m-d');
+        // Sheet2 column D must include clients whose effective class is 3/4/5 by report end,
+        // even if the class change happened before the report period.
+        $sheet2ClientClassByIdTo = $this->sheet2ClientClassificationsAsOf($sheet2ReportDate);
+
+        $goldAmountBetween = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2ReportDate, $sheet2ClientClassByIdTo);
+        $carAmountBetween = $this->sumSheet2ColumnBNetByCategory('car', $sheet2ReportDate, $sheet2ClientClassByIdTo);
+        $category2AmountBetween = $this->sumSheet2ColumnBNetByCategory('category2', $sheet2ReportDate, $sheet2ClientClassByIdTo);
 
         $sheet2->setCellValue("B{$rowCar}", $carAmountBefore /1000);
         $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore/1000);
-        $sheet2->setCellValue("B87", ($carAmountBefore + $goldAmountBefore) / 1000);
+        $sheet2->setCellValue("B{$rowCategory2}", $category2AmountBefore / 1000);
+        $sheet2->setCellValue("B87", ($carAmountBefore + $goldAmountBefore + $category2AmountBefore) / 1000);
 
         $sheet2->setCellValue("D{$rowCar}", $carAmountBetween / 1000);
         $sheet2->setCellValue("D{$rowGold}", $goldAmountBetween / 1000);
-        $sheet2->setCellValue("D87", ($carAmountBetween + $goldAmountBetween) / 1000);
+        $sheet2->setCellValue("D{$rowCategory2}", $category2AmountBetween / 1000);
+        $sheet2->setCellValue("D87", ($carAmountBetween + $goldAmountBetween + $category2AmountBetween) / 1000);
 
-        $acc89860001 = ChartOfAccount::idByCode('89860001');
-        $acc91860001 = ChartOfAccount::idByCode('91860001');
+        $acc86000 = ChartOfAccount::idByCode('86000');
+        $acc860001 = ChartOfAccount::idByCode('86001') ?: ChartOfAccount::idByCode('860001');
 
-        $balance89860001 = $this->sumAccountBefore($acc89860001, 'debit_account_id', $dateFrom);
-        $balance91860001 = $this->sumAccountBefore($acc91860001, 'debit_account_id', $dateFrom);
+        // Column H is opening balance at period start (before date_from).
+        $balance86000 = $this->balanceAccountBefore($acc86000, $dateFrom);
+        $balance860001 = $this->balanceAccountBefore($acc860001, $dateFrom);
 
-        $sheet2->setCellValue("H89", $balance89860001 / 1000);
-        $sheet2->setCellValue("H91", $balance91860001 / 1000);
-        $sheet2->setCellValue("H87", ($balance89860001 + $balance91860001) / 1000);
+        $sheet2->setCellValue("H89", ($balance86000 + $balance860001) / 1000);
+        $sheet2->setCellValue("H91", 0);
+        $sheet2->setCellValue("H87", ($balance86000 + $balance860001) / 1000);
 
-        $balance89860001_J = $this->sumAccountBetween($acc89860001, 'debit_account_id', $dateFrom, $date);
-        $balance91860001_J = $this->sumAccountBetween($acc91860001, 'debit_account_id', $dateFrom, $date);
+        $debit86000_J = $this->sumAccountBetween($acc86000, 'debit_account_id', $dateFrom, $date);
+        $debit860001_J = $this->sumAccountBetween($acc860001, 'debit_account_id', $dateFrom, $date);
+        // Backward-safe alias: prevents runtime error if any old reference uses $debit86000_.
+        $debit86000_ = $debit86000_J;
 
-        $credit89860001_J = $this->sumAccountBetween($acc89860001, 'credit_account_id', $dateFrom, $date);
-        $credit91860001_J = $this->sumAccountBetween($acc91860001, 'credit_account_id', $dateFrom, $date);
+        $credit86000_J = $this->sumAccountBetween($acc86000, 'credit_account_id', $dateFrom, $date);
+        $credit860001_J = $this->sumAccountBetween($acc860001, 'credit_account_id', $dateFrom, $date);
 
-        $sheet2->setCellValue("J89", $balance89860001_J / 1000);
-        $sheet2->setCellValue("J91", $balance91860001_J / 1000);
-        $sheet2->setCellValue("J87", ($balance89860001_J + $balance91860001_J) / 1000);
+        $sheet2->setCellValue("J89", ($debit86000_J + $debit860001_J) / 1000);
+        $sheet2->setCellValue("J91", 0);
+        $sheet2->setCellValue("J87", ($debit86000_J + $debit860001_J) / 1000);
 
-        $sheet2->setCellValue("L89", $credit89860001_J / 1000);
-        $sheet2->setCellValue("L91", $credit91860001_J / 1000);
-        $sheet2->setCellValue("L87", ($credit89860001_J + $credit91860001_J) / 1000);
+        $sheet2->setCellValue("L89", ($credit86000_J + $credit860001_J) / 1000);
+        $sheet2->setCellValue("L91", 0);
+        $sheet2->setCellValue("L87", ($credit86000_J + $credit860001_J) / 1000);
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
@@ -433,6 +446,37 @@ class V06Export
         $maxDates = DB::table('classification_histories')
             ->select('client_id', DB::raw('MAX(`date`) as max_date'))
             ->whereDate('date', '<=', $snapshotDate)
+            ->whereNull('deleted_at')
+            ->groupBy('client_id');
+
+        $latestRowIds = DB::table('classification_histories as ch')
+            ->joinSub($maxDates, 'md', function ($join) {
+                $join->on('ch.client_id', '=', 'md.client_id')
+                    ->on('ch.date', '=', 'md.max_date');
+            })
+            ->whereNull('ch.deleted_at')
+            ->groupBy('ch.client_id')
+            ->select('ch.client_id', DB::raw('MAX(ch.id) as latest_id'));
+
+        return DB::table('classification_histories as ch')
+            ->joinSub($latestRowIds, 'lr', function ($join) {
+                $join->on('ch.id', '=', 'lr.latest_id');
+            })
+            ->whereIn('ch.classification_id', [3, 4, 5])
+            ->pluck('ch.classification_id', 'ch.client_id')
+            ->all();
+    }
+
+    /**
+     * Sheet2 column D: map client_id => last classification_id (3/4/5) inside report period [$dateFrom, $dateTo].
+     *
+     * @return array<int, int> client_id => classification_id
+     */
+    private function sheet2ClientClassificationsBetween(string $dateFrom, string $dateTo): array
+    {
+        $maxDates = DB::table('classification_histories')
+            ->select('client_id', DB::raw('MAX(`date`) as max_date'))
+            ->whereBetween(DB::raw('DATE(`date`)'), [$dateFrom, $dateTo])
             ->whereNull('deleted_at')
             ->groupBy('client_id');
 
@@ -487,12 +531,12 @@ class V06Export
             return $snapshotDate;
         }
 
-        return Carbon::parse($assigned)->subDay()->format('Y-m-d');
+        return Carbon::parse($assigned)->format('Y-m-d');
     }
 
     /**
-     * Sheet2 column B: by car/gold, journals through the day before the last assignment to effective class 3/4/5.
-     * Classes 3–4: net16200NV + net16201NI + net16200 (same as Sheet1). Class 5: net86000 + net86001 (86000/86001 debit−credit).
+     * Sheet2 column B: by car/gold/category_id=2, journals through the day before the last assignment to effective class 3/4/5.
+     * Class 3–4: net162 (16200NV + 16201NI + 16200). Class 5: net86000 + net86001.
      */
     private function sumSheet2ColumnBNetByCategory(string $categoryName, string $snapshotDate, array $clientIdToClass): float
     {
@@ -511,12 +555,16 @@ class V06Export
                 $q->whereNull('closed_at')
                     ->orWhereDate('closed_at', '>=', $snapshotDate);
             })
-            ->whereHas('category', function ($q) use ($categoryName) {
-                if ($categoryName === 'car') {
-                    $q->whereIn('name', ['car', 'car-purchase']);
-                } else {
-                    $q->where('name', 'gold');
-                }
+            ->when($categoryName === 'category2', function ($q) {
+                $q->where('category_id', 2);
+            }, function ($q) use ($categoryName) {
+                $q->whereHas('category', function ($q2) use ($categoryName) {
+                    if ($categoryName === 'car') {
+                        $q2->whereIn('name', ['car', 'car-purchase']);
+                    } else {
+                        $q2->where('name', 'gold');
+                    }
+                });
             })
             ->get();
 
@@ -547,14 +595,14 @@ class V06Export
             if (!in_array($classId, [3, 4, 5], true)) {
                 continue;
             }
-            $asOf = $this->sheet2JournalAsOfDate($classId, $snapshotDate, (int) $contract->client_id);
+            $asOf = $snapshotDate;
             if (Carbon::parse($contract->date)->format('Y-m-d') > $asOf) {
                 continue;
             }
             if ($classId === 5) {
                 $sum += $this->contractNet86000Plus86001AtDate($doc, $contract, $asOf, $acc86000, $acc86001);
-            } else {
-                $sum += $this->contractNetPortfolioAtDate($doc, $contract, $asOf, $acc16200NV, $acc16201NI, $acc16200);
+            } elseif (in_array($classId, [3, 4], true)) {
+                $sum += $this->contractNet162AtDate($doc, $contract, $asOf, $acc16200NV, $acc16201NI, $acc16200);
             }
         }
 
@@ -562,9 +610,9 @@ class V06Export
     }
 
     /**
-     * Same net bundle as Sheet1 loop: net16200NV + net16201NI + net16200 from document journals through $asOfDate.
+     * Net162 for Sheet2 (classification ids 3–4): net16200NV + net16201NI + net16200 through $asOfDate (same rules as Sheet1).
      */
-    private function contractNetPortfolioAtDate(
+    private function contractNet162AtDate(
         DocumentJournal $doc,
         Contract $contract,
         string $asOfDate,
@@ -684,9 +732,17 @@ class V06Export
                 $q->whereHas('client.classification', function ($q2) {
                     $q2->whereNotIn('name', ['standard', 'monitored']);
                 });
-                $q->whereHas('category', function ($q3) use ($categoryName) {
-                    $q3->where('name', $categoryName);
-                });
+                if ($categoryName === 'category2') {
+                    $q->where('category_id', 2);
+                } else {
+                    $q->whereHas('category', function ($q3) use ($categoryName) {
+                        if ($categoryName === 'car') {
+                            $q3->whereIn('name', ['car', 'car-purchase']);
+                        } else {
+                            $q3->where('name', $categoryName);
+                        }
+                    });
+                }
             })
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->sum('amount_amd');
@@ -699,8 +755,29 @@ class V06Export
     {
         if (!$accountId) return 0;
         return DocumentJournal::where($column, $accountId)
-            ->whereDate('date', '<=', $dateFrom)
+            // Opening balance at period start must exclude same-day movements.
+            ->whereDate('date', '<', $dateFrom)
             ->sum('amount_amd');
+    }
+
+    /**
+     * Opening balance for one account before period start (debit - credit).
+     */
+    private function balanceAccountBefore($accountId, string $dateFrom): float
+    {
+        if (!$accountId) {
+            return 0;
+        }
+
+        $debit = DocumentJournal::where('debit_account_id', $accountId)
+            ->whereDate('date', '<', $dateFrom)
+            ->sum('amount_amd');
+
+        $credit = DocumentJournal::where('credit_account_id', $accountId)
+            ->whereDate('date', '<', $dateFrom)
+            ->sum('amount_amd');
+
+        return (float) $debit - (float) $credit;
     }
 
     /**

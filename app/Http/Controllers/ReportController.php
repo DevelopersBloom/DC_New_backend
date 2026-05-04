@@ -13,6 +13,7 @@ use App\Exports\Reports\V20Export;
 use App\Services\ActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -66,11 +67,24 @@ class ReportController
             'export_v06',
             "Export V06 from {$request->from} to {$request->to}"
         );
-        $export = new V06Export();
+        try {
+            $export = new V06Export();
+            $path = $export->export($request->from, $request->to);
 
-        $path = $export->export($request->from, $request->to);
+            return response()->download($path)->deleteFileAfterSend();
+        } catch (\Throwable $e) {
+            Log::error('V06 export failed', [
+                'from' => $request->from,
+                'to' => $request->to,
+                'error' => $e->getMessage(),
+            ]);
 
-        return response()->download($path)->deleteFileAfterSend();    }
+            return response()->json([
+                'message' => 'V06 export failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function getV07Report(Request $request)
     {
