@@ -408,6 +408,8 @@ class V06Export
 
         $debit86000_J = $this->sumAccountBetween($acc86000, 'debit_account_id', $dateFrom, $date);
         $debit860001_J = $this->sumAccountBetween($acc860001, 'debit_account_id', $dateFrom, $date);
+        // Backward-safe alias: prevents runtime error if any old reference uses $debit86000_.
+        $debit86000_ = $debit86000_J;
 
         $credit86000_J = $this->sumAccountBetween($acc86000, 'credit_account_id', $dateFrom, $date);
         $credit860001_J = $this->sumAccountBetween($acc860001, 'credit_account_id', $dateFrom, $date);
