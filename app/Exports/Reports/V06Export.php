@@ -3,10 +3,11 @@
 namespace App\Exports\Reports;
 
 use App\Models\ChartOfAccount;
+use App\Models\ClassificationHistory;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
-use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
@@ -368,8 +369,12 @@ class V06Export
         $rowCar = 89;
         $rowGold = 91;
 
-        $goldAmountBefore = $this->sumByCategoryBefore('gold', $dateFrom);
-        $carAmountBefore = $this->sumByCategoryBefore('car', $dateFrom);
+        // Sheet2 column B: snapshot as of day before report `from` (effective class 3/4/5 from history; initial contracts open that day; net 162* amounts).
+        $sheet2SnapshotDate = Carbon::parse($from)->subDay()->format('Y-m-d');
+        $sheet2ClientClassById = $this->sheet2ClientClassificationsAsOf($sheet2SnapshotDate);
+
+        $goldAmountBefore = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2SnapshotDate, $sheet2ClientClassById);
+        $carAmountBefore = $this->sumSheet2ColumnBNetByCategory('car', $sheet2SnapshotDate, $sheet2ClientClassById);
 
         $goldAmountBetween = $this->sumByCategoryBetween('gold', $dateFrom, $date);
         $carAmountBetween = $this->sumByCategoryBetween('car', $dateFrom, $date);
@@ -417,21 +422,256 @@ class V06Export
 
 
     /**
-     * Sum provided amounts for contracts with given category before $dateFrom
+     * Sheet2 column B: map client_id => effective classification_id (3, 4, or 5) on $snapshotDate.
+     * Effective class = the most recent classification_histories row with date on or before that day
+     * (e.g. …→4→1 means class 1 on snapshot — client is omitted here because latest is not 3/4/5).
+     *
+     * @return array<int, int> client_id => classification_id
      */
-    private function sumByCategoryBefore(string $categoryName, string $dateFrom): float
+    private function sheet2ClientClassificationsAsOf(string $snapshotDate): array
     {
-        return DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereHasMorph('journalable', [Contract::class], function ($q) use ($categoryName) {
-                $q->whereHas('client.classification', function ($q2) {
-                    $q2->whereNotIn('name', ['standard', 'monitored']);
-                });
-                $q->whereHas('category', function ($q3) use ($categoryName) {
-                    $q3->where('name', $categoryName);
-                });
+        $maxDates = DB::table('classification_histories')
+            ->select('client_id', DB::raw('MAX(`date`) as max_date'))
+            ->whereDate('date', '<=', $snapshotDate)
+            ->whereNull('deleted_at')
+            ->groupBy('client_id');
+
+        $latestRowIds = DB::table('classification_histories as ch')
+            ->joinSub($maxDates, 'md', function ($join) {
+                $join->on('ch.client_id', '=', 'md.client_id')
+                    ->on('ch.date', '=', 'md.max_date');
             })
-            ->whereDate('date', '<=', $dateFrom)
+            ->whereNull('ch.deleted_at')
+            ->groupBy('ch.client_id')
+            ->select('ch.client_id', DB::raw('MAX(ch.id) as latest_id'));
+
+        return DB::table('classification_histories as ch')
+            ->joinSub($latestRowIds, 'lr', function ($join) {
+                $join->on('ch.id', '=', 'lr.latest_id');
+            })
+            ->whereIn('ch.classification_id', [3, 4, 5])
+            ->pluck('ch.classification_id', 'ch.client_id')
+            ->all();
+    }
+
+    /**
+     * Calendar date of the most recent classification_histories row (on or before $snapshotDate) where the
+     * client was set to $classificationId (journal nets run through the day before this date).
+     */
+    private function lastClientClassificationAssignmentDate(int $clientId, int $classificationId, string $snapshotDate): ?string
+    {
+        $d = ClassificationHistory::query()
+            ->where('client_id', $clientId)
+            ->where('classification_id', $classificationId)
+            ->whereNull('deleted_at')
+            ->whereDate('date', '<=', $snapshotDate)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->value('date');
+
+        return $d ? Carbon::parse($d)->format('Y-m-d') : null;
+    }
+
+    /**
+     * Journal as-of date for Sheet2 column B: day before the last time (on or before snapshot) the client
+     * was assigned their current effective class (3, 4, or 5).
+     */
+    private function sheet2JournalAsOfDate(int $classificationId, string $snapshotDate, int $clientId): string
+    {
+        if (!in_array($classificationId, [3, 4, 5], true)) {
+            return $snapshotDate;
+        }
+
+        $assigned = $this->lastClientClassificationAssignmentDate($clientId, $classificationId, $snapshotDate);
+        if (!$assigned) {
+            return $snapshotDate;
+        }
+
+        return Carbon::parse($assigned)->subDay()->format('Y-m-d');
+    }
+
+    /**
+     * Sheet2 column B: by car/gold, journals through the day before the last assignment to effective class 3/4/5.
+     * Classes 3–4: net16200NV + net16201NI + net16200 (same as Sheet1). Class 5: net86000 + net86001 (86000/86001 debit−credit).
+     */
+    private function sumSheet2ColumnBNetByCategory(string $categoryName, string $snapshotDate, array $clientIdToClass): float
+    {
+        if ($clientIdToClass === []) {
+            return 0.0;
+        }
+
+        $clientIds = array_keys($clientIdToClass);
+
+        $contracts = Contract::query()
+            ->with('category')
+            ->whereIn('client_id', $clientIds)
+            ->where('status', 'initial')
+            ->whereDate('date', '<=', $snapshotDate)
+            ->where(function ($q) use ($snapshotDate) {
+                $q->whereNull('closed_at')
+                    ->orWhereDate('closed_at', '>=', $snapshotDate);
+            })
+            ->whereHas('category', function ($q) use ($categoryName) {
+                if ($categoryName === 'car') {
+                    $q->whereIn('name', ['car', 'car-purchase']);
+                } else {
+                    $q->where('name', 'gold');
+                }
+            })
+            ->get();
+
+        if ($contracts->isEmpty()) {
+            return 0.0;
+        }
+
+        $provideByContractId = DocumentJournal::query()
+            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+            ->where('journalable_type', Contract::class)
+            ->whereIn('journalable_id', $contracts->pluck('id'))
+            ->get()
+            ->keyBy('journalable_id');
+
+        $acc16200NV = ChartOfAccount::idByCode('16200NV');
+        $acc16201NI = ChartOfAccount::idByCode('16201NI');
+        $acc16200 = ChartOfAccount::idByCode('16200');
+        $acc86000 = ChartOfAccount::idByCode('86000');
+        $acc86001 = ChartOfAccount::idByCode('86001');
+
+        $sum = 0.0;
+        foreach ($contracts as $contract) {
+            $doc = $provideByContractId->get($contract->id);
+            if (!$doc) {
+                continue;
+            }
+            $classId = (int) ($clientIdToClass[$contract->client_id] ?? 0);
+            if (!in_array($classId, [3, 4, 5], true)) {
+                continue;
+            }
+            $asOf = $this->sheet2JournalAsOfDate($classId, $snapshotDate, (int) $contract->client_id);
+            if (Carbon::parse($contract->date)->format('Y-m-d') > $asOf) {
+                continue;
+            }
+            if ($classId === 5) {
+                $sum += $this->contractNet86000Plus86001AtDate($doc, $contract, $asOf, $acc86000, $acc86001);
+            } else {
+                $sum += $this->contractNetPortfolioAtDate($doc, $contract, $asOf, $acc16200NV, $acc16201NI, $acc16200);
+            }
+        }
+
+        return (float) $sum;
+    }
+
+    /**
+     * Same net bundle as Sheet1 loop: net16200NV + net16201NI + net16200 from document journals through $asOfDate.
+     */
+    private function contractNetPortfolioAtDate(
+        DocumentJournal $doc,
+        Contract $contract,
+        string $asOfDate,
+        $acc16200NV,
+        $acc16201NI,
+        $acc16200
+    ): float {
+        $net16200NVCredit = DocumentJournal::where(function ($query) use ($contract, $doc) {
+            $query->where(function ($q) use ($contract) {
+                $q->where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id);
+            })
+                ->orWhere(function ($q) use ($doc) {
+                    $q->where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $doc->id);
+                });
+        })
+            ->where('credit_account_id', $acc16200NV)
+            ->whereDate('date', '<=', $asOfDate)
             ->sum('amount_amd');
+        $net16200NV = (float) $doc->amount_amd - (float) $net16200NVCredit;
+
+        $net16201NI = (float) (DocumentJournal::where(function ($query) use ($contract, $doc) {
+            $query->where(function ($q) use ($contract) {
+                $q->where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id);
+            })
+                ->orWhere(function ($q) use ($doc) {
+                    $q->where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $doc->id);
+                });
+        })
+            ->whereDate('date', '<=', $asOfDate)
+            ->selectRaw(
+                'SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) - SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance',
+                [$acc16201NI, $acc16201NI]
+            )
+            ->value('balance') ?? 0);
+
+        $net16200 = 0.0;
+        if ($acc16200) {
+            $net16200 = (float) (DocumentJournal::where(function ($query) use ($contract, $doc) {
+                $query->where(function ($q) use ($contract) {
+                    $q->where('journalable_type', Contract::class)
+                        ->where('journalable_id', $contract->id);
+                })
+                    ->orWhere(function ($q) use ($doc) {
+                        $q->where('journalable_type', DocumentJournal::class)
+                            ->where('journalable_id', $doc->id);
+                    });
+            })
+                ->whereDate('date', '<=', $asOfDate)
+                ->selectRaw(
+                    'SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) - SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance',
+                    [$acc16200, $acc16200]
+                )
+                ->value('balance') ?? 0);
+        }
+
+        return $net16200NV + $net16201NI + $net16200;
+    }
+
+    /**
+     * Sheet2 column B for classification 5 (loss): loss expense nets debit − credit on 86000 + 86001
+     * (same journalable scope as portfolio nets).
+     */
+    private function contractNet86000Plus86001AtDate(
+        DocumentJournal $doc,
+        Contract $contract,
+        string $asOfDate,
+        $acc86000,
+        $acc86001
+    ): float {
+        $base = function ($query) use ($contract, $doc) {
+            $query->where(function ($q) use ($contract) {
+                $q->where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id);
+            })
+                ->orWhere(function ($q) use ($doc) {
+                    $q->where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $doc->id);
+                });
+        };
+
+        $net86000 = 0.0;
+        if ($acc86000) {
+            $net86000 = (float) (DocumentJournal::where($base)
+                ->whereDate('date', '<=', $asOfDate)
+                ->selectRaw(
+                    'SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) - SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance',
+                    [$acc86000, $acc86000]
+                )
+                ->value('balance') ?? 0);
+        }
+
+        $net86001 = 0.0;
+        if ($acc86001) {
+            $net86001 = (float) (DocumentJournal::where($base)
+                ->whereDate('date', '<=', $asOfDate)
+                ->selectRaw(
+                    'SUM(CASE WHEN debit_account_id = ? THEN amount_amd ELSE 0 END) - SUM(CASE WHEN credit_account_id = ? THEN amount_amd ELSE 0 END) as balance',
+                    [$acc86001, $acc86001]
+                )
+                ->value('balance') ?? 0);
+        }
+
+        return $net86000 + $net86001;
     }
 
     /**
