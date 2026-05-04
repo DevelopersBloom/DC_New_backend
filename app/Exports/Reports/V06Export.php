@@ -378,9 +378,12 @@ class V06Export
         $carAmountBefore = $this->sumSheet2ColumnBNetByCategory('car', $sheet2SnapshotDate, $sheet2ClientClassById);
         $category2AmountBefore = $this->sumSheet2ColumnBNetByCategory('category2', $sheet2SnapshotDate, $sheet2ClientClassById);
 
-        $goldAmountBetween = $this->sumByCategoryBetween('gold', $dateFrom, $date);
-        $carAmountBetween = $this->sumByCategoryBetween('car', $dateFrom, $date);
-        $category2AmountBetween = $this->sumByCategoryBetween('category2', $dateFrom, $date);
+        $sheet2ReportDate = Carbon::parse($to)->format('Y-m-d');
+        $sheet2ClientClassByIdTo = $this->sheet2ClientClassificationsAsOf($sheet2ReportDate);
+
+        $goldAmountBetween = $this->sumSheet2ColumnBNetByCategory('gold', $sheet2ReportDate, $sheet2ClientClassByIdTo);
+        $carAmountBetween = $this->sumSheet2ColumnBNetByCategory('car', $sheet2ReportDate, $sheet2ClientClassByIdTo);
+        $category2AmountBetween = $this->sumSheet2ColumnBNetByCategory('category2', $sheet2ReportDate, $sheet2ClientClassByIdTo);
 
         $sheet2->setCellValue("B{$rowCar}", $carAmountBefore /1000);
         $sheet2->setCellValue("B{$rowGold}", $goldAmountBefore/1000);
