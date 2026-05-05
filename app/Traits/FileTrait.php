@@ -115,7 +115,6 @@ trait FileTrait
                             $purpose.= 'Վարկի մարում՝ տոկոսագւմար և մայր գումար, տուգանք';
                         }else{
                             $purpose.= 'հերթական '.$payments_count.' ամսվա տոկոսագումար, տուգանք';
-                            dd($purpose);
                         }
                     }else{
                         $purpose = 'տուգանք, տոկոսագումար';
