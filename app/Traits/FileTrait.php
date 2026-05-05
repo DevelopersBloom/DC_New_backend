@@ -92,7 +92,6 @@ trait FileTrait
         $penalty = (integer)$request->penalty;
         $has_last_payment = false;
         if($amount){
-            dd($amount,$penalty);
             if($penalty>0){
                 if($amount <= $penalty){
                     $purpose = 'տուգանք';
@@ -111,6 +110,7 @@ trait FileTrait
                             $amount = 0;
                         }
                     }
+                    dd($payments_count);
                     if($payments_count){
                         if($has_last_payment){
                             $purpose.= 'Վարկի մարում՝ տոկոսագւմար և մայր գումար, տուգանք';
