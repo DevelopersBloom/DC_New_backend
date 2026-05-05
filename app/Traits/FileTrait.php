@@ -110,12 +110,12 @@ trait FileTrait
                             $amount = 0;
                         }
                     }
-                    dd($payments_count);
                     if($payments_count){
                         if($has_last_payment){
                             $purpose.= 'Վարկի մարում՝ տոկոսագւմար և մայր գումար, տուգանք';
                         }else{
-                            $purpose.= 'հերթական '.$this->textValues[$payments_count].' ամսվա տոկոսագումար, տուգանք';
+                            $purpose.= 'հերթական '.$payments_count.' ամսվա տոկոսագումար, տուգանք';
+                            dd($purpose);
                         }
                     }else{
                         $purpose = 'տուգանք, տոկոսագումար';
