@@ -462,7 +462,7 @@ class V17Export
 
             // Sheet 5
             $col5 = $this->getColumnByDays($days, 'sheet5');
-            $rate5 = $contract->effective_rate_kasko ?? $contract->effective_annual_rate;
+            $rate5 = $contract->effective_rate_annual_kasko ?? $contract->effective_annual_rate;
             $groups5[$col5]['amount'] += $balance;
             $groups5[$col5]['weighted'] += $balance * ($rate5 / 100);
         }
