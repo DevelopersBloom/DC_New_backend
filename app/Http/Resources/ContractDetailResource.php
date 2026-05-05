@@ -44,7 +44,7 @@ class ContractDetailResource extends JsonResource
                 'effective_rate'    => $this->effective_daily_rate,
                 'kasko_amount'     => $this->kasko_amount,
                 'effective_rate_kasko' => $this->effective_rate_kasko,
-                'effective_annual_rate_kasko' => $this->effective_annual_rate_kasko,
+                'effective_annual_rate_kasko' => $this->effective_rate_kasko * 365,
                 'date' => Carbon::parse($this->date)->format('d-m-Y'),
                 'interest_end'=> $maturityDate,
                 'interest_start'    => $interestStartDate,
