@@ -91,7 +91,6 @@ trait FileTrait
         $amount = $request->amount;
         $penalty = (integer)$request->penalty;
         $has_last_payment = false;
-        dd($amount);
         if($amount){
 
             if($penalty>0){
