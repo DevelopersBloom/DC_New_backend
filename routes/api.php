@@ -264,7 +264,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/{id}', [CategoryController::class, 'show']);
     });
 
-    Route::get('/download-order/{id}', [FileController::class, 'downloadOrder'])->middleware('can:download_order');
+    Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox'])->middleware('can:view_cashbox_balance');
     Route::get('/get-cashBox-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox']);
     Route::get('/get-deals', [DealController::class, 'index'])->middleware('can:view_deals');
