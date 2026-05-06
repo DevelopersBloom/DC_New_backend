@@ -597,7 +597,7 @@ class ContractControllerNew extends Controller
         $calcToday = Carbon::parse($request->calc_date, 'Asia/Yerevan')->startOfDay();
 
         $this->contractCalculationService->calculateInterestRates($contract, $calcToday);
-     dd($this->contractCalculationService->calculateInterestRates($contract, $calcToday));
+     dd( $contract->calculatedEffectiveInterest,$this->contractCalculationService->calculateInterestRates($contract, $calcToday));
         $this->activityService->log(
             'calculate_interest',
             "Calculated interest {$contract->calculatedInterest}, calculated effective {$contract->calculatedEffectiveInterest} for contract #{$contract->id}",
