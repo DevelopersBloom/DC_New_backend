@@ -153,7 +153,6 @@ class ContractCalculationService
             $days = $calcToday->diffInDays($startDate);
         }
 
-        dd($days,$calcToday,$startDate);
         if ($providedAmount > 0 && !empty($contract->interest_rate) && $days > 0) {
             $calculatedInterest = $providedAmount * ($contract->interest_rate / 100.0) * $days;
         }
@@ -161,7 +160,7 @@ class ContractCalculationService
         if ($providedAmount > 0 && !empty($contract->effective_daily_rate) && $days > 0) {
             $calculatedEffectiveInterest = $providedAmount * ($contract->effective_daily_rate / 100.0) * $days;
         }
-
+dd($calculatedEffectiveInterest);
         $contract->effectiveRate = $contract->effective_daily_rate;
         $contract->calculatedInterest = round($calculatedInterest, 2);
         $contract->calculatedEffectiveInterest = round($calculatedEffectiveInterest, 2);
