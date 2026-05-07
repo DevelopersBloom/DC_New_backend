@@ -206,7 +206,11 @@ class CreditRegistrySoapClient
             . ' xmlns:a="'  . self::WSA_NS  . '"'
             . ' xmlns:u="'  . self::WSU_NS  . '"'
             . ' xmlns:o="'  . self::WSSE_NS . '">'
-            . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
+            . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">'
+            .   '<ec:InclusiveNamespaces'
+            .     ' xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#"'
+            .     ' PrefixList=""/>'
+            . '</ds:CanonicalizationMethod>'
             . '<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
             // Timestamp
             . '<ds:Reference URI="#_ts">'
@@ -250,7 +254,7 @@ class CreditRegistrySoapClient
         $dsigNs = self::DSIG_NS;
         $wsseNs = self::WSSE_NS;
 
-        $sigNode = $dom->createElementNS($dsigNs, 'ds:Signature');
+        $sigNode = $dom->createElement('ds:Signature');
         $secNode->appendChild($sigNode);
 
         $siDom2 = new DOMDocument();
