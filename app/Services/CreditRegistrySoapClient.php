@@ -23,6 +23,12 @@ class CreditRegistrySoapClient
 
     private const X509_VALUETYPE   = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3';
     private const B64_ENCODINGTYPE = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary';
+    private const THUMB_VALUETYPE  = 'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1';
+
+    // Digest algorithm — Basic256 policy պահանջ
+    private const DIGEST_ALG  = 'http://www.w3.org/2001/04/xmldsig-more#sha256';
+    private const SIG_ALG     = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+    private const C14N_ALG    = 'http://www.w3.org/2001/10/xml-exc-c14n#';
 
     private string $bstId = '';
 
@@ -123,6 +129,10 @@ class CreditRegistrySoapClient
 
     // ================================================================
     // Step 1 — SOAP Envelope
+    // Կառուցվածք Security-ում:
+    //   BST        (AlwaysToRecipient — FIRST)
+    //   Timestamp
+    //   [Signature-ն signEnvelope()-ն կավելացնի]
     // ================================================================
 
     private function buildEnvelope(string $action, string $bodyContent): string
@@ -131,302 +141,182 @@ class CreditRegistrySoapClient
         $msgId       = 'urn:uuid:' . $this->uuid4();
         $now         = gmdate('Y-m-d\TH:i:s\Z');
         $expires     = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
-        $this->bstId = 'X509-' . $this->uuid4();
+        $this->bstId = 'bst-' . bin2hex(random_bytes(8));
 
         $rawPem  = file_get_contents(self::CERT_PATH);
-        $pemClean = preg_replace('/-----[^-]+-----|[\r\n]/', '', $rawPem);
         $certB64 = str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $rawPem));
 
+        // Signature-ն ՉԿԱ envelope-ում — signEnvelope()-ն կavoid digest-ի խնդիրը
         return '<?xml version="1.0" encoding="UTF-8"?>'
             . '<s:Envelope'
-            .   ' xmlns:s="' . self::SOAP_NS  . '"'
-            .   ' xmlns:a="' . self::WSA_NS   . '"'
-            .   ' xmlns:u="' . self::WSU_NS   . '"'
-            .   ' xmlns:o="' . self::WSSE_NS  . '"'
-            .   ' xmlns:ds="http://www.w3.org/2000/09/xmldsig#">'
+            .   ' xmlns:s="'  . self::SOAP_NS . '"'
+            .   ' xmlns:a="'  . self::WSA_NS  . '"'
+            .   ' xmlns:u="'  . self::WSU_NS  . '"'
+            .   ' xmlns:o="'  . self::WSSE_NS . '"'
+            .   ' xmlns:ds="' . self::DSIG_NS . '">'
             .   '<s:Header>'
             .     '<a:Action s:mustUnderstand="1">' . $actionUrl . '</a:Action>'
             .     '<a:MessageID>' . $msgId . '</a:MessageID>'
-            .    '<a:To s:mustUnderstand="1" u:Id="_to">' . self::ENDPOINT . '</a:To>'
+            .     '<a:To s:mustUnderstand="1" u:Id="_to">' . self::ENDPOINT . '</a:To>'
             .     '<o:Security s:mustUnderstand="1">'
-            .       '<u:Timestamp u:Id="_ts">'
-            .         '<u:Created>' . $now     . '</u:Created>'
-            .         '<u:Expires>' . $expires . '</u:Expires>'
-            .       '</u:Timestamp>'
+            // BST FIRST (EndorsingSupportingTokens / AlwaysToRecipient)
             .       '<o:BinarySecurityToken'
             .         ' u:Id="'         . $this->bstId          . '"'
             .         ' ValueType="'    . self::X509_VALUETYPE   . '"'
             .         ' EncodingType="' . self::B64_ENCODINGTYPE . '">'
             .         $certB64
             .       '</o:BinarySecurityToken>'
+            // Timestamp AFTER BST
+            .       '<u:Timestamp u:Id="_ts">'
+            .         '<u:Created>' . $now     . '</u:Created>'
+            .         '<u:Expires>' . $expires . '</u:Expires>'
+            .       '</u:Timestamp>'
+            // Signature-ն ՉԿԱ — signEnvelope()-ն կavoid C14N corruption-ը
             .     '</o:Security>'
             .   '</s:Header>'
             .   '<s:Body u:Id="_body">' . $bodyContent . '</s:Body>'
             . '</s:Envelope>';
     }
-    // namespace helper
-    private function ns(string $const): string
-    {
-        return constant('self::' . $const);
-    }
 
-//    private function signEnvelope(string $envelopeXml): string
-//    {
-//        $dom = new DOMDocument();
-//        $dom->preserveWhiteSpace = false;
-//        $dom->formatOutput       = false;
-//        $dom->loadXML($envelopeXml);
-//
-//        $xpath = new DOMXPath($dom);
-//        $xpath->registerNamespace('s', self::SOAP_NS);
-//        $xpath->registerNamespace('u', self::WSU_NS);
-//        $xpath->registerNamespace('o', self::WSSE_NS);
-//        $xpath->registerNamespace('ds', self::DSIG_NS);
-//
-//        foreach ($xpath->query('//*[@u:Id]') as $node) {
-//            $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
-//        }
-//
-//        $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
-//        $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
-//        // ✅ FIX 1 — BST node-ը գտնել
-//        $bstNode  = $xpath->query('//o:BinarySecurityToken[@u:Id="' . $this->bstId . '"]')->item(0);
-//
-//        if (!$tsNode || !$bodyNode || !$bstNode) {
-//            throw new \RuntimeException('DEGS sign: ts/body/bst node not found');
-//        }
-//
-//        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
-//        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
-//        // ✅ FIX 1 — BST digest
-//        $bstDigest  = base64_encode(hash('sha256', $bstNode->C14N(true, false),  true));
-//
-//        // ✅ FIX 1 — 3 Reference (ts + body + bst)
-//        $signedInfoXml = '<ds:SignedInfo'
-//            . ' xmlns:ds="' . self::DSIG_NS . '"'
-//            . ' xmlns:s="'  . self::SOAP_NS . '"'
-//            . ' xmlns:a="'  . self::WSA_NS  . '"'
-//            . ' xmlns:u="'  . self::WSU_NS  . '"'
-//            . ' xmlns:o="'  . self::WSSE_NS . '">'
-//            . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">'
-//            .   '<ec:InclusiveNamespaces'
-//            .     ' xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#"'
-//            .     ' PrefixList=""/>'
-//            . '</ds:CanonicalizationMethod>'
-//            . '<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
-//            // Timestamp
-//            . '<ds:Reference URI="#_ts">'
-//            .   '<ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
-//            .   '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
-//            .   '<ds:DigestValue>' . $tsDigest . '</ds:DigestValue>'
-//            . '</ds:Reference>'
-//            // Body
-//            . '<ds:Reference URI="#_body">'
-//            .   '<ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
-//            .   '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
-//            .   '<ds:DigestValue>' . $bodyDigest . '</ds:DigestValue>'
-//            . '</ds:Reference>'
-//            // BST — WCF-ը պահանջում է
-//            . '<ds:Reference URI="#' . $this->bstId . '">'
-//            .   '<ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
-//            .   '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
-//            .   '<ds:DigestValue>' . $bstDigest . '</ds:DigestValue>'
-//            . '</ds:Reference>'
-//            . '</ds:SignedInfo>';
-//
-//        $siDom = new DOMDocument();
-//        $siDom->preserveWhiteSpace = false;
-//        $siDom->loadXML($signedInfoXml);
-//        $signedInfoC14n = $siDom->documentElement->C14N(true, false);
-//
-//        $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
-//        if (!$privateKey) {
-//            throw new \RuntimeException('DEGS: Private key load error: ' . openssl_error_string());
-//        }
-//        if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
-//            throw new \RuntimeException('DEGS: Sign error: ' . openssl_error_string());
-//        }
-//        $signatureValue = base64_encode($rawSig);
-//
-//        $secNode = $xpath->query('//o:Security')->item(0);
-//        if (!$secNode) {
-//            throw new \RuntimeException('DEGS: Security node not found');
-//        }
-//
-//        $dsigNs = self::DSIG_NS;
-//        $wsseNs = self::WSSE_NS;
-//
-//        $sigNode = $dom->createElement('ds:Signature');
-//        $secNode->appendChild($sigNode);
-//
-//        $siDom2 = new DOMDocument();
-//        $siDom2->loadXML($signedInfoXml);
-//        $sigNode->appendChild($dom->importNode($siDom2->documentElement, true));
-//
-//        $sigValNode = $dom->createElementNS($dsigNs, 'ds:SignatureValue', $signatureValue);
-//        $sigNode->appendChild($sigValNode);
-//
-//        // ✅ FIX 2 — namespace redeclaration-ից խուսափել
-//        // createElement (առանց NS) — prefix-ը parent-ից inherit կանի
-//        $keyInfoNode = $dom->createElementNS($dsigNs, 'ds:KeyInfo');
-//        $strNode     = $dom->createElement('o:SecurityTokenReference');
-//        $refNode     = $dom->createElement('o:Reference');
-//        $refNode->setAttribute('URI',       '#' . $this->bstId);
-//        $refNode->setAttribute('ValueType', self::X509_VALUETYPE);
-//
-//        $strNode->appendChild($refNode);
-//        $keyInfoNode->appendChild($strNode);
-//        $sigNode->appendChild($keyInfoNode);
-//
-//        return $dom->saveXML();
-//    }    // Step 3 — cURL (HTTPS + mTLS)
+    // ================================================================
+    // Step 2 — Sign
+    //
+    // Ճիշտ flow:
+    //  1. Parse envelope (Signature ՉԿԱ)
+    //  2. C14N digest-ներ հաշվել (ts, body, bst, to)
+    //  3. SignedInfo build
+    //  4. Sign
+    //  5. Signature node append Security-ի վերջում
+    // ================================================================
 
-    private function signEnvelope(string $xml): string
+    private function signEnvelope(string $envelopeXml): string
     {
+        // ── Parse ──────────────────────────────────────────────────────────────
         $dom = new DOMDocument();
-        $dom->preserveWhiteSpace = true;
-        $dom->formatOutput = false;
-        $dom->loadXML($xml);
+        $dom->preserveWhiteSpace = false;
+        $dom->formatOutput       = false;
+        $dom->loadXML($envelopeXml);
 
         $xpath = new DOMXPath($dom);
-
-        $xpath->registerNamespace('s', self::SOAP_NS);
-        $xpath->registerNamespace('u', self::WSU_NS);
-        $xpath->registerNamespace('o', self::WSSE_NS);
+        $xpath->registerNamespace('s',  self::SOAP_NS);
+        $xpath->registerNamespace('u',  self::WSU_NS);
+        $xpath->registerNamespace('o',  self::WSSE_NS);
+        $xpath->registerNamespace('a',  self::WSA_NS);
         $xpath->registerNamespace('ds', self::DSIG_NS);
-        $xpath->registerNamespace('a', self::WSA_NS);
 
-        // wsu:Id → ID
+        // wsu:Id → XML ID
         foreach ($xpath->query('//*[@u:Id]') as $node) {
             $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
         }
 
+        // ── Node-ների ստացում ─────────────────────────────────────────────────
         $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
-        $toNode   = $xpath->query('//a:To')->item(0);
+        $bstNode  = $xpath->query('//o:BinarySecurityToken[@u:Id="' . $this->bstId . '"]')->item(0);
+        $toNode   = $xpath->query('//a:To[@u:Id="_to"]')->item(0);
 
-        if (!$tsNode || !$bodyNode || !$toNode) {
-            throw new \RuntimeException('Missing required nodes');
+        if (!$tsNode || !$bodyNode || !$bstNode || !$toNode) {
+            throw new \RuntimeException('DEGS sign: ts/body/bst/to node not found');
         }
 
-        // =====================================================
-        // ❗ IMPORTANT: RAW XML DIGEST (NOT C14N)
-        // =====================================================
+        // ── Digests (Exc-C14N, SHA256) ────────────────────────────────────────
+        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
+        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
+        $bstDigest  = base64_encode(hash('sha256', $bstNode->C14N(true, false),  true));
+        $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false),   true));
 
-        $tsDigest   = base64_encode(hash('sha256', $dom->saveXML($tsNode), true));
-        $bodyDigest = base64_encode(hash('sha256', $dom->saveXML($bodyNode), true));
-        $toDigest   = base64_encode(hash('sha256', $dom->saveXML($toNode), true));
-
-        // =====================================================
-        // REMOVE existing Signature (MUST)
-        // =====================================================
-
-        $oldSig = $xpath->query('//ds:Signature')->item(0);
-        if ($oldSig && $oldSig->parentNode) {
-            $oldSig->parentNode->removeChild($oldSig);
-        }
-
-        // =====================================================
-        // BUILD SignedInfo (ONLY 3 refs — NO BST)
-        // =====================================================
-
+        // ── SignedInfo build ──────────────────────────────────────────────────
         $signedInfo = $dom->createElementNS(self::DSIG_NS, 'ds:SignedInfo');
 
-        $canon = $dom->createElementNS(self::DSIG_NS, 'ds:CanonicalizationMethod');
-        $canon->setAttribute('Algorithm', 'http://www.w3.org/2001/10/xml-exc-c14n#');
-        $signedInfo->appendChild($canon);
+        $canonMethod = $dom->createElementNS(self::DSIG_NS, 'ds:CanonicalizationMethod');
+        $canonMethod->setAttribute('Algorithm', self::C14N_ALG);
+        $signedInfo->appendChild($canonMethod);
 
         $sigMethod = $dom->createElementNS(self::DSIG_NS, 'ds:SignatureMethod');
-        $sigMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256');
+        $sigMethod->setAttribute('Algorithm', self::SIG_ALG);
         $signedInfo->appendChild($sigMethod);
 
-        $addRef = function ($uri, $digest) use ($dom, $signedInfo) {
-
+        // Helper — Reference ստեղծել
+        $addRef = function (string $uri, string $digest) use ($dom, $signedInfo): void {
             $ref = $dom->createElementNS(self::DSIG_NS, 'ds:Reference');
             $ref->setAttribute('URI', $uri);
 
-            $trans = $dom->createElementNS(self::DSIG_NS, 'ds:Transforms');
-            $t = $dom->createElementNS(self::DSIG_NS, 'ds:Transform');
-            $t->setAttribute('Algorithm', 'http://www.w3.org/2001/10/xml-exc-c14n#');
-            $trans->appendChild($t);
+            $transforms = $dom->createElementNS(self::DSIG_NS, 'ds:Transforms');
+            $transform  = $dom->createElementNS(self::DSIG_NS, 'ds:Transform');
+            $transform->setAttribute('Algorithm', self::C14N_ALG);
+            $transforms->appendChild($transform);
+            $ref->appendChild($transforms);
 
             $dm = $dom->createElementNS(self::DSIG_NS, 'ds:DigestMethod');
-            $dm->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
+            $dm->setAttribute('Algorithm', self::DIGEST_ALG); // xmldsig-more#sha256
+            $ref->appendChild($dm);
 
             $dv = $dom->createElementNS(self::DSIG_NS, 'ds:DigestValue', $digest);
-
-            $ref->appendChild($trans);
-            $ref->appendChild($dm);
             $ref->appendChild($dv);
 
             $signedInfo->appendChild($ref);
         };
 
-        // ✅ ONLY THESE 3 (CRITICAL FIX)
-        $addRef('#_ts', $tsDigest);
-        $addRef('#_body', $bodyDigest);
-        $addRef('#_to', $toDigest);
+        // 4 Reference: ts, body, bst, to
+        $addRef('#_ts',             $tsDigest);
+        $addRef('#_body',           $bodyDigest);
+        $addRef('#' . $this->bstId, $bstDigest);
+        $addRef('#_to',             $toDigest);
 
-        // =====================================================
-        // Canonicalize SignedInfo
-        // =====================================================
-
+        // ── SignedInfo C14N ───────────────────────────────────────────────────
         $siDom = new DOMDocument();
-        $siDom->preserveWhiteSpace = true;
+        $siDom->preserveWhiteSpace = false;
         $siDom->appendChild($siDom->importNode($signedInfo, true));
-
         $signedInfoC14n = $siDom->documentElement->C14N(true, false);
 
-        // =====================================================
-        // SIGN
-        // =====================================================
-
+        // ── Sign ─────────────────────────────────────────────────────────────
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
-
         if (!$privateKey) {
-            throw new \RuntimeException('Private key error');
+            throw new \RuntimeException('DEGS: Private key load error: ' . openssl_error_string());
+        }
+        if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
+            throw new \RuntimeException('DEGS: Sign error: ' . openssl_error_string());
         }
 
-        openssl_sign($signedInfoC14n, $signatureRaw, $privateKey, OPENSSL_ALGO_SHA256);
-
-        // =====================================================
-        // INSERT Signature
-        // =====================================================
-
-        $securityNode = $xpath->query('//o:Security')->item(0);
-
+        // ── Signature node build ──────────────────────────────────────────────
         $signatureNode = $dom->createElementNS(self::DSIG_NS, 'ds:Signature');
 
+        // SignedInfo
         $signatureNode->appendChild($signedInfo);
 
+        // SignatureValue
         $signatureNode->appendChild(
-            $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($signatureRaw))
+            $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($rawSig))
         );
 
-        // =====================================================
-        // KeyInfo (SAFE WCF VERSION = BST reference)
-        // =====================================================
-
-        $bst = $xpath->query('//o:BinarySecurityToken')->item(0);
-        $bstId = $bst->getAttributeNS(self::WSU_NS, 'Id');
+        // KeyInfo — ThumbprintSHA1 KeyIdentifier (WCF RequireThumbprintReference)
+        $certB64      = $bstNode->textContent;
+        $certDer      = base64_decode($certB64);
+        $thumbprint   = base64_encode(hash('sha1', $certDer, true));
 
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
-
-        $str = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
-
-        $ref = $dom->createElementNS(self::WSSE_NS, 'o:Reference');
-        $ref->setAttribute('URI', '#' . $bstId);
-        $ref->setAttribute('ValueType', self::X509_VALUETYPE);
-
-        $str->appendChild($ref);
+        $str     = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
+        $keyId   = $dom->createElementNS(self::WSSE_NS, 'o:KeyIdentifier', $thumbprint);
+        $keyId->setAttribute('ValueType',    self::THUMB_VALUETYPE);
+        $keyId->setAttribute('EncodingType', self::B64_ENCODINGTYPE);
+        $str->appendChild($keyId);
         $keyInfo->appendChild($str);
-
         $signatureNode->appendChild($keyInfo);
 
-        $securityNode->appendChild($signatureNode);
+        // ── Signature-ն Security-ի վերջում append ────────────────────────────
+        $secNode = $xpath->query('//o:Security')->item(0);
+        if (!$secNode) {
+            throw new \RuntimeException('DEGS: Security node not found');
+        }
+        $secNode->appendChild($signatureNode);
 
         return $dom->saveXML();
     }
+
+    // ================================================================
+    // Step 3 — cURL (HTTPS + mTLS)
+    // ================================================================
+
     private function sendViaCurl(string $action, string $xml): string
     {
         $actionUrl = self::ACTION_NS . $action;
@@ -466,6 +356,7 @@ class CreditRegistrySoapClient
 
         return (string) $response;
     }
+
     // ================================================================
     // Helpers
     // ================================================================
