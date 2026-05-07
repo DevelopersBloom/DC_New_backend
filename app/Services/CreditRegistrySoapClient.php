@@ -284,7 +284,7 @@ class CreditRegistrySoapClient
     private function signEnvelope(string $xml): string
     {
         $dom = new DOMDocument();
-        $dom->preserveWhiteSpace = true;   // կարևոր
+        $dom->preserveWhiteSpace = true;
         $dom->formatOutput = false;
         $dom->loadXML($xml);
 
@@ -296,7 +296,7 @@ class CreditRegistrySoapClient
         $xpath->registerNamespace('ds', self::DSIG_NS);
         $xpath->registerNamespace('a', self::WSA_NS);
 
-        // wsu:Id → ID attribute
+        // wsu:Id → ID
         foreach ($xpath->query('//*[@u:Id]') as $node) {
             $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
         }
@@ -304,32 +304,31 @@ class CreditRegistrySoapClient
         $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
         $toNode   = $xpath->query('//a:To')->item(0);
-        $bstNode  = $xpath->query('//o:BinarySecurityToken')->item(0);
 
-        if (!$tsNode || !$bodyNode || !$toNode || !$bstNode) {
-            throw new \RuntimeException('Missing nodes');
+        if (!$tsNode || !$bodyNode || !$toNode) {
+            throw new \RuntimeException('Missing required nodes');
         }
 
-        // =========================================================
-        // ✅ DIGESTS (RAW XML, NOT C14N DOM)
-        // =========================================================
+        // =====================================================
+        // ❗ IMPORTANT: RAW XML DIGEST (NOT C14N)
+        // =====================================================
 
-        $tsDigest = base64_encode(hash('sha256', $this->nodeRawXml($tsNode), true));
-        $bodyDigest = base64_encode(hash('sha256', $this->nodeRawXml($bodyNode), true));
-        $toDigest = base64_encode(hash('sha256', $this->nodeRawXml($toNode), true));
-        $bstDigest = base64_encode(hash('sha256', $this->nodeRawXml($bstNode), true));
+        $tsDigest   = base64_encode(hash('sha256', $dom->saveXML($tsNode), true));
+        $bodyDigest = base64_encode(hash('sha256', $dom->saveXML($bodyNode), true));
+        $toDigest   = base64_encode(hash('sha256', $dom->saveXML($toNode), true));
 
-        // =========================================================
-        // Remove existing Signature (IMPORTANT)
-        // =========================================================
+        // =====================================================
+        // REMOVE existing Signature (MUST)
+        // =====================================================
+
         $oldSig = $xpath->query('//ds:Signature')->item(0);
         if ($oldSig && $oldSig->parentNode) {
             $oldSig->parentNode->removeChild($oldSig);
         }
 
-        // =========================================================
-        // Build SignedInfo
-        // =========================================================
+        // =====================================================
+        // BUILD SignedInfo (ONLY 3 refs — NO BST)
+        // =====================================================
 
         $signedInfo = $dom->createElementNS(self::DSIG_NS, 'ds:SignedInfo');
 
@@ -363,25 +362,24 @@ class CreditRegistrySoapClient
             $signedInfo->appendChild($ref);
         };
 
+        // ✅ ONLY THESE 3 (CRITICAL FIX)
         $addRef('#_ts', $tsDigest);
         $addRef('#_body', $bodyDigest);
         $addRef('#_to', $toDigest);
-        $addRef('#' . $bstNode->getAttributeNS(self::WSU_NS, 'Id'), $bstDigest);
 
-        // =========================================================
+        // =====================================================
         // Canonicalize SignedInfo
-        // =========================================================
+        // =====================================================
 
         $siDom = new DOMDocument();
         $siDom->preserveWhiteSpace = true;
-        $siDom->formatOutput = false;
         $siDom->appendChild($siDom->importNode($signedInfo, true));
 
         $signedInfoC14n = $siDom->documentElement->C14N(true, false);
 
-        // =========================================================
-        // Sign
-        // =========================================================
+        // =====================================================
+        // SIGN
+        // =====================================================
 
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
 
@@ -391,9 +389,9 @@ class CreditRegistrySoapClient
 
         openssl_sign($signedInfoC14n, $signatureRaw, $privateKey, OPENSSL_ALGO_SHA256);
 
-        // =========================================================
-        // Insert Signature
-        // =========================================================
+        // =====================================================
+        // INSERT Signature
+        // =====================================================
 
         $securityNode = $xpath->query('//o:Security')->item(0);
 
@@ -405,18 +403,30 @@ class CreditRegistrySoapClient
             $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($signatureRaw))
         );
 
+        // =====================================================
+        // KeyInfo (SAFE WCF VERSION = BST reference)
+        // =====================================================
+
+        $bst = $xpath->query('//o:BinarySecurityToken')->item(0);
+        $bstId = $bst->getAttributeNS(self::WSU_NS, 'Id');
+
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
 
-        $ref = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
+        $str = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
 
-        $keyInfo->appendChild($ref);
+        $ref = $dom->createElementNS(self::WSSE_NS, 'o:Reference');
+        $ref->setAttribute('URI', '#' . $bstId);
+        $ref->setAttribute('ValueType', self::X509_VALUETYPE);
+
+        $str->appendChild($ref);
+        $keyInfo->appendChild($str);
+
         $signatureNode->appendChild($keyInfo);
 
         $securityNode->appendChild($signatureNode);
 
         return $dom->saveXML();
     }
-
     private function sendViaCurl(string $action, string $xml): string
     {
         $actionUrl = self::ACTION_NS . $action;
