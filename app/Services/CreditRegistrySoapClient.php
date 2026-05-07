@@ -295,181 +295,300 @@ class CreditRegistrySoapClient
         $xpath->registerNamespace('o', self::WSSE_NS);
         $xpath->registerNamespace('ds', self::DSIG_NS);
 
+        // wsu:Id => XML ID
         foreach ($xpath->query('//*[@u:Id]') as $node) {
-            $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
+            $node->setIdAttributeNS(
+                self::WSU_NS,
+                'Id',
+                true
+            );
         }
 
-        $tsNode   = $xpath->query('//u:Timestamp')->item(0);
-        $bodyNode = $xpath->query('//s:Body')->item(0);
+        $tsNode = $xpath->query(
+            '//u:Timestamp[@u:Id="_ts"]'
+        )->item(0);
+
+        $bodyNode = $xpath->query(
+            '//s:Body[@u:Id="_body"]'
+        )->item(0);
 
         if (!$tsNode || !$bodyNode) {
-            throw new \RuntimeException('Timestamp or Body missing');
+            throw new \RuntimeException(
+                'Timestamp or Body node missing'
+            );
         }
 
-        // EXCLUSIVE C14N
+        // =========================================================
+        // WCF-compatible DIGESTS
+        // =========================================================
+
         $tsDigest = base64_encode(
-            hash('sha1', $tsNode->C14N(false, false), true)
+            hash(
+                'sha1',
+                $tsNode->C14N(true, false),
+                true
+            )
         );
 
         $bodyDigest = base64_encode(
-            hash('sha1', $bodyNode->C14N(false, false), true)
-        );;
+            hash(
+                'sha1',
+                $bodyNode->C14N(true, false),
+                true
+            )
+        );
 
-        $secNode = $xpath->query('//o:Security')->item(0);
+        // =========================================================
+        // SECURITY NODE
+        // =========================================================
 
-        $sigNode = $dom->createElementNS(
+        $securityNode = $xpath->query(
+            '//o:Security'
+        )->item(0);
+
+        if (!$securityNode) {
+            throw new \RuntimeException(
+                'Security node missing'
+            );
+        }
+
+        // =========================================================
+        // SIGNATURE
+        // =========================================================
+
+        $signatureNode = $dom->createElementNS(
             self::DSIG_NS,
             'ds:Signature'
         );
 
-        $secNode->appendChild($sigNode);
+        // IMPORTANT:
+        // Signature MUST be appended LAST
+        $securityNode->appendChild($signatureNode);
 
-        $signedInfo = $dom->createElementNS(
+        // =========================================================
+        // SIGNED INFO
+        // =========================================================
+
+        $signedInfoNode = $dom->createElementNS(
             self::DSIG_NS,
             'ds:SignedInfo'
         );
 
-        $sigNode->appendChild($signedInfo);
+        $signatureNode->appendChild($signedInfoNode);
 
-        $canon = $dom->createElementNS(
+        // CanonicalizationMethod
+        $canonMethodNode = $dom->createElementNS(
             self::DSIG_NS,
             'ds:CanonicalizationMethod'
         );
 
-        $canon->setAttribute(
+        $canonMethodNode->setAttribute(
             'Algorithm',
             'http://www.w3.org/2001/10/xml-exc-c14n#'
         );
 
-        $signedInfo->appendChild($canon);
+        $signedInfoNode->appendChild(
+            $canonMethodNode
+        );
 
-        $sigMethod = $dom->createElementNS(
+        // SignatureMethod
+        $signatureMethodNode = $dom->createElementNS(
             self::DSIG_NS,
             'ds:SignatureMethod'
         );
 
-        $sigMethod->setAttribute(
+        $signatureMethodNode->setAttribute(
             'Algorithm',
             'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
         );
 
-        $signedInfo->appendChild($sigMethod);
+        $signedInfoNode->appendChild(
+            $signatureMethodNode
+        );
 
-        $addRef = function(string $uri, string $digest)
-        use ($dom, $signedInfo)
-        {
-            $ref = $dom->createElementNS(
+        // =========================================================
+        // REFERENCE HELPER
+        // =========================================================
+
+        $appendReference = function (
+            string $uri,
+            string $digest
+        ) use ($dom, $signedInfoNode) {
+
+            $referenceNode = $dom->createElementNS(
                 self::DSIG_NS,
                 'ds:Reference'
             );
 
-            $ref->setAttribute('URI', $uri);
+            $referenceNode->setAttribute(
+                'URI',
+                $uri
+            );
 
-            $transforms = $dom->createElementNS(
+            // Transforms
+            $transformsNode = $dom->createElementNS(
                 self::DSIG_NS,
                 'ds:Transforms'
             );
 
-            $transform = $dom->createElementNS(
+            $transformNode = $dom->createElementNS(
                 self::DSIG_NS,
                 'ds:Transform'
             );
 
-            $transform->setAttribute(
+            $transformNode->setAttribute(
                 'Algorithm',
                 'http://www.w3.org/2001/10/xml-exc-c14n#'
             );
 
-            $transforms->appendChild($transform);
+            $transformsNode->appendChild(
+                $transformNode
+            );
 
-            $digestMethod = $dom->createElementNS(
+            // DigestMethod
+            $digestMethodNode = $dom->createElementNS(
                 self::DSIG_NS,
                 'ds:DigestMethod'
             );
 
-            $digestMethod->setAttribute(
+            $digestMethodNode->setAttribute(
                 'Algorithm',
-                'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
+                'http://www.w3.org/2000/09/xmldsig#sha1'
             );
 
-            $digestValue = $dom->createElementNS(
+            // DigestValue
+            $digestValueNode = $dom->createElementNS(
                 self::DSIG_NS,
                 'ds:DigestValue',
                 $digest
             );
 
-            $ref->appendChild($transforms);
-            $ref->appendChild($digestMethod);
-            $ref->appendChild($digestValue);
+            $referenceNode->appendChild(
+                $transformsNode
+            );
 
-            $signedInfo->appendChild($ref);
+            $referenceNode->appendChild(
+                $digestMethodNode
+            );
+
+            $referenceNode->appendChild(
+                $digestValueNode
+            );
+
+            $signedInfoNode->appendChild(
+                $referenceNode
+            );
         };
 
-        // ONLY BODY + TIMESTAMP
-        $addRef('#_ts', $tsDigest);
-        $addRef('#_body', $bodyDigest);
+        // =========================================================
+        // ONLY TIMESTAMP + BODY
+        // =========================================================
 
-        $signedInfoC14n = $signedInfo->C14N(false, false);
+        $appendReference(
+            '#_ts',
+            $tsDigest
+        );
+
+        $appendReference(
+            '#_body',
+            $bodyDigest
+        );
+
+        // =========================================================
+        // CANONICALIZE SIGNEDINFO
+        // =========================================================
+
+        $signedInfoC14n = $signedInfoNode->C14N(
+            true,
+            false
+        );
+
+        // =========================================================
+        // SIGN
+        // =========================================================
 
         $privateKey = openssl_pkey_get_private(
             'file://' . self::KEY_PATH
         );
 
         if (!$privateKey) {
-            throw new \RuntimeException('Private key error');
+            throw new \RuntimeException(
+                'Private key load failed'
+            );
         }
 
         if (!openssl_sign(
             $signedInfoC14n,
-            $rawSig,
+            $rawSignature,
             $privateKey,
-            OPENSSL_ALGO_SHA256
+            OPENSSL_ALGO_SHA1
         )) {
-            throw new \RuntimeException('Sign failed');
+            throw new \RuntimeException(
+                'OpenSSL sign failed'
+            );
         }
 
-        $signatureValue = base64_encode($rawSig);
+        $signatureValue = base64_encode(
+            $rawSignature
+        );
 
-        $sigVal = $dom->createElementNS(
+        // =========================================================
+        // SIGNATURE VALUE
+        // =========================================================
+
+        $signatureValueNode = $dom->createElementNS(
             self::DSIG_NS,
             'ds:SignatureValue',
             $signatureValue
         );
 
-        $sigNode->appendChild($sigVal);
+        $signatureNode->appendChild(
+            $signatureValueNode
+        );
 
-        $keyInfo = $dom->createElementNS(
+        // =========================================================
+        // KEY INFO
+        // =========================================================
+
+        $keyInfoNode = $dom->createElementNS(
             self::DSIG_NS,
             'ds:KeyInfo'
         );
 
-        $str = $dom->createElementNS(
+        $strNode = $dom->createElementNS(
             self::WSSE_NS,
             'o:SecurityTokenReference'
         );
 
-        $ref = $dom->createElementNS(
+        $refNode = $dom->createElementNS(
             self::WSSE_NS,
             'o:Reference'
         );
 
-        $ref->setAttribute(
+        $refNode->setAttribute(
             'URI',
             '#' . $this->bstId
         );
 
-        $ref->setAttribute(
+        $refNode->setAttribute(
             'ValueType',
             self::X509_VALUETYPE
         );
 
-        $str->appendChild($ref);
-        $keyInfo->appendChild($str);
-        $sigNode->appendChild($keyInfo);
+        $strNode->appendChild(
+            $refNode
+        );
+
+        $keyInfoNode->appendChild(
+            $strNode
+        );
+
+        $signatureNode->appendChild(
+            $keyInfoNode
+        );
 
         return $dom->saveXML();
-    }    // ================================================================
-
+    }
     private function sendViaCurl(string $action, string $xml): string
     {
         $actionUrl = self::ACTION_NS . $action;
