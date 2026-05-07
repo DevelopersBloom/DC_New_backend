@@ -181,36 +181,54 @@ class CreditRegistrySoapClient
         $xpath->registerNamespace('s', self::SOAP_NS);
         $xpath->registerNamespace('u', self::WSU_NS);
         $xpath->registerNamespace('o', self::WSSE_NS);
+        $xpath->registerNamespace('ds', self::DSIG_NS);
 
-        // ── ԿՐԻՏԻԿԱԿԱՆ: setIdAttributeNS բոլոր u:Id-ների համար ──
         foreach ($xpath->query('//*[@u:Id]') as $node) {
             $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
         }
 
         $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
+        // ✅ FIX 1 — BST node-ը գտնել
+        $bstNode  = $xpath->query('//o:BinarySecurityToken[@u:Id="' . $this->bstId . '"]')->item(0);
 
-        if (!$tsNode || !$bodyNode) {
-            throw new \RuntimeException('DEGS sign: Timestamp or Body node not found');
+        if (!$tsNode || !$bodyNode || !$bstNode) {
+            throw new \RuntimeException('DEGS sign: ts/body/bst node not found');
         }
 
         $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
         $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
+        // ✅ FIX 1 — BST digest
+        $bstDigest  = base64_encode(hash('sha256', $bstNode->C14N(true, false),  true));
 
-        $signedInfoXml = '<SignedInfo xmlns="' . self::DSIG_NS . '">'
-            . '<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
-            . '<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
-            . '<Reference URI="#_ts">'
-            .   '<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></Transforms>'
-            .   '<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
-            .   '<DigestValue>' . $tsDigest . '</DigestValue>'
-            . '</Reference>'
-            . '<Reference URI="#_body">'
-            .   '<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></Transforms>'
-            .   '<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
-            .   '<DigestValue>' . $bodyDigest . '</DigestValue>'
-            . '</Reference>'
-            . '</SignedInfo>';
+        // ✅ FIX 1 — 3 Reference (ts + body + bst)
+        $signedInfoXml = '<ds:SignedInfo'
+            . ' xmlns:ds="' . self::DSIG_NS . '"'
+            . ' xmlns:s="'  . self::SOAP_NS . '"'
+            . ' xmlns:a="'  . self::WSA_NS  . '"'
+            . ' xmlns:u="'  . self::WSU_NS  . '"'
+            . ' xmlns:o="'  . self::WSSE_NS . '">'
+            . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
+            . '<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
+            // Timestamp
+            . '<ds:Reference URI="#_ts">'
+            .   '<ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
+            .   '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
+            .   '<ds:DigestValue>' . $tsDigest . '</ds:DigestValue>'
+            . '</ds:Reference>'
+            // Body
+            . '<ds:Reference URI="#_body">'
+            .   '<ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
+            .   '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
+            .   '<ds:DigestValue>' . $bodyDigest . '</ds:DigestValue>'
+            . '</ds:Reference>'
+            // BST — WCF-ը պահանջում է
+            . '<ds:Reference URI="#' . $this->bstId . '">'
+            .   '<ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>'
+            .   '<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
+            .   '<ds:DigestValue>' . $bstDigest . '</ds:DigestValue>'
+            . '</ds:Reference>'
+            . '</ds:SignedInfo>';
 
         $siDom = new DOMDocument();
         $siDom->preserveWhiteSpace = false;
@@ -219,39 +237,36 @@ class CreditRegistrySoapClient
 
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
         if (!$privateKey) {
-            throw new \RuntimeException('DEGS: Private key load does not work: ' . openssl_error_string());
+            throw new \RuntimeException('DEGS: Private key load error: ' . openssl_error_string());
         }
         if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
-            throw new \RuntimeException('DEGS: Sign does not work: ' . openssl_error_string());
+            throw new \RuntimeException('DEGS: Sign error: ' . openssl_error_string());
         }
         $signatureValue = base64_encode($rawSig);
 
-        // ── DOM-ով կառուցել Signature (ոչ raw string import) ──
         $secNode = $xpath->query('//o:Security')->item(0);
         if (!$secNode) {
-            throw new \RuntimeException('DEGS: Security node does not exist');
+            throw new \RuntimeException('DEGS: Security node not found');
         }
 
         $dsigNs = self::DSIG_NS;
         $wsseNs = self::WSSE_NS;
 
-        // Signature node
-        $sigNode = $dom->createElementNS($dsigNs, 'Signature');
+        $sigNode = $dom->createElementNS($dsigNs, 'ds:Signature');
         $secNode->appendChild($sigNode);
 
-        // SignedInfo — parse ու import
         $siDom2 = new DOMDocument();
         $siDom2->loadXML($signedInfoXml);
         $sigNode->appendChild($dom->importNode($siDom2->documentElement, true));
 
-        // SignatureValue
-        $sigValNode = $dom->createElementNS($dsigNs, 'SignatureValue', $signatureValue);
+        $sigValNode = $dom->createElementNS($dsigNs, 'ds:SignatureValue', $signatureValue);
         $sigNode->appendChild($sigValNode);
 
-        // KeyInfo → SecurityTokenReference → Reference
-        $keyInfoNode = $dom->createElementNS($dsigNs, 'KeyInfo');
-        $strNode     = $dom->createElementNS($wsseNs, 'SecurityTokenReference');
-        $refNode     = $dom->createElementNS($wsseNs, 'Reference');
+        // ✅ FIX 2 — namespace redeclaration-ից խուսափել
+        // createElement (առանց NS) — prefix-ը parent-ից inherit կանի
+        $keyInfoNode = $dom->createElementNS($dsigNs, 'ds:KeyInfo');
+        $strNode     = $dom->createElement('o:SecurityTokenReference');
+        $refNode     = $dom->createElement('o:Reference');
         $refNode->setAttribute('URI',       '#' . $this->bstId);
         $refNode->setAttribute('ValueType', self::X509_VALUETYPE);
 
@@ -260,8 +275,7 @@ class CreditRegistrySoapClient
         $sigNode->appendChild($keyInfoNode);
 
         return $dom->saveXML();
-    }    // ================================================================
-    // Step 3 — cURL (HTTPS + mTLS)
+    }    // Step 3 — cURL (HTTPS + mTLS)
     // ================================================================
 
     private function sendViaCurl(string $action, string $xml): string
