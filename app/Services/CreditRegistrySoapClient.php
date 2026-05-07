@@ -182,6 +182,11 @@ class CreditRegistrySoapClient
         $xpath->registerNamespace('u', self::WSU_NS);
         $xpath->registerNamespace('o', self::WSSE_NS);
 
+        // ── ԿՐԻՏԻԿԱԿԱՆ: setIdAttributeNS բոլոր u:Id-ների համար ──
+        foreach ($xpath->query('//*[@u:Id]') as $node) {
+            $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
+        }
+
         $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
 
@@ -189,11 +194,9 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('DEGS sign: Timestamp or Body node not found');
         }
 
-        // Exclusive C14N — namespace prefix list EMPTY = standard exc-c14n
         $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
         $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
 
-        // ── 3. SignedInfo XML ─────────────────────────────────────────
         $signedInfoXml = '<SignedInfo xmlns="' . self::DSIG_NS . '">'
             . '<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
             . '<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
@@ -209,7 +212,6 @@ class CreditRegistrySoapClient
             . '</Reference>'
             . '</SignedInfo>';
 
-        // ── 4. SignedInfo-ի C14N → sign ──────────────────────────────
         $siDom = new DOMDocument();
         $siDom->preserveWhiteSpace = false;
         $siDom->loadXML($signedInfoXml);
@@ -217,39 +219,48 @@ class CreditRegistrySoapClient
 
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
         if (!$privateKey) {
-            throw new \RuntimeException('DEGS: Private key load  does not work: ' . openssl_error_string());
+            throw new \RuntimeException('DEGS: Private key load does not work: ' . openssl_error_string());
         }
         if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
             throw new \RuntimeException('DEGS: Sign does not work: ' . openssl_error_string());
         }
         $signatureValue = base64_encode($rawSig);
 
-        $signatureXml = '<Signature xmlns="' . self::DSIG_NS . '">'
-            . $signedInfoXml
-            . '<SignatureValue>' . $signatureValue . '</SignatureValue>'
-            . '<KeyInfo>'
-            .   '<o:SecurityTokenReference xmlns:o="' . self::WSSE_NS . '">'
-            .     '<o:Reference URI="#' . $this->bstId . '"'
-            .       ' ValueType="' . self::X509_VALUETYPE . '"/>'
-            .   '</o:SecurityTokenReference>'
-            . '</KeyInfo>'
-            . '</Signature>';
-
+        // ── DOM-ով կառուցել Signature (ոչ raw string import) ──
         $secNode = $xpath->query('//o:Security')->item(0);
         if (!$secNode) {
             throw new \RuntimeException('DEGS: Security node does not exist');
         }
 
-        $sigDoc = new DOMDocument();
-        $sigDoc->preserveWhiteSpace = false;
-        $sigDoc->loadXML($signatureXml);
+        $dsigNs = self::DSIG_NS;
+        $wsseNs = self::WSSE_NS;
 
-        $importedSig = $dom->importNode($sigDoc->documentElement, true);
-        $secNode->appendChild($importedSig);
+        // Signature node
+        $sigNode = $dom->createElementNS($dsigNs, 'Signature');
+        $secNode->appendChild($sigNode);
+
+        // SignedInfo — parse ու import
+        $siDom2 = new DOMDocument();
+        $siDom2->loadXML($signedInfoXml);
+        $sigNode->appendChild($dom->importNode($siDom2->documentElement, true));
+
+        // SignatureValue
+        $sigValNode = $dom->createElementNS($dsigNs, 'SignatureValue', $signatureValue);
+        $sigNode->appendChild($sigValNode);
+
+        // KeyInfo → SecurityTokenReference → Reference
+        $keyInfoNode = $dom->createElementNS($dsigNs, 'KeyInfo');
+        $strNode     = $dom->createElementNS($wsseNs, 'SecurityTokenReference');
+        $refNode     = $dom->createElementNS($wsseNs, 'Reference');
+        $refNode->setAttribute('URI',       '#' . $this->bstId);
+        $refNode->setAttribute('ValueType', self::X509_VALUETYPE);
+
+        $strNode->appendChild($refNode);
+        $keyInfoNode->appendChild($strNode);
+        $sigNode->appendChild($keyInfoNode);
 
         return $dom->saveXML();
-    }
-    // ================================================================
+    }    // ================================================================
     // Step 3 — cURL (HTTPS + mTLS)
     // ================================================================
 
