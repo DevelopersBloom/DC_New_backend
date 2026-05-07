@@ -121,15 +121,19 @@ echo "MsgID dig.: $msgIdDigest\n";
 echo "Thumbprint : $thumbprintB64\n";
 
 // ── 5. SignedInfo build ───────────────────────────────────────────────────────
-// DigestMethod = xmldsig-more#sha256 (Basic256 policy)
 $sigMethodAlg  = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
 $c14nAlg       = 'http://www.w3.org/2001/10/xml-exc-c14n#';
-$digestAlg     = 'http://www.w3.org/2001/04/xmldsig-more#sha256';
+$digestAlg     = 'http://www.w3.org/2001/04/xmlenc#sha256';
+$exc14nNs      = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+$prefixList    = 's a u o';
 
 $signedInfo = $dom->createElementNS($DSIG_NS, 'ds:SignedInfo');
 
 $canonMethod = $dom->createElementNS($DSIG_NS, 'ds:CanonicalizationMethod');
 $canonMethod->setAttribute('Algorithm', $c14nAlg);
+$inclusive = $dom->createElementNS($exc14nNs, 'ec:InclusiveNamespaces');
+$inclusive->setAttribute('PrefixList', $prefixList);
+$canonMethod->appendChild($inclusive);
 $signedInfo->appendChild($canonMethod);
 
 $sigMethod = $dom->createElementNS($DSIG_NS, 'ds:SignatureMethod');
@@ -144,6 +148,9 @@ $addRef = function (string $uri, string $digest) use ($dom, $signedInfo, $DSIG_N
     $transforms = $dom->createElementNS($DSIG_NS, 'ds:Transforms');
     $transform  = $dom->createElementNS($DSIG_NS, 'ds:Transform');
     $transform->setAttribute('Algorithm', $c14nAlg);
+    $inclusive = $dom->createElementNS('http://www.w3.org/2001/10/xml-exc-c14n#', 'ec:InclusiveNamespaces');
+    $inclusive->setAttribute('PrefixList', 's a u o');
+    $transform->appendChild($inclusive);
     $transforms->appendChild($transform);
     $ref->appendChild($transforms);
 

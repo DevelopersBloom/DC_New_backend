@@ -25,10 +25,12 @@ class CreditRegistrySoapClient
     private const B64_ENCODINGTYPE = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary';
     private const THUMB_VALUETYPE  = 'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1';
 
-    // Digest algorithm — Basic256 policy պահանջ
-    private const DIGEST_ALG  = 'http://www.w3.org/2001/04/xmldsig-more#sha256';
+    // Digest algorithm — many WCF stacks expect xmlenc#sha256
+    private const DIGEST_ALG  = 'http://www.w3.org/2001/04/xmlenc#sha256';
     private const SIG_ALG     = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
     private const C14N_ALG    = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+    private const EXC14N_NS   = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+    private const INCLUSIVE_PREFIX_LIST = 's a u o';
 
     private string $bstId = '';
     private string $actionId = '_action';
@@ -235,6 +237,9 @@ class CreditRegistrySoapClient
 
         $canonMethod = $dom->createElementNS(self::DSIG_NS, 'ds:CanonicalizationMethod');
         $canonMethod->setAttribute('Algorithm', self::C14N_ALG);
+        $inclusive = $dom->createElementNS(self::EXC14N_NS, 'ec:InclusiveNamespaces');
+        $inclusive->setAttribute('PrefixList', self::INCLUSIVE_PREFIX_LIST);
+        $canonMethod->appendChild($inclusive);
         $signedInfo->appendChild($canonMethod);
 
         $sigMethod = $dom->createElementNS(self::DSIG_NS, 'ds:SignatureMethod');
@@ -249,11 +254,14 @@ class CreditRegistrySoapClient
             $transforms = $dom->createElementNS(self::DSIG_NS, 'ds:Transforms');
             $transform  = $dom->createElementNS(self::DSIG_NS, 'ds:Transform');
             $transform->setAttribute('Algorithm', self::C14N_ALG);
+            $inclusive = $dom->createElementNS(self::EXC14N_NS, 'ec:InclusiveNamespaces');
+            $inclusive->setAttribute('PrefixList', self::INCLUSIVE_PREFIX_LIST);
+            $transform->appendChild($inclusive);
             $transforms->appendChild($transform);
             $ref->appendChild($transforms);
 
             $dm = $dom->createElementNS(self::DSIG_NS, 'ds:DigestMethod');
-            $dm->setAttribute('Algorithm', self::DIGEST_ALG); // xmldsig-more#sha256
+            $dm->setAttribute('Algorithm', self::DIGEST_ALG);
             $ref->appendChild($dm);
 
             $dv = $dom->createElementNS(self::DSIG_NS, 'ds:DigestValue', $digest);
