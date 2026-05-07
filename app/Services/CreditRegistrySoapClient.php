@@ -339,6 +339,12 @@ class CreditRegistrySoapClient
             'ds:Signature'
         );
 
+        $sigNode->setAttributeNS(
+            self::WSU_NS,
+            'u:Id',
+            'SIG-' . $this->uuid4()
+        );
+
         $secNode->appendChild($sigNode);
 
         // ds:SignedInfo
