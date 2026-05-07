@@ -284,7 +284,7 @@ class CreditRegistrySoapClient
     private function signEnvelope(string $xml): string
     {
         $dom = new DOMDocument();
-        $dom->preserveWhiteSpace = false;
+        $dom->preserveWhiteSpace = true;   // կարևոր
         $dom->formatOutput = false;
         $dom->loadXML($xml);
 
@@ -294,8 +294,9 @@ class CreditRegistrySoapClient
         $xpath->registerNamespace('u', self::WSU_NS);
         $xpath->registerNamespace('o', self::WSSE_NS);
         $xpath->registerNamespace('ds', self::DSIG_NS);
+        $xpath->registerNamespace('a', self::WSA_NS);
 
-        // make wsu:Id act as ID
+        // wsu:Id → ID attribute
         foreach ($xpath->query('//*[@u:Id]') as $node) {
             $node->setIdAttributeNS(self::WSU_NS, 'Id', true);
         }
@@ -303,33 +304,39 @@ class CreditRegistrySoapClient
         $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
         $toNode   = $xpath->query('//a:To')->item(0);
+        $bstNode  = $xpath->query('//o:BinarySecurityToken')->item(0);
 
-        if (!$tsNode || !$bodyNode || !$toNode) {
-            throw new \RuntimeException('Missing TS / Body / To');
+        if (!$tsNode || !$bodyNode || !$toNode || !$bstNode) {
+            throw new \RuntimeException('Missing nodes');
         }
 
-        // ✅ IMPORTANT: WCF expects SHA1 (ոչ SHA256!)
-        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false), true));
-        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
-        $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false), true));
-        $securityNode = $xpath->query('//o:Security')->item(0);
+        // =========================================================
+        // ✅ DIGESTS (RAW XML, NOT C14N DOM)
+        // =========================================================
 
-        if (!$securityNode) {
-            throw new \RuntimeException('Security missing');
+        $tsDigest = base64_encode(hash('sha256', $this->nodeRawXml($tsNode), true));
+        $bodyDigest = base64_encode(hash('sha256', $this->nodeRawXml($bodyNode), true));
+        $toDigest = base64_encode(hash('sha256', $this->nodeRawXml($toNode), true));
+        $bstDigest = base64_encode(hash('sha256', $this->nodeRawXml($bstNode), true));
+
+        // =========================================================
+        // Remove existing Signature (IMPORTANT)
+        // =========================================================
+        $oldSig = $xpath->query('//ds:Signature')->item(0);
+        if ($oldSig && $oldSig->parentNode) {
+            $oldSig->parentNode->removeChild($oldSig);
         }
 
-        $signatureNode = $dom->createElementNS(self::DSIG_NS, 'ds:Signature');
-        $securityNode->appendChild($signatureNode);
+        // =========================================================
+        // Build SignedInfo
+        // =========================================================
 
         $signedInfo = $dom->createElementNS(self::DSIG_NS, 'ds:SignedInfo');
-        $signatureNode->appendChild($signedInfo);
 
-        // Canonicalization
         $canon = $dom->createElementNS(self::DSIG_NS, 'ds:CanonicalizationMethod');
         $canon->setAttribute('Algorithm', 'http://www.w3.org/2001/10/xml-exc-c14n#');
         $signedInfo->appendChild($canon);
 
-        // ⚠️ WCF usually expects RSA-SHA1
         $sigMethod = $dom->createElementNS(self::DSIG_NS, 'ds:SignatureMethod');
         $sigMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256');
         $signedInfo->appendChild($sigMethod);
@@ -345,7 +352,7 @@ class CreditRegistrySoapClient
             $trans->appendChild($t);
 
             $dm = $dom->createElementNS(self::DSIG_NS, 'ds:DigestMethod');
-            $dm->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmldsig-more#sha256');
+            $dm->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmlenc#sha256');
 
             $dv = $dom->createElementNS(self::DSIG_NS, 'ds:DigestValue', $digest);
 
@@ -358,9 +365,23 @@ class CreditRegistrySoapClient
 
         $addRef('#_ts', $tsDigest);
         $addRef('#_body', $bodyDigest);
-        $addRef('#_to', $toDigest); // ✅ REQUIRED (քո XML-ում կա)
+        $addRef('#_to', $toDigest);
+        $addRef('#' . $bstNode->getAttributeNS(self::WSU_NS, 'Id'), $bstDigest);
 
-        $signedInfoC14n = $signedInfo->C14N(true, false);
+        // =========================================================
+        // Canonicalize SignedInfo
+        // =========================================================
+
+        $siDom = new DOMDocument();
+        $siDom->preserveWhiteSpace = true;
+        $siDom->formatOutput = false;
+        $siDom->appendChild($siDom->importNode($signedInfo, true));
+
+        $signedInfoC14n = $siDom->documentElement->C14N(true, false);
+
+        // =========================================================
+        // Sign
+        // =========================================================
 
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
 
@@ -369,45 +390,33 @@ class CreditRegistrySoapClient
         }
 
         openssl_sign($signedInfoC14n, $signatureRaw, $privateKey, OPENSSL_ALGO_SHA256);
+
+        // =========================================================
+        // Insert Signature
+        // =========================================================
+
+        $securityNode = $xpath->query('//o:Security')->item(0);
+
+        $signatureNode = $dom->createElementNS(self::DSIG_NS, 'ds:Signature');
+
+        $signatureNode->appendChild($signedInfo);
+
         $signatureNode->appendChild(
             $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($signatureRaw))
         );
 
-        // =========================================================
-        // ✅ KEY FIX — Thumbprint (ինչ որ սերվերը պահանջում է)
-        // =========================================================
-
-        $cert = file_get_contents(self::CERT_PATH);
-        $cert = str_replace(
-            ["-----BEGIN CERTIFICATE-----", "-----END CERTIFICATE-----", "\n", "\r", " "],
-            '',
-            $cert
-        );
-
-        $der = base64_decode($cert);
-        $thumbprint = base64_encode(sha1($der, true));
-
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
-        $secRef  = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
 
-        $keyId = $dom->createElementNS(self::WSSE_NS, 'o:KeyIdentifier', $thumbprint);
+        $ref = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
 
-        $keyId->setAttribute(
-            'ValueType',
-            'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1'
-        );
-
-        $keyId->setAttribute(
-            'EncodingType',
-            self::B64_ENCODINGTYPE
-        );
-
-        $secRef->appendChild($keyId);
-        $keyInfo->appendChild($secRef);
+        $keyInfo->appendChild($ref);
         $signatureNode->appendChild($keyInfo);
+
+        $securityNode->appendChild($signatureNode);
 
         return $dom->saveXML();
     }
+
     private function sendViaCurl(string $action, string $xml): string
     {
         $actionUrl = self::ACTION_NS . $action;
