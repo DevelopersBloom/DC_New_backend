@@ -345,7 +345,7 @@ class CreditRegistrySoapClient
             $trans->appendChild($t);
 
             $dm = $dom->createElementNS(self::DSIG_NS, 'ds:DigestMethod');
-            $dm->setAttribute('Algorithm', 'http://www.w3.org/2000/09/xmldsig#sha1');
+            $dm->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmldsig-more#sha256');
 
             $dv = $dom->createElementNS(self::DSIG_NS, 'ds:DigestValue', $digest);
 
@@ -390,11 +390,7 @@ class CreditRegistrySoapClient
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
         $secRef  = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
 
-        $keyId = $dom->createElementNS(
-            self::WSSE_NS,
-            'wsse:KeyIdentifier',
-            $thumbprint
-        );
+        $keyId = $dom->createElementNS(self::WSSE_NS, 'o:KeyIdentifier', $thumbprint);
 
         $keyId->setAttribute(
             'ValueType',

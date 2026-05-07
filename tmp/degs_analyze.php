@@ -80,7 +80,7 @@ $rawXml = <<<XML
           <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
           <ds:Reference URI="#_ts">
             <ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms>
-            <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+            <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#sha256"/>
             <ds:DigestValue>PLACEHOLDER_TS</ds:DigestValue>
           </ds:Reference>
           <ds:Reference URI="#_body">
