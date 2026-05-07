@@ -55,8 +55,8 @@ $rawXml = <<<XML
     xmlns:o="{$WSSE_NS}"
     xmlns:ds="{$DSIG_NS}">
   <s:Header>
-    <a:Action s:mustUnderstand="1">http://tempuri.org/IDegsNSS/IsAlive</a:Action>
-    <a:MessageID>{$msgId}</a:MessageID>
+    <a:Action s:mustUnderstand="1" u:Id="_action">http://tempuri.org/IDegsNSS/IsAlive</a:Action>
+    <a:MessageID u:Id="_msgid">{$msgId}</a:MessageID>
     <a:To s:mustUnderstand="1" u:Id="_to">{$ENDPOINT}</a:To>
     <o:Security s:mustUnderstand="1">
       <o:BinarySecurityToken
@@ -99,21 +99,25 @@ $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
 $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
 $bstNode  = $xpath->query('//o:BinarySecurityToken[@u:Id="' . $bstId . '"]')->item(0);
 $toNode   = $xpath->query('//a:To[@u:Id="_to"]')->item(0);
+$actionNode = $xpath->query('//a:Action[@u:Id="_action"]')->item(0);
+$msgIdNode  = $xpath->query('//a:MessageID[@u:Id="_msgid"]')->item(0);
 
-if (!$tsNode || !$bodyNode || !$bstNode || !$toNode) {
+if (!$tsNode || !$bodyNode || !$bstNode || !$toNode || !$actionNode || !$msgIdNode) {
     die("❌ Required node not found\n");
 }
 
 // ── 4. Digests (Exc-C14N, SHA256) ────────────────────────────────────────────
 $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
 $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
-$bstDigest  = base64_encode(hash('sha256', $bstNode->C14N(true, false),  true));
 $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false),   true));
+$actionDigest = base64_encode(hash('sha256', $actionNode->C14N(true, false), true));
+$msgIdDigest  = base64_encode(hash('sha256', $msgIdNode->C14N(true, false), true));
 
 echo "TS digest  : $tsDigest\n";
 echo "Body digest: $bodyDigest\n";
-echo "BST digest : $bstDigest\n";
 echo "To digest  : $toDigest\n";
+echo "Action dig.: $actionDigest\n";
+echo "MsgID dig.: $msgIdDigest\n";
 echo "Thumbprint : $thumbprintB64\n";
 
 // ── 5. SignedInfo build ───────────────────────────────────────────────────────
@@ -153,11 +157,12 @@ $addRef = function (string $uri, string $digest) use ($dom, $signedInfo, $DSIG_N
     $signedInfo->appendChild($ref);
 };
 
-// 4 Reference: ts, body, bst, to
+// References: ts, body, to, action, messageId
 $addRef('#_ts',    $tsDigest);
 $addRef('#_body',  $bodyDigest);
-$addRef('#' . $bstId, $bstDigest);
 $addRef('#_to',    $toDigest);
+$addRef('#_action', $actionDigest);
+$addRef('#_msgid',  $msgIdDigest);
 
 // ── 6. SignedInfo C14N ────────────────────────────────────────────────────────
 $siDom = new DOMDocument();
@@ -193,13 +198,13 @@ $signatureNode->appendChild(
     $dom->createElementNS($DSIG_NS, 'ds:SignatureValue', $sigValue)
 );
 
-// 9c. KeyInfo — ThumbprintSHA1 KeyIdentifier (WCF RequireThumbprintReference)
+// 9c. KeyInfo — DirectReference to BinarySecurityToken
 $keyInfo = $dom->createElementNS($DSIG_NS, 'ds:KeyInfo');
 $str     = $dom->createElementNS($WSSE_NS, 'o:SecurityTokenReference');
-$keyId   = $dom->createElementNS($WSSE_NS, 'o:KeyIdentifier', $thumbprintB64);
-$keyId->setAttribute('ValueType',    $THUMB_VT);
-$keyId->setAttribute('EncodingType', $B64ET);
-$str->appendChild($keyId);
+$ref     = $dom->createElementNS($WSSE_NS, 'o:Reference');
+$ref->setAttribute('URI', '#' . $bstId);
+$ref->setAttribute('ValueType', $X509VT);
+$str->appendChild($ref);
 $keyInfo->appendChild($str);
 $signatureNode->appendChild($keyInfo);
 

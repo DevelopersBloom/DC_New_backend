@@ -31,6 +31,8 @@ class CreditRegistrySoapClient
     private const C14N_ALG    = 'http://www.w3.org/2001/10/xml-exc-c14n#';
 
     private string $bstId = '';
+    private string $actionId = '_action';
+    private string $messageIdId = '_msgid';
 
     // ================================================================
     // Public API
@@ -155,8 +157,8 @@ class CreditRegistrySoapClient
             .   ' xmlns:o="'  . self::WSSE_NS . '"'
             .   ' xmlns:ds="' . self::DSIG_NS . '">'
             .   '<s:Header>'
-            .     '<a:Action s:mustUnderstand="1">' . $actionUrl . '</a:Action>'
-            .     '<a:MessageID>' . $msgId . '</a:MessageID>'
+            .     '<a:Action s:mustUnderstand="1" u:Id="' . $this->actionId . '">' . $actionUrl . '</a:Action>'
+            .     '<a:MessageID u:Id="' . $this->messageIdId . '">' . $msgId . '</a:MessageID>'
             .     '<a:To s:mustUnderstand="1" u:Id="_to">' . self::ENDPOINT . '</a:To>'
             .     '<o:Security s:mustUnderstand="1">'
             // BST FIRST (EndorsingSupportingTokens / AlwaysToRecipient)
@@ -214,16 +216,19 @@ class CreditRegistrySoapClient
         $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
         $bstNode  = $xpath->query('//o:BinarySecurityToken[@u:Id="' . $this->bstId . '"]')->item(0);
         $toNode   = $xpath->query('//a:To[@u:Id="_to"]')->item(0);
+        $actionNode   = $xpath->query('//a:Action[@u:Id="' . $this->actionId . '"]')->item(0);
+        $messageIdNode = $xpath->query('//a:MessageID[@u:Id="' . $this->messageIdId . '"]')->item(0);
 
-        if (!$tsNode || !$bodyNode || !$bstNode || !$toNode) {
-            throw new \RuntimeException('DEGS sign: ts/body/bst/to node not found');
+        if (!$tsNode || !$bodyNode || !$bstNode || !$toNode || !$actionNode || !$messageIdNode) {
+            throw new \RuntimeException('DEGS sign: required node not found (ts/body/bst/to/action/messageId)');
         }
 
         // ── Digests (Exc-C14N, SHA256) ────────────────────────────────────────
         $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
         $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
-        $bstDigest  = base64_encode(hash('sha256', $bstNode->C14N(true, false),  true));
         $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false),   true));
+        $actionDigest   = base64_encode(hash('sha256', $actionNode->C14N(true, false),   true));
+        $messageIdDigest = base64_encode(hash('sha256', $messageIdNode->C14N(true, false), true));
 
         // ── SignedInfo build ──────────────────────────────────────────────────
         $signedInfo = $dom->createElementNS(self::DSIG_NS, 'ds:SignedInfo');
@@ -257,11 +262,12 @@ class CreditRegistrySoapClient
             $signedInfo->appendChild($ref);
         };
 
-        // 4 Reference: ts, body, bst, to
+        // References: ts, body, to, wsa:Action, wsa:MessageID
         $addRef('#_ts',             $tsDigest);
         $addRef('#_body',           $bodyDigest);
-        $addRef('#' . $this->bstId, $bstDigest);
         $addRef('#_to',             $toDigest);
+        $addRef('#' . $this->actionId, $actionDigest);
+        $addRef('#' . $this->messageIdId, $messageIdDigest);
 
         // ── SignedInfo C14N ───────────────────────────────────────────────────
         $siDom = new DOMDocument();
@@ -289,17 +295,13 @@ class CreditRegistrySoapClient
             $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($rawSig))
         );
 
-        // KeyInfo — ThumbprintSHA1 KeyIdentifier (WCF RequireThumbprintReference)
-        $certB64      = $bstNode->textContent;
-        $certDer      = base64_decode($certB64);
-        $thumbprint   = base64_encode(hash('sha1', $certDer, true));
-
+        // KeyInfo — DirectReference to BinarySecurityToken (most WS-SecurityPolicy setups)
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
         $str     = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
-        $keyId   = $dom->createElementNS(self::WSSE_NS, 'o:KeyIdentifier', $thumbprint);
-        $keyId->setAttribute('ValueType',    self::THUMB_VALUETYPE);
-        $keyId->setAttribute('EncodingType', self::B64_ENCODINGTYPE);
-        $str->appendChild($keyId);
+        $ref     = $dom->createElementNS(self::WSSE_NS, 'o:Reference');
+        $ref->setAttribute('URI', '#' . $this->bstId);
+        $ref->setAttribute('ValueType', self::X509_VALUETYPE);
+        $str->appendChild($ref);
         $keyInfo->appendChild($str);
         $signatureNode->appendChild($keyInfo);
 
