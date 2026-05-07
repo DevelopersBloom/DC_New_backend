@@ -147,7 +147,7 @@ class CreditRegistrySoapClient
             .   '<s:Header>'
             .     '<a:Action s:mustUnderstand="1">' . $actionUrl . '</a:Action>'
             .     '<a:MessageID>' . $msgId . '</a:MessageID>'
-            .     '<a:To s:mustUnderstand="1">' . self::ENDPOINT . '</a:To>'
+            .    '<a:To s:mustUnderstand="1" u:Id="_to">' . self::ENDPOINT . '</a:To>'
             .     '<o:Security s:mustUnderstand="1">'
             .       '<u:Timestamp u:Id="_ts">'
             .         '<u:Created>' . $now     . '</u:Created>'
@@ -309,10 +309,9 @@ class CreditRegistrySoapClient
         }
 
         // ✅ IMPORTANT: WCF expects SHA1 (ոչ SHA256!)
-        $tsDigest   = base64_encode(hash('sha1', $tsNode->C14N(true, false), true));
-        $bodyDigest = base64_encode(hash('sha1', $bodyNode->C14N(true, false), true));
-        $toDigest   = base64_encode(hash('sha1', $toNode->C14N(true, false), true));
-
+        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false), true));
+        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
+        $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false), true));
         $securityNode = $xpath->query('//o:Security')->item(0);
 
         if (!$securityNode) {
@@ -332,7 +331,7 @@ class CreditRegistrySoapClient
 
         // ⚠️ WCF usually expects RSA-SHA1
         $sigMethod = $dom->createElementNS(self::DSIG_NS, 'ds:SignatureMethod');
-        $sigMethod->setAttribute('Algorithm', 'http://www.w3.org/2000/09/xmldsig#rsa-sha1');
+        $sigMethod->setAttribute('Algorithm', 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256');
         $signedInfo->appendChild($sigMethod);
 
         $addRef = function ($uri, $digest) use ($dom, $signedInfo) {
@@ -369,8 +368,7 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('Private key error');
         }
 
-        openssl_sign($signedInfoC14n, $signatureRaw, $privateKey, OPENSSL_ALGO_SHA1);
-
+        openssl_sign($signedInfoC14n, $signatureRaw, $privateKey, OPENSSL_ALGO_SHA256);
         $signatureNode->appendChild(
             $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($signatureRaw))
         );
