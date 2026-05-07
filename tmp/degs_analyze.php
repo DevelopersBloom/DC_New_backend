@@ -1,5 +1,4 @@
 <?php
-// degs_v4.php — Fix: SignedInfo C14N isolation
 
 $CERT_PATH = '/etc/ssl/degs/client.crt';
 $KEY_PATH  = '/etc/ssl/degs/client.key';
@@ -23,7 +22,7 @@ $msgId   = 'urn:uuid:' . uuid4();
 $now     = gmdate('Y-m-d\TH:i:s\Z');
 $expires = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
 
-// ── 1. Envelope ──────────────────────────────────────────────────
+// ── 1. Build envelope ──────────────────────────────────────────
 $rawXml = <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope
@@ -60,25 +59,31 @@ $xpath = new DOMXPath($dom);
 $xpath->registerNamespace('s', $SOAP_NS);
 $xpath->registerNamespace('u', $WSU_NS);
 $xpath->registerNamespace('o', $WSSE_NS);
-$xpath->registerNamespace('ds', $DSIG_NS);
 
 foreach ($xpath->query('//*[@u:Id]') as $node) {
     $node->setIdAttributeNS($WSU_NS, 'Id', true);
 }
 
-// ── 2. Digests ───────────────────────────────────────────────────
+// ── 2. Digests ─────────────────────────────────────────────────
 $tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
 $bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
 
-$tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
+$tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false), true));
 $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
 
 echo "TS digest  : $tsDigest\n";
 echo "Body digest: $bodyDigest\n";
+if ($tsDigest === $bodyDigest) { die("❌ CRITICAL: identical digests\n"); }
 
-// ── 3. SignedInfo — standalone DOM-ով (ԿՐԻՏԻԿԱԿԱՆ) ─────────────
-// Standalone DOM = parent namespace-ները չեն inject լինի C14N-ի ժամանակ
-$signedInfoXml = '<ds:SignedInfo xmlns:ds="' . $DSIG_NS . '">'
+// ── 3. SignedInfo — ԿՐԻՏԻԿԱԿԱՆ FIX ───────────────────────────
+// ds: prefix-ով (ոչ default namespace) — որպեսզի importNode-ից
+// հետո C14N-ը նույնը մնա
+$signedInfoXml = '<ds:SignedInfo'
+    . ' xmlns:ds="' . $DSIG_NS . '"'
+    . ' xmlns:s="' . $SOAP_NS . '"'       // ← inkluzive C14N-ի համար
+    . ' xmlns:a="' . $WSA_NS . '"'        // ← inject-ը կանխել explicit declare-ով
+    . ' xmlns:u="' . $WSU_NS . '"'
+    . ' xmlns:o="' . $WSSE_NS . '">'
     . '<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
     . '<ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>'
     . '<ds:Reference URI="#_ts">'
@@ -93,42 +98,42 @@ $signedInfoXml = '<ds:SignedInfo xmlns:ds="' . $DSIG_NS . '">'
     . '</ds:Reference>'
     . '</ds:SignedInfo>';
 
-// Standalone DOM — ISOLATE from parent namespaces
+// Standalone DOM-ով C14N — Exclusive C14N strips unused namespaces
 $siDom = new DOMDocument();
-$siDom->preserveWhiteSpace = false;
 $siDom->loadXML($signedInfoXml);
-
-// C14N with exclusive = strips non-utilized namespaces
 $siC14n = $siDom->documentElement->C14N(true, false);
-echo "\nSignedInfo C14N:\n$siC14n\n\n";
 
-// ── 4. Sign ──────────────────────────────────────────────────────
+echo "\nSignedInfo C14N (first 200):\n" . substr($siC14n, 0, 200) . "\n\n";
+
+// ── 4. Sign ────────────────────────────────────────────────────
 $privKey = openssl_pkey_get_private('file://' . $KEY_PATH);
 openssl_sign($siC14n, $rawSig, $privKey, OPENSSL_ALGO_SHA256);
 $sigValue = base64_encode($rawSig);
 
-// ── 5. Immediate self-verify (SAME C14N string) ──────────────────
+// ── 5. Immediate verify ────────────────────────────────────────
 $pubKey  = openssl_pkey_get_public(file_get_contents($CERT_PATH));
-$verifyR = openssl_verify($siC14n, $rawSig, $pubKey, OPENSSL_ALGO_SHA256);
-echo "Immediate RSA verify (same C14N): " . ($verifyR === 1 ? '✅ OK' : '❌ FAIL') . "\n\n";
+$verify1 = openssl_verify($siC14n, $rawSig, $pubKey, OPENSSL_ALGO_SHA256);
+echo "Immediate verify: " . ($verify1 === 1 ? '✅ OK' : '❌ FAIL') . "\n";
 
-// ── 6. Insert Signature into DOM ─────────────────────────────────
+// ── 6. Insert Signature into DOM ──────────────────────────────
 $secNode = $xpath->query('//o:Security')->item(0);
 
-$sigEl     = $dom->createElementNS($DSIG_NS, 'ds:Signature');
+$sigEl = $dom->createElementNS($DSIG_NS, 'ds:Signature');
 $secNode->appendChild($sigEl);
 
-// Import SignedInfo from standalone DOM
-$importedSI = $dom->importNode($siDom->documentElement, true);
-$sigEl->appendChild($importedSI);
+// Import SignedInfo — Exclusive C14N ensures namespaces are stripped
+$siDom2 = new DOMDocument();
+$siDom2->loadXML($signedInfoXml);
+$sigEl->appendChild($dom->importNode($siDom2->documentElement, true));
 
 $sigValEl = $dom->createElementNS($DSIG_NS, 'ds:SignatureValue', $sigValue);
 $sigEl->appendChild($sigValEl);
 
+// KeyInfo
 $keyInfoEl = $dom->createElementNS($DSIG_NS, 'ds:KeyInfo');
 $strEl     = $dom->createElementNS($WSSE_NS, 'o:SecurityTokenReference');
 $refEl     = $dom->createElementNS($WSSE_NS, 'o:Reference');
-$refEl->setAttribute('URI',       '#' . $bstId);
+$refEl->setAttribute('URI', '#' . $bstId);
 $refEl->setAttribute('ValueType', $X509VT);
 $strEl->appendChild($refEl);
 $keyInfoEl->appendChild($strEl);
@@ -136,31 +141,42 @@ $sigEl->appendChild($keyInfoEl);
 
 $signedXml = $dom->saveXML();
 
-// ── 7. Post-save verify — C14N of SignedInfo in final XML ────────
-echo "=== Post-save verify ===\n";
+// ── 7. Post-save verify ────────────────────────────────────────
+echo "\n=== Post-save verify ===\n";
 $vDom = new DOMDocument();
 $vDom->preserveWhiteSpace = false;
 $vDom->loadXML($signedXml);
+
 $vXpath = new DOMXPath($vDom);
 $vXpath->registerNamespace('ds', $DSIG_NS);
+$vXpath->registerNamespace('u',  $WSU_NS);
 
-$siNodeInFinal = $vXpath->query('//ds:SignedInfo')->item(0);
-$siC14nFinal   = $siNodeInFinal->C14N(true, false);
-
-echo "Original C14N == Final C14N: " . ($siC14n === $siC14nFinal ? '✅ MATCH' : '❌ DIFFER') . "\n";
-
-if ($siC14n !== $siC14nFinal) {
-    echo "\n--- Original ---\n$siC14n\n";
-    echo "\n--- Final ---\n$siC14nFinal\n";
+foreach ($vXpath->query('//*[@u:Id]') as $node) {
+    $node->setIdAttributeNS($WSU_NS, 'Id', true);
 }
 
-$verifyFinal = openssl_verify($siC14nFinal, base64_decode($sigValue), $pubKey, OPENSSL_ALGO_SHA256);
-echo "Post-save RSA verify: " . ($verifyFinal === 1 ? '✅ OK' : '❌ FAIL') . "\n\n";
+$siNodeFinal = $vXpath->query('//ds:SignedInfo')->item(0);
+$siC14nFinal = $siNodeFinal->C14N(true, false);
 
-file_put_contents('/tmp/degs_v4.xml', $signedXml);
-echo "Saved: /tmp/degs_v4.xml\n\n";
+$match = ($siC14n === $siC14nFinal);
+echo "C14N match: " . ($match ? '✅ MATCH' : '❌ DIFFER') . "\n";
 
-// ── 8. Send ──────────────────────────────────────────────────────
+if (!$match) {
+    echo "\n--- Original C14N ---\n$siC14n\n";
+    echo "\n--- Final C14N ---\n$siC14nFinal\n";
+}
+
+$verify2 = openssl_verify($siC14nFinal, base64_decode($sigValue), $pubKey, OPENSSL_ALGO_SHA256);
+echo "Post-save RSA verify: " . ($verify2 === 1 ? '✅ VALID' : '❌ INVALID') . "\n\n";
+
+file_put_contents('/tmp/degs_v5.xml', $signedXml);
+echo "Saved: /tmp/degs_v5.xml\n\n";
+
+// ── 8. Send ────────────────────────────────────────────────────
+if ($verify2 !== 1) {
+    die("❌ Not sending — post-save verify failed. Fix C14N issue first.\n");
+}
+
 echo "=== Send IsAlive ===\n";
 $ch = curl_init();
 curl_setopt_array($ch, [
@@ -181,7 +197,6 @@ curl_setopt_array($ch, [
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
-
 echo "HTTP: $httpCode\n$response\n";
 
 function uuid4(): string {
