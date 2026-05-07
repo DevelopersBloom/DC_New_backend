@@ -13,9 +13,10 @@ $DSIG_NS = 'http://www.w3.org/2000/09/xmldsig#';
 $X509VT  = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3';
 $B64ET   = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary';
 
-$rawPem = file_get_contents($CERT_PATH);
+// Cert read section-ում փոխիր՝
+$rawPem  = file_get_contents($CERT_PATH);
 openssl_x509_export(openssl_x509_read($rawPem), $cleanPem);
-$certB64 = preg_replace('/-----[^-]+-----|[\r\n\s]/', '', $cleanPem);
+$certB64 = str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $rawPem));
 
 $bstId   = 'bst-' . bin2hex(random_bytes(8));
 $msgId   = 'urn:uuid:' . uuid4();

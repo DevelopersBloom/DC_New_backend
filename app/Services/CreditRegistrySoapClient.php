@@ -134,7 +134,7 @@ class CreditRegistrySoapClient
 
         $rawPem  = file_get_contents(self::CERT_PATH);
         $pemClean = preg_replace('/-----[^-]+-----|[\r\n]/', '', $rawPem);
-        $certB64 = str_replace(' ', '', $pemClean);
+        $certB64 = str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $rawPem));
 
         return '<?xml version="1.0" encoding="UTF-8"?>'
             . '<s:Envelope'
