@@ -225,12 +225,14 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('DEGS sign: required node not found (ts/body/bst/to/action/messageId)');
         }
 
-        // ── Digests (Exc-C14N, SHA256) ────────────────────────────────────────
-        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
-        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
-        $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false),   true));
-        $actionDigest   = base64_encode(hash('sha256', $actionNode->C14N(true, false),   true));
-        $messageIdDigest = base64_encode(hash('sha256', $messageIdNode->C14N(true, false), true));
+        // ── Digests (Exc-C14N + InclusiveNamespaces, SHA256) ──────────────────
+        // Digest MUST match ds:Transform output (InclusiveNamespaces PrefixList)
+        $incPrefixes = preg_split('/\s+/', trim(self::INCLUSIVE_PREFIX_LIST));
+        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false, null, $incPrefixes),   true));
+        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false, null, $incPrefixes), true));
+        $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false, null, $incPrefixes),   true));
+        $actionDigest   = base64_encode(hash('sha256', $actionNode->C14N(true, false, null, $incPrefixes),   true));
+        $messageIdDigest = base64_encode(hash('sha256', $messageIdNode->C14N(true, false, null, $incPrefixes), true));
 
         // ── SignedInfo build ──────────────────────────────────────────────────
         $signedInfo = $dom->createElementNS(self::DSIG_NS, 'ds:SignedInfo');
@@ -281,7 +283,7 @@ class CreditRegistrySoapClient
         $siDom = new DOMDocument();
         $siDom->preserveWhiteSpace = false;
         $siDom->appendChild($siDom->importNode($signedInfo, true));
-        $signedInfoC14n = $siDom->documentElement->C14N(true, false);
+        $signedInfoC14n = $siDom->documentElement->C14N(true, false, null, $incPrefixes);
 
         // ── Sign ─────────────────────────────────────────────────────────────
         $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);

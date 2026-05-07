@@ -106,12 +106,14 @@ if (!$tsNode || !$bodyNode || !$bstNode || !$toNode || !$actionNode || !$msgIdNo
     die("❌ Required node not found\n");
 }
 
-// ── 4. Digests (Exc-C14N, SHA256) ────────────────────────────────────────────
-$tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false),   true));
-$bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false), true));
-$toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false),   true));
-$actionDigest = base64_encode(hash('sha256', $actionNode->C14N(true, false), true));
-$msgIdDigest  = base64_encode(hash('sha256', $msgIdNode->C14N(true, false), true));
+// ── 4. Digests (Exc-C14N + InclusiveNamespaces, SHA256) ─────────────────────
+// IMPORTANT: digest MUST match ds:Transform output (InclusiveNamespaces PrefixList)
+$incPrefixes = ['s', 'a', 'u', 'o'];
+$tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false, null, $incPrefixes),   true));
+$bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false, null, $incPrefixes), true));
+$toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false, null, $incPrefixes),   true));
+$actionDigest = base64_encode(hash('sha256', $actionNode->C14N(true, false, null, $incPrefixes), true));
+$msgIdDigest  = base64_encode(hash('sha256', $msgIdNode->C14N(true, false, null, $incPrefixes), true));
 
 echo "TS digest  : $tsDigest\n";
 echo "Body digest: $bodyDigest\n";
@@ -171,11 +173,11 @@ $addRef('#_to',    $toDigest);
 $addRef('#_action', $actionDigest);
 $addRef('#_msgid',  $msgIdDigest);
 
-// ── 6. SignedInfo C14N ────────────────────────────────────────────────────────
+// ── 6. SignedInfo C14N (must match CanonicalizationMethod InclusiveNamespaces) ─
 $siDom = new DOMDocument();
 $siDom->preserveWhiteSpace = false;
 $siDom->appendChild($siDom->importNode($signedInfo, true));
-$signedInfoC14n = $siDom->documentElement->C14N(true, false);
+$signedInfoC14n = $siDom->documentElement->C14N(true, false, null, $incPrefixes);
 
 echo "\nSignedInfo C14N (first 120): " . substr($signedInfoC14n, 0, 120) . "\n";
 
