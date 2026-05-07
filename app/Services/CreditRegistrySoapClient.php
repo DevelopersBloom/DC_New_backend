@@ -132,11 +132,9 @@ class CreditRegistrySoapClient
         $expires     = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
         $this->bstId = 'X509-' . $this->uuid4();
 
-        $rawPem = file_get_contents(self::CERT_PATH);
-        if (!openssl_x509_export(openssl_x509_read($rawPem), $cleanPem)) {
-            throw new \RuntimeException('DEGS: client.crtparse does not work');
-        }
-        $certB64 = preg_replace('/-----[^-]+-----|[\r\n\s]/', '', $cleanPem);
+        $rawPem  = file_get_contents(self::CERT_PATH);
+        $pemClean = preg_replace('/-----[^-]+-----|[\r\n]/', '', $rawPem);
+        $certB64 = str_replace(' ', '', $pemClean);
 
         return '<?xml version="1.0" encoding="UTF-8"?>'
             . '<s:Envelope'

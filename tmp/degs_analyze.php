@@ -140,8 +140,8 @@ $sigEl->appendChild($sigValEl);
 
 // KeyInfo — o: prefix parent-ից inherit-ով (ոչ redeclare)
 $keyInfoEl = $dom->createElementNS($DSIG_NS, 'ds:KeyInfo');
-$strEl     = $dom->createElementNS($WSSE_NS, 'o:SecurityTokenReference');
-$refEl     = $dom->createElementNS($WSSE_NS, 'o:Reference');
+$strEl = $dom->createElement('o:SecurityTokenReference');
+$refEl = $dom->createElement('o:Reference');
 $refEl->setAttribute('URI',       '#' . $bstId);
 $refEl->setAttribute('ValueType', $X509VT);
 $strEl->appendChild($refEl);
