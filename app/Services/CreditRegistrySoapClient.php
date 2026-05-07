@@ -308,12 +308,12 @@ class CreditRegistrySoapClient
 
         // EXCLUSIVE C14N
         $tsDigest = base64_encode(
-            hash('sha256', $tsNode->C14N(false, false), true)
+            hash('sha1', $tsNode->C14N(false, false), true)
         );
 
         $bodyDigest = base64_encode(
-            hash('sha256', $bodyNode->C14N(false, false), true)
-        );
+            hash('sha1', $bodyNode->C14N(false, false), true)
+        );;
 
         $secNode = $xpath->query('//o:Security')->item(0);
 
@@ -350,7 +350,7 @@ class CreditRegistrySoapClient
 
         $sigMethod->setAttribute(
             'Algorithm',
-            'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+            'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
         );
 
         $signedInfo->appendChild($sigMethod);
@@ -389,7 +389,7 @@ class CreditRegistrySoapClient
 
             $digestMethod->setAttribute(
                 'Algorithm',
-                'http://www.w3.org/2001/04/xmlenc#sha256'
+                'http://www.w3.org/2000/09/xmldsig#rsa-sha1'
             );
 
             $digestValue = $dom->createElementNS(
