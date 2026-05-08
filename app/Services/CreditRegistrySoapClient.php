@@ -7,13 +7,23 @@ use DOMXPath;
 
 class CreditRegistrySoapClient
 {
-    private const ENDPOINT  = 'https://100.100.100.60:8888/DEGSHost';
     private const ACTION_NS = 'http://tempuri.org/';
 
-    private const APP_NAME  = 'ACREDIT';
-    private const CERT_PATH = '/etc/ssl/degs/client.crt';
-    private const KEY_PATH  = '/etc/ssl/degs/client.key';
-    private const CA_PATH   = '/etc/ssl/certs/DEGSTESTRootCA.pem';
+    // Defaults — overridden by config/credit_registry.php values
+    private string $endpoint;
+    private string $appName;
+    private string $certPath;
+    private string $keyPath;
+    private string $caPath;
+
+    public function __construct()
+    {
+        $this->endpoint = config('credit_registry.endpoint', 'https://100.100.100.60:8888/DEGSHost');
+        $this->appName  = config('credit_registry.app_name', 'LNREG3');
+        $this->certPath = config('credit_registry.client_cert_path', '/etc/ssl/degs/client.crt');
+        $this->keyPath  = config('credit_registry.client_key_path',  '/etc/ssl/degs/client.key');
+        $this->caPath   = config('credit_registry.ca_cert_path',     '/etc/ssl/certs/DEGSTESTRootCA.pem');
+    }
 
     private const WSU_NS  = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
     private const WSSE_NS = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
@@ -53,6 +63,16 @@ class CreditRegistrySoapClient
     public function sendL003(string $xmlContent, bool $dryRun = false): int
     {
         return $this->sendRequest('L003', $xmlContent, $dryRun);
+    }
+
+    public function sendL005(string $xmlContent, bool $dryRun = false): int
+    {
+        return $this->sendRequest('L005', $xmlContent, $dryRun);
+    }
+
+    public function sendL006(string $xmlContent, bool $dryRun = false): int
+    {
+        return $this->sendRequest('L006', $xmlContent, $dryRun);
     }
 
     public function isResponsePrepared(int $requestId): bool
@@ -103,7 +123,7 @@ class CreditRegistrySoapClient
         $escapedXml = htmlspecialchars($xmlContent, ENT_XML1 | ENT_QUOTES, 'UTF-8');
 
         $body = '<tns:SendRequest xmlns:tns="http://tempuri.org/">'
-            . '<tns:AppName>' . self::APP_NAME . '</tns:AppName>'
+            . '<tns:AppName>' . $this->appName . '</tns:AppName>'
             . '<tns:DocType>' . $docType . '</tns:DocType>'
             . '<tns:IsDelay>false</tns:IsDelay>'
             . '<tns:xml>' . $escapedXml . '</tns:xml>'
@@ -147,7 +167,7 @@ class CreditRegistrySoapClient
         $expires     = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
         $this->bstId = 'bst-' . bin2hex(random_bytes(8));
 
-        $rawPem  = file_get_contents(self::CERT_PATH);
+        $rawPem  = file_get_contents($this->certPath);
         $certB64 = str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $rawPem));
 
         // Signature-ն ՉԿԱ envelope-ում — signEnvelope()-ն կavoid digest-ի խնդիրը
@@ -161,7 +181,7 @@ class CreditRegistrySoapClient
             .   '<s:Header>'
             .     '<a:Action s:mustUnderstand="1" u:Id="' . $this->actionId . '">' . $actionUrl . '</a:Action>'
             .     '<a:MessageID u:Id="' . $this->messageIdId . '">' . $msgId . '</a:MessageID>'
-            .     '<a:To s:mustUnderstand="1" u:Id="_to">' . self::ENDPOINT . '</a:To>'
+            .     '<a:To s:mustUnderstand="1" u:Id="_to">' . $this->endpoint . '</a:To>'
             .     '<o:Security s:mustUnderstand="1">'
             // BST FIRST (EndorsingSupportingTokens / AlwaysToRecipient)
             .       '<o:BinarySecurityToken'
@@ -286,7 +306,7 @@ class CreditRegistrySoapClient
         $signedInfoC14n = $siDom->documentElement->C14N(true, false, null, $incPrefixes);
 
         // ── Sign ─────────────────────────────────────────────────────────────
-        $privateKey = openssl_pkey_get_private('file://' . self::KEY_PATH);
+        $privateKey = openssl_pkey_get_private('file://' . $this->keyPath);
         if (!$privateKey) {
             throw new \RuntimeException('DEGS: Private key load error: ' . openssl_error_string());
         }
@@ -335,7 +355,7 @@ class CreditRegistrySoapClient
 
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL            => self::ENDPOINT,
+            CURLOPT_URL            => $this->endpoint,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $xml,
             CURLOPT_RETURNTRANSFER => true,
@@ -344,10 +364,10 @@ class CreditRegistrySoapClient
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/soap+xml; charset=utf-8; action="' . $actionUrl . '"',
             ],
-            CURLOPT_SSLCERT        => self::CERT_PATH,
-            CURLOPT_SSLKEY         => self::KEY_PATH,
+            CURLOPT_SSLCERT        => $this->certPath,
+            CURLOPT_SSLKEY         => $this->keyPath,
             CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_CAINFO         => self::CA_PATH,
+            CURLOPT_CAINFO         => $this->caPath,
             CURLOPT_SSL_VERIFYHOST => 0,
         ]);
 
