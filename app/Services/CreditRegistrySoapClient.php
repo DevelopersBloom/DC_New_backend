@@ -378,14 +378,11 @@ class CreditRegistrySoapClient
 
         $str = $dom->createElementNS(self::WSSE_NS, 'wsse:SecurityTokenReference');
 
-        $ref = $dom->createElementNS(self::WSSE_NS, 'wsse:Reference');
-        $ref->setAttribute('URI', '#' . $this->bstId);
-        $ref->setAttribute(
-            'ValueType',
-            'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3'
-        );
+        $ki = $dom->createElementNS(self::WSSE_NS, 'wsse:KeyIdentifier', $thumbprint);
+        $ki->setAttribute('ValueType', self::THUMB_VALUETYPE);
+        $ki->setAttribute('EncodingType', self::B64_ENCODINGTYPE);
 
-        $str->appendChild($ref);
+        $str->appendChild($ki);
         $keyInfo->appendChild($str);
         $signatureNode->appendChild($keyInfo);
 
