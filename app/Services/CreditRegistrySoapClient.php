@@ -317,11 +317,20 @@ class CreditRegistrySoapClient
         $addRef('#' . $this->actionId, $actionDigest);
         $addRef('#' . $this->messageIdId, $messageIdDigest);
 
-        // ── SignedInfo C14N ───────────────────────────────────────────────────
-        $siDom = new DOMDocument();
-        $siDom->preserveWhiteSpace = false;
-        $siDom->appendChild($siDom->importNode($signedInfo, true));
-        $signedInfoC14n = $siDom->documentElement->C14N(true, false, null, $incPrefixes);
+        // ── Signature skeleton — SignedInfo-ն Security-ում append (C14N-ից ԱՌԱՋ) ─
+        // SignedInfo must be inside the full document before C14N so that ancestor
+        // namespace declarations (s, a, u, o) are in scope for InclusiveNamespaces.
+        $signatureNode = $dom->createElementNS(self::DSIG_NS, 'ds:Signature');
+        $signatureNode->appendChild($signedInfo);
+
+        $secNode = $xpath->query('//o:Security')->item(0);
+        if (!$secNode) {
+            throw new \RuntimeException('DEGS: Security node not found');
+        }
+        $secNode->appendChild($signatureNode);
+
+        // ── SignedInfo C14N (now in full document context — correct namespace scope) ─
+        $signedInfoC14n = $signedInfo->C14N(true, false, null, $incPrefixes);
 
         // ── Sign ─────────────────────────────────────────────────────────────
         $privateKey = openssl_pkey_get_private('file://' . $this->keyPath, $this->certPassword);
@@ -333,18 +342,12 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('DEGS: Sign error: ' . openssl_error_string());
         }
 
-        // ── Signature node build ──────────────────────────────────────────────
-        $signatureNode = $dom->createElementNS(self::DSIG_NS, 'ds:Signature');
-
-        // SignedInfo
-        $signatureNode->appendChild($signedInfo);
-
-        // SignatureValue
+        // ── SignatureValue ────────────────────────────────────────────────────
         $signatureNode->appendChild(
             $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($rawSig))
         );
 
-        // KeyInfo — ThumbprintSHA1 reference (required by sp:RequireThumbprintReference)
+        // ── KeyInfo — ThumbprintSHA1 (sp:RequireThumbprintReference) ─────────
         $certPem    = file_get_contents($this->certPath);
         $certDer    = base64_decode(str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $certPem)));
         $thumbprint = base64_encode(sha1($certDer, true));
@@ -356,13 +359,6 @@ class CreditRegistrySoapClient
         $str->appendChild($ki);
         $keyInfo->appendChild($str);
         $signatureNode->appendChild($keyInfo);
-
-        // ── Signature-ն Security-ի վերջում append ────────────────────────────
-        $secNode = $xpath->query('//o:Security')->item(0);
-        if (!$secNode) {
-            throw new \RuntimeException('DEGS: Security node not found');
-        }
-        $secNode->appendChild($signatureNode);
 
         return $dom->saveXML();
     }
