@@ -25,47 +25,9 @@ $X509VT   = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-
 $B64ET    = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary';
 $THUMB_VT = 'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1';
 
-
-// ─────────────────────────────────────────────────────────────
-// CERT LOAD + VALIDITY CHECK (NEW ADDED)
-// ─────────────────────────────────────────────────────────────
-
-$rawPem = file_get_contents($CERT_PATH);
-if (!$rawPem) {
-    die("❌ Cannot read certificate file\n");
-}
-
-$certData = openssl_x509_read($rawPem);
-if (!$certData) {
-    die("❌ Cannot parse certificate\n");
-}
-
-$certInfo = openssl_x509_parse($certData);
-
-echo "Certificate subject : " . ($certInfo['subject']['CN'] ?? '-') . PHP_EOL;
-echo "Valid from         : " . date('Y-m-d H:i:s', $certInfo['validFrom_time_t']) . PHP_EOL;
-echo "Valid to           : " . date('Y-m-d H:i:s', $certInfo['validTo_time_t']) . PHP_EOL;
-
-$now = time();
-
-if ($now < $certInfo['validFrom_time_t']) {
-    die("❌ Certificate NOT YET VALID\n");
-}
-
-if ($now > $certInfo['validTo_time_t']) {
-    die("❌ Certificate EXPIRED\n");
-}
-
-echo "✅ Certificate is VALID\n\n";
-
-
-// ── Certificate (continue original logic) ────────────────────────────────────
-
-$certB64 = str_replace(
-    ["\r", "\n", " "],
-    '',
-    preg_replace('/-----[^-]+-----/', '', $rawPem)
-);
+// ── Certificate ──────────────────────────────────────────────────────────────
+$rawPem  = file_get_contents($CERT_PATH);
+$certB64 = str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $rawPem));
 
 // Thumbprint = SHA1 of DER binary
 $certDer       = base64_decode($certB64);
@@ -77,8 +39,13 @@ $msgId   = 'urn:uuid:' . uuid4();
 $now     = gmdate('Y-m-d\TH:i:s\Z');
 $expires = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
 
-// ── 1. Envelope ──────────────────────────────────────────────────────────────
-
+// ── 1. Envelope (NO Signature placeholder, NO XML comments) ──────────────────
+//
+// Կառուցվածք Security-ում:
+//   BST        (AlwaysToRecipient — BST FIRST)
+//   Timestamp
+//   [Signature-ն կավելացվի ծրագրայինորեն step 9-ում]
+//
 $rawXml = <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <s:Envelope
@@ -108,10 +75,10 @@ $rawXml = <<<XML
 </s:Envelope>
 XML;
 
-
-// ── Parse ────────────────────────────────────────────────────────────────────
-
+// ── 2. Parse ─────────────────────────────────────────────────────────────────
 $dom = new DOMDocument();
+$dom->preserveWhiteSpace = false;
+$dom->formatOutput       = false;
 $dom->loadXML($rawXml);
 
 $xpath = new DOMXPath($dom);
@@ -121,123 +88,201 @@ $xpath->registerNamespace('o',  $WSSE_NS);
 $xpath->registerNamespace('a',  $WSA_NS);
 $xpath->registerNamespace('ds', $DSIG_NS);
 
+// wsu:Id → XML ID
+foreach ($xpath->query('//*[@u:Id]') as $node) {
+    $node->setIdAttributeNS($WSU_NS, 'Id', true);
+}
 
-// ── Nodes ────────────────────────────────────────────────────────────────────
+// ── 3. Node-ների ստացում ─────────────────────────────────────────────────────
+// Signature placeholder չկա — digest-ները ճիշտ կլինեն
+$tsNode   = $xpath->query('//u:Timestamp[@u:Id="_ts"]')->item(0);
+$bodyNode = $xpath->query('//s:Body[@u:Id="_body"]')->item(0);
+$bstNode  = $xpath->query('//o:BinarySecurityToken[@u:Id="' . $bstId . '"]')->item(0);
+$toNode   = $xpath->query('//a:To[@u:Id="_to"]')->item(0);
+$actionNode = $xpath->query('//a:Action[@u:Id="_action"]')->item(0);
+$msgIdNode  = $xpath->query('//a:MessageID[@u:Id="_msgid"]')->item(0);
 
-$tsNode   = $xpath->query('//u:Timestamp')->item(0);
-$bodyNode = $xpath->query('//s:Body')->item(0);
+if (!$tsNode || !$bodyNode || !$bstNode || !$toNode || !$actionNode || !$msgIdNode) {
+    die("❌ Required node not found\n");
+}
 
+// ── 4. Digests (Exc-C14N + InclusiveNamespaces, SHA256) ─────────────────────
+// PHP's libxml2 C14N ignores ancestor-declared namespaces for InclusiveNamespaces.
+// Modifying elements directly causes the DOM serializer to assign spurious prefixes
+// (e.g. default:IsAlive). Clone each element into a fresh single-root DOM, add the
+// inclusive namespace declarations there, and C14N the clone — the main document
+// stays untouched, and the server's C14N (which reads them from ancestor scope) produces
+// the same output.
+$incPrefixes = ['s', 'a', 'u', 'o'];
+$incNsMap    = ['xmlns:s' => $SOAP_NS, 'xmlns:a' => $WSA_NS, 'xmlns:u' => $WSU_NS, 'xmlns:o' => $WSSE_NS];
+$c14nDigest  = static function (DOMElement $node, array $incPrefixes, array $nsMap): string {
+    $d = new DOMDocument();
+    $d->preserveWhiteSpace = false;
+    $d->appendChild($d->importNode($node, true));
+    foreach ($nsMap as $attr => $uri) {
+        $d->documentElement->setAttributeNS('http://www.w3.org/2000/xmlns/', $attr, $uri);
+    }
+    return base64_encode(hash('sha256', $d->documentElement->C14N(true, false, null, $incPrefixes), true));
+};
+$tsDigest     = $c14nDigest($tsNode,     $incPrefixes, $incNsMap);
+$bodyDigest   = $c14nDigest($bodyNode,   $incPrefixes, $incNsMap);
+$toDigest     = $c14nDigest($toNode,     $incPrefixes, $incNsMap);
+$actionDigest = $c14nDigest($actionNode, $incPrefixes, $incNsMap);
+$msgIdDigest  = $c14nDigest($msgIdNode,  $incPrefixes, $incNsMap);
 
-// ── Digests ──────────────────────────────────────────────────────────────────
-
-$incPrefixes = ['s','a','u','o'];
-
-$tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true,false,null,$incPrefixes), true));
-$bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true,false,null,$incPrefixes), true));
-
-echo "TS digest: $tsDigest\n";
+echo "TS digest  : $tsDigest\n";
 echo "Body digest: $bodyDigest\n";
+echo "To digest  : $toDigest\n";
+echo "Action dig.: $actionDigest\n";
+echo "MsgID dig.: $msgIdDigest\n";
+echo "Thumbprint : $thumbprintB64\n";
 
-
-// ── SignedInfo + Signature ──────────────────────────────────────────────────
+// ── 5. SignedInfo build ───────────────────────────────────────────────────────
+$sigMethodAlg  = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+$c14nAlg       = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+$digestAlg     = 'http://www.w3.org/2001/04/xmlenc#sha256';
+$exc14nNs      = 'http://www.w3.org/2001/10/xml-exc-c14n#';
+$prefixList    = 's a u o';
 
 $signedInfo = $dom->createElementNS($DSIG_NS, 'ds:SignedInfo');
 
-$siCanon = $dom->createElementNS($DSIG_NS, 'ds:CanonicalizationMethod');
-$siCanon->setAttribute('Algorithm','http://www.w3.org/2001/10/xml-exc-c14n#');
+$canonMethod = $dom->createElementNS($DSIG_NS, 'ds:CanonicalizationMethod');
+$canonMethod->setAttribute('Algorithm', $c14nAlg);
+$inclusive = $dom->createElementNS($exc14nNs, 'ec:InclusiveNamespaces');
+$inclusive->setAttribute('PrefixList', $prefixList);
+$canonMethod->appendChild($inclusive);
+$signedInfo->appendChild($canonMethod);
 
-$signedInfo->appendChild($siCanon);
+$sigMethod = $dom->createElementNS($DSIG_NS, 'ds:SignatureMethod');
+$sigMethod->setAttribute('Algorithm', $sigMethodAlg);
+$signedInfo->appendChild($sigMethod);
 
-$siMethod = $dom->createElementNS($DSIG_NS, 'ds:SignatureMethod');
-$siMethod->setAttribute('Algorithm','http://www.w3.org/2001/04/xmldsig-more#rsa-sha256');
+// Helper — Reference node ստեղծել
+$addRef = function (string $uri, string $digest) use ($dom, $signedInfo, $DSIG_NS, $c14nAlg, $digestAlg) {
+    $ref = $dom->createElementNS($DSIG_NS, 'ds:Reference');
+    $ref->setAttribute('URI', $uri);
 
-$signedInfo->appendChild($siMethod);
+    $transforms = $dom->createElementNS($DSIG_NS, 'ds:Transforms');
+    $transform  = $dom->createElementNS($DSIG_NS, 'ds:Transform');
+    $transform->setAttribute('Algorithm', $c14nAlg);
+    $inclusive = $dom->createElementNS('http://www.w3.org/2001/10/xml-exc-c14n#', 'ec:InclusiveNamespaces');
+    $inclusive->setAttribute('PrefixList', 's a u o');
+    $transform->appendChild($inclusive);
+    $transforms->appendChild($transform);
+    $ref->appendChild($transforms);
 
-
-// Reference helper
-$addRef = function($uri,$digest) use($dom,$signedInfo,$DSIG_NS) {
-    $ref = $dom->createElementNS($DSIG_NS,'ds:Reference');
-    $ref->setAttribute('URI',$uri);
-
-    $dm = $dom->createElementNS($DSIG_NS,'ds:DigestMethod');
-    $dm->setAttribute('Algorithm','http://www.w3.org/2001/04/xmlenc#sha256');
-
-    $dv = $dom->createElementNS($DSIG_NS,'ds:DigestValue',$digest);
-
+    $dm = $dom->createElementNS($DSIG_NS, 'ds:DigestMethod');
+    $dm->setAttribute('Algorithm', $digestAlg);
     $ref->appendChild($dm);
+
+    $dv = $dom->createElementNS($DSIG_NS, 'ds:DigestValue', $digest);
     $ref->appendChild($dv);
 
     $signedInfo->appendChild($ref);
 };
 
-$addRef('#_ts',$tsDigest);
-$addRef('#_body',$bodyDigest);
+// References: ts, body, to, action, messageId
+$addRef('#_ts',    $tsDigest);
+$addRef('#_body',  $bodyDigest);
+$addRef('#_to',    $toDigest);
+$addRef('#_action', $actionDigest);
+$addRef('#_msgid',  $msgIdDigest);
 
+// ── 6–10. Signature build (SignedInfo appended to document BEFORE C14N) ───────
+// Exc-C14N InclusiveNamespaces requires ancestor namespace declarations (s,a,u,o)
+// to be in scope. Inserting SignedInfo into the full document first ensures this.
 
-// ── Sign ─────────────────────────────────────────────────────────────────────
-
-$signatureNode = $dom->createElementNS($DSIG_NS,'ds:Signature');
+$signatureNode = $dom->createElementNS($DSIG_NS, 'ds:Signature');
 $signatureNode->appendChild($signedInfo);
 
-$dom->getElementsByTagName('Security')->item(0)->appendChild($signatureNode);
+$secNode = $xpath->query('//o:Security')->item(0);
+if (!$secNode) {
+    die("❌ Security node not found\n");
+}
+$secNode->appendChild($signatureNode);
 
-$signedInfoC14n = $signedInfo->C14N(true,false);
+// PHP's libxml2 C14N does not propagate ancestor-declared namespaces for
+// InclusiveNamespaces — declare them directly on ds:SignedInfo.
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:s', $SOAP_NS);
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:a', $WSA_NS);
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:u', $WSU_NS);
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:o', $WSSE_NS);
+$signedInfoC14n = $signedInfo->C14N(true, false, null, $incPrefixes);
 
-$privKey = openssl_pkey_get_private('file://'.$KEY_PATH);
+echo "\nSignedInfo C14N (first 120): " . substr($signedInfoC14n, 0, 120) . "\n";
 
-openssl_sign($signedInfoC14n,$sig,$privKey,OPENSSL_ALGO_SHA256);
+// Sign
+$privKey = openssl_pkey_get_private('file://' . $KEY_PATH);
+if (!$privKey) {
+    die("❌ Private key load failed: " . openssl_error_string() . "\n");
+}
+if (!openssl_sign($signedInfoC14n, $rawSig, $privKey, OPENSSL_ALGO_SHA256)) {
+    die("❌ Sign failed: " . openssl_error_string() . "\n");
+}
+$sigValue = base64_encode($rawSig);
 
+// Local verify
+$pubKey  = openssl_pkey_get_public(file_get_contents($CERT_PATH));
+$verify  = openssl_verify($signedInfoC14n, $rawSig, $pubKey, OPENSSL_ALGO_SHA256);
+echo "RSA verify: " . ($verify === 1 ? '✅ OK' : '❌ FAIL') . "\n\n";
+
+// SignatureValue
 $signatureNode->appendChild(
-    $dom->createElementNS($DSIG_NS,'ds:SignatureValue',base64_encode($sig))
+    $dom->createElementNS($DSIG_NS, 'ds:SignatureValue', $sigValue)
 );
 
-
-// KeyInfo
-$keyInfo = $dom->createElementNS($DSIG_NS,'ds:KeyInfo');
-$str = $dom->createElementNS($WSSE_NS,'o:SecurityTokenReference');
-$ki  = $dom->createElementNS($WSSE_NS,'o:KeyIdentifier',$thumbprintB64);
-$ki->setAttribute('ValueType',$THUMB_VT);
-$ki->setAttribute('EncodingType',$B64ET);
-
+// KeyInfo — ThumbprintSHA1
+$keyInfo = $dom->createElementNS($DSIG_NS, 'ds:KeyInfo');
+$str     = $dom->createElementNS($WSSE_NS, 'o:SecurityTokenReference');
+$ki      = $dom->createElementNS($WSSE_NS, 'o:KeyIdentifier', $thumbprintB64);
+$ki->setAttribute('ValueType', $THUMB_VT);
+$ki->setAttribute('EncodingType', $B64ET);
 $str->appendChild($ki);
 $keyInfo->appendChild($str);
 $signatureNode->appendChild($keyInfo);
 
+// ── 11. Save ──────────────────────────────────────────────────────────────────
+$signedXml = $dom->saveXML();
+file_put_contents('/tmp/degs_v9.xml', $signedXml);
+echo "Saved: /tmp/degs_v9.xml\n\n";
 
-// ── Output ───────────────────────────────────────────────────────────────────
-
-file_put_contents('/tmp/degs_v9.xml',$dom->saveXML());
-
-echo "Saved /tmp/degs_v9.xml\n";
-
-
-// ── Send ─────────────────────────────────────────────────────────────────────
-
-$ch = curl_init($ENDPOINT);
-curl_setopt_array($ch,[
-    CURLOPT_POST=>true,
-    CURLOPT_POSTFIELDS=>$dom->saveXML(),
-    CURLOPT_RETURNTRANSFER=>true,
-    CURLOPT_HTTPHEADER=>[
-        'Content-Type: application/soap+xml; charset=utf-8'
+// ── 12. Send ──────────────────────────────────────────────────────────────────
+echo "=== Send IsAlive ===\n";
+$ch = curl_init();
+curl_setopt_array($ch, [
+    CURLOPT_URL            => $ENDPOINT,
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => $signedXml,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT        => 30,
+    CURLOPT_HTTPHEADER     => [
+        'Content-Type: application/soap+xml; charset=utf-8; action="http://tempuri.org/IDegsNSS/IsAlive"',
     ],
-    CURLOPT_SSLCERT=>$CERT_PATH,
-    CURLOPT_SSLKEY=>$KEY_PATH,
-    CURLOPT_CAINFO=>$CA_PATH,
+    CURLOPT_SSLCERT        => $CERT_PATH,
+    CURLOPT_SSLKEY         => $KEY_PATH,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_CAINFO         => $CA_PATH,
+    CURLOPT_SSL_VERIFYHOST => 0,
+    CURLOPT_VERBOSE        => false,
 ]);
-
-echo curl_exec($ch);
+$response = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr  = curl_error($ch);
 curl_close($ch);
 
+if ($curlErr) {
+    echo "❌ cURL error: $curlErr\n";
+} else {
+    echo "HTTP: $httpCode\n$response\n";
+}
 
-// ── UUID ─────────────────────────────────────────────────────────────────────
-
+// ── Helper ────────────────────────────────────────────────────────────────────
 function uuid4(): string {
     return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-        random_int(0,0xffff),random_int(0,0xffff),
-        random_int(0,0xffff),
-        random_int(0x4000,0x4fff),
-        random_int(0x8000,0xbfff),
-        random_int(0,0xffff),random_int(0,0xffff),random_int(0,0xffff)
+        random_int(0, 0xffff), random_int(0, 0xffff),
+        random_int(0, 0xffff),
+        random_int(0, 0x0fff) | 0x4000,
+        random_int(0, 0x3fff) | 0x8000,
+        random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
     );
 }
