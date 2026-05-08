@@ -15,14 +15,19 @@ class CreditRegistrySoapClient
     private string $certPath;
     private string $keyPath;
     private string $caPath;
+    private ?string $certPassword;
+    private bool $verifySsl;
 
     public function __construct()
     {
-        $this->endpoint = config('credit_registry.endpoint', 'https://100.100.100.60:8888/DEGSHost');
-        $this->appName  = config('credit_registry.app_name', 'LNREG3');
-        $this->certPath = config('credit_registry.client_cert_path', '/etc/ssl/degs/client.crt');
-        $this->keyPath  = config('credit_registry.client_key_path',  '/etc/ssl/degs/client.key');
-        $this->caPath   = config('credit_registry.ca_cert_path',     '/etc/ssl/certs/DEGSTESTRootCA.pem');
+        $this->endpoint      = config('credit_registry.endpoint', 'https://100.100.100.60:8888/DEGSHost');
+        $this->appName       = config('credit_registry.app_name', 'LNREG3');
+        $this->certPath      = config('credit_registry.client_cert_path', '');
+        // If no separate key file — combined PEM (cert + key in one file)
+        $this->keyPath       = config('credit_registry.client_key_path') ?: $this->certPath;
+        $this->caPath        = config('credit_registry.ca_cert_path', '');
+        $this->certPassword  = config('credit_registry.client_cert_password') ?: null;
+        $this->verifySsl     = (bool) config('credit_registry.verify_peer', false);
     }
 
     private const WSU_NS  = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
@@ -319,9 +324,10 @@ class CreditRegistrySoapClient
         $signedInfoC14n = $siDom->documentElement->C14N(true, false, null, $incPrefixes);
 
         // ── Sign ─────────────────────────────────────────────────────────────
-        $privateKey = openssl_pkey_get_private('file://' . $this->keyPath);
+        $privateKey = openssl_pkey_get_private('file://' . $this->keyPath, $this->certPassword);
         if (!$privateKey) {
-            throw new \RuntimeException('DEGS: Private key load error: ' . openssl_error_string());
+            throw new \RuntimeException('DEGS: Private key load error: ' . openssl_error_string()
+                . ' (check CREDIT_REGISTRY_CLIENT_KEY_PATH and CREDIT_REGISTRY_CLIENT_CERT_PASSWORD)');
         }
         if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
             throw new \RuntimeException('DEGS: Sign error: ' . openssl_error_string());
@@ -378,10 +384,13 @@ class CreditRegistrySoapClient
                 'Content-Type: application/soap+xml; charset=utf-8; action="' . $actionUrl . '"',
             ],
             CURLOPT_SSLCERT        => $this->certPath,
+            CURLOPT_SSLCERTTYPE    => 'PEM',
             CURLOPT_SSLKEY         => $this->keyPath,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_CAINFO         => $this->caPath,
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_SSLKEYTYPE     => 'PEM',
+            CURLOPT_KEYPASSWD      => $this->certPassword,
+            CURLOPT_SSL_VERIFYPEER => $this->verifySsl,
+            CURLOPT_SSL_VERIFYHOST => $this->verifySsl ? 2 : 0,
+            CURLOPT_CAINFO         => $this->caPath ?: null,
         ]);
 
         $response = curl_exec($ch);
