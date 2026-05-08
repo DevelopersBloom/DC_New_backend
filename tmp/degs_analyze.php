@@ -207,13 +207,13 @@ $signatureNode->appendChild(
     $dom->createElementNS($DSIG_NS, 'ds:SignatureValue', $sigValue)
 );
 
-// 9c. KeyInfo — DirectReference to BinarySecurityToken
+// 9c. KeyInfo — ThumbprintSHA1 (sp:RequireThumbprintReference)
 $keyInfo = $dom->createElementNS($DSIG_NS, 'ds:KeyInfo');
 $str     = $dom->createElementNS($WSSE_NS, 'o:SecurityTokenReference');
-$ref     = $dom->createElementNS($WSSE_NS, 'o:Reference');
-$ref->setAttribute('URI', '#' . $bstId);
-$ref->setAttribute('ValueType', $X509VT);
-$str->appendChild($ref);
+$ki      = $dom->createElementNS($WSSE_NS, 'o:KeyIdentifier', $thumbprintB64);
+$ki->setAttribute('ValueType', $THUMB_VT);
+$ki->setAttribute('EncodingType', $B64ET);
+$str->appendChild($ki);
 $keyInfo->appendChild($str);
 $signatureNode->appendChild($keyInfo);
 
