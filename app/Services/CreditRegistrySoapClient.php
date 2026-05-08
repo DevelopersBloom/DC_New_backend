@@ -373,16 +373,19 @@ class CreditRegistrySoapClient
         $certPem    = file_get_contents($this->certPath);
         $certDer    = base64_decode(str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $certPem)));
         $thumbprint = base64_encode(sha1($certDer, true));
+        // ── KeyInfo — FIXED (WS-Security compliant) ──
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
 
         $str = $dom->createElementNS(self::WSSE_NS, 'wsse:SecurityTokenReference');
 
-        $ki  = $dom->createElementNS(self::WSSE_NS, 'wsse:KeyIdentifier', $thumbprint);
+        $ref = $dom->createElementNS(self::WSSE_NS, 'wsse:Reference');
+        $ref->setAttribute('URI', '#' . $this->bstId);
+        $ref->setAttribute(
+            'ValueType',
+            'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3'
+        );
 
-        $ki->setAttribute('ValueType', self::THUMB_VALUETYPE);
-        $ki->setAttribute('EncodingType', self::B64_ENCODINGTYPE);
-
-        $str->appendChild($ki);
+        $str->appendChild($ref);
         $keyInfo->appendChild($str);
         $signatureNode->appendChild($keyInfo);
 
