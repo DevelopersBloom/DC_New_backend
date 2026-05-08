@@ -21,12 +21,13 @@ return [
     // SOAP protocol version: "1.2" (recommended) or "1.1"
     'soap_version' => '1.2',
     'app_name' => 'LNREG3',
-    // Optional client certificate (PEM/PFX converted to PEM) and password
-    'client_cert_path' => env('CREDIT_REGISTRY_CLIENT_CERT_PATH'),
+    // Client certificate (.crt / .pem) and private key (.key) for X.509 signing
+    'client_cert_path' => env('CREDIT_REGISTRY_CLIENT_CERT_PATH', '/etc/ssl/degs/client.crt'),
+    'client_key_path'  => env('CREDIT_REGISTRY_CLIENT_KEY_PATH',  '/etc/ssl/degs/client.key'),
     'client_cert_password' => env('CREDIT_REGISTRY_CLIENT_CERT_PASSWORD'),
 
-    // Optional Root / CA certificate for server validation
-    'ca_cert_path' => env('CREDIT_REGISTRY_CA_CERT_PATH'),
+    // CA / Root certificate for server validation
+    'ca_cert_path' => env('CREDIT_REGISTRY_CA_CERT_PATH', '/etc/ssl/certs/DEGSTESTRootCA.pem'),
 
     /*
      * SSL verification toggles.

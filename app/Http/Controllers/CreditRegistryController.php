@@ -212,7 +212,10 @@ use App\Models\Modification;
 use App\Services\CreditRegistryL001Service;
 use App\Services\CreditRegistryL002Service;
 use App\Services\CreditRegistryL003Service;
+use App\Services\CreditRegistryL005Service;
+use App\Services\CreditRegistryL006Service;
 use App\Services\CreditRegistryRiskModificationXmlService;
+use App\Services\CreditRegistrySoapClient;
 use App\Services\Degs\DegsClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -225,7 +228,10 @@ class CreditRegistryController extends Controller
         private CreditRegistryL001Service                $l001Service,
         private CreditRegistryL002Service                $l002Service,
         private CreditRegistryL003Service                $l003Service,
+        private CreditRegistryL005Service                $l005Service,
+        private CreditRegistryL006Service                $l006Service,
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
+        private CreditRegistrySoapClient                 $soapClient,
         private DegsClient                               $degsClient,
     )
     {
@@ -505,5 +511,152 @@ class CreditRegistryController extends Controller
             ->update(['is_sent' => true, 'sent_at' => now()]);
 
         return response()->download($path, $filename)->deleteFileAfterSend(true);
+    }
+
+    // ================================================================
+    // L005 — LoanUseField / LoanUsePurpose թարմացում
+    // ================================================================
+
+    /**
+     * GET /{id}/credit-registry/l005
+     * Query: field_type, new_value, old_value (optional)
+     */
+    public function downloadL005(Request $request, string $id): StreamedResponse|JsonResponse
+    {
+        $contract = Contract::find($id);
+        if (! $contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $fieldType = $request->input('field_type');
+        $newValue  = $request->input('new_value');
+
+        if (! $fieldType || ! $newValue) {
+            return response()->json(['message' => 'field_type and new_value are required'], 422);
+        }
+
+        try {
+            $xml = $this->l005Service->generateL005Xml(
+                contractId: (int) $contract->id,
+                fieldType: $fieldType,
+                newValue: $newValue,
+                oldValue: $request->input('old_value'),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $filename = 'L005_' . ($contract->num ?? $contract->id) . '_' . now()->format('Y-m-d_His') . '.xml';
+
+        return response()->streamDownload(fn () => print($xml), $filename, [
+            'Content-Type'        => 'application/xml',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * POST /{id}/credit-registry/l005/send
+     * Body: field_type, new_value, old_value (optional)
+     */
+    public function sendL005(Request $request, string $id): JsonResponse
+    {
+        $contract = Contract::find($id);
+        if (! $contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $fieldType = $request->input('field_type');
+        $newValue  = $request->input('new_value');
+
+        if (! $fieldType || ! $newValue) {
+            return response()->json(['message' => 'field_type and new_value are required'], 422);
+        }
+
+        try {
+            $xml = $this->l005Service->generateL005Xml(
+                contractId: (int) $contract->id,
+                fieldType: $fieldType,
+                newValue: $newValue,
+                oldValue: $request->input('old_value'),
+            );
+
+            $requestId = $this->soapClient->sendL005($xml);
+
+            return response()->json([
+                'request_id' => $requestId,
+                'status'     => 'sent',
+                'message'    => 'L005 sent successfully',
+            ], 202);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to send L005', 'error' => $e->getMessage()], 502);
+        }
+    }
+
+    // ================================================================
+    // L006 — LoanUseField / LoanUsePurpose ջնջում
+    // ================================================================
+
+    /**
+     * GET /{id}/credit-registry/l006
+     * Query: data_to_delete
+     */
+    public function downloadL006(Request $request, string $id): StreamedResponse|JsonResponse
+    {
+        $contract = Contract::find($id);
+        if (! $contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $dataToDelete = $request->input('data_to_delete');
+        if (! $dataToDelete) {
+            return response()->json(['message' => 'data_to_delete is required'], 422);
+        }
+
+        try {
+            $xml = $this->l006Service->generateL006Xml((int) $contract->id, $dataToDelete);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $filename = 'L006_' . ($contract->num ?? $contract->id) . '_' . now()->format('Y-m-d_His') . '.xml';
+
+        return response()->streamDownload(fn () => print($xml), $filename, [
+            'Content-Type'        => 'application/xml',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * POST /{id}/credit-registry/l006/send
+     * Body: data_to_delete
+     */
+    public function sendL006(Request $request, string $id): JsonResponse
+    {
+        $contract = Contract::find($id);
+        if (! $contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $dataToDelete = $request->input('data_to_delete');
+        if (! $dataToDelete) {
+            return response()->json(['message' => 'data_to_delete is required'], 422);
+        }
+
+        try {
+            $xml       = $this->l006Service->generateL006Xml((int) $contract->id, $dataToDelete);
+            $requestId = $this->soapClient->sendL006($xml);
+
+            return response()->json([
+                'request_id' => $requestId,
+                'status'     => 'sent',
+                'message'    => 'L006 sent successfully',
+            ], 202);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to send L006', 'error' => $e->getMessage()], 502);
+        }
     }
 }
