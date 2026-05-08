@@ -329,7 +329,14 @@ class CreditRegistrySoapClient
         }
         $secNode->appendChild($signatureNode);
 
-        // ── SignedInfo C14N (now in full document context — correct namespace scope) ─
+        // ── SignedInfo C14N ───────────────────────────────────────────────────────
+        // PHP's libxml2 C14N does not propagate ancestor-declared namespaces for
+        // InclusiveNamespaces. Declare them directly on ds:SignedInfo so that
+        // our C14N output matches what the WCF server computes when verifying.
+        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:s', self::SOAP_NS);
+        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:a', self::WSA_NS);
+        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:u', self::WSU_NS);
+        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:o', self::WSSE_NS);
         $signedInfoC14n = $signedInfo->C14N(true, false, null, $incPrefixes);
 
         // ── Sign ─────────────────────────────────────────────────────────────

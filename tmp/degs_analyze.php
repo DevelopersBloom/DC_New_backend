@@ -173,15 +173,30 @@ $addRef('#_to',    $toDigest);
 $addRef('#_action', $actionDigest);
 $addRef('#_msgid',  $msgIdDigest);
 
-// ── 6. SignedInfo C14N (must match CanonicalizationMethod InclusiveNamespaces) ─
-$siDom = new DOMDocument();
-$siDom->preserveWhiteSpace = false;
-$siDom->appendChild($siDom->importNode($signedInfo, true));
-$signedInfoC14n = $siDom->documentElement->C14N(true, false, null, $incPrefixes);
+// ── 6–10. Signature build (SignedInfo appended to document BEFORE C14N) ───────
+// Exc-C14N InclusiveNamespaces requires ancestor namespace declarations (s,a,u,o)
+// to be in scope. Inserting SignedInfo into the full document first ensures this.
+
+$signatureNode = $dom->createElementNS($DSIG_NS, 'ds:Signature');
+$signatureNode->appendChild($signedInfo);
+
+$secNode = $xpath->query('//o:Security')->item(0);
+if (!$secNode) {
+    die("❌ Security node not found\n");
+}
+$secNode->appendChild($signatureNode);
+
+// PHP's libxml2 C14N does not propagate ancestor-declared namespaces for
+// InclusiveNamespaces — declare them directly on ds:SignedInfo.
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:s', $SOAP_NS);
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:a', $WSA_NS);
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:u', $WSU_NS);
+$signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:o', $WSSE_NS);
+$signedInfoC14n = $signedInfo->C14N(true, false, null, $incPrefixes);
 
 echo "\nSignedInfo C14N (first 120): " . substr($signedInfoC14n, 0, 120) . "\n";
 
-// ── 7. Sign ───────────────────────────────────────────────────────────────────
+// Sign
 $privKey = openssl_pkey_get_private('file://' . $KEY_PATH);
 if (!$privKey) {
     die("❌ Private key load failed: " . openssl_error_string() . "\n");
@@ -191,23 +206,17 @@ if (!openssl_sign($signedInfoC14n, $rawSig, $privKey, OPENSSL_ALGO_SHA256)) {
 }
 $sigValue = base64_encode($rawSig);
 
-// ── 8. Local verify ───────────────────────────────────────────────────────────
+// Local verify
 $pubKey  = openssl_pkey_get_public(file_get_contents($CERT_PATH));
 $verify  = openssl_verify($signedInfoC14n, $rawSig, $pubKey, OPENSSL_ALGO_SHA256);
 echo "RSA verify: " . ($verify === 1 ? '✅ OK' : '❌ FAIL') . "\n\n";
 
-// ── 9. Signature node build ───────────────────────────────────────────────────
-$signatureNode = $dom->createElementNS($DSIG_NS, 'ds:Signature');
-
-// 9a. SignedInfo
-$signatureNode->appendChild($signedInfo);
-
-// 9b. SignatureValue
+// SignatureValue
 $signatureNode->appendChild(
     $dom->createElementNS($DSIG_NS, 'ds:SignatureValue', $sigValue)
 );
 
-// 9c. KeyInfo — ThumbprintSHA1 (sp:RequireThumbprintReference)
+// KeyInfo — ThumbprintSHA1
 $keyInfo = $dom->createElementNS($DSIG_NS, 'ds:KeyInfo');
 $str     = $dom->createElementNS($WSSE_NS, 'o:SecurityTokenReference');
 $ki      = $dom->createElementNS($WSSE_NS, 'o:KeyIdentifier', $thumbprintB64);
@@ -216,13 +225,6 @@ $ki->setAttribute('EncodingType', $B64ET);
 $str->appendChild($ki);
 $keyInfo->appendChild($str);
 $signatureNode->appendChild($keyInfo);
-
-// ── 10. Append Signature to Security ─────────────────────────────────────────
-$secNode = $xpath->query('//o:Security')->item(0);
-if (!$secNode) {
-    die("❌ Security node not found\n");
-}
-$secNode->appendChild($signatureNode);
 
 // ── 11. Save ──────────────────────────────────────────────────────────────────
 $signedXml = $dom->saveXML();
