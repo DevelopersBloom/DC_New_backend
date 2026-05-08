@@ -448,6 +448,7 @@ class CreditRegistrySoapClient
                 'DEGS: SendRequestResult not found. Response: ' . substr($xml, 0, 500)
             );
         }
+
         return (int) $nodes->item(0)->textContent;
     }
 
