@@ -344,13 +344,16 @@ class CreditRegistrySoapClient
             $dom->createElementNS(self::DSIG_NS, 'ds:SignatureValue', base64_encode($rawSig))
         );
 
-        // KeyInfo — DirectReference to BinarySecurityToken (most WS-SecurityPolicy setups)
+        // KeyInfo — ThumbprintSHA1 reference (required by sp:RequireThumbprintReference)
+        $certPem    = file_get_contents($this->certPath);
+        $certDer    = base64_decode(str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $certPem)));
+        $thumbprint = base64_encode(sha1($certDer, true));
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
         $str     = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
-        $ref     = $dom->createElementNS(self::WSSE_NS, 'o:Reference');
-        $ref->setAttribute('URI', '#' . $this->bstId);
-        $ref->setAttribute('ValueType', self::X509_VALUETYPE);
-        $str->appendChild($ref);
+        $ki      = $dom->createElementNS(self::WSSE_NS, 'o:KeyIdentifier', $thumbprint);
+        $ki->setAttribute('ValueType', self::THUMB_VALUETYPE);
+        $ki->setAttribute('EncodingType', self::B64_ENCODINGTYPE);
+        $str->appendChild($ki);
         $keyInfo->appendChild($str);
         $signatureNode->appendChild($keyInfo);
 
