@@ -264,12 +264,26 @@ class CreditRegistrySoapClient
         }
 
         // ── Digests (Exc-C14N + InclusiveNamespaces, SHA256) ──────────────────
-        // Digest MUST match ds:Transform output (InclusiveNamespaces PrefixList)
+        // PHP's libxml2 C14N does not propagate ancestor-declared namespaces for
+        // InclusiveNamespaces. Declare them on each element so C14N output matches
+        // what the WCF server computes when verifying the signature.
         $incPrefixes = preg_split('/\s+/', trim(self::INCLUSIVE_PREFIX_LIST));
-        $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false, null, $incPrefixes),   true));
-        $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false, null, $incPrefixes), true));
-        $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false, null, $incPrefixes),   true));
-        $actionDigest   = base64_encode(hash('sha256', $actionNode->C14N(true, false, null, $incPrefixes),   true));
+        $xmlnsNs     = 'http://www.w3.org/2000/xmlns/';
+        $incNsMap    = [
+            'xmlns:s' => self::SOAP_NS,
+            'xmlns:a' => self::WSA_NS,
+            'xmlns:u' => self::WSU_NS,
+            'xmlns:o' => self::WSSE_NS,
+        ];
+        foreach ([$tsNode, $bodyNode, $toNode, $actionNode, $messageIdNode] as $n) {
+            foreach ($incNsMap as $attr => $uri) {
+                $n->setAttributeNS($xmlnsNs, $attr, $uri);
+            }
+        }
+        $tsDigest        = base64_encode(hash('sha256', $tsNode->C14N(true, false, null, $incPrefixes),        true));
+        $bodyDigest      = base64_encode(hash('sha256', $bodyNode->C14N(true, false, null, $incPrefixes),      true));
+        $toDigest        = base64_encode(hash('sha256', $toNode->C14N(true, false, null, $incPrefixes),        true));
+        $actionDigest    = base64_encode(hash('sha256', $actionNode->C14N(true, false, null, $incPrefixes),    true));
         $messageIdDigest = base64_encode(hash('sha256', $messageIdNode->C14N(true, false, null, $incPrefixes), true));
 
         // ── SignedInfo build ──────────────────────────────────────────────────

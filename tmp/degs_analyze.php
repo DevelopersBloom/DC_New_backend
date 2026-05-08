@@ -107,8 +107,17 @@ if (!$tsNode || !$bodyNode || !$bstNode || !$toNode || !$actionNode || !$msgIdNo
 }
 
 // ── 4. Digests (Exc-C14N + InclusiveNamespaces, SHA256) ─────────────────────
-// IMPORTANT: digest MUST match ds:Transform output (InclusiveNamespaces PrefixList)
+// PHP's libxml2 C14N does not propagate ancestor-declared namespaces for the
+// InclusiveNamespaces list. Declare them directly on each element so the C14N
+// output matches what the WCF server produces when verifying the signature.
 $incPrefixes = ['s', 'a', 'u', 'o'];
+$XMLNS_NS    = 'http://www.w3.org/2000/xmlns/';
+$incNsMap    = ['xmlns:s' => $SOAP_NS, 'xmlns:a' => $WSA_NS, 'xmlns:u' => $WSU_NS, 'xmlns:o' => $WSSE_NS];
+foreach ([$tsNode, $bodyNode, $toNode, $actionNode, $msgIdNode] as $_n) {
+    foreach ($incNsMap as $_attr => $_uri) {
+        $_n->setAttributeNS($XMLNS_NS, $_attr, $_uri);
+    }
+}
 $tsDigest   = base64_encode(hash('sha256', $tsNode->C14N(true, false, null, $incPrefixes),   true));
 $bodyDigest = base64_encode(hash('sha256', $bodyNode->C14N(true, false, null, $incPrefixes), true));
 $toDigest   = base64_encode(hash('sha256', $toNode->C14N(true, false, null, $incPrefixes),   true));
