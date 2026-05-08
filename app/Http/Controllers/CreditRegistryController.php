@@ -78,7 +78,7 @@
 //        try {
 //            $xml = $this->l001Service->generateL001Xml($contract);
 //
-//            $requestId = $this->soapClient->sendL001($xml, false);
+//            $requestId = $this->degsClient->sendL001($xml, false);
 //
 //            return response()->json([
 //                'request_id' => $requestId,
@@ -215,7 +215,6 @@ use App\Services\CreditRegistryL003Service;
 use App\Services\CreditRegistryL005Service;
 use App\Services\CreditRegistryL006Service;
 use App\Services\CreditRegistryRiskModificationXmlService;
-use App\Services\CreditRegistrySoapClient;
 use App\Services\Degs\DegsClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -231,7 +230,6 @@ class CreditRegistryController extends Controller
         private CreditRegistryL005Service                $l005Service,
         private CreditRegistryL006Service                $l006Service,
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
-        private CreditRegistrySoapClient                 $soapClient,
         private DegsClient                               $degsClient,
     )
     {
@@ -580,7 +578,7 @@ class CreditRegistryController extends Controller
                 oldValue: $request->input('old_value'),
             );
 
-            $requestId = $this->soapClient->sendL005($xml);
+            $requestId = $this->degsClient->sendL005($xml);
 
             return response()->json([
                 'request_id' => $requestId,
@@ -646,7 +644,7 @@ class CreditRegistryController extends Controller
 
         try {
             $xml       = $this->l006Service->generateL006Xml((int) $contract->id, $dataToDelete);
-            $requestId = $this->soapClient->sendL006($xml);
+            $requestId = $this->degsClient->sendL006($xml);
 
             return response()->json([
                 'request_id' => $requestId,

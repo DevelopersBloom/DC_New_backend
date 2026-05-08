@@ -167,6 +167,19 @@ class CreditRegistrySoapClient
         $expires     = gmdate('Y-m-d\TH:i:s\Z', time() + 300);
         $this->bstId = 'bst-' . bin2hex(random_bytes(8));
 
+        if (! is_file($this->certPath)) {
+            throw new \RuntimeException(
+                'DEGS client certificate not found: ' . $this->certPath
+                . '. Set CREDIT_REGISTRY_CLIENT_CERT_PATH in .env'
+            );
+        }
+        if (! is_file($this->keyPath)) {
+            throw new \RuntimeException(
+                'DEGS private key not found: ' . $this->keyPath
+                . '. Set CREDIT_REGISTRY_CLIENT_KEY_PATH in .env'
+            );
+        }
+
         $rawPem  = file_get_contents($this->certPath);
         $certB64 = str_replace(["\r", "\n", " "], '', preg_replace('/-----[^-]+-----/', '', $rawPem));
 
