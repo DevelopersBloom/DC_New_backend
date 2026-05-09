@@ -7,7 +7,7 @@ use DOMXPath;
 
 class CreditRegistrySoapClient
 {
-    private const ACTION_NS = 'http://tempuri.org/';
+    private const ACTION_NS = 'http://tempuri.org/IDegsNSS/';
 
     // Defaults — overridden by config/credit_registry.php values
     private string $endpoint;
@@ -44,8 +44,6 @@ class CreditRegistrySoapClient
     private const DIGEST_ALG  = 'http://www.w3.org/2001/04/xmlenc#sha256';
     private const SIG_ALG     = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
     private const C14N_ALG    = 'http://www.w3.org/2001/10/xml-exc-c14n#';
-    private const EXC14N_NS   = 'http://www.w3.org/2001/10/xml-exc-c14n#';
-    private const INCLUSIVE_PREFIX_LIST = 's a u o';
 
     private string $bstId = '';
     private string $actionId = '_action';
@@ -262,37 +260,19 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('DEGS sign: required node not found (ts/body/bst/to/action/messageId)');
         }
 
-        // ── Digests (Exc-C14N + InclusiveNamespaces, SHA256) ──────────────────
-        // PHP's libxml2 C14N does not propagate ancestor-declared namespaces for
-        // InclusiveNamespaces. Declare them on each element so C14N output matches
-        // what the WCF server computes when verifying the signature.
-        $incPrefixes = preg_split('/\s+/', trim(self::INCLUSIVE_PREFIX_LIST));
-        $xmlnsNs     = 'http://www.w3.org/2000/xmlns/';
-        $incNsMap    = [
-            'xmlns:s' => self::SOAP_NS,
-            'xmlns:a' => self::WSA_NS,
-            'xmlns:u' => self::WSU_NS,
-            'xmlns:o' => self::WSSE_NS,
-        ];
-        foreach ([$tsNode, $bodyNode, $toNode, $actionNode, $messageIdNode] as $n) {
-            foreach ($incNsMap as $attr => $uri) {
-                $n->setAttributeNS($xmlnsNs, $attr, $uri);
-            }
-        }
-        $tsDigest        = base64_encode(hash('sha256', $tsNode->C14N(true, false, null, $incPrefixes),        true));
-        $bodyDigest      = base64_encode(hash('sha256', $bodyNode->C14N(true, false, null, $incPrefixes),      true));
-        $toDigest        = base64_encode(hash('sha256', $toNode->C14N(true, false, null, $incPrefixes),        true));
-        $actionDigest    = base64_encode(hash('sha256', $actionNode->C14N(true, false, null, $incPrefixes),    true));
-        $messageIdDigest = base64_encode(hash('sha256', $messageIdNode->C14N(true, false, null, $incPrefixes), true));
+        // ── Digests (Exc-C14N, SHA256) ────────────────────────────────────────
+        // Pure Exc-C14N without InclusiveNamespaces — matches WCF's default output.
+        $tsDigest        = base64_encode(hash('sha256', $tsNode->C14N(true, false),        true));
+        $bodyDigest      = base64_encode(hash('sha256', $bodyNode->C14N(true, false),      true));
+        $toDigest        = base64_encode(hash('sha256', $toNode->C14N(true, false),        true));
+        $actionDigest    = base64_encode(hash('sha256', $actionNode->C14N(true, false),    true));
+        $messageIdDigest = base64_encode(hash('sha256', $messageIdNode->C14N(true, false), true));
 
         // ── SignedInfo build ──────────────────────────────────────────────────
         $signedInfo = $dom->createElementNS(self::DSIG_NS, 'ds:SignedInfo');
 
         $canonMethod = $dom->createElementNS(self::DSIG_NS, 'ds:CanonicalizationMethod');
         $canonMethod->setAttribute('Algorithm', self::C14N_ALG);
-        $inclusive = $dom->createElementNS(self::EXC14N_NS, 'ec:InclusiveNamespaces');
-        $inclusive->setAttribute('PrefixList', self::INCLUSIVE_PREFIX_LIST);
-        $canonMethod->appendChild($inclusive);
         $signedInfo->appendChild($canonMethod);
 
         $sigMethod = $dom->createElementNS(self::DSIG_NS, 'ds:SignatureMethod');
@@ -307,9 +287,6 @@ class CreditRegistrySoapClient
             $transforms = $dom->createElementNS(self::DSIG_NS, 'ds:Transforms');
             $transform  = $dom->createElementNS(self::DSIG_NS, 'ds:Transform');
             $transform->setAttribute('Algorithm', self::C14N_ALG);
-            $inclusive = $dom->createElementNS(self::EXC14N_NS, 'ec:InclusiveNamespaces');
-            $inclusive->setAttribute('PrefixList', self::INCLUSIVE_PREFIX_LIST);
-            $transform->appendChild($inclusive);
             $transforms->appendChild($transform);
             $ref->appendChild($transforms);
 
@@ -343,14 +320,7 @@ class CreditRegistrySoapClient
         $secNode->appendChild($signatureNode);
 
         // ── SignedInfo C14N ───────────────────────────────────────────────────────
-        // PHP's libxml2 C14N does not propagate ancestor-declared namespaces for
-        // InclusiveNamespaces. Declare them directly on ds:SignedInfo so that
-        // our C14N output matches what the WCF server computes when verifying.
-        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:s', self::SOAP_NS);
-        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:a', self::WSA_NS);
-        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:u', self::WSU_NS);
-        $signedInfo->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:o', self::WSSE_NS);
-        $signedInfoC14n = $signedInfo->C14N(true, false, null, $incPrefixes);
+        $signedInfoC14n = $signedInfo->C14N(true, false);
 
         // ── Sign ─────────────────────────────────────────────────────────────
         $privateKey = openssl_pkey_get_private('file://' . $this->keyPath, $this->certPassword);
