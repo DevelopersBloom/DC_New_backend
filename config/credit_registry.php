@@ -44,7 +44,8 @@ return [
     // Optional peer name to validate certificate against (useful when connecting by IP)
     'peer_name' => env('CREDIT_REGISTRY_PEER_NAME'),
 
-    // Default application name for LNREG3 documents
+    // .NET 8 DEGS proxy URL (127.0.0.1:5555 — runs as a local sidecar)
+    'proxy_url' => env('CREDIT_REGISTRY_PROXY_URL', 'http://127.0.0.1:5555'),
 
     // Default timeout settings (seconds)
     'connection_timeout' => env('CREDIT_REGISTRY_CONNECTION_TIMEOUT', 30),
