@@ -194,7 +194,6 @@ class CreditRegistrySoapClient
             .   ' xmlns:s="'  . self::SOAP_NS . '"'
             .   ' xmlns:a="'  . self::WSA_NS  . '"'
             .   ' xmlns:u="'  . self::WSU_NS  . '"'
-            .   ' xmlns:wsse="'  . self::WSSE_NS   . '"'
             .   ' xmlns:o="'  . self::WSSE_NS . '"'
             .   ' xmlns:ds="' . self::DSIG_NS . '">'
             .   '<s:Header>'
@@ -202,18 +201,17 @@ class CreditRegistrySoapClient
             .     '<a:MessageID u:Id="' . $this->messageIdId . '">' . $msgId . '</a:MessageID>'
             .     '<a:To s:mustUnderstand="1" u:Id="_to">' . $this->endpoint . '</a:To>'
             .     '<o:Security s:mustUnderstand="1">'
-            // BST FIRST (EndorsingSupportingTokens / AlwaysToRecipient)
+            // WS-SecurityPolicy Strict layout: Timestamp FIRST, then BST, then Signature
+            .       '<u:Timestamp u:Id="_ts">'
+            .         '<u:Created>' . $now     . '</u:Created>'
+            .         '<u:Expires>' . $expires . '</u:Expires>'
+            .       '</u:Timestamp>'
             .       '<o:BinarySecurityToken'
             .         ' u:Id="'         . $this->bstId          . '"'
             .         ' ValueType="'    . self::X509_VALUETYPE   . '"'
             .         ' EncodingType="' . self::B64_ENCODINGTYPE . '">'
             .         $certB64
             .       '</o:BinarySecurityToken>'
-            // Timestamp AFTER BST
-            .       '<u:Timestamp u:Id="_ts">'
-            .         '<u:Created>' . $now     . '</u:Created>'
-            .         '<u:Expires>' . $expires . '</u:Expires>'
-            .       '</u:Timestamp>'
             // Signature-ն ՉԿԱ — signEnvelope()-ն կavoid C14N corruption-ը
             .     '</o:Security>'
             .   '</s:Header>'
@@ -376,9 +374,9 @@ class CreditRegistrySoapClient
         // ── KeyInfo — FIXED (WS-Security compliant) ──
         $keyInfo = $dom->createElementNS(self::DSIG_NS, 'ds:KeyInfo');
 
-        $str = $dom->createElementNS(self::WSSE_NS, 'wsse:SecurityTokenReference');
+        $str = $dom->createElementNS(self::WSSE_NS, 'o:SecurityTokenReference');
 
-        $ki = $dom->createElementNS(self::WSSE_NS, 'wsse:KeyIdentifier', $thumbprint);
+        $ki = $dom->createElementNS(self::WSSE_NS, 'o:KeyIdentifier', $thumbprint);
         $ki->setAttribute('ValueType', self::THUMB_VALUETYPE);
         $ki->setAttribute('EncodingType', self::B64_ENCODINGTYPE);
 
