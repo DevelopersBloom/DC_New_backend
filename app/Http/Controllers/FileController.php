@@ -700,7 +700,7 @@ class FileController extends Controller
             'receiver' => $order->receiver ?? null,
             'contract_id' => $contract?->num,
             'num' => $contract?->num ?? null,
-            'client' => $contract?->client->name . ' ' . $contract->client->surname . $contract->client->middle_name ?? '',
+            'client' => $contract?->client->name . ' ' . $contract->client->surname . ' ' . ($contract->client->middle_name ?? ''),
             'cl_dob' => $contract?->client?->date_of_birth
                 ? Carbon::parse($contract->client->date_of_birth)->format('d.m.Y')
                 : null,
