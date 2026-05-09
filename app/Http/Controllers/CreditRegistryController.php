@@ -578,10 +578,17 @@ class CreditRegistryController extends Controller
                 oldValue: $request->input('old_value'),
             );
 
-            $requestId = $this->degsClient->sendL005($xml);
+            $result = $this->degsClient->sendL005($xml);
+
+            if (! ($result['ok'] ?? false)) {
+                return response()->json([
+                    'message' => 'DEGS rejected the request',
+                    'error'   => $result['error'] ?? 'Unknown error',
+                ], 502);
+            }
 
             return response()->json([
-                'request_id' => $requestId,
+                'request_id' => $result['requestId'],
                 'status'     => 'sent',
                 'message'    => 'L005 sent successfully',
             ], 202);
@@ -643,11 +650,18 @@ class CreditRegistryController extends Controller
         }
 
         try {
-            $xml       = $this->l006Service->generateL006Xml((int) $contract->id, $dataToDelete);
-            $requestId = $this->degsClient->sendL006($xml);
+            $xml    = $this->l006Service->generateL006Xml((int) $contract->id, $dataToDelete);
+            $result = $this->degsClient->sendL006($xml);
+
+            if (! ($result['ok'] ?? false)) {
+                return response()->json([
+                    'message' => 'DEGS rejected the request',
+                    'error'   => $result['error'] ?? 'Unknown error',
+                ], 502);
+            }
 
             return response()->json([
-                'request_id' => $requestId,
+                'request_id' => $result['requestId'],
                 'status'     => 'sent',
                 'message'    => 'L006 sent successfully',
             ], 202);
