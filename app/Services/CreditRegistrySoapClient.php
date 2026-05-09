@@ -40,9 +40,9 @@ class CreditRegistrySoapClient
     private const B64_ENCODINGTYPE = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary';
     private const THUMB_VALUETYPE  = 'http://docs.oasis-open.org/wss/oasis-wss-soap-message-security-1.1#ThumbprintSHA1';
 
-    // Digest algorithm — many WCF stacks expect xmlenc#sha256
+    // WCF Basic256 algorithm suite: RSA-SHA1 asymmetric signature, SHA-256 digest
     private const DIGEST_ALG  = 'http://www.w3.org/2001/04/xmlenc#sha256';
-    private const SIG_ALG     = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+    private const SIG_ALG     = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
     private const C14N_ALG    = 'http://www.w3.org/2001/10/xml-exc-c14n#';
 
     private string $bstId = '';
@@ -328,7 +328,7 @@ class CreditRegistrySoapClient
             throw new \RuntimeException('DEGS: Private key load error: ' . openssl_error_string()
                 . ' (check CREDIT_REGISTRY_CLIENT_KEY_PATH and CREDIT_REGISTRY_CLIENT_CERT_PASSWORD)');
         }
-        if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA256)) {
+        if (!openssl_sign($signedInfoC14n, $rawSig, $privateKey, OPENSSL_ALGO_SHA1)) {
             throw new \RuntimeException('DEGS: Sign error: ' . openssl_error_string());
         }
 
