@@ -532,7 +532,17 @@ class PaymentControllerNew extends Controller
             DB::commit();
 
             if ($date < now()->toDateString()) {
-                RecalculateContractRangeJob::dispatch($contract->id, $date, now()->toDateString());
+                $lastCalculatedDate = DocumentJournal::where('journalable_id', $journal->id)
+                    ->where('journalable_type', DocumentJournal::class)
+                    ->whereIn('document_type', [
+                        DocumentJournal::EFFECTIVE_RATE_AMOUNT,
+                        DocumentJournal::INTEREST_RATE_AMOUNT,
+                    ])
+                    ->max('date');
+
+                if ($lastCalculatedDate && $lastCalculatedDate >= $date) {
+                    RecalculateContractRangeJob::dispatch($contract->id, $date, $lastCalculatedDate);
+                }
             }
 
             return response()->json([
