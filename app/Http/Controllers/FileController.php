@@ -670,12 +670,15 @@ class FileController extends Controller
             $amount1 = $this->makeMoney($order->amount);
         }
 
+        $user = $order->user ?? \App\Models\User::first();
+
         $templateProcessor->setValues([
             'amount1' => $amount1,
             'amount2' => $this->makeMoney($order->amount),
             'rep_id' => 2211,
+            'num' => $contract->num,
             'order' => $order->order,
-            'date' => Carbon::parse($order->date)->format('d.m.Y'),
+            'date' => isset($order->date) ? $this->formatArmenianDate($order->date) : null,
             'receiver' => $order->receiver,
             'client' => $contract?->client->name . ' ' . $contract->client->surname,
             'contract_id' => $contract->num ?? null,
@@ -683,6 +686,7 @@ class FileController extends Controller
             'amount1_text' => $this->numberToText((float) str_replace([' ', ',','.'], ['', '',''], $amount1)),
             'amount2_text' => $this->numberToText($order->amount),
             'phone' => $contract?->client->phone,
+            'executor' => $user ? $user->name . ' ' . $user->surname : null,
         ]);
         $filename = time() . 'order_in.docx';
         $pathToSave = public_path('/files/download/' . $filename);
