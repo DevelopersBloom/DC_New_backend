@@ -376,8 +376,10 @@ class PaymentControllerNew extends Controller
                 throw new \RuntimeException('No payable rows found');
             }
 
+            $request->merge(['date' => $date]);
+
             // ===== Order / Deal =====
-            $orderId = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER)->id;
+            $orderId = $this->generateOrderInNew($request, $payments, Order::REGULAR_FILTER, $date)->id;
             $history = $this->createHistory($request, $orderId);
 
             $deal = $this->createDeal(
@@ -393,7 +395,8 @@ class PaymentControllerNew extends Controller
                 $history->id,
                 null,
                 null,
-                1
+                1,
+                $date
             );
 
             $journal = DocumentJournal::where('journalable_type', Contract::class)
@@ -516,7 +519,7 @@ class PaymentControllerNew extends Controller
                 'element_code' => 'Amount',
                 'old_value'    => (string)$old,
                 'new_value'    => (string)$new,
-                'effective_date'=> now()->toDateString(),
+                'effective_date'=> $date,
             ]);
 
             $this->activityService->log(

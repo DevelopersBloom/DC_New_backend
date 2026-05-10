@@ -157,8 +157,9 @@ class ContractCalculationService
             $calculatedInterest = $providedAmount * ($contract->interest_rate / 100.0) * $days;
         }
 
-        if ($providedAmount > 0 && !empty($contract->effective_daily_rate) && $days > 0) {
-            $calculatedEffectiveInterest = $providedAmount * ($contract->effective_daily_rate / 100.0) * $days;
+        $openingAmount = $this->calculateCurrentAmortizedBalance($contract);
+        if ($openingAmount > 0 && !empty($contract->effective_daily_rate) && $days > 0) {
+            $calculatedEffectiveInterest = $openingAmount * ($contract->effective_daily_rate / 100.0) * $days;
         }
         $contract->effectiveRate = $contract->effective_daily_rate;
         $contract->calculatedInterest = round($calculatedInterest, 2);
