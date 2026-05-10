@@ -672,6 +672,14 @@ class FileController extends Controller
 
         $user = $order->user ?? \App\Models\User::first();
         $client = $contract?->client;
+        $passportDate = $client?->passport_validity
+            ? Carbon::parse($client->passport_validity)->format('d.m.Y')
+            : null;
+        $basis = trim(implode('', [
+            $client?->passport_series ?? '',
+            $passportDate ? ', տրվ. ' . $passportDate . 'թ. ' : '',
+            $client?->passport_issued ?? '',
+        ]));
 
         $templateProcessor->setValues([
             'amount1' => $amount1,
@@ -688,6 +696,8 @@ class FileController extends Controller
             'amount2_text' => $this->numberToText($order->amount),
             'phone' => $contract?->client->phone,
             'executor' => $user ? $user->name . ' ' . $user->surname : null,
+            'basis' => $basis ?: null,
+
         ]);
         $filename = time() . 'order_in.docx';
         $pathToSave = public_path('/files/download/' . $filename);
