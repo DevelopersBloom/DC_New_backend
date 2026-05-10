@@ -671,6 +671,7 @@ class FileController extends Controller
         }
 
         $user = $order->user ?? \App\Models\User::first();
+        $client = $contract?->client;
 
         $templateProcessor->setValues([
             'amount1' => $amount1,
@@ -680,7 +681,7 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => isset($order->date) ? $this->formatArmenianDate($order->date) : null,
             'receiver' => $order->receiver,
-            'client' => $contract?->client->name . ' ' . $contract->client->surname,
+            'client' => $client ? $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '') : null,
             'contract_id' => $contract->num ?? null,
             'purpose' => $order->purpose,
             'amount1_text' => $this->numberToText((float) str_replace([' ', ',','.'], ['', '',''], $amount1)),
