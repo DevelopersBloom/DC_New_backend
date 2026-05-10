@@ -38,9 +38,15 @@ class Order extends Model
         'num',
         'cash',
         'filter',
+        'user_id',
     ];
     public function pawnshop()
     {
         return $this->belongsTo(Pawnshop::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
     }
 }

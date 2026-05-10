@@ -212,7 +212,8 @@ trait FileTrait
             'date' => Carbon::now()->format('d.m.Y'),
             'client_name' => $client_name,
             'purpose' => $purpose,
-            'cash' => $request->cash
+            'cash' => $request->cash,
+            'user_id' => auth()->id(),
         ];
         $new_order = Order::create($res);
         return $new_order;
@@ -236,7 +237,8 @@ trait FileTrait
             'client_name' => $client_name,
             'purpose' => $purpose,
             'cash' => $request->cash,
-            'filter' => $filter ?? null
+            'filter' => $filter ?? null,
+            'user_id' => auth()->id(),
         ];
         $new_order = Order::create($res);
         return $new_order;
@@ -258,7 +260,8 @@ trait FileTrait
             'client_name' => $client_name,
             'purpose' => $purpose,
             'cash' => $cash,
-            'filter' => $filter
+            'filter' => $filter,
+            'user_id' => auth()->id(),
         ];
         $new_order = Order::create($res);
         return $new_order;

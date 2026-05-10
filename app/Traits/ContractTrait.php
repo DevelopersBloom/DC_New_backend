@@ -120,7 +120,8 @@ trait ContractTrait
                 'client_name' => $client_name,
                 'purpose' => $purpose,
                 'cash' => $cash,
-                'filter' => $filter ?? null
+                'filter' => $filter ?? null,
+                'user_id' => auth()->id(),
             ]);
         }
 

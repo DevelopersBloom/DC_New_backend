@@ -20,6 +20,7 @@ use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
 use App\Services\PaymentService;
+use App\Services\PostingDatePolicy;
 use App\Traits\CalculatesAccountBalancesTrait;
 use App\Traits\ContractTrait;
 use App\Traits\FileTrait;
@@ -38,12 +39,16 @@ class PaymentControllerNew extends Controller
 
     protected PaymentService $paymentService;
     protected ActivityService $activityService;
+    protected PostingDatePolicy $postingDatePolicy;
 
-
-    public function __construct(PaymentService $paymentService, ActivityService $activityService)
-    {
-        $this->paymentService = $paymentService;
-        $this->activityService = $activityService;
+    public function __construct(
+        PaymentService $paymentService,
+        ActivityService $activityService,
+        PostingDatePolicy $postingDatePolicy
+    ) {
+        $this->paymentService     = $paymentService;
+        $this->activityService    = $activityService;
+        $this->postingDatePolicy  = $postingDatePolicy;
     }
 //    public function makePayment(PaymentRequest $request): JsonResponse
 //    {
@@ -337,6 +342,10 @@ class PaymentControllerNew extends Controller
         $contract = Contract::findOrFail($request->contract_id);
         $date = $request->contract_created_date ?? now()->toDateString();
 
+
+        if ($error = $this->postingDatePolicy->validate($date)) {
+            return $error;
+        }
         $current = $this->calculateCurrentPayment($contract, $date);
         $interestAmount = max(0.0, (float) ($current['interest_amount'] ?? 0));
 
@@ -590,13 +599,15 @@ class PaymentControllerNew extends Controller
 
     public function makeFullPayment(Request $request): JsonResponse
     {
-
             $contract = Contract::findOrFail($request->contract_id);
             $totalAmount = $request->amount;
             $payer = $request->payer;
             $cash = $request->cash;
             $date = $request->contract_created_date ?? Carbon::now()->format('Y-m-d');
 
+            if ($error = $this->postingDatePolicy->validate($date)) {
+                return $error;
+            }
             $currentPaymentData = $this->calculateCurrentPayment($contract);
 
             $interestAmount = is_array($currentPaymentData) ? ($currentPaymentData['current_amount'] ?? 0) : 0;
@@ -772,6 +783,12 @@ class PaymentControllerNew extends Controller
     }
     public function payPartial(Request $request): JsonResponse
     {
+        $date = $request->posting_date ?? now()->toDateString();
+
+        if ($error = $this->postingDatePolicy->validate($date)) {
+            return $error;
+        }
+
         $has_penalty_amount = $this->countPenalty($request->contract_id);
         if ($has_penalty_amount['penalty_amount'] > 0) {
             return response()->json([
@@ -813,11 +830,12 @@ class PaymentControllerNew extends Controller
             'order' => $order_id,
             'amount' => $partialAmount,
             'rep_id' => '2211',
-            'date' => Carbon::now()->format('Y-m-d'),
+            'date' => $date,
             'client_name' => $client_name,
             'purpose' => 'Մասնակի մարում',
             'cash' => $cash,
-            'filter' => Order::PARTIAL_FILTER
+            'filter' => Order::PARTIAL_FILTER,
+            'user_id' => auth()->id(),
         ];
         $new_order = Order::create($res);
         $history = History::create([
@@ -826,7 +844,7 @@ class PaymentControllerNew extends Controller
             'type_id' => $history_type->id,
             'order_id' => $new_order->id,
             'contract_id' => $contract->id,
-            'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
+            'date' => $date,
         ]);
         $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id);
 
@@ -856,7 +874,7 @@ class PaymentControllerNew extends Controller
             'element_code' => 'Amount',
             'old_value' => (string)$oldPaymentAmount,
             'new_value' => (string)($newPaymentAmount),
-            'effective_date' => now()->toDateString(),
+            'effective_date' => $date,
         ]);
         return response()->json([
             'success' => 'success',
@@ -912,7 +930,8 @@ class PaymentControllerNew extends Controller
                 'client_name' => $client_name,
                 'num' => $contract->num,
                 'cash' => $cash,
-                'filter' => Order::EXPENSE_FILTER
+                'filter' => Order::EXPENSE_FILTER,
+                'user_id' => auth()->id(),
             ];
             $order = Order::create($res);
             $type = HistoryType::where('name', 'execution')->first();

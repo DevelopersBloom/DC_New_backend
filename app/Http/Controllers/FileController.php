@@ -438,6 +438,17 @@ class FileController extends Controller
         return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
+    private function formatArmenianDate(string $date): string
+    {
+        $months = [
+            1 => 'Հունվար', 2 => 'Փետրվար', 3 => 'Մարտ',    4 => 'Ապրիլ',
+            5 => 'Մայիս',   6 => 'Հունիս',   7 => 'Հուլիս',  8 => 'Օգոստոս',
+            9 => 'Սեպտեմբեր', 10 => 'Հոկտեմբեր', 11 => 'Նոյեմբեր', 12 => 'Դեկտեմբեր',
+        ];
+        $parsed = Carbon::parse($date);
+        return $parsed->format('d') . ' ' . $months[$parsed->month] . ', ' . $parsed->format('Y');
+    }
+
     private function generateGuarantorDocx($contract, $guarantor): array
     {
         $templatePath = public_path('files/guarantor_contract.docx');
@@ -691,24 +702,38 @@ class FileController extends Controller
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template.docx'));
         $order = Order::where('id', $id)->first();
         $contract = Contract::where('id', $order->contract_id)->with('client')->first();
+        $client = $contract?->client;
+        $user = $order->user ?? \App\Models\User::first();
+
+        $passportDate = $client?->passport_validity
+            ? Carbon::parse($client->passport_validity)->format('d.m.Y')
+            : null;
+        $basis = trim(implode('', [
+            $client?->passport_series ?? '',
+            $passportDate ? ', տրվ. ' . $passportDate . 'թ. ' : '',
+            $client?->passport_issued ?? '',
+        ]));
+
         $templateProcessor->setValues([
-            'amount' => isset($order) && isset($order->amount) ? $this->makeMoney($order->amount) : null,
+            'amount' => isset($order->amount) ? $this->makeMoney($order->amount) : null,
             'purpose' => $order->purpose ?? null,
             'rep_id' => $order->rep_id ?? null,
             'order' => $order->order ?? null,
-            'date' => isset($order->date) ? Carbon::parse($order->date)->format('d.m.Y') : null,
+            'date' => isset($order->date) ? $this->formatArmenianDate($order->date) : null,
             'receiver' => $order->receiver ?? null,
             'contract_id' => $contract?->num,
             'num' => $contract?->num ?? null,
-            'client' => $contract?->client->name . ' ' . $contract->client->surname . ' ' . ($contract->client->middle_name ?? ''),
-            'cl_dob' => $contract?->client?->date_of_birth
-                ? Carbon::parse($contract->client->date_of_birth)->format('d.m.Y')
+            'client' => $client ? $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '') : null,
+            'cl_dob' => $client?->date_of_birth
+                ? Carbon::parse($client->date_of_birth)->format('d.m.Y')
                 : null,
-            'cl_pass' => $contract?->client?->passport_series ?? null,
-            'cl_val' => $contract?->client?->passport_validity ?? null,
-            'cl_iss' => $contract?->client?->passport_issued ?? null,
-            'account_number' => $contract?->client?->account_number ?? $contract->client?->card_number ?? null,
+            'cl_pass' => $client?->passport_series ?? null,
+            'cl_val' => $passportDate,
+            'cl_iss' => $client?->passport_issued ?? null,
+            'basis' => $basis ?: null,
+            'account_number' => $client?->account_number ?? $client?->card_number ?? null,
             'amount_text' => isset($order->amount) ? $this->numberToText($order->amount) : null,
+            'executor' => $user ? $user->name . ' ' . $user->surname : null,
         ]);
 
         $filename = time() . 'order_out.docx';

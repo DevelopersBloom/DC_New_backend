@@ -59,7 +59,8 @@ trait OrderTrait
             'date' => Carbon::now()->format('Y-m-d'),
             'purpose' => $purpose,
             'receiver' => $receiver,
-            'cash' => $cash
+            'cash' => $cash,
+            'user_id' => auth()->id(),
         ]);
     }
     public function createDealOrder($amount, $interest_amount, $delay_days, $penalty, $discount, $type, $contract_id, $client_id, $order_id = null, $cash = true, $receiver = null, $purpose = null, $filter_type = null, $history_id = null, $payment_id = null, $source = null, $pawnshop_id = null, $date = null)

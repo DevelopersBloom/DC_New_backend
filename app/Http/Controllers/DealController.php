@@ -416,7 +416,8 @@ DealController extends Controller
             'date' => Carbon::now()->format('Y-m-d'),
             'purpose' => $purpose,
             'receiver' => $receiver,
-            'cash' => $cash
+            'cash' => $cash,
+            'user_id' => auth()->id(),
         ]);
     }
 
