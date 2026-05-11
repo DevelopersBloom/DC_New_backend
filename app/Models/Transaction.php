@@ -176,7 +176,7 @@ class Transaction extends Model
             $row = DB::selectOne(
                 'SELECT COALESCE(MAX(CAST(document_number AS UNSIGNED)), 0) + 1 AS next FROM transactions FOR UPDATE'
             );
-            dd($row->next);
+            return (int) $row->next;
         });
     }
 }
