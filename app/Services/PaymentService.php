@@ -313,6 +313,7 @@ class PaymentService
         $from = Carbon::parse($payment->from_date)->startOfDay();
         $elapsedDays = max(1, $from->diffInDays($now));
         $futureDays = $now->diffInDays($due);
+        dd($futureDays);
         if ($futureDays < 1) {
             return null;
         }
