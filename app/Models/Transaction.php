@@ -173,6 +173,7 @@ class Transaction extends Model
     public static function getNextDocumentNumber(): int
     {
         return DB::transaction(function () {
+            dd((int)(self::lockForUpdate()->max('document_number') ?? 0));
             return (int)(self::lockForUpdate()->max('document_number') ?? 0) + 1;
         });
     }
