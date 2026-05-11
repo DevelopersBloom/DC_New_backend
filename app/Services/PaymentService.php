@@ -313,7 +313,6 @@ class PaymentService
         $from = Carbon::parse($payment->from_date)->startOfDay();
         $elapsedDays = max(1, $from->diffInDays($now));
         $futureDays = $now->diffInDays($due);
-        dd($futureDays);
         if ($futureDays < 1) {
             return null;
         }
@@ -325,6 +324,7 @@ class PaymentService
         }
         $pastInterest = $P* $elapsedDays * $rate / 100;
         $kFuture = $futureDays * ($rate / 100);
+        dd($elapsedDays,$P,$pastInterest,$kFuture);
         $denom = 1 - $kFuture;
         if (abs($denom) < 1e-9) {
             return null;
