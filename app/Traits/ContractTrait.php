@@ -15,6 +15,7 @@ use App\Models\PostingRule;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
 use PhpParser\Comment\Doc;
 
 trait ContractTrait
@@ -676,44 +677,46 @@ trait ContractTrait
         if (!$rule) return;
 
         $date = $date ?? Carbon::now()->format('Y-m-d');
-        $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-
         $debitAccountId = $rule->debit_account_id;
         $creditAccountId = $rule->credit_account_id;
-
         $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
 
-        $journalDoc = DocumentJournal::create([
-            'date' => $date,
-            'document_number' => $nextDocNum,
-            'document_type' => $ruleKey,
-            'amount_amd' => $amount,
-            'debit_partner_id' => $debetPartnerId,
-            'credit_partner_id' => $contract->client_id,
-            'comment' => $comment,
-            'debit_account_id' => $debitAccountId,
-            'credit_account_id' => $creditAccountId,
-            'user_id' => auth()->id(),
-            'journalable_type' => Contract::class,
-            'journalable_id' => $contract->id,
-            'deal_id' => $dealId,
-        ]);
+        return DB::transaction(function () use ($contract, $amount, $ruleKey, $comment, $dealId, $date, $debitAccountId, $creditAccountId, $debetPartnerId) {
+            $nextDocNum = Transaction::getNextDocumentNumber();
 
-        Transaction::create([
-            'date' => $date,
-            'document_number' => $nextDocNum,
-            'document_type' => $ruleKey,
-            'debit_account_id' => $debitAccountId,
-            'debit_partner_id' => $debetPartnerId,
-            'credit_account_id' => $creditAccountId,
-            'credit_partner_id' => $contract->client_id,
-            'amount_amd' => $amount,
-            'comment' => $comment,
-            'user_id' => auth()->id(),
-            'transactionable_type' => DocumentJournal::class,
-            'transactionable_id' => $journalDoc->id
-        ]);
-        return $journalDoc->id;
+            $journalDoc = DocumentJournal::create([
+                'date' => $date,
+                'document_number' => $nextDocNum,
+                'document_type' => $ruleKey,
+                'amount_amd' => $amount,
+                'debit_partner_id' => $debetPartnerId,
+                'credit_partner_id' => $contract->client_id,
+                'comment' => $comment,
+                'debit_account_id' => $debitAccountId,
+                'credit_account_id' => $creditAccountId,
+                'user_id' => auth()->id(),
+                'journalable_type' => Contract::class,
+                'journalable_id' => $contract->id,
+                'deal_id' => $dealId,
+            ]);
+
+            Transaction::create([
+                'date' => $date,
+                'document_number' => $nextDocNum,
+                'document_type' => $ruleKey,
+                'debit_account_id' => $debitAccountId,
+                'debit_partner_id' => $debetPartnerId,
+                'credit_account_id' => $creditAccountId,
+                'credit_partner_id' => $contract->client_id,
+                'amount_amd' => $amount,
+                'comment' => $comment,
+                'user_id' => auth()->id(),
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id' => $journalDoc->id,
+            ]);
+
+            return $journalDoc->id;
+        });
     }
 
     protected function normalizePaymentDates($payment, $contract)

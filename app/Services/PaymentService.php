@@ -53,7 +53,7 @@ class PaymentService
                 }
                 if ($rulePenalty) {
                     $userId = auth()->id();
-                    $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                    $nextDocNum = Transaction::getNextDocumentNumber();
                     $journalDocPenalty = DocumentJournal::create([
                         'date' => $date,
                         'document_number' => $nextDocNum,
@@ -880,7 +880,7 @@ class PaymentService
         $filter = $cash ? 'pay_mother_amount_cash' : 'pay_mother_amount';
         $ruleMother = PostingRule::where('business_event_filter', $filter)->first();
         if ($ruleMother && $partialAmount > 0) {
-            $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+            $nextDocNum = Transaction::getNextDocumentNumber();
             $journalDoc = DocumentJournal::create([
                 'date' => $date,
                 'document_number' => $nextDocNum,
@@ -923,7 +923,7 @@ class PaymentService
             $reserveAmount = $partialAmount * $reservePercent / 100;
 
             if ($reserveAmount > 0) {
-                $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                $nextDocNum = Transaction::getNextDocumentNumber();
                 $documentType = ($classificationName === 'standard')
                     ? DocumentJournal::PROVIDED_AMOUNT_CHANGE
                     : DocumentJournal::RESERVE_SPECIAL_AMOUNT;

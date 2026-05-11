@@ -376,7 +376,7 @@ class ContractControllerNew extends Controller
             $client->loadMissing('classification');
 
 
-            $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+            $nextDocNum = Transaction::getNextDocumentNumber();
             $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
 
             $journalDoc = DocumentJournal::create([
@@ -653,7 +653,7 @@ class ContractControllerNew extends Controller
             ->first();
         DB::beginTransaction();
         try {
-            $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+            $nextDocNum = Transaction::getNextDocumentNumber();
 
             if ($request->calculated_interest > 0) {
                 $journalInterest = DocumentJournal::create([
@@ -740,8 +740,6 @@ class ContractControllerNew extends Controller
                         ->where('journalable_id', $contractJournal->id)
                         ->sum('amount_amd');
                 }
-
-//                $reserveAmount= $contract->provided_amount + $effectiveInterest;
 
                 $reserveAmount = $request->calculated_effective_interest * $contract->client->classification->reserve_percent / 100;
                 $clientId = $contract->client_id;
@@ -861,7 +859,6 @@ class ContractControllerNew extends Controller
                 ->whereDate('date', '<=', $calcToday)
                 ->sum('amount');
 
-//            $dynamicProvidedAmount = $providedAmountSum - $paymentAmountSum;
             $contract->setAttribute('provided_amount', $contract->provided_amount);
 
             $startDate = $contract->date ? Carbon::parse($contract->date)->startOfDay() : null;
@@ -878,17 +875,4 @@ class ContractControllerNew extends Controller
 
         return Excel::download(new ContractsCalcExport($contracts), $fileName);
     }
-//    public function exportAcra(Request $request) {
-//        $filters = $request->all();
-//        $data = $this->contractService->getContracts($filters);
-//        $contracts = $data['contracts']->getCollection();
-//
-//        $fileName = 'TMP_' . now()->format('d_m_Y_His') . '.xlsx';
-//
-//        return Excel::download(
-//            new AcraExport($contracts, $request->date_from, $request->date_to),
-//            $fileName
-//        );
-//    }
-
 }

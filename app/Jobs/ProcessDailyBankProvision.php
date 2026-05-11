@@ -120,35 +120,35 @@ class ProcessDailyBankProvision implements ShouldQueue
             return;
         }
 
-        $nextDocNum = DB::transaction(function () {
-            return (int)(Transaction::lockForUpdate()->max('document_number') ?? 0) + 1;
+        DB::transaction(function () use ($date, $amount, $label, $debitAcc, $creditAcc) {
+            $nextDocNum = Transaction::getNextDocumentNumber();
+
+            $journal = DocumentJournal::create([
+                'date'              => $date,
+                'document_type'     => $label,
+                'document_number'   => $nextDocNum,
+                'amount_amd'        => $amount,
+                'debit_account_id'  => $debitAcc->id,
+                'credit_account_id' => $creditAcc->id,
+                'user_id'           => 1,
+                'comment'           => $label . ' (Օրվա ' . ($this->provisionPercent * 100) . '%)',
+                'journalable_type'  => DocumentJournal::class,
+                'journalable_id'    => 0,
+            ]);
+
+            Transaction::create([
+                'date'                 => $date,
+                'document_type'        => $label,
+                'document_number'      => $nextDocNum,
+                'debit_account_id'     => $debitAcc->id,
+                'credit_account_id'    => $creditAcc->id,
+                'amount_amd'           => $amount,
+                'user_id'              => 1,
+                'is_system'            => true,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $journal->id,
+            ]);
         });
-
-        $journal = DocumentJournal::create([
-            'date'              => $date,
-            'document_type'     => $label,
-            'document_number'   => $nextDocNum,
-            'amount_amd'        => $amount,
-            'debit_account_id'  => $debitAcc->id,
-            'credit_account_id' => $creditAcc->id,
-            'user_id'           => 1,
-            'comment'           => $label . ' (Օրվա ' . ($this->provisionPercent * 100) . '%)',
-            'journalable_type'  => DocumentJournal::class,
-            'journalable_id'    => 0,
-        ]);
-
-        Transaction::create([
-            'date'                 => $date,
-            'document_type'        => $label,
-            'document_number'      => $nextDocNum,
-            'debit_account_id'     => $debitAcc->id,
-            'credit_account_id'    => $creditAcc->id,
-            'amount_amd'           => $amount,
-            'user_id'              => 1,
-            'is_system'            => true,
-            'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $journal->id,
-        ]);
 
         Log::info("{$label} created: {$amount}");
     }

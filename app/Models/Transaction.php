@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Transaction extends Model
 {
@@ -171,7 +172,8 @@ class Transaction extends Model
     }
     public static function getNextDocumentNumber(): int
     {
-        $max = self::max('document_number');
-        return $max ? ((int) $max + 1) : 1;
+        return DB::transaction(function () {
+            return (int)(self::lockForUpdate()->max('document_number') ?? 0) + 1;
+        });
     }
 }

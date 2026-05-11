@@ -418,35 +418,37 @@ class DocumentJournal extends Model
     {
         $debitAcc = ChartOfAccount::where('code', $debitCode)->first();
         $creditAcc = ChartOfAccount::where('code', $creditCode)->first();
-        $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
         if (!$debitAcc || !$creditAcc) return;
 
-        $childJournal = DocumentJournal::create([
-            'date'               => $parent->date,
-            'document_type'      => $label,
-            'document_number'    => $nextDocNum,
-            'amount_amd'         => $amount,
-            'debit_account_id'   => $debitAcc->id,
-            'credit_account_id'  => $creditAcc->id,
-            'user_id'            => $parent->user_id,
-            'journalable_type'   => DocumentJournal::class,
-            'journalable_id'     => $parent->id,
-            'comment'            => $label . ' (Անկանխիկի 1%)',
-        ]);
+        DB::transaction(function () use ($parent, $amount, $label, $debitAcc, $creditAcc) {
+            $nextDocNum = Transaction::getNextDocumentNumber();
 
-        Transaction::create([
-            'date'                 => $parent->date,
-            'document_type'        => $label,
-            'document_number'    => $nextDocNum,
+            $childJournal = DocumentJournal::create([
+                'date'               => $parent->date,
+                'document_type'      => $label,
+                'document_number'    => $nextDocNum,
+                'amount_amd'         => $amount,
+                'debit_account_id'   => $debitAcc->id,
+                'credit_account_id'  => $creditAcc->id,
+                'user_id'            => $parent->user_id,
+                'journalable_type'   => DocumentJournal::class,
+                'journalable_id'     => $parent->id,
+                'comment'            => $label . ' (Անկանխիկի 1%)',
+            ]);
 
-            'debit_account_id'     => $debitAcc->id,
-            'credit_account_id'    => $creditAcc->id,
-            'amount_amd'           => $amount,
-            'user_id'              => $parent->user_id,
-            'transactionable_type' => DocumentJournal::class,
-            'transactionable_id'   => $childJournal->id,
-            'is_system'            => true,
-        ]);
+            Transaction::create([
+                'date'                 => $parent->date,
+                'document_type'        => $label,
+                'document_number'      => $nextDocNum,
+                'debit_account_id'     => $debitAcc->id,
+                'credit_account_id'    => $creditAcc->id,
+                'amount_amd'           => $amount,
+                'user_id'              => $parent->user_id,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $childJournal->id,
+                'is_system'            => true,
+            ]);
+        });
     }
 
     protected static function syncContractProvidedAmountOnMotherPaymentDelete(DocumentJournal $journal): void

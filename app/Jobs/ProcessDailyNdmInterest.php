@@ -91,7 +91,7 @@ class ProcessDailyNdmInterest implements ShouldQueue
                     $clientId   = $loan->client_id;
                     $currencyId = $journal->currency_id ?? $loan->currency_id;
 
-                    $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+                    $nextDocNum = Transaction::getNextDocumentNumber();
 
                     Log::info("Next document number: {$nextDocNum}");
 

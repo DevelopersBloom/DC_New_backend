@@ -117,7 +117,7 @@ class ContractDailyRateService
 
     private function nextDocNumber()
     {
-        return (int)(Transaction::max('document_number') ?? 0) + 1;
+        return Transaction::getNextDocumentNumber();
     }
 
     private function getJournal($contract)

@@ -307,10 +307,6 @@ class LoanNdmController extends Controller
                 $amount  = round((float)$data['amount'], 2);
                 $docNum  = $data['document_number'] ?? ($loan->contract_number ?? null);
 
-//                $acc102101 = ChartOfAccount::idByCode('102101');
-//                $acc33512NV = ChartOfAccount::idByCode('33512NV');
-//                $loanAccountId = $loan->account_id;
-
                 $rule = PostingRule::where('business_event_filter', 'attach_loan')
                     ->first();
 
@@ -323,8 +319,6 @@ class LoanNdmController extends Controller
 
                 $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
                 $creditPartnerId = $loan->client_id;
-
-//                if (!$acc33512NV || !$loanAccountId) return 'One of 102101, 33512NV not wxist';
 
                 $journalDoc = DocumentJournal::create([
                     'date'            => $date,
@@ -388,10 +382,6 @@ class LoanNdmController extends Controller
     {
         $journal = DocumentJournal::with(['journalable'])
             ->findOrFail($journalId);
-
-//        if (!$journal->journalable instanceof LoanNdm) {
-//            return response()->json(['message' => 'Journal is not attached to a LoanNdm'], 422);
-//        }
 
         return response()->json([
             'data' => [
@@ -593,11 +583,10 @@ class LoanNdmController extends Controller
             $loan->calc_date = $data['calculation_date'];
             $loan->save();
 
-            $lombardId  = Client::where('company_name', 'Diamond Credit')->value('id');
             $clientId   = $loan->client_id;
             $currencyId = $baseJournal->currency_id ?? $loan->currency_id;
 
-            $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
+            $nextDocNum = Transaction::getNextDocumentNumber();
 
             $mkTx = function (array $attrs) use (&$nextDocNum, $data, $currencyId, $baseJournal) {
                 return Transaction::create($attrs + [
@@ -696,11 +685,6 @@ class LoanNdmController extends Controller
         if (!$loan) {
             return response()->json(['message' => 'Related LoanNdm not found.'], 404);
         }
-//        $acc33513NI = ChartOfAccount::idByCode('33513NI');
-//        $acc33512NV = ChartOfAccount::idByCode('33512NV');
-//        $acc102101 = ChartOfAccount::idByCode('102101');
-//        $acc391021 = ChartOfAccount::idByCode('391021');
-
 
         $principal = (float)($data['principal_amount'] ?? 0);
         $interest  = (float)($data['interest_amount'] ?? 0);
@@ -712,8 +696,8 @@ class LoanNdmController extends Controller
             $clientId = $loan->client_id;
             $loanAccountId = $loan->account_id;
 
-            $documentNumber = (DocumentJournal::max('document_number') ?? 0) + 1;
-            $transactionDocumentNumber = (Transaction::max('document_number') ?? 0) + 1;
+            $documentNumber = Transaction::getNextDocumentNumber();
+            $transactionDocumentNumber = $documentNumber;
 
             $creditAccountId = $loan->account_id;
             $commonJ = [

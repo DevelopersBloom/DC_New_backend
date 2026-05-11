@@ -7,7 +7,6 @@ use App\Models\ClassificationHistory;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
-use App\Models\Transaction;
 use App\Traits\CorrectReserveTrait;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -49,14 +48,13 @@ class CorrectAllClientReservesJob implements ShouldQueue
 
         $processed = 0;
         $failed    = [];
-        $nextDocNum = (int)(Transaction::max('document_number') ?? 0);
 
         Client::with(['classification'])
             ->whereHas('contracts', fn($q) => $q->where('status', 'initial'))
             ->whereHas('classification')
             ->chunkById(200, function ($clients) use (
                 $acc16605PC, $acc16605PS, $targetAccountIds,
-                $diamondId, $date, $dateStr, &$processed, &$failed, &$nextDocNum
+                $diamondId, $date, $dateStr, &$processed, &$failed
             ) {
                 foreach ($clients as $client) {
 
@@ -97,8 +95,6 @@ class CorrectAllClientReservesJob implements ShouldQueue
                     DB::beginTransaction();
 
                     try {
-                        $nextDocNum++;
-
                         $this->correctClientReserveBalance(
                             clientId:           $client->id,
                             acc16605PC:         $acc16605PC,
@@ -107,7 +103,6 @@ class CorrectAllClientReservesJob implements ShouldQueue
                             reservePercent:     $clientClassification->reserve_percent,
                             classificationName: $clientClassification->classification->name,
                             diamondId:          $diamondId,
-                            nextDocNum:         $nextDocNum,
                             journalId:          $journal->id,
                             now:                $dateStr,
                         );

@@ -56,8 +56,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
 
                 $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
-                $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
-
                 foreach ($clients as $client) {
 
                     try {
@@ -116,7 +114,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                 reservePercent:     $client->classification->reserve_percent ?? 0,
                                 classificationName: $newClassificationName,
                                 diamondId:          $diamondId,
-                                nextDocNum:      $nextDocNum,
                                 journalId:          $firstJournal->id,
                                 now:                now()->toDateString(),
                             );
@@ -245,6 +242,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
 
                             // create reserve document journal
                             if ($amount > 0) {
+                                $nextDocNum = Transaction::getNextDocumentNumber();
                                 $docJournal = DocumentJournal::create([
                                     'date' => now()->toDateString(),
                                     'document_number' => $nextDocNum,
@@ -296,8 +294,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     ],
                                     'date' => now(),
                                 ]);
-
-                                $nextDocNum++;
                             }
 
                             // If new classification is 'loss' — write off all outstanding balances
@@ -339,6 +335,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
 
                                 // Entry 1: Dr 16605PS / Cr 16200
                                 if ($net16200 != 0) {
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $lossEff16200Doc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -371,11 +368,11 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossEff16200Doc->id,
                                     ]);
-                                    $nextDocNum++;
                                 }
 
                                 // Entry 2: Dr 16605PS / Cr 16200NV
                                 if ($net16200NV != 0) {
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $lossNVDoc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -408,7 +405,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossNVDoc->id,
                                     ]);
-                                    $nextDocNum++;
                                 }
 
                                 // Entry 3: Dr 86000 — combined net of 16200 + 16200NV
@@ -418,6 +414,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     if (!$rule86000) {
                                         throw new \RuntimeException('Posting rule for loss_writeoff_principal not found');
                                     }
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $loss86000Doc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -450,11 +447,11 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $loss86000Doc->id,
                                     ]);
-                                    $nextDocNum++;
                                 }
 
                                 // Entry 4: Dr 16605PS / Cr 16201NI
                                 if ($net16201NI != 0) {
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $lossNIDoc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -487,7 +484,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossNIDoc->id,
                                     ]);
-                                    $nextDocNum++;
                                 }
 
                                 // Entry 5: Dr 86001 — same amount as 16201NI net
@@ -496,6 +492,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     if (!$rule86001) {
                                         throw new \RuntimeException('Posting rule for loss_writeoff_interest not found');
                                     }
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $loss86001Doc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -528,7 +525,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $loss86001Doc->id,
                                     ]);
-                                    $nextDocNum++;
                                 }
                             } // end if loss
 
@@ -536,6 +532,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                             if (!empty($amount16605PC) && $oldClassificationName === 'standard') {
                                 $classificationType = DocumentJournal::CLASSIFICATION;
 
+                                $nextDocNum = Transaction::getNextDocumentNumber();
                                 $classificationDoc = DocumentJournal::create([
                                     'date' => now()->toDateString(),
                                     'document_number' => $nextDocNum,
@@ -569,8 +566,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     'transactionable_type' => DocumentJournal::class,
                                     'transactionable_id' => $classificationDoc->id,
                                 ]);
-
-                                $nextDocNum++;
                             }
 
                             Log::info("Finished processing contract {$contract->id} for client {$client->id}.");

@@ -84,7 +84,7 @@ class ProcessContractDailyRate implements ShouldQueue
                     continue;
                 }
 
-                $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                $nextDocNum = Transaction::getNextDocumentNumber();
 
                 $openingAmount = $this->calculateCurrentAmortizedBalance($contract);
                 $dailyEffectiveRate = $contract->effective_daily_rate ?? 0;
@@ -225,7 +225,7 @@ class ProcessContractDailyRate implements ShouldQueue
                     if ($dailyPenaltyAmount > 0) {
                         $rulePenalty = PostingRule::where('business_event_filter', 'penalty_rate_amount')->first();
                         if ($rulePenalty) {
-                            $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
+                            $nextDocNum = Transaction::getNextDocumentNumber();
                             $journalDocPenalty = DocumentJournal::create([
                                 'date' => $date,
                                 'document_number' => $nextDocNum,

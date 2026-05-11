@@ -18,7 +18,6 @@ trait CorrectReserveTrait
         float  $reservePercent,
         string $classificationName,
         int    $diamondId,
-        int    &$nextDocNum,
         ?int   $journalId,
         string $now,
     ): void {
@@ -63,7 +62,6 @@ trait CorrectReserveTrait
                     documentType:   DocumentJournal::RESERVE_GENERAL_AMOUNT,
                     comment:        "Reserve correction (standard) for client #{$clientId}",
                     journalId:      $journalId,
-                    nextDocNum:  $nextDocNum,
                     now:            $now,
                 );
             }
@@ -71,7 +69,6 @@ trait CorrectReserveTrait
             // 16605PS → 0
             if (abs($balance16605PS) >= 0.01) {
                 $rule = PostingRule::where('business_event_filter', 'provide_special_amount_change')->first();
-//$acc16605PS,63015
                 [$debit, $credit] = $balance16605PS > 0
                     ?[$rule->credit_account_id, $rule->debit_account_id]
                     : [$rule->debit_account_id, $rule->credit_account_id];
@@ -87,7 +84,6 @@ trait CorrectReserveTrait
                     documentType:   DocumentJournal::RESERVE_SPECIAL_AMOUNT,
                     comment:        "Zero 16605PS (standard correction) for client #{$clientId}",
                     journalId:      $journalId,
-                    nextDocNum:     $nextDocNum,
                     now:            $now,
                 );
             }
@@ -115,7 +111,6 @@ trait CorrectReserveTrait
                     documentType:   DocumentJournal::RESERVE_GENERAL_AMOUNT,
                     comment:        "Zero 16605PC (non-standard correction) for client #{$clientId}",
                     journalId:      $journalId,
-                    nextDocNum:   $nextDocNum,
                     now:            $now,
                 );
             }
@@ -152,7 +147,6 @@ trait CorrectReserveTrait
                     documentType:   DocumentJournal::RESERVE_SPECIAL_AMOUNT,
                     comment:        "Reserve correction (non-standard) for client #{$clientId}",
                     journalId:      $journalId,
-                    nextDocNum:     $nextDocNum,
                     now:            $now,
                 );
             }
@@ -170,10 +164,11 @@ trait CorrectReserveTrait
         string $documentType,
         string $comment,
         ?int   $journalId,
-        int    &$nextDocNum,
         string $now,
     ): void {
         if ($amount < 0.01 || !$journalId) return;
+
+        $nextDocNum = Transaction::getNextDocumentNumber();
 
         $doc = DocumentJournal::create([
             'date'              => $now,
@@ -210,6 +205,5 @@ trait CorrectReserveTrait
         ]);
 
         Log::info("Correction posted: {$comment}, amount: {$amount}, docNum: {$nextDocNum}");
-        $nextDocNum++;
     }
 }

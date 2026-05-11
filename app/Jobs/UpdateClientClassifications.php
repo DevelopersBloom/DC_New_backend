@@ -50,8 +50,6 @@ class UpdateClientClassifications implements ShouldQueue
 
                 $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
-                $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
-
                 foreach ($clients as $client) {
 
                     try {
@@ -212,6 +210,7 @@ class UpdateClientClassifications implements ShouldQueue
 
                             // create reserve document journal
                             if ($amount > 0) {
+                                $nextDocNum = Transaction::getNextDocumentNumber();
                                 $docJournal = DocumentJournal::create([
                                     'date' => now()->toDateString(),
                                     'document_number' => $nextDocNum,
@@ -263,8 +262,6 @@ class UpdateClientClassifications implements ShouldQueue
                                     ],
                                     'date' => now(),
                                 ]);
-
-                                $nextDocNum++;
                             }
 
                             // If new classification is 'loss' do the extra zeroing / transfers as controller
@@ -283,6 +280,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     $debitLossReserve = $ruleLossReserve->debit_account_id;
                                     $creditLoseReserve =  $ruleLossReserve->credit_account_id;
 
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $lossDoc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -316,8 +314,6 @@ class UpdateClientClassifications implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossDoc->id,
                                     ]);
-
-                                    $nextDocNum++;
                                 }
 
                                 $amount16200Debit = DocumentJournal::where('journalable_type', DocumentJournal::class)
@@ -336,6 +332,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     $debitLossEffective = $ruleLossEffective->debit_account_id;
                                     $creditLossEffective =  $ruleLossEffective->credit_account_id;
 
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $lossEffectiveDoc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -369,8 +366,6 @@ class UpdateClientClassifications implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossEffectiveDoc->id,
                                     ]);
-
-                                    $nextDocNum++;
                                 }
 
                                 // handle 16200NV net (debit from contract vs credits recorded)
@@ -387,6 +382,7 @@ class UpdateClientClassifications implements ShouldQueue
                                 $net16200NV = $amount16200NVDebit - $amount16200NVCredit;
 
                                 if ($net16200NV > 0) {
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $lossInterestDoc = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -420,8 +416,6 @@ class UpdateClientClassifications implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossInterestDoc->id,
                                     ]);
-
-                                    $nextDocNum++;
                                 }
 
                                 // 16201NI handling
@@ -440,6 +434,7 @@ class UpdateClientClassifications implements ShouldQueue
 
                                     $debitLoss  = $ruleLoss->debit_account_id;
                                     $creditLoss =  $ruleLoss->credit_account_id;
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
                                     $loss16201NI = DocumentJournal::create([
                                         'date' => now()->toDateString(),
                                         'document_number' => $nextDocNum,
@@ -473,8 +468,6 @@ class UpdateClientClassifications implements ShouldQueue
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $loss16201NI->id,
                                     ]);
-
-                                    $nextDocNum++;
                                 }
                             } // end if loss
 
@@ -482,6 +475,7 @@ class UpdateClientClassifications implements ShouldQueue
                             if (!empty($amount16605PC) && $oldClassificationName === 'standard') {
                                 $classificationType = DocumentJournal::CLASSIFICATION;
 
+                                $nextDocNum = Transaction::getNextDocumentNumber();
                                 $classificationDoc = DocumentJournal::create([
                                     'date' => now()->toDateString(),
                                     'document_number' => $nextDocNum,
@@ -515,8 +509,6 @@ class UpdateClientClassifications implements ShouldQueue
                                     'transactionable_type' => DocumentJournal::class,
                                     'transactionable_id' => $classificationDoc->id,
                                 ]);
-
-                                $nextDocNum++;
                             }
 
                             Log::info("Finished processing contract {$contract->id} for client {$client->id}.");
