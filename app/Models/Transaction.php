@@ -173,8 +173,11 @@ class Transaction extends Model
     public static function getNextDocumentNumber(): int
     {
         return DB::transaction(function () {
-            dd((int)(self::lockForUpdate()->max('document_number') ?? 0));
-            return (int)(self::lockForUpdate()->max('document_number') ?? 0) + 1;
+            $row = DB::selectOne(
+                'SELECT COALESCE(MAX(CAST(document_number AS UNSIGNED)), 0) + 1 AS next FROM transactions FOR UPDATE'
+            );
+            dd($row->next);
+            return (int) $row->next;
         });
     }
 }
