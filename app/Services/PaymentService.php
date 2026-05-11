@@ -338,7 +338,6 @@ class PaymentService
         // Keep precision here; ContractTrait::calcAmount returns int and truncates decimals.
         $futureInterest = max(0, (max(0, $P - $x) * (int) $futureDays * ($rate / 100)));
         $paidInterest = $pastInterest + $futureInterest;
-        dd($pastInterest,$futureInterest,$paidInterest);
         $paidPrincipal = $x;
 
 //        if ($paidInterest + $paidPrincipal > $cashAfterPenalty + 1.0) {
