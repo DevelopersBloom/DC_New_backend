@@ -324,7 +324,6 @@ class PaymentService
         }
         $pastInterest = $P* $elapsedDays * $rate / 100;
         $kFuture = $futureDays * ($rate / 100);
-        dd($elapsedDays,$P,$pastInterest,$kFuture);
         $denom = 1 - $kFuture;
         if (abs($denom) < 1e-9) {
             return null;
@@ -339,6 +338,7 @@ class PaymentService
         // Keep precision here; ContractTrait::calcAmount returns int and truncates decimals.
         $futureInterest = max(0, (max(0, $P - $x) * (int) $futureDays * ($rate / 100)));
         $paidInterest = $pastInterest + $futureInterest;
+        dd($pastInterest,$futureInterest,$paidInterest);
         $paidPrincipal = $x;
 
 //        if ($paidInterest + $paidPrincipal > $cashAfterPenalty + 1.0) {
