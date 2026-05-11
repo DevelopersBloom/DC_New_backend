@@ -670,12 +670,12 @@ trait ContractTrait
         }
     }
 
-    private function createAccountingTransaction($contract, $amount, $ruleKey, $comment, $dealId)
+    private function createAccountingTransaction($contract, $amount, $ruleKey, $comment, $dealId, $date = null)
     {
         $rule = PostingRule::where('business_event_filter', $ruleKey)->first();
         if (!$rule) return;
 
-        $date = Carbon::now()->format('Y-m-d');
+        $date = $date ?? Carbon::now()->format('Y-m-d');
         $nextDocNum = (int)(Transaction::max('document_number') ?? 0) + 1;
 
         $debitAccountId = $rule->debit_account_id;

@@ -150,7 +150,7 @@ class PaymentService
                 'element_code' => 'Amount',
                 'old_value' => $old_provided !== null ? (string)$old_provided : null,
                 'new_value' => (string)max(0, $contract->provided_amount - $principal_amount),
-                'effective_date' => now()->toDateString(),
+                'effective_date' => $date ?? now()->toDateString(),
             ]);
 
         }
@@ -163,7 +163,7 @@ class PaymentService
                 'element_code' => 'Amount',
                 'old_value' => $old_collected !== null ? (string)$old_collected : null,
                 'new_value' => (string)max(0, $old_collected + $interest_amount),
-                'effective_date' => now()->toDateString(),
+                'effective_date' => $date ?? now()->toDateString(),
             ]);
         }
 
@@ -239,7 +239,7 @@ class PaymentService
                     $payment->interest_payment -= $paidInterest;
                 }
 
-                if ($payment->to_date <= now()->format('Y-m-d')) {
+                if ($payment->to_date <= ($date ?? now()->format('Y-m-d'))) {
                     $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
                     $remainingAmount -= $paidPrincipal;
 
@@ -302,9 +302,11 @@ class PaymentService
         }
 
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-        $now = Carbon::now('Asia/Yerevan')->startOfDay();
+        $now = $paymentDate
+            ? Carbon::parse($paymentDate)->setTimezone('Asia/Yerevan')->startOfDay()
+            : Carbon::now('Asia/Yerevan')->startOfDay();
 
-        if (!$due->isFuture()) {
+        if (!$due->gt($now)) {
             return null;
         }
 
@@ -484,7 +486,7 @@ class PaymentService
                 'amount' => $decrease,
                 'type' => 'regular',
                 'description' => 'Regular payment',
-                'date' => Carbon::now()->format('Y-m-d'),
+                'date' => $date ?? Carbon::now()->format('Y-m-d'),
                 'history' => $history
             ]);
             //$contract->collected += $decrease;
@@ -596,7 +598,7 @@ class PaymentService
                         'element_code' => 'Amount',
                         'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
                         'new_value' => (string)max(0, $contract->provided_amount - $partialAmount),
-                        'effective_date' => now()->toDateString(),
+                        'effective_date' => $date ?? now()->toDateString(),
                     ]);
 
                     $contract->left = max(0, $contract->left - $partialAmount);
@@ -628,7 +630,7 @@ class PaymentService
                     'element_code' => 'Amount',
                     'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
                     'new_value' => (string)max(0, $contract->provided_amount - $partialAmount),
-                    'effective_date' => now()->toDateString(),
+                    'effective_date' => $date ?? now()->toDateString(),
                 ]);
 
             }
@@ -662,7 +664,7 @@ class PaymentService
                 'element_code' => 'Amount',
                 'old_value' => $contract->provided_amount !== null ? (string)$contract->provided_amount : null,
                 'new_value' => (string)max(0, $contract->provided_amount - $partialAmount),
-                'effective_date' => now()->toDateString(),
+                'effective_date' => $date ?? now()->toDateString(),
             ]);
             $contract->left = max(0, $contract->left - $partialAmount);
 //            $contract->collected += $partialAmount;
@@ -670,7 +672,7 @@ class PaymentService
             $contract->save();
         }
 
-        $this->recordContractHistory($contract, $partialAmount, $deal_id);
+        $this->recordContractHistory($contract, $partialAmount, $deal_id, $date);
         $this->handleAccountingForPartial($contract, $partialAmount, $date,$deal_id,$cash);
 
         if ($contract->payment_type == 'classic') {
@@ -840,14 +842,14 @@ class PaymentService
 
         return $history;
     }
-    protected function recordContractHistory($contract, $amount, $deal_id)
+    protected function recordContractHistory($contract, $amount, $deal_id, $date = null)
     {
         ContractAmountHistory::create([
             'contract_id' => $contract->id,
             'amount' => $amount,
             'amount_type' => 'provided_amount',
             'type' => 'out',
-            'date' => now()->toDateTimeString(),
+            'date' => $date ?? now()->toDateString(),
             'deal_id' => $deal_id,
             'category_id' => $contract->category_id,
             'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
@@ -1004,7 +1006,7 @@ class PaymentService
         $contract->provided_amount = 0;
         $contract->save();
 
-        $nowDate = now()->toDateString();
+        $nowDate = $date ?? now()->toDateString();
 
         $modifications = [
             [

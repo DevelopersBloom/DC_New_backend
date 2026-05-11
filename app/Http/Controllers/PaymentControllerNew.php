@@ -568,16 +568,14 @@ class PaymentControllerNew extends Controller
             ], 500);
         }
     }
-    private function updateContractStatus($contract)
+    private function updateContractStatus($contract, $date = null)
     {
         $paymentsLeft = $contract->payments->where('status', 'initial');
 
         if ($paymentsLeft->isEmpty()) {
             $contract->status = 'completed';
-            $contract->closed_at = Carbon::now();
+            $contract->closed_at = $date ?? Carbon::now()->toDateString();
             $contract->left = 0;
-
-            $nowDate = now()->toDateString();
 
             $modifications = [
                 [
@@ -588,7 +586,7 @@ class PaymentControllerNew extends Controller
                     'element_code' => 'YN',
                     'old_value' => 'Y',
                     'new_value' => 'N',
-                    'effective_date' => $nowDate,
+                    'effective_date' => $date ?? now()->toDateString(),
                 ],
             ];
             Modification::insert($modifications);
@@ -616,7 +614,7 @@ class PaymentControllerNew extends Controller
             $type = HistoryType::where('name', 'full_payment')->first();
             $purpose = 'Վարկի մարում՝ տոկոսագումար և մայր գումար';
 
-            $newOrder = $this->generateOrder($contract, $totalAmount, $purpose, 'in', $cash, Order::FULL_FILTER);
+            $newOrder = $this->generateOrder($contract, $totalAmount, $purpose, 'in', $cash, Order::FULL_FILTER, $date);
 
             $history = History::create([
                 'amount' => $totalAmount,
@@ -624,10 +622,10 @@ class PaymentControllerNew extends Controller
                 'user_id' => auth()->id(),
                 'order_id' => $newOrder->id,
                 'contract_id' => $contract->id,
-                'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y.m.d'),
+                'date' => $date,
             ]);
 
-            $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null);
+            $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null, null, null, $date);
             $oldPaymentAmount = $this->calcPaidAmount($contract);
             $paymentId = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id,$date);
             $newPaymentAmount = $oldPaymentAmount + $totalAmount;
@@ -636,7 +634,7 @@ class PaymentControllerNew extends Controller
             if ($motherAmount > 0) {
                 $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_amount';
                 $docId = $this->createAccountingTransaction(
-                    $contract, $motherAmount, $ruleKey, 'mother_amount_payment', $deal->id
+                    $contract, $motherAmount, $ruleKey, 'mother_amount_payment', $deal->id, $date
                 );
 
                 $classificationName = $contract->client->classification->name ?? 'standard';
@@ -689,11 +687,11 @@ class PaymentControllerNew extends Controller
             if (($interestAmount) > 0) {
                 $ruleKey = $cash ? 'pay_interest_amount_cash' : 'pay_interest_amount';
                 $this->createAccountingTransaction(
-                    $contract, ($interestAmount), $ruleKey, 'interest_payment', $deal->id
+                    $contract, ($interestAmount), $ruleKey, 'interest_payment', $deal->id, $date
                 );
             }
 
-            $balanceRow = $this->partnerAccountBalancesSubquery(now()->format('Y-m-d'))
+            $balanceRow = $this->partnerAccountBalancesSubquery($date)
                 ->where('u.partner_id', $contract->client_id)
                 ->where('ca.code', '16200')
                 ->first();
@@ -706,10 +704,11 @@ class PaymentControllerNew extends Controller
                     abs($account16200Balance),
                     'close_contract_rule',
                     'contract_closure',
-                    $deal->id
+                    $deal->id,
+                    $date
                 );
             }
-            $contract->closed_at = now();
+            $contract->closed_at = $date;
             $contract->save();
             Modification::create([
                 'subject_type' => Contract::class,
@@ -719,12 +718,12 @@ class PaymentControllerNew extends Controller
                 'element_code' => 'Amount',
                 'old_value' => (string)$oldPaymentAmount,
                 'new_value' => (string)($newPaymentAmount),
-                'effective_date' => now()->toDateString(),
+                'effective_date' => $date,
             ]);
             if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
                 $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
                 if ($refundAmount > 0) {
-                    $refundOrder = $this->generateOrder($contract, $refundAmount,Order::REFUND_LUMP, 'out', $cash,Order::REFUND_LUMP_FILTER);
+                    $refundOrder = $this->generateOrder($contract, $refundAmount, Order::REFUND_LUMP, 'out', $cash, Order::REFUND_LUMP_FILTER, $date);
                     $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
 
                     History::create([
@@ -733,10 +732,10 @@ class PaymentControllerNew extends Controller
                         'user_id' => auth()->user()->id,
                         'order_id' => $refundOrder->id,
                         'contract_id' => $contract->id,
-                        'date' => Carbon::now()->setTimezone('Asia/Yerevan')->format('Y-m-d'),
+                        'date' => $date,
                     ]);
 
-                    $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER);
+                    $deal = $this->createDeal($refundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id, $refundOrder->id, $cash, null, Order::REFUND_LUMP, Order::REFUND_LUMP_FILTER, null, null, null, null, $date);
                     DealAction::create([
                         'deal_id' => $deal->id,
                         'actionable_id' => $paymentId,
@@ -744,7 +743,7 @@ class PaymentControllerNew extends Controller
                         'amount' => $refundAmount,
                         'type' => 'refund',
                         'description' => 'Refund payment',
-                        'date' => \Illuminate\Support\Carbon::now()->format('Y-m-d'),
+                        'date' => $date,
                     ]);
                     return response()->json([
                         'success' => 'success',
@@ -858,7 +857,7 @@ class PaymentControllerNew extends Controller
         $deal->payment_id = $payment_id;
         $deal->save();
 
-        $this->updateContractStatus($contract);
+        $this->updateContractStatus($contract, $date);
         $this->activityService->log(
             'partial_payment',
             "Partial payment: {$partialAmount} AMD for contract #{$contract->id} and deal #{$deal->id}",

@@ -244,7 +244,7 @@ trait FileTrait
         return $new_order;
     }
 
-    public function generateOrder($contract,$amount, $purpose,$type,$cash,$filter=null){
+    public function generateOrder($contract,$amount, $purpose,$type,$cash,$filter=null,$date=null){
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,$type);
         $res = [
@@ -256,7 +256,7 @@ trait FileTrait
             'order' => $order_id,
             'amount' => $amount,
             'rep_id' => '2211',
-            'date' => Carbon::now()->format('Y.m.d'),
+            'date' => $date ?? Carbon::now()->format('Y-m-d'),
             'client_name' => $client_name,
             'purpose' => $purpose,
             'cash' => $cash,
