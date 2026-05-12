@@ -8,6 +8,7 @@ use App\Http\Requests\ClientRequest;
 use App\Http\Requests\ContractRequest;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ContractDetailResource;
+use App\Models\ChartOfAccount;
 use App\Models\ClassificationHistory;
 use App\Models\Client;
 use App\Models\ClientClassification;
@@ -223,7 +224,6 @@ class ContractControllerNew extends Controller
         try {
             $client = $this->clientService->storeOrUpdate($clientRequest->validated());
             $pawnshop_id = \auth()->user()->pawnshop_id;
-//            $date = Carbon::now();
             $validatedContract = $contractRequest->validated();
             $date = !empty($validatedContract['contract_created_date'])
                 ? Carbon::parse($validatedContract['contract_created_date'], 'Asia/Yerevan')
@@ -322,7 +322,6 @@ class ContractControllerNew extends Controller
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
             $cash = $contract->provided_amount < 20000;
             $category_id = $contract->category_id;
-          //  $contract->deadline = Carbon::now('Asia/Yerevan')->addDays($contract->deadline_days)->format('Y-m-d H:i:s');
             $now = !empty($validatedData['contract_created_date'])
                 ? Carbon::parse($validatedData['contract_created_date'], 'Asia/Yerevan')
                 : Carbon::now('Asia/Yerevan');
@@ -503,6 +502,226 @@ class ContractControllerNew extends Controller
 
                 }
 
+            }
+
+            if ($client->classification->name === 'loss') {
+                $acc16200NV = ChartOfAccount::idByCode('16200NV');
+                $acc16200   = ChartOfAccount::idByCode('16200');
+                $acc16201NI = ChartOfAccount::idByCode('16201NI');
+                $acc16605PS = ChartOfAccount::idByCode('16605PS');
+                $acc86000   = ChartOfAccount::idByCode('86000');
+                $acc86001   = ChartOfAccount::idByCode('86001');
+
+                $debit16200NV  = DocumentJournal::where('journalable_type', Contract::class)
+                    ->where('journalable_id', $contract->id)
+                    ->where('debit_account_id', $acc16200NV)->sum('amount_amd');
+                $credit16200NV = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $journalDoc->id)
+                    ->where('credit_account_id', $acc16200NV)->sum('amount_amd');
+                $net16200NV = $debit16200NV - $credit16200NV;
+
+                $debit16200  = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $journalDoc->id)
+                    ->where('debit_account_id', $acc16200)->sum('amount_amd');
+                $credit16200 = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $journalDoc->id)
+                    ->where('credit_account_id', $acc16200)->sum('amount_amd');
+                $net16200 = $debit16200 - $credit16200;
+
+                $debit16201NI  = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $journalDoc->id)
+                    ->where('debit_account_id', $acc16201NI)->sum('amount_amd');
+                $credit16201NI = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $journalDoc->id)
+                    ->where('credit_account_id', $acc16201NI)->sum('amount_amd');
+                $net16201NI = $debit16201NI - $credit16201NI;
+
+                if ($net16200 > 0) {
+                    $nextDocNum = Transaction::getNextDocumentNumber();
+                    $lossEff16200Doc = DocumentJournal::create([
+                        'date'              => $contract->date,
+                        'document_number'   => $nextDocNum,
+                        'document_type'     => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                        'amount_amd'        => $net16200,
+                        'debit_partner_id'  => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment'           => "Write-off 16200 for contract #{$contract->id} - loss client disbursement",
+                        'debit_account_id'  => $acc16605PS,
+                        'credit_account_id' => $acc16200,
+                        'user_id'           => auth()->id(),
+                        'journalable_type'  => DocumentJournal::class,
+                        'journalable_id'    => $journalDoc->id,
+                    ]);
+                    Transaction::create([
+                        'date'                 => $contract->date,
+                        'document_number'      => $nextDocNum,
+                        'document_type'        => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                        'debit_account_id'     => $acc16605PS,
+                        'debit_partner_id'     => $clientId,
+                        'debit_currency_id'    => 1,
+                        'credit_account_id'    => $acc16200,
+                        'credit_currency_id'   => 1,
+                        'credit_partner_id'    => $clientId,
+                        'amount_amd'           => $net16200,
+                        'comment'              => "Write-off 16200 for contract #{$contract->id} - loss client disbursement",
+                        'user_id'              => auth()->id(),
+                        'is_system'            => true,
+                        'disbursement_date'    => $contract->date->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id'   => $lossEff16200Doc->id,
+                    ]);
+                }
+
+                if ($net16200NV > 0) {
+                    $nextDocNum = Transaction::getNextDocumentNumber();
+                    $lossNVDoc = DocumentJournal::create([
+                        'date'              => $contract->date,
+                        'document_number'   => $nextDocNum,
+                        'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'amount_amd'        => $net16200NV,
+                        'debit_partner_id'  => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment'           => "Write-off 16200NV for contract #{$contract->id} - loss client disbursement",
+                        'debit_account_id'  => $acc16605PS,
+                        'credit_account_id' => $acc16200NV,
+                        'user_id'           => auth()->id(),
+                        'journalable_type'  => DocumentJournal::class,
+                        'journalable_id'    => $journalDoc->id,
+                    ]);
+                    Transaction::create([
+                        'date'                 => $contract->date,
+                        'document_number'      => $nextDocNum,
+                        'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'debit_account_id'     => $acc16605PS,
+                        'debit_partner_id'     => $clientId,
+                        'debit_currency_id'    => 1,
+                        'credit_account_id'    => $acc16200NV,
+                        'credit_currency_id'   => 1,
+                        'credit_partner_id'    => $clientId,
+                        'amount_amd'           => $net16200NV,
+                        'comment'              => "Write-off 16200NV for contract #{$contract->id} - loss client disbursement",
+                        'user_id'              => auth()->id(),
+                        'is_system'            => true,
+                        'disbursement_date'    => $contract->date->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id'   => $lossNVDoc->id,
+                    ]);
+                }
+
+                $amount86000 = $net16200 + $net16200NV;
+                if ($amount86000 > 0) {
+                    $rule86000 = PostingRule::where('business_event_filter', 'loss_writeoff_principal')->first();
+                    if (!$rule86000) {
+                        throw new \RuntimeException('Posting rule for loss_writeoff_principal not found');
+                    }
+                    $nextDocNum = Transaction::getNextDocumentNumber();
+                    $loss86000Doc = DocumentJournal::create([
+                        'date'              => $contract->date,
+                        'document_number'   => $nextDocNum,
+                        'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'amount_amd'        => $amount86000,
+                        'debit_partner_id'  => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment'           => "Loss write-off expense 86000 for contract #{$contract->id} - loss client disbursement",
+                        'debit_account_id'  => $acc86000,
+                        'credit_account_id' => $rule86000->credit_account_id,
+                        'user_id'           => auth()->id(),
+                        'journalable_type'  => DocumentJournal::class,
+                        'journalable_id'    => $journalDoc->id,
+                    ]);
+                    Transaction::create([
+                        'date'                 => $contract->date,
+                        'document_number'      => $nextDocNum,
+                        'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                        'debit_account_id'     => $acc86000,
+                        'debit_partner_id'     => $clientId,
+                        'debit_currency_id'    => 1,
+                        'credit_account_id'    => $rule86000->credit_account_id,
+                        'credit_currency_id'   => 1,
+                        'credit_partner_id'    => $clientId,
+                        'amount_amd'           => $amount86000,
+                        'comment'              => "Loss write-off expense 86000 for contract #{$contract->id} - loss client disbursement",
+                        'user_id'              => auth()->id(),
+                        'is_system'            => true,
+                        'disbursement_date'    => $contract->date->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id'   => $loss86000Doc->id,
+                    ]);
+                }
+
+                if ($net16201NI > 0) {
+                    $nextDocNum = Transaction::getNextDocumentNumber();
+                    $lossNIDoc = DocumentJournal::create([
+                        'date'              => $contract->date,
+                        'document_number'   => $nextDocNum,
+                        'document_type'     => DocumentJournal::LOSS_RESERVE,
+                        'amount_amd'        => $net16201NI,
+                        'debit_partner_id'  => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment'           => "Write-off 16201NI for contract #{$contract->id} - loss client disbursement",
+                        'debit_account_id'  => $acc16605PS,
+                        'credit_account_id' => $acc16201NI,
+                        'user_id'           => auth()->id(),
+                        'journalable_type'  => DocumentJournal::class,
+                        'journalable_id'    => $journalDoc->id,
+                    ]);
+                    Transaction::create([
+                        'date'                 => $contract->date,
+                        'document_number'      => $nextDocNum,
+                        'document_type'        => DocumentJournal::LOSS_RESERVE,
+                        'debit_account_id'     => $acc16605PS,
+                        'debit_partner_id'     => $clientId,
+                        'debit_currency_id'    => 1,
+                        'credit_account_id'    => $acc16201NI,
+                        'credit_currency_id'   => 1,
+                        'credit_partner_id'    => $clientId,
+                        'amount_amd'           => $net16201NI,
+                        'comment'              => "Write-off 16201NI for contract #{$contract->id} - loss client disbursement",
+                        'user_id'              => auth()->id(),
+                        'is_system'            => true,
+                        'disbursement_date'    => $contract->date->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id'   => $lossNIDoc->id,
+                    ]);
+
+                    $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->first();
+                    if (!$rule86001) {
+                        throw new \RuntimeException('Posting rule for loss_writeoff_interest not found');
+                    }
+                    $nextDocNum = Transaction::getNextDocumentNumber();
+                    $loss86001Doc = DocumentJournal::create([
+                        'date'              => $contract->date,
+                        'document_number'   => $nextDocNum,
+                        'document_type'     => DocumentJournal::LOSS_RESERVE,
+                        'amount_amd'        => $net16201NI,
+                        'debit_partner_id'  => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment'           => "Loss write-off expense 86001 for contract #{$contract->id} - loss client disbursement",
+                        'debit_account_id'  => $acc86001,
+                        'credit_account_id' => $rule86001->credit_account_id,
+                        'user_id'           => auth()->id(),
+                        'journalable_type'  => DocumentJournal::class,
+                        'journalable_id'    => $journalDoc->id,
+                    ]);
+                    Transaction::create([
+                        'date'                 => $contract->date,
+                        'document_number'      => $nextDocNum,
+                        'document_type'        => DocumentJournal::LOSS_RESERVE,
+                        'debit_account_id'     => $acc86001,
+                        'debit_partner_id'     => $clientId,
+                        'debit_currency_id'    => 1,
+                        'credit_account_id'    => $rule86001->credit_account_id,
+                        'credit_currency_id'   => 1,
+                        'credit_partner_id'    => $clientId,
+                        'amount_amd'           => $net16201NI,
+                        'comment'              => "Loss write-off expense 86001 for contract #{$contract->id} - loss client disbursement",
+                        'user_id'              => auth()->id(),
+                        'is_system'            => true,
+                        'disbursement_date'    => $contract->date->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id'   => $loss86001Doc->id,
+                    ]);
+                }
             }
 
             DB::commit();

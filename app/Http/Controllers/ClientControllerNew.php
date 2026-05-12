@@ -306,7 +306,7 @@ class ClientControllerNew extends Controller
             $q->where('status', 'initial');
         }, 'classification'])->findOrFail($request->client_id);
 
-        $classification = ClientClassification::where('name', $request->classification)->first();
+        $classification = ClientClassification::where('name', $request->classification)->firstOrFail();
 
         if (
             ($client->classification_id === $classification->id) ||
@@ -477,6 +477,7 @@ class ClientControllerNew extends Controller
                     continue;
                 }
 
+                $docJournal = null;
                 if ($amount > 0) {
                     $nextDocNum = Transaction::getNextDocumentNumber();
                     $docJournal = DocumentJournal::create([
@@ -512,25 +513,25 @@ class ClientControllerNew extends Controller
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $docJournal->id,
                     ]);
-
-                    ClassificationHistory::create([
-                        'client_id'        => $client->id,
-                        'classification_id'=> $classification->id,
-                        'risk_weight'      => $newRiskWeight,
-                        'reserve_percent'  => $client->classification?->reserve_percent ?? 0,
-                        'comment'          => 'Client classification update manually',
-                        'actionable_type'  => DocumentJournal::class,
-                        'actionable_id'    => $docJournal->id,
-                        'user_id'          => auth()->id() ?? 1,
-                        'meta'             => [
-                            'old_classification_id'   => $oldClassificationId,
-                            'old_classification_name' => $oldClassificationName,
-                            'old_reserve_percent'     => $oldReservePercent,
-                            'old_reserve_amount'      => $oldReserveAmount,
-                        ],
-                        'date' => now(),
-                    ]);
                 }
+
+                ClassificationHistory::create([
+                    'client_id'        => $client->id,
+                    'classification_id'=> $classification->id,
+                    'risk_weight'      => $newRiskWeight,
+                    'reserve_percent'  => $client->classification?->reserve_percent ?? 0,
+                    'comment'          => 'Client classification update manually',
+                    'actionable_type'  => DocumentJournal::class,
+                    'actionable_id'    => $docJournal?->id ?? $journal->id,
+                    'user_id'          => auth()->id() ?? 1,
+                    'meta'             => [
+                        'old_classification_id'   => $oldClassificationId,
+                        'old_classification_name' => $oldClassificationName,
+                        'old_reserve_percent'     => $oldReservePercent,
+                        'old_reserve_amount'      => $oldReserveAmount,
+                    ],
+                    'date' => now(),
+                ]);
 
                 if ($client->classification->name === 'loss') {
 

@@ -30,6 +30,8 @@ class PostingRuleSeeder extends Seeder
         $acc16605PS = ChartOfAccount::idByCode('16605PS');
         $acc63015 = ChartOfAccount::idByCode('63015');
         $acc10000 =  ChartOfAccount::idByCode('10000');
+        $acc86000 = ChartOfAccount::idByCode('86000');
+        $acc86001 = ChartOfAccount::idByCode('86001');
 
         DB::table('posting_rules')->insert([
             [
@@ -230,6 +232,20 @@ class PostingRuleSeeder extends Seeder
                 'business_event_filter' => 'close_contract_rule',
                 'debit_account_id'  => $acc16200,
                 'credit_account_id' => $acc60120,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'loss_writeoff_principal',
+                'debit_account_id'  => $acc86000,
+                'credit_account_id' => $acc16605PS,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'loss_writeoff_interest',
+                'debit_account_id'  => $acc86001,
+                'credit_account_id' => $acc16605PS,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

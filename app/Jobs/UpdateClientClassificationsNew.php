@@ -241,6 +241,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                             }
 
                             // create reserve document journal
+                            $docJournal = null;
                             if ($amount > 0) {
                                 $nextDocNum = Transaction::getNextDocumentNumber();
                                 $docJournal = DocumentJournal::create([
@@ -276,25 +277,25 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     'transactionable_type' => DocumentJournal::class,
                                     'transactionable_id' => $docJournal->id,
                                 ]);
-
-                                ClassificationHistory::create([
-                                    'client_id' => $client->id,
-                                    'classification_id' => $classification->id,
-                                    'risk_weight' => $newRiskWeight,
-                                    'reserve_percent' => $client->classification?->reserve_percent ?? 0,
-                                    'comment' => 'Automatic client classification update based on overdue days',
-                                    'actionable_type' => DocumentJournal::class,
-                                    'actionable_id' => $docJournal->id,
-                                    'user_id' => auth()->id() ?? 1,
-                                    'meta' => [
-                                        'old_classification_id' => $oldClassificationId,
-                                        'old_classification_name' => $oldClassificationName,
-                                        'old_reserve_percent' => $oldReservePercent,
-                                        'old_reserve_amount' => $oldReserveAmount,
-                                    ],
-                                    'date' => now(),
-                                ]);
                             }
+
+                            ClassificationHistory::create([
+                                'client_id' => $client->id,
+                                'classification_id' => $classification->id,
+                                'risk_weight' => $newRiskWeight,
+                                'reserve_percent' => $client->classification?->reserve_percent ?? 0,
+                                'comment' => 'Automatic client classification update based on overdue days',
+                                'actionable_type' => DocumentJournal::class,
+                                'actionable_id' => $docJournal?->id ?? $journal->id,
+                                'user_id' => auth()->check() ? auth()->id() : 1,
+                                'meta' => [
+                                    'old_classification_id' => $oldClassificationId,
+                                    'old_classification_name' => $oldClassificationName,
+                                    'old_reserve_percent' => $oldReservePercent,
+                                    'old_reserve_amount' => $oldReserveAmount,
+                                ],
+                                'date' => now(),
+                            ]);
 
                             // If new classification is 'loss' — write off all outstanding balances
                             if ($client->classification->name === 'loss') {
@@ -582,268 +583,4 @@ class UpdateClientClassificationsNew implements ShouldQueue
 
         Log::info('Client classification job finished.');
     }
-
-//    public function handle(ClientClassificationService $service): void
-//    {
-//        Log::info('Client classification job started...');
-//
-//        Client::whereHas('contracts', function (Builder $q) {
-//            $q->where('status', 'initial');
-//        })->with(['contracts' => function ($q) {
-//                $q->where('status', 'initial');
-//            }, 'classification'])
-//            ->chunkById(200, function ($clients) use ($service) {
-//
-//                $acc73015 = ChartOfAccount::idByCode('73015') ?? 1;
-//                $acc16605PC = ChartOfAccount::idByCode('16605PC') ?? 1;
-//                $acc16605PS = ChartOfAccount::idByCode('16605PS') ?? 1;
-//                $acc63015 = ChartOfAccount::idByCode('63015') ?? 1;
-//
-//               $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-//
-//                $nextDocNum = (int) (Transaction::max('document_number') ?? 0) + 1;
-//
-//                foreach ($clients as $client) {
-//
-//                    try {
-//                        Log::info('Processing client', ['id' => $client->id]);
-//
-//                        $maxOverdue = $service->maxOverdueDaysForClient($client);
-//                        $classification = $service->classificationByOverdue($maxOverdue);
-//                        Log::info("calculated classification is {$classification} ");
-//
-//                        Log::info("calculated maxOverdue is {$maxOverdue} ");
-//
-//                        if ($client->classification_id !== $classification->id) {
-//                            $oldClassificationName = $client->classification?->name;
-//                            $oldClassificationId = $client->classification?->id;
-//                            $oldReservePercent = $client->classification?->reserve_percent ?? 0;
-//                            Log::info("old reserve percent is {$oldReservePercent} ");
-//
-////                            $oldClassificationId = $client->classification_id;
-//                            $client->classification_id = $classification->id;
-//                            $client->save();
-//                            $client->load('classification');
-//
-//                            $reserverPercent = $client->classification?->reserve_percent ?? 0;
-//                            $clientId = $client->id;
-//
-//                            $document_type = $client->classification?->name == 'standard' ?
-//                                DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
-//                            Log::info("doc type is { $document_type} ");
-//
-//                            /** @var Contract $contract */
-//                            foreach ($client->contracts as $contract) {
-//
-//                                  $journal = DocumentJournal::where('journalable_type', Contract::class)
-//                                      ->where('journalable_id', $contract->id)
-//                                      ->first();
-//
-//                                  $reserveAmount = 0;
-//
-//                                if ($journal) {
-//                                    $reserveAmount = DocumentJournal::where('journalable_type', DocumentJournal::class)
-//                                        ->where('journalable_id', $journal->id)
-//                                        ->where(function ($q) {
-//                                            $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
-//                                                ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT);
-//                                        })
-//                                        ->sum('amount');
-//                                }
-////                                $reserveAmount = $contract->provided_amount * $reserverPercent / 100;
-//                                $oldReserveAmount = $contract->provided_amount * $oldReservePercent / 100;
-////
-////                                $amount = $reserveAmount - $oldReserveAmount;
-//
-//                                ContractReserveHistory::create([
-//                                    'client_id' => $client->id,
-//                                    'classification_id' => $classification->id,
-//                                    'contract_id' => $contract->id,
-//                                    'risk_weight' => $client->classification?->risk_weight ?? 0,
-//                                    'reserve_percent' => $reserverPercent,
-//                                    'reserve_amount' => $reserveAmount,
-//                                    'total_reserve_amount' => $reserveAmount,
-//                                    'provided_amount' => $contract->provided_amount,
-//                                    'date' => now()->toDateString(),
-//                                    'user_id' => auth()->check() ? auth()->id() : 1,
-//                                    'meta' => [
-//                                        'old_reserve_percent' => $oldReservePercent,
-////                                        'old_reserve_amount' => $oldReserveAmount,
-//                                    ],
-//                                ]);
-//
-//                                Log::info("amount is { $reserveAmount} ");
-//
-//                                if ($reserveAmount <= 0) {
-//                                    continue;
-//                                }
-//                                $debetAllocation = $acc73015;
-//                                $creditAllocation = $client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
-//
-//                                $debetClassification = $client->classification->name == 'standard' ? $acc16605PS : $acc16605PC;
-//                                $creditClassification = $client->classification->name == 'standard' ? $acc16605PC : $acc16605PS;
-//
-//                                $journal = DocumentJournal::where('journalable_type', Contract::class)
-//                                    ->where('journalable_id', $contract->id)
-//                                    ->first();
-//
-//                                $journalDoc = DocumentJournal::create([
-//                                    'date'               => now()->toDateString(),
-//                                    'document_number'    => $nextDocNum,
-//                                    'document_type'      => $document_type,
-//                                    'amount_amd'         => $reserveAmount,
-//                                    'partner_id'         => $diamondId,
-//                                    'credit_partner_id'  => $clientId,
-//                                    'comment'            => "Reserve for contract #{$contract->id} due to classification change",
-//                                    'debit_account_id'   => $debetAllocation,
-//                                    'credit_account_id'  => $creditAllocation,
-//                                    'user_id'            => auth()->check() ? auth()->id() : 1,
-//                                    'journalable_type'   => DocumentJournal::class,
-//                                    'journalable_id'     => $journal->id,
-//                                ]);
-//                                Transaction::create([
-//                                    'date'               => now()->toDateString(),
-//                                    'document_number'    => $nextDocNum,
-//                                    'document_type'      => $document_type,
-//
-//                                    'debit_account_id'   => $debetAllocation,
-//                                    'debit_partner_id'   => $diamondId,
-//                                    'debit_currency_id'  => 1,
-//
-//                                    'credit_account_id'  => $creditAllocation,
-//                                    'credit_currency_id' => 1,
-//                                    'credit_partner_id'  => $clientId,
-//
-//                                    'amount_amd'         => $reserveAmount,
-//
-//                                    'comment'            => "Reserve for contract #{$contract->id}",
-//                                    'user_id'            => auth()->check() ? auth()->id() : 1,
-//                                    'is_system'          => true,
-//
-//                                    'disbursement_date'    => now()->toDateString(),
-//                                    'transactionable_type' => DocumentJournal::class,
-//                                    'transactionable_id'   => $journalDoc->id,
-//                                ])
-//                                ;
-//                                ClassificationHistory::create([
-//                                    'client_id' => $client->id,
-//                                    'classification_id' => $classification->id,
-//                                    'risk_weight' => $client->classification?->risk_weight ?? 0,
-//                                    'reserve_percent' => $client->classification?->reserve_percent ?? 0,
-//                                    'comment' => 'Automatic client classification update based on overdue days',
-//                                    'actionable_type' => DocumentJournal::class,
-//                                    'actionable_id' => $journalDoc->id,
-//                                    'user_id' => auth()->id() ?? 1,
-//                                    'meta' => [
-//                                        'old_classification_id' => $oldClassificationId,
-//                                        'old_classification_name' => $oldClassificationName,
-//                                        'old_reserve_percent' => $oldReservePercent,
-////                                        'old_reserve_amount' => $oldReserveAmount,
-//                                    ],
-//                                    'date' => now(),
-//                                ]);
-//
-//                                $nextDocNum++;
-//                                if ($client->classification->name == 'loss')
-//                                {
-//                                    $lossType = DocumentJournal::LOSS_RESERVE_AMOUNT;
-//                                    $acc16200NV = ChartOfAccount::idByCode('16200NV') ?? 1;
-//
-//                                    $journaLoss = DocumentJournal::create([
-//                                        'date'               => now()->toDateString(),
-//                                        'document_number'    => $nextDocNum,
-//                                        'document_type'      => $lossType,
-//                                        'amount_amd'         => $contract->provided_amount,
-//                                        'partner_id'         => $clientId,
-//                                        'credit_partner_id'  => $clientId,
-//                                        'comment'            => "Loss client, reserve for contract #{$contract->id} due to classification change",
-//                                        'debit_account_id'   => $acc16605PS,
-//                                        'credit_account_id'  => $acc16200NV,
-//                                        'user_id'            => auth()->check() ? auth()->id() : 1,
-//                                        'journalable_type'   => DocumentJournal::class,
-//                                        'journalable_id'     => $journal->id,
-//                                    ]);
-//                                    Transaction::create([
-//                                        'date'               => now()->toDateString(),
-//                                        'document_number'    => $nextDocNum,
-//                                        'document_type'      => $lossType,
-//
-//                                        'debit_account_id'   => $acc16605PS,
-//                                        'debit_partner_id'   => $clientId,
-//                                        'debit_currency_id'  => 1,
-//
-//                                        'credit_account_id'  => $acc16200NV,
-//                                        'credit_currency_id' => 1,
-//                                        'credit_partner_id'  => $clientId,
-//
-//                                        'amount_amd'         => $contract->provided_amount,
-//
-//                                        'comment'            => "Loss client,reserve for contract #{$contract->id}",
-//                                        'user_id'            => auth()->check() ? auth()->id() : 1,
-//                                        'is_system'          => true,
-//
-//                                        'disbursement_date'    => now()->toDateString(),
-//                                        'transactionable_type' => DocumentJournal::class,
-//                                        'transactionable_id'   => $journaLoss->id,
-//                                    ]);
-//                                    $nextDocNum++;
-//                                }
-//
-//                                if ($oldReserveAmount > 0 && $oldClassificationName == 'standard') {
-//                                    $classificationType = DocumentJournal::CLASSIFICATION;
-//
-//                                    $journalDoc = DocumentJournal::create([
-//                                        'date'               => now()->toDateString(),
-//                                        'document_number'    => $nextDocNum,
-//                                        'document_type'      => $classificationType,
-//                                        'amount_amd'         => $oldReserveAmount,
-//                                        'partner_id'         => $clientId,
-//                                        'credit_partner_id'  => $clientId,
-//                                        'comment'            => "Reserve for contract #{$contract->id} due to classification change",
-//                                        'debit_account_id'   => $debetClassification,
-//                                        'credit_account_id'  => $creditClassification,
-//                                        'user_id'            => auth()->check() ? auth()->id() : 1,
-//                                        'journalable_type'   => DocumentJournal::class,
-//                                        'journalable_id'     => $journal->id,
-//                                    ]);
-//                                    Transaction::create([
-//                                        'date'               => now()->toDateString(),
-//                                        'document_number'    => $nextDocNum,
-//                                        'document_type'      => $classificationType,
-//
-//                                        'debit_account_id'   => $debetClassification,
-//                                        'debit_partner_id'   => $clientId,
-//                                        'debit_currency_id'  => 1,
-//
-//                                        'credit_account_id'  => $creditClassification,
-//                                        'credit_currency_id' => 1,
-//                                        'credit_partner_id'  => $clientId,
-//
-//                                        'amount_amd'         => $oldReserveAmount,
-//
-//                                        'comment'            => "Reserve for contract #{$contract->id}",
-//                                        'user_id'            => auth()->check() ? auth()->id() : 1,
-//                                        'is_system'          => true,
-//
-//                                        'disbursement_date'    => now()->toDateString(),
-//                                        'transactionable_type' => DocumentJournal::class,
-//                                        'transactionable_id'   => $journalDoc->id,
-//                                    ]);
-//                                }
-//
-//
-//                                Log::info("Created reserve transaction for contract #{$contract->id} with amount {$reserveAmount} AMD.");
-//                            }
-//                            $nextDocNum++;
-//                        }
-//
-//                    } catch (\Throwable $e) {
-//                        Log::error("Failed to update client #{$client->id}: " . $e->getMessage());
-//                    }
-//                }
-//            });
-//
-//        Log::info('Client classification job finished.');
-//    }
-
 }
