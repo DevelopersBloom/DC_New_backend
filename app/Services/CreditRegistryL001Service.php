@@ -54,7 +54,7 @@ use DOMElement;
 class CreditRegistryL001Service
 {
     private const NS           = 'urn:cba-am:lnreg3';
-    private const ORG_CODE     = '66100';   // Փոխարինե՛ք ձեր 5-նիշ կոդով
+    private const ORG_CODE     = '66100';
     private const BRANCH_CODE  = '00001';
     private const ORG_STATUS   = 1;
 
