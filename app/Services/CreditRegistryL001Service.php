@@ -105,36 +105,27 @@ class CreditRegistryL001Service
 
     private function buildCreditCode(Contract $contract): string
     {
-        $bank = self::ORG_CODE;                                                    // 5 թ.
-        $date = Carbon::parse($contract->date)->format('Ymd');                     // 8 թ.
-        $seq  = str_pad((string) ($contract->id % 99999), 5, '0', STR_PAD_LEFT);  // 5 թ.
-        $base = $bank . $date . $seq;                                              // 18 թ.
+        $bank = self::ORG_CODE;
+        $date = Carbon::parse($contract->date)->format('Ymd');
+        $seq  = str_pad((string) ($contract->id % 99999), 5, '0', STR_PAD_LEFT);
+        $base = $bank . $date . $seq;
 
         $cs = $this->cbaChecksum($base);  // 1 թ. (0–9)
 
-        // Ֆորմատ: NNNNN-NNNNNNNN-NNNNNC
+        // format: NNNNN-NNNNNNNN-NNNNNC
         return sprintf('%s-%s-%s%d', $bank, $date, $seq, $cs);
     }
 
-    /**
-     * CBA Luhn mod-10 ─ ստուգված «80500-20161228-12378 → 5»-ի վրա
-     *
-     * I.  base-ի 18 թվից աջ → ձախ, կենտ index-ների (0,2,4,...) թվերը × 2
-     *     Կրկնապատկածի ԹՎԱՆՇԱՆՆԵՐԸ (digit sum) գումարել
-     * II. Զույգ index-ների (1,3,5,...) թվերը ուղղակի գումարել
-     * III. checksum = (10 − (total % 10)) % 10
-     */
     private function cbaChecksum(string $digits): int
     {
         // digits = 18-char string, e.g. "805002016122812378"
-        $len = strlen($digits);          // կանոնը 18-ն է
+        $len = strlen($digits);
         $sum = 0;
 
         for ($i = 0; $i < $len; $i++) {
-            // աջ կողմից i-րդ թիվ (i=0 → ամենաաջ)
             $d = (int) $digits[$len - 1 - $i];
 
-            if ($i % 2 === 0) {          // 1-ին, 3-րդ, 5-րդ ... (index 0,2,4)
+            if ($i % 2 === 0) {
                 $doubled = $d * 2;
                 $sum += intdiv($doubled, 10) + ($doubled % 10);
             } else {
@@ -146,7 +137,7 @@ class CreditRegistryL001Service
     }
 
     // ================================================================
-    // LoanData   (ctLoan) — XSD sequence-ի հաջ.
+    // LoanData   (ctLoan) — XSD sequence.
     // ================================================================
 
     private function buildLoanData(DOMDocument $dom, Contract $contract): DOMElement
@@ -157,7 +148,6 @@ class CreditRegistryL001Service
         $ld = $dom->createElement('LoanData');
 
         // 1. DebtorID — stClientID: [0-9]{13}
-        //    ԿԲ-ի bank_id (13 թ.) — ՈՉ social_card, ՈՉ tax_number
         $debtorId = (string) ($client?->bank_client_id ?? '');
         if (!preg_match('/^[0-9]{13}$/', $debtorId)) {
             throw new \InvalidArgumentException(
@@ -270,7 +260,7 @@ class CreditRegistryL001Service
         //     Արտ. = 99000002, Երևան = 01000000
         $reg = (string) ($client?->region_code ?? '');
         if (!preg_match('/^[0-9]{8}$/', $reg)) {
-            $reg = '01000000';  // fallback Երևան
+            $reg = '01000000';
         }
         $ld->appendChild($dom->createElement('LoanUseRegion', $reg));
 
