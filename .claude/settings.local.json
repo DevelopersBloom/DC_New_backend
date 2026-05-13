@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(php artisan *)"
+      "Bash(php artisan *)",
+      "Bash(cp \"C:\\\\Users\\\\anima\\\\Downloads\\\\Havelvac7_10_08_2017_16_33_31_կապված_10_08_2017_16_34_18 \\(3\\).docx\" /tmp/havel.zip)",
+      "Read(//c/tmp/**)",
+      "Bash(unzip -o havel.zip -d havel/)",
+      "Bash(grep -o '.\\\\{0,50\\\\}ctLoan.\\\\{0,2000\\\\}')",
+      "Bash(perl -ne 'push @t, $1 while /<w:t[^>]*>\\([^<]*\\)<\\\\/w:t>/g; END { $s = join\\(\" \", @t\\); if \\($s =~ /\"ctLoan\">\\(.{0,3000}\\)/\\) { print $1 } }' /tmp/havel/word/document.xml)",
+      "Bash(perl -0777 -ne ' my @t = /<w:t[^>]*>\\([^<]*\\)<\\\\/w:t>/g; my $s = join\\(\"\", @t\\); if \\($s =~ /ctLoan\\(.{100,4000}?\\)xs:complexType/\\) { print \"FOUND: $1\\\\n\"; } ' /tmp/havel/word/document.xml)"
     ]
   }
 }
