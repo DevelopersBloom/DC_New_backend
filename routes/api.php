@@ -224,8 +224,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/{id}/credit-registry/l001/send', [CreditRegistryController::class, 'sendL001']);
         Route::post('/{id}/credit-registry/l005/send', [CreditRegistryController::class, 'sendL005']);
         Route::post('/{id}/credit-registry/l006/send', [CreditRegistryController::class, 'sendL006']);
-        Route::post('/credit-registry/is-response-prepared', [CreditRegistryController::class, 'isResponsePrepared']);
-        Route::post('/credit-registry/get-response', [CreditRegistryController::class, 'getResponse']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware('can:make_contract_payment');
         Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment'])->middleware('can:make_full_contract_payment');
@@ -238,6 +236,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::put('/update-items', [ContractControllerNew::class, 'updateContractItems']);
         Route::get('/{contractId}/docs', [DocumentJournalController::class, 'getContractDocsHistory']);
     });
+    Route::post('/credit-registry/is-response-prepared', [CreditRegistryController::class, 'isResponsePrepared']);
+    Route::post('/credit-registry/get-response', [CreditRegistryController::class, 'getResponse']);
     Route::post('/upload-file', [FileController::class, 'upload'])->middleware('can:upload_file');
     Route::get('/files/{id}/download', [FileController::class, 'download'])->middleware('can:download_file');
     Route::delete('/files/{id}', [FileController::class, 'destroy']);

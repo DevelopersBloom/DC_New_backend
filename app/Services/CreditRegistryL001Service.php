@@ -213,7 +213,30 @@ class CreditRegistryL001Service
             $this->fmtAmountNonZero($contractAmt)
         ));
 
-        // 11. ContractModifiedAmount — stAmountNonZero
+        // 11. AnnualInterestRate — stPercent: 0.00–100.00
+        //     interest_rate = ՕՐԱՅԻՆ → × 365
+        $annual = round((float) ($contract->interest_rate ?? 0) * 365, 2);
+        $ld->appendChild($dom->createElement('AnnualInterestRate',
+            $this->fmtPercent($annual)
+        ));
+
+        // 12. ActualInterestRate — stPercent
+        $actual = (float) ($contract->effective_annual_rate ?? $annual);
+        $ld->appendChild($dom->createElement('ActualInterestRate',
+            $this->fmtPercent($actual)
+        ));
+
+        // 13. InterestRateType — stInterestRateType: 1=Լող., 2=Ֆիքս., 3=Փոփ.
+        $irt = max(1, min(3, (int) ($contract->interest_rate_type ?? 2)));
+        $ld->appendChild($dom->createElement('InterestRateType', (string) $irt));
+
+        // 14. IsInterestSubsidy — stYN
+        $ld->appendChild($dom->createElement('IsInterestSubsidy', 'N'));
+
+        // 15. ProvisionOfCredit — stYN (Y=Միջ. ծրագրով)
+        $ld->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
+
+        // 16. ContractModifiedAmount — stAmountNonZero
         $modAmt = (float) ($contract->provided_amount ?? 0);
         if ($modAmt <= 0) {
             $modAmt = $contractAmt;
@@ -221,29 +244,6 @@ class CreditRegistryL001Service
         $ld->appendChild($dom->createElement('ContractModifiedAmount',
             $this->fmtAmountNonZero($modAmt)
         ));
-
-        // 12. AnnualInterestRate — stPercent: 0.00–100.00
-        //     interest_rate = ՕՐԱՅԻՆ → × 365
-        $annual = round((float) ($contract->interest_rate ?? 0) * 365, 2);
-        $ld->appendChild($dom->createElement('AnnualInterestRate',
-            $this->fmtPercent($annual)
-        ));
-
-        // 13. ActualInterestRate — stPercent
-        $actual = (float) ($contract->effective_annual_rate ?? $annual);
-        $ld->appendChild($dom->createElement('ActualInterestRate',
-            $this->fmtPercent($actual)
-        ));
-
-        // 14. InterestRateType — stInterestRateType: 1=Լող., 2=Ֆիքս., 3=Փոփ.
-        $irt = max(1, min(3, (int) ($contract->interest_rate_type ?? 2)));
-        $ld->appendChild($dom->createElement('InterestRateType', (string) $irt));
-
-        // 15. IsInterestSubsidy — stYN
-        $ld->appendChild($dom->createElement('IsInterestSubsidy', 'N'));
-
-        // 16. ProvisionOfCredit — stYN (Y=Միջ. ծրագրով)
-        $ld->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
 
         // 17. LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
         //     Appendix – Reference Book.xlsx-ից
