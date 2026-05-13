@@ -213,39 +213,30 @@ class CreditRegistryL001Service
             $this->fmtAmountNonZero($contractAmt)
         ));
 
-        // 11. ContractModifiedAmount — stAmountNonZero
-        $modAmt = (float) ($contract->provided_amount ?? 0);
-        if ($modAmt <= 0) {
-            $modAmt = $contractAmt;
-        }
-        $ld->appendChild($dom->createElement('ContractModifiedAmount',
-            $this->fmtAmountNonZero($modAmt)
-        ));
-
-        // 12. AnnualInterestRate — stPercent: 0.00–100.00
+        // 11. AnnualInterestRate — stPercent: 0.00–100.00
         //     interest_rate = ՕՐԱՅԻՆ → × 365
         $annual = round((float) ($contract->interest_rate ?? 0) * 365, 2);
         $ld->appendChild($dom->createElement('AnnualInterestRate',
             $this->fmtPercent($annual)
         ));
 
-        // 13. ActualInterestRate — stPercent
+        // 12. ActualInterestRate — stPercent
         $actual = (float) ($contract->effective_annual_rate ?? $annual);
         $ld->appendChild($dom->createElement('ActualInterestRate',
             $this->fmtPercent($actual)
         ));
 
-        // 14. InterestRateType — stInterestRateType: 1=Լող., 2=Ֆիքս., 3=Փոփ.
+        // 13. InterestRateType — stInterestRateType: 1=Լող., 2=Ֆիքս., 3=Փոփ.
         $irt = max(1, min(3, (int) ($contract->interest_rate_type ?? 2)));
         $ld->appendChild($dom->createElement('InterestRateType', (string) $irt));
 
-        // 15. IsInterestSubsidy — stYN
+        // 14. IsInterestSubsidy — stYN
         $ld->appendChild($dom->createElement('IsInterestSubsidy', 'N'));
 
-        // 16. ProvisionOfCredit — stYN (Y=Միջ. ծրագրով)
+        // 15. ProvisionOfCredit — stYN (Y=Միջ. ծրագրով)
         $ld->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
 
-        // 17. LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
+        // 16. LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
         //     Appendix – Reference Book.xlsx-ից
         $luf = (string) ($contract->loan_use_field ?? $client?->activity_field ?? '');
         if (!preg_match('/^\d{2}\.\d{2}\.\d{1}$/', $luf)) {
@@ -253,10 +244,10 @@ class CreditRegistryL001Service
         }
         $ld->appendChild($dom->createElement('LoanUseField', $luf));
 
-        // 18. LoanUseCountry — stCountry: [A-Z]{3}  ISO 3166
+        // 17. LoanUseCountry — stCountry: [A-Z]{3}  ISO 3166
         $ld->appendChild($dom->createElement('LoanUseCountry', 'ARM'));
 
-        // 19. LoanUseRegion — stRegion: [0-9]{8}
+        // 18. LoanUseRegion — stRegion: [0-9]{8}
         //     Արտ. = 99000002, Երևան = 01000000
         $reg = (string) ($client?->region_code ?? '');
         if (!preg_match('/^[0-9]{8}$/', $reg)) {
