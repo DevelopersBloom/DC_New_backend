@@ -71,7 +71,7 @@ class CreditRegistryL005Service
 
         $now = Carbon::now();
         $sendDateTime = $dom->createElement('SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
         $header->appendChild($sendDateTime);
 
@@ -123,7 +123,6 @@ class CreditRegistryL005Service
 
         for ($i = 0; $i < $len; $i++) {
             $d = (int) $digits[$i];
-            // Positions 1, 3, 5 ... from right (0-indexed from right = even index from right)
             if (($len - 1 - $i) % 2 === 0) {
                 $d *= 2;
                 if ($d > 9) {

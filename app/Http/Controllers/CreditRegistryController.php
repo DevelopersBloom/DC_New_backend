@@ -259,13 +259,75 @@ class CreditRegistryController extends Controller
     /**
      * POST /credit-registry/get-response
      * Body: { "request_id": 12345 }
+     * Returns parsed Answer XML from CBA (OK or ERROR with error list).
      */
     public function getResponse(Request $request): JsonResponse
     {
-        $data = $request->validate(['request_id' => 'required|integer']);
+        $data   = $request->validate(['request_id' => 'required|integer']);
         $result = $this->degsClient->getResponse($data['request_id']);
 
-        return response()->json($result);
+        if (! ($result['ok'] ?? false)) {
+            return response()->json(['ok' => false, 'error' => $result['error'] ?? 'Unknown error'], 502);
+        }
+
+        $xmlString = $result['result'] ?? '';
+
+        if (empty($xmlString)) {
+            return response()->json(['ok' => false, 'error' => 'Empty response from DEGS'], 502);
+        }
+
+        return response()->json($this->parseAnswerXml($xmlString));
+    }
+
+    private function parseAnswerXml(string $xml): array
+    {
+        libxml_use_internal_errors(true);
+        $doc = simplexml_load_string($xml);
+
+        if ($doc === false) {
+            return ['ok' => false, 'error' => 'Failed to parse response XML', 'raw' => $xml];
+        }
+
+        $header = [
+            'application' => (string) ($doc->Header->Application ?? ''),
+            'message_id'  => (string) ($doc->Header->MessageId ?? ''),
+            'answer_date' => (string) ($doc->Header->AnswerDate ?? ''),
+            'answer_time' => (string) ($doc->Header->AnswerTime ?? ''),
+        ];
+
+        $infoType = strtoupper((string) ($doc->Info['Type'] ?? ''));
+
+        if ($infoType === 'OK') {
+            return [
+                'ok'     => true,
+                'status' => 'OK',
+                'header' => $header,
+                'reason' => (string) ($doc->Info->Reason ?? ''),
+            ];
+        }
+
+        $errors = [];
+        $info   = $doc->Info;
+
+        $codes        = $info->ErrorCode ?? [];
+        $descriptions = $info->ErrorDescription ?? [];
+        $qualifiers   = $info->ErrorQualifyer ?? [];
+
+        $count = max(count((array) $codes), 1);
+        for ($i = 0; $i < $count; $i++) {
+            $errors[] = [
+                'code'        => isset($codes[$i])        ? (string) $codes[$i]        : (string) ($codes ?? ''),
+                'description' => isset($descriptions[$i]) ? (string) $descriptions[$i] : (string) ($descriptions ?? ''),
+                'qualifier'   => isset($qualifiers[$i])   ? (string) $qualifiers[$i]   : null,
+            ];
+        }
+
+        return [
+            'ok'     => false,
+            'status' => 'ERROR',
+            'header' => $header,
+            'errors' => $errors,
+        ];
     }
 
     // ================================================================
