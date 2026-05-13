@@ -236,16 +236,7 @@ class CreditRegistryL001Service
         // 15. ProvisionOfCredit — stYN (Y=Միջ. ծրագրով)
         $ld->appendChild($dom->createElement('ProvisionOfCredit', 'N'));
 
-        // 16. ContractModifiedAmount — stAmountNonZero
-        $modAmt = (float) ($contract->provided_amount ?? 0);
-        if ($modAmt <= 0) {
-            $modAmt = $contractAmt;
-        }
-        $ld->appendChild($dom->createElement('ContractModifiedAmount',
-            $this->fmtAmountNonZero($modAmt)
-        ));
-
-        // 17. LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
+        // 16. LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
         //     Appendix – Reference Book.xlsx-ից
         $luf = (string) ($contract->loan_use_field ?? $client?->activity_field ?? '');
         if (!preg_match('/^\d{2}\.\d{2}\.\d{1}$/', $luf)) {
@@ -253,10 +244,10 @@ class CreditRegistryL001Service
         }
         $ld->appendChild($dom->createElement('LoanUseField', $luf));
 
-        // 18. LoanUseCountry — stCountry: [A-Z]{3}  ISO 3166
+        // 17. LoanUseCountry — stCountry: [A-Z]{3}  ISO 3166
         $ld->appendChild($dom->createElement('LoanUseCountry', 'ARM'));
 
-        // 19. LoanUseRegion — stRegion: [0-9]{8}
+        // 18. LoanUseRegion — stRegion: [0-9]{8}
         //     Արտ. = 99000002, Երևան = 01000000
         $reg = (string) ($client?->region_code ?? '');
         if (!preg_match('/^[0-9]{8}$/', $reg)) {
