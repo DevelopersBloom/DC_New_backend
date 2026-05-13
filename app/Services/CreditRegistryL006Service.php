@@ -66,7 +66,7 @@ class CreditRegistryL006Service
 
         $now = Carbon::now();
         $sendDateTime = $dom->createElement('SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
         $header->appendChild($sendDateTime);
 
