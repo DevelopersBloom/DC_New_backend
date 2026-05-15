@@ -184,7 +184,7 @@ class Contract extends Model
             case 'Ժամկետնանց':
             case 'overdue':
                 return $query->whereHas('payments', function ($q) {
-                    $q->whereDate('date', '<', today()->subDay())
+                    $q->whereDate('date', '<', today())
                     ->where('status', 'initial');
                 });
             case 'todays':
@@ -199,7 +199,7 @@ class Contract extends Model
     public function getIsOverdueAttribute()
     {
         return $this->payments()
-            ->whereDate('date', '<', Carbon::today()->subDay())
+            ->whereDate('date', '<', Carbon::today())
             ->where('status', 'initial')
             ->exists();
     }
