@@ -21,11 +21,14 @@ return [
     // SOAP protocol version: "1.2" (recommended) or "1.1"
     'soap_version' => '1.2',
     'app_name' => 'LNREG3',
-    // Optional client certificate (PEM/PFX converted to PEM) and password
-    'client_cert_path' => env('CREDIT_REGISTRY_CLIENT_CERT_PATH'),
+    // Client certificate PEM file (may be combined cert+key in one file)
+    'client_cert_path'     => env('CREDIT_REGISTRY_CLIENT_CERT_PATH'),
+    // Separate private key file — leave empty if cert+key are combined in one PEM
+    'client_key_path'      => env('CREDIT_REGISTRY_CLIENT_KEY_PATH'),
+    // Password for the private key (if encrypted)
     'client_cert_password' => env('CREDIT_REGISTRY_CLIENT_CERT_PASSWORD'),
 
-    // Optional Root / CA certificate for server validation
+    // CA / Root certificate for server validation (leave empty to skip CA check)
     'ca_cert_path' => env('CREDIT_REGISTRY_CA_CERT_PATH'),
 
     /*
@@ -41,7 +44,8 @@ return [
     // Optional peer name to validate certificate against (useful when connecting by IP)
     'peer_name' => env('CREDIT_REGISTRY_PEER_NAME'),
 
-    // Default application name for LNREG3 documents
+    // .NET 8 DEGS proxy URL (127.0.0.1:5555 — runs as a local sidecar)
+    'proxy_url' => env('CREDIT_REGISTRY_PROXY_URL', 'http://127.0.0.1:5555'),
 
     // Default timeout settings (seconds)
     'connection_timeout' => env('CREDIT_REGISTRY_CONNECTION_TIMEOUT', 30),

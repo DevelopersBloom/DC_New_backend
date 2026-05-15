@@ -2,195 +2,141 @@
 
 namespace App\Services;
 
-use RuntimeException;
-use SoapClient;
-use SoapFault;
-
+/**
+ * HTTP client facade over the local .NET 8 DEGS proxy (127.0.0.1:5555).
+ *
+ * The proxy handles all WCF / WS-Security complexity. This class keeps
+ * the same public interface so DegsClient and controllers need no changes.
+ */
 class CreditRegistrySoapClient
 {
-    private SoapClient $client;
-
-    private function boolish(mixed $value, bool $default): bool
-    {
-        if ($value === null) {
-            return $default;
-        }
-
-        if (is_bool($value)) {
-            return $value;
-        }
-
-        if (is_int($value)) {
-            return $value !== 0;
-        }
-
-        if (is_string($value)) {
-            $normalized = strtolower(trim($value));
-            if (in_array($normalized, ['1', 'true', 'yes', 'on'], true)) {
-                return true;
-            }
-            if (in_array($normalized, ['0', 'false', 'no', 'off', ''], true)) {
-                return false;
-            }
-        }
-
-        return (bool) $value;
-    }
+    private string $proxyUrl;
+    private string $appName;
 
     public function __construct()
     {
-        $config = config('credit_registry');
+        $this->proxyUrl = rtrim(config('credit_registry.proxy_url', 'http://127.0.0.1:5555'), '/');
+        $this->appName  = config('credit_registry.app_name', 'LNREG3');
+    }
 
-        $wsdl = $config['wsdl'] ?? null;
-        $wsdlLocalPath = $config['wsdl_local_path'] ?? null;
+    // ================================================================
+    // Public API (same signatures as before)
+    // ================================================================
 
-        if (! empty($wsdlLocalPath) && is_string($wsdlLocalPath) && is_file($wsdlLocalPath)) {
-            $wsdl = $wsdlLocalPath;
+    public function isAlive(): bool
+    {
+        $r = $this->get('/isalive');
+        return (bool) ($r['alive'] ?? false);
+    }
+
+    public function sendL001(string $xmlContent, bool $dryRun = false): int
+    {
+        return $this->sendRequest('L001', $xmlContent, $dryRun);
+    }
+
+    public function sendL002(string $xmlContent, bool $dryRun = false): int
+    {
+        return $this->sendRequest('L002', $xmlContent, $dryRun);
+    }
+
+    public function sendL003(string $xmlContent, bool $dryRun = false): int
+    {
+        return $this->sendRequest('L003', $xmlContent, $dryRun);
+    }
+
+    public function sendL005(string $xmlContent, bool $dryRun = false): int
+    {
+        return $this->sendRequest('L005', $xmlContent, $dryRun);
+    }
+
+    public function sendL006(string $xmlContent, bool $dryRun = false): int
+    {
+        return $this->sendRequest('L006', $xmlContent, $dryRun);
+    }
+
+    public function isResponsePrepared(int $requestId): bool
+    {
+        $r = $this->post('/is-response-prepared', ['requestId' => $requestId]);
+        return (bool) ($r['prepared'] ?? false);
+    }
+
+    public function getResponse(int $requestId): string
+    {
+        $r = $this->post('/get-response', ['requestId' => $requestId]);
+        return (string) ($r['result'] ?? '');
+    }
+
+    // ================================================================
+    // Internal
+    // ================================================================
+
+    private function sendRequest(string $docType, string $xmlContent, bool $dryRun): int
+    {
+        if ($dryRun) {
+            \Log::debug('DEGS DryRun', ['docType' => $docType, 'xml' => $xmlContent]);
+            return 0;
         }
 
-        if (empty($wsdl)) {
-            throw new RuntimeException('CREDIT_REGISTRY_WSDL is not configured.');
-        }
-
-        $responseTimeout = (int) ($config['response_timeout'] ?? 180);
-        if ($responseTimeout < 30) {
-            $responseTimeout = 30;
-        }
-
-        ini_set('default_socket_timeout', (string) $responseTimeout);
-        if (function_exists('set_time_limit')) {
-
-            @set_time_limit(max(120, $responseTimeout + 120));
-        }
-
-        $options = [
-            'trace' => true,
-            'exceptions' => true,
-            'cache_wsdl' => WSDL_CACHE_MEMORY,
-            'connection_timeout' => (int) ($config['connection_timeout'] ?? 30),
-        ];
-
-        $soapVersion = strtolower((string) ($config['soap_version'] ?? '1.2'));
-        $options['soap_version'] = $soapVersion === '1.1' ? SOAP_1_1 : SOAP_1_2;
-
-        $ssl = [
-            'verify_peer' => $this->boolish($config['verify_peer'] ?? null, false),
-            'verify_peer_name' => $this->boolish($config['verify_peer_name'] ?? null, false),
-            'allow_self_signed' => $this->boolish($config['allow_self_signed'] ?? null, false),
-        ];
-
-        if (! empty($config['ca_cert_path'])) {
-            $ssl['cafile'] = $config['ca_cert_path'];
-        }
-
-        if (! empty($config['peer_name'])) {
-            $ssl['peer_name'] = $config['peer_name'];
-        }
-
-        if (! empty($config['client_cert_path'])) {
-            $options['local_cert'] = $config['client_cert_path'];
-            if (! empty($config['client_cert_password'])) {
-                $options['passphrase'] = $config['client_cert_password'];
-            }
-        }
-
-        $options['stream_context'] = stream_context_create([
-            'ssl' => $ssl,
-            'http' => [
-                'timeout' => (float) $responseTimeout,
-            ],
+        $r = $this->post('/send-request', [
+            'appName' => $this->appName,
+            'docType' => $docType,
+            'isDelay' => false,
+            'xml'     => $xmlContent,
         ]);
 
-        if (! empty($config['endpoint']) && is_string($config['endpoint'])) {
-            $options['location'] = $config['endpoint'];
+        return (int) ($r['requestId'] ?? 0);
+    }
+
+    private function get(string $path): array
+    {
+        $ch = curl_init($this->proxyUrl . $path);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+        ]);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if ($err) {
+            throw new \RuntimeException('DEGS proxy cURL error: ' . $err);
         }
-        $this->client = new SoapClient($wsdl, $options);
-    }
-
-    /**
-     * Send L001 document (DocType = L001) to CBA.
-     */
-    public function sendL001(string $xml, bool $isDelay = false): int
-    {
-        return $this->sendRequest(
-            appName: config('credit_registry.app_name', 'LNREG3'),
-            docType: 'L001',
-            xml: $xml,
-            isDelay: $isDelay
-        );
-    }
-
-    /**
-     * Generic SendRequest wrapper if later you need other DocTypes (e.g. L002).
-     */
-    public function sendRequest(string $appName, string $docType, string $xml, bool $isDelay = false): int
-    {
-        try {
-            $action = 'http://tempuri.org/IDegsNSS/SendRequest';
-
-            $headers = [
-                $this->buildWsSecurityHeader(),
-                new \SoapHeader('http://www.w3.org/2005/08/addressing', 'Action', 'http://tempuri.org/IDegsNSS/SendRequest'),
-                new \SoapHeader('http://www.w3.org/2005/08/addressing', 'To', 'http://100.100.100.60:8889/DEGSHost?singleWsdl:1')
-            ];
-
-            $result = $this->client->__soapCall('SendRequest', [[
-                'AppName' => $appName,
-                'DocType' => $docType,
-                'IsDelay' => $isDelay,
-                'xml'     => $xml,
-            ]], null, $headers);
-
-            if (! isset($result->SendRequestResult)) {
-                throw new \RuntimeException('SendRequestResult is missing.');
-            }
-
-            return (int) $result->SendRequestResult;
-
-        } catch (\SoapFault $e) {
-            echo $this->client->__getLastRequest();
-
-            echo $this->client->__getLastResponse();
-
-            logger()->error('Full XML Request: ' . $this->client->__getLastRequest());
-            throw new \RuntimeException('CBA Service Error: ' . $e->getMessage());
+        if ($code >= 400) {
+            throw new \RuntimeException('DEGS proxy HTTP ' . $code . ': ' . substr((string) $body, 0, 300));
         }
-    }
-    private function buildWsSecurityHeader(): \SoapHeader
-    {
-        $username = config('credit_registry.username');
-        $password = config('credit_registry.password');
 
-        $wsse = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd';
-        $wsu = 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd';
-
-        $security = new \SimpleXMLElement('<wsse:Security xmlns:wsse="' . $wsse . '" xmlns:wsu="' . $wsu . '" />');
-
-        $ts = $security->addChild('wsu:Timestamp', '', $wsu);
-        $ts->addChild('wsu:Created', gmdate('Y-m-d\TH:i:s\Z'), $wsu);
-        $ts->addChild('wsu:Expires', gmdate('Y-m-d\TH:i:s\Z', time() + 300), $wsu);
-
-        $ut = $security->addChild('wsse:UsernameToken', '', $wsse);
-        $ut->addChild('wsse:Username', $username, $wsse); // ԱՅՍ ՏՈՂԸ ՊԱՐՏԱԴԻՐ Է
-        $ut->addChild('wsse:Password', $password, $wsse)
-            ->addAttribute('Type', 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText');
-        $dom = dom_import_simplexml($security);
-        $xmlContent = $dom->ownerDocument->saveXML($dom->ownerDocument->documentElement);
-        return new \SoapHeader($wsse, 'Security', new \SoapVar($xmlContent, XSD_ANYXML), true);
+        return json_decode((string) $body, true) ?? [];
     }
 
-    public function getResponse(int $requestId): ?string
+    private function post(string $path, array $data): array
     {
-        try {
-            $result = $this->client->__soapCall('GetResponse', [[
-                'requsetId' => $requestId,
-            ]], null, $this->buildWsSecurityHeader());
+        $json = json_encode($data);
+        $ch   = curl_init($this->proxyUrl . $path);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $json,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        ]);
+        $body = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        curl_close($ch);
 
-            return $result->GetResponseResult ?? null;
-        } catch (SoapFault $e) {
-            throw new RuntimeException('GetResponse failed: ' . $e->getMessage(), 0, $e);
+        if ($err) {
+            throw new \RuntimeException('DEGS proxy cURL error: ' . $err);
         }
-    }
 
+        $decoded = json_decode((string) $body, true) ?? [];
+
+        if ($code >= 400 || ! ($decoded['ok'] ?? false)) {
+            throw new \RuntimeException(
+                'DEGS proxy error: ' . ($decoded['error'] ?? substr((string) $body, 0, 300))
+            );
+        }
+
+        return $decoded;
+    }
 }
-
