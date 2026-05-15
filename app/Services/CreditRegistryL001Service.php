@@ -235,20 +235,23 @@ class CreditRegistryL001Service
 
         // 15. LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
         //     Appendix – Reference Book.xlsx-ից
-        $luf = (string) ($contract->loan_use_field ?? $client?->activity_field ?? '');
-        if (!preg_match('/^\d{2}\.\d{2}\.\d{1}$/', $luf)) {
-            $luf = '10.01.1';  // fallback: Ֆիզ.անձ, Սպառողական
+        $luf = trim((string) ($contract->loan_use_field ?? $client?->activity_field ?? ''));
+        if ($luf === '') {
+            throw new \InvalidArgumentException(
+                'LoanUseField is required. Set loan_use_field on the contract or activity_field on the client.'
+            );
         }
         $ld->appendChild($dom->createElement('LoanUseField', $luf));
 
         // 16. LoanUseCountry — stCountry: [A-Z]{3}  ISO 3166
         $ld->appendChild($dom->createElement('LoanUseCountry', 'ARM'));
 
-        // 17. LoanUseRegion — stRegion: [0-9]{8}
-        //     Արտ. = 99000002, Երևան = 01000000
-        $reg = (string) ($client?->region_code ?? '');
-        if (!preg_match('/^[0-9]{8}$/', $reg)) {
-            $reg = '01000000';
+        // 17. LoanUseRegion — stRegion
+        $reg = trim((string) ($client?->region_code ?? ''));
+        if ($reg === '') {
+            throw new \InvalidArgumentException(
+                'LoanUseRegion is required. Set region_code on the client.'
+            );
         }
         $ld->appendChild($dom->createElement('LoanUseRegion', $reg));
 
