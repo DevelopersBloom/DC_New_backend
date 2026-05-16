@@ -615,7 +615,7 @@ class AdminControllerNew extends Controller
         )
             ->with('client:id,name,surname')
             ->with('contract:id,mother,num')
-            ->with('createdBy:id,name,surname')
+            ->with('createdBy:id,name,surname');
 
         switch ($filter_type) {
             case 'cost_in':
