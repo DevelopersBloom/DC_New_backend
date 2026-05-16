@@ -610,11 +610,12 @@ class AdminControllerNew extends Controller
             'purpose',
             'penalty',
             'discount',
-            'created_by'
+            'created_by',
+            DB::raw('(amount - COALESCE(interest_amount, 0) - COALESCE(penalty, 0)) as principal_payment')
         )
             ->with('client:id,name,surname')
             ->with('contract:id,mother,num')
-            ->with('createdBy:id,name,surname');
+            ->with('createdBy:id,name,surname')
 
         switch ($filter_type) {
             case 'cost_in':
