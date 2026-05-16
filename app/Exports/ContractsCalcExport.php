@@ -82,6 +82,26 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
             $contractData = (new ContractDetailResource($contract))->toArray(request());
             $contractData['provided_amount'] = $contract->provided_amount ?? 0;
             $contractData['total_days_provided'] = $contract->total_days_provided ?? '';
+
+            $calcDate = $contract->calc_date;
+            $firstOverduePrincipal = $contract->payments()
+                ->where('status', 'initial')
+                ->where('to_date', '<', $calcDate)
+                ->where('principal_payment', '>', 0)
+                ->oldest('to_date')
+                ->first();
+            $firstOverdueInterest = $contract->payments()
+                ->where('status', 'initial')
+                ->where('to_date', '<', $calcDate)
+                ->where('interest_payment', '>', 0)
+                ->oldest('to_date')
+                ->first();
+            $contractData['overdue_date_principal'] = $firstOverduePrincipal
+                ? \Carbon\Carbon::parse($firstOverduePrincipal->date)->format('d-m-Y')
+                : '';
+            $contractData['overdue_date_interest'] = $firstOverdueInterest
+                ? \Carbon\Carbon::parse($firstOverdueInterest->date)->format('d-m-Y')
+                : '';
 //            $contractData['written_off_amount'] = $contract->written_off_amount ?? 0;
 
             if (!isset($contractData['contract'])) {
