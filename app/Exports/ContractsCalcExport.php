@@ -3,6 +3,7 @@ namespace App\Exports;
 
 use App\Http\Resources\ContractDetailResource;
 use App\Models\ClassificationHistory;
+use App\Models\DocumentJournal;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -22,7 +23,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
         'Ընկերության աշխատակից է' => 'client.is_company_employee',
         'Արժ․' => 'currency',
         'Կնքման ամսաթիվ' => 'contract.date',
-        'Հստակեցման ամսաթիվ' => 'contract.date',
+        'Հատկացման ամսաթիվ' => 'disbursement_date',
         'Մայր գումարի մարման ժամկեը' => 'contract.deadline',
         'Տոկ․ մարման ժամկ․' => 'contract.deadline',
         'Պայմանագրի գումար' => 'contract.contract_amount',
@@ -82,6 +83,14 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
             $contractData = (new ContractDetailResource($contract))->toArray(request());
             $contractData['provided_amount'] = $contract->provided_amount ?? 0;
             $contractData['total_days_provided'] = $contract->total_days_provided ?? '';
+
+            $provideJournal = DocumentJournal::where('journalable_type', \App\Models\Contract::class)
+                ->where('journalable_id', $contract->id)
+                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+                ->first();
+            $contractData['disbursement_date'] = $provideJournal
+                ? \Carbon\Carbon::parse($provideJournal->date)->format('d-m-Y')
+                : $contract->provided_at;
 
             $calcDate = $contract->calc_date;
             $firstOverduePrincipal = $contract->payments()
