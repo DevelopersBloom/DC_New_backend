@@ -573,7 +573,7 @@ class ClientControllerNew extends Controller
                             'debit_partner_id'  => $clientId,
                             'credit_partner_id' => $clientId,
                             'comment'           => "Loss write-off net balance transfer for contract #{$contract->id}",
-                            'debit_account_id'  => $ruleStep1->debit_account_id,
+                            'debit_account_id'  => $ruleStep1->debit_account_id, //73015
                             'credit_account_id' => $acc16605PS,
                             'user_id'           => auth()->id() ?? 1,
                             'journalable_type'  => DocumentJournal::class,

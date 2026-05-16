@@ -46,6 +46,8 @@ class DocumentJournal extends Model
     const RECOVERY_PRINCIPAL    = 'Հիմնական գումարի վերականգնում';
     const RECOVERY_INTEREST     = 'Տոկոսի վերականգնում';
     const LOSS_WRITEOFF_NET_TRANSFER = 'Վարկի դուրս գրում - ընդհանուր գումարի տեղաշարժ';
+    const LOSS_INTEREST_EFFECTIVE    = 'Կորստի արդյունավետ տոկոս';
+    const LOSS_INTEREST_NOMINAL      = 'Կորստի անվանական տոկոս';
     protected $fillable = [
         'date',
         'operation_number',

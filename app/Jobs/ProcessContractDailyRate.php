@@ -79,8 +79,14 @@ class ProcessContractDailyRate implements ShouldQueue
                     ->where('journalable_id', $contract->id)
                     ->first();
 
-                if (!$journal || $contract->client->classification->name == 'loss') {
+                if (!$journal) {
                     DB::rollBack();
+                    continue;
+                }
+
+                if ($contract->client->classification->name === 'loss') {
+                    $this->processLossInterest($contract, $journal, $date, $systemUserId);
+                    DB::commit();
                     continue;
                 }
 
@@ -268,5 +274,101 @@ class ProcessContractDailyRate implements ShouldQueue
         }
 
         Log::info('Finished processing all active contracts.');
+    }
+
+    private function processLossInterest(Contract $contract, DocumentJournal $journal, string $date, int $systemUserId): void
+    {
+        $openingAmount    = $this->calculateCurrentAmortizedBalance($contract);
+        $dailyEffectiveRate = $contract->effective_daily_rate ?? 0;
+
+        $effectiveTotalAmount = ($openingAmount > 0 && $dailyEffectiveRate > 0)
+            ? round($openingAmount * $dailyEffectiveRate / 100, 2)
+            : 0;
+
+        $nominalAmount = round((float)$contract->provided_amount * (float)$contract->interest_rate / 100, 2);
+
+        $effectiveDiffAmount = round(max(0, $effectiveTotalAmount - $nominalAmount), 2);
+
+        // Dr: 86000 / Cr: loss_writeoff_principal credit account
+        // Amount: effective interest - nominal interest
+        if ($effectiveDiffAmount > 0) {
+            $rule86000 = PostingRule::where('business_event_filter', 'loss_writeoff_principal')->first();
+            if ($rule86000) {
+                $nextDocNum = Transaction::getNextDocumentNumber();
+                $doc86000 = DocumentJournal::create([
+                    'date'              => $date,
+                    'document_number'   => $nextDocNum,
+                    'document_type'     => DocumentJournal::LOSS_INTEREST_EFFECTIVE,
+                    'amount_amd'        => $effectiveDiffAmount,
+                    'debit_partner_id'  => $contract->client_id,
+                    'credit_partner_id' => $contract->client_id,
+                    'comment'           => "Loss effective interest accrual for contract #{$contract->id}",
+                    'debit_account_id'  => $rule86000->debit_account_id,
+                    'credit_account_id' => $rule86000->credit_account_id,
+                    'user_id'           => $systemUserId,
+                    'journalable_type'  => DocumentJournal::class,
+                    'journalable_id'    => $journal->id,
+                ]);
+                Transaction::create([
+                    'date'                 => $date,
+                    'document_number'      => $nextDocNum,
+                    'document_type'        => DocumentJournal::LOSS_INTEREST_EFFECTIVE,
+                    'debit_account_id'     => $rule86000->debit_account_id,
+                    'debit_partner_id'     => $contract->client_id,
+                    'debit_currency_id'    => 1,
+                    'credit_account_id'    => $rule86000->credit_account_id,
+                    'credit_currency_id'   => 1,
+                    'credit_partner_id'    => $contract->client_id,
+                    'amount_amd'           => $effectiveDiffAmount,
+                    'comment'              => "Loss effective interest accrual for contract #{$contract->id}",
+                    'user_id'              => $systemUserId,
+                    'is_system'            => true,
+                    'disbursement_date'    => $date,
+                    'transactionable_type' => DocumentJournal::class,
+                    'transactionable_id'   => $doc86000->id,
+                ]);
+            }
+        }
+
+        // Dr: 86001 / Cr: loss_writeoff_interest credit account
+        // Amount: nominal interest
+        if ($nominalAmount > 0) {
+            $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->first();
+            if ($rule86001) {
+                $nextDocNum = Transaction::getNextDocumentNumber();
+                $doc86001 = DocumentJournal::create([
+                    'date'              => $date,
+                    'document_number'   => $nextDocNum,
+                    'document_type'     => DocumentJournal::LOSS_INTEREST_NOMINAL,
+                    'amount_amd'        => $nominalAmount,
+                    'debit_partner_id'  => $contract->client_id,
+                    'credit_partner_id' => $contract->client_id,
+                    'comment'           => "Loss nominal interest accrual for contract #{$contract->id}",
+                    'debit_account_id'  => $rule86001->debit_account_id,
+                    'credit_account_id' => $rule86001->credit_account_id,
+                    'user_id'           => $systemUserId,
+                    'journalable_type'  => DocumentJournal::class,
+                    'journalable_id'    => $journal->id,
+                ]);
+                Transaction::create([
+                    'date'                 => $date,
+                    'document_number'      => $nextDocNum,
+                    'document_type'        => DocumentJournal::LOSS_INTEREST_NOMINAL,
+                    'debit_account_id'     => $rule86001->debit_account_id,
+                    'debit_partner_id'     => $contract->client_id,
+                    'debit_currency_id'    => 1,
+                    'credit_account_id'    => $rule86001->credit_account_id,
+                    'credit_currency_id'   => 1,
+                    'credit_partner_id'    => $contract->client_id,
+                    'amount_amd'           => $nominalAmount,
+                    'comment'              => "Loss nominal interest accrual for contract #{$contract->id}",
+                    'user_id'              => $systemUserId,
+                    'is_system'            => true,
+                    'disbursement_date'    => $date,
+                    'transactionable_type' => DocumentJournal::class,
+                    'transactionable_id'   => $doc86001->id,
+                ]);
+            }
+        }
     }
 }
