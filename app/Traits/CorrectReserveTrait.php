@@ -204,6 +204,6 @@ trait CorrectReserveTrait
             'transactionable_id'   => $doc->id,
         ]);
 
-        Log::info("Correction posted: {$comment}, amount: {$amount}, docNum: {$nextDocNum}");
+        Log::info("Correction posted: {$comment}, amount: {$amount}");
     }
 }
