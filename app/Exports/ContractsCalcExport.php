@@ -143,8 +143,9 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
                 }
 
                 if ($label === 'Տոկոսադրույք') {
-                    $dailyRate = (float)$value;
-                    $value = $dailyRate * 365;
+                    $value = number_format((float)$value * 365, 1) . '%';
+                } elseif ($label === 'Արդ․ տոկոս․') {
+                    $value = number_format((float)$value, 1) . '%';
                 }
                 $row[] = $value;
             }
