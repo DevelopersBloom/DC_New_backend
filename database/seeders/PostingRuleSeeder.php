@@ -236,6 +236,13 @@ class PostingRuleSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
+                'business_event_filter' => 'loss_writeoff_net_transfer',
+                'debit_account_id'  => $acc73015,
+                'credit_account_id' => $acc16605PS,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
                 'business_event_filter' => 'loss_writeoff_principal',
                 'debit_account_id'  => $acc86000,
                 'credit_account_id' => $acc16605PS,

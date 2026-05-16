@@ -536,7 +536,48 @@ class ContractControllerNew extends Controller
                     ->where('credit_account_id', $acc16201NI)->sum('amount_amd');
                 $net16201NI = $debit16201NI - $credit16201NI;
 
-                if ($net16200 > 0) {
+                // ── Step 1: Net balance transfer ─────────────────────────────
+                // Dr: Net Balance of (16200 + 16200NV + 16201NI) / Cr: 16605PS
+                $totalNet = round($net16200 + $net16200NV + $net16201NI, 2);
+                if ($totalNet != 0) {
+                    $ruleStep1 = PostingRule::where('business_event_filter', 'loss_writeoff_net_transfer')->firstOrFail();
+                    $nextDocNum = Transaction::getNextDocumentNumber();
+                    $step1Doc = DocumentJournal::create([
+                        'date'              => $contract->date,
+                        'document_number'   => $nextDocNum,
+                        'document_type'     => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
+                        'amount_amd'        => $totalNet,
+                        'debit_partner_id'  => $clientId,
+                        'credit_partner_id' => $clientId,
+                        'comment'           => "Loss write-off net balance transfer for contract #{$contract->id}",
+                        'debit_account_id'  => $ruleStep1->debit_account_id,
+                        'credit_account_id' => $acc16605PS,
+                        'user_id'           => auth()->id(),
+                        'journalable_type'  => DocumentJournal::class,
+                        'journalable_id'    => $journalDoc->id,
+                    ]);
+                    Transaction::create([
+                        'date'                 => $contract->date,
+                        'document_number'      => $nextDocNum,
+                        'document_type'        => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
+                        'debit_account_id'     => $ruleStep1->debit_account_id,
+                        'debit_partner_id'     => $clientId,
+                        'debit_currency_id'    => 1,
+                        'credit_account_id'    => $acc16605PS,
+                        'credit_currency_id'   => 1,
+                        'credit_partner_id'    => $clientId,
+                        'amount_amd'           => $totalNet,
+                        'comment'              => "Loss write-off net balance transfer for contract #{$contract->id}",
+                        'user_id'              => auth()->id(),
+                        'is_system'            => true,
+                        'disbursement_date'    => $contract->date->toDateString(),
+                        'transactionable_type' => DocumentJournal::class,
+                        'transactionable_id'   => $step1Doc->id,
+                    ]);
+                }
+
+                // ── Step 2: Individual account transfers ─────────────────────
+                if ($net16200 != 0) {
                     $nextDocNum = Transaction::getNextDocumentNumber();
                     $lossEff16200Doc = DocumentJournal::create([
                         'date'              => $contract->date,
@@ -572,7 +613,7 @@ class ContractControllerNew extends Controller
                     ]);
                 }
 
-                if ($net16200NV > 0) {
+                if ($net16200NV != 0) {
                     $nextDocNum = Transaction::getNextDocumentNumber();
                     $lossNVDoc = DocumentJournal::create([
                         'date'              => $contract->date,
@@ -609,11 +650,8 @@ class ContractControllerNew extends Controller
                 }
 
                 $amount86000 = $net16200 + $net16200NV;
-                if ($amount86000 > 0) {
-                    $rule86000 = PostingRule::where('business_event_filter', 'loss_writeoff_principal')->first();
-                    if (!$rule86000) {
-                        throw new \RuntimeException('Posting rule for loss_writeoff_principal not found');
-                    }
+                if ($amount86000 != 0) {
+                    $rule86000 = PostingRule::where('business_event_filter', 'loss_writeoff_principal')->firstOrFail();
                     $nextDocNum = Transaction::getNextDocumentNumber();
                     $loss86000Doc = DocumentJournal::create([
                         'date'              => $contract->date,
@@ -649,7 +687,7 @@ class ContractControllerNew extends Controller
                     ]);
                 }
 
-                if ($net16201NI > 0) {
+                if ($net16201NI != 0) {
                     $nextDocNum = Transaction::getNextDocumentNumber();
                     $lossNIDoc = DocumentJournal::create([
                         'date'              => $contract->date,
@@ -684,10 +722,7 @@ class ContractControllerNew extends Controller
                         'transactionable_id'   => $lossNIDoc->id,
                     ]);
 
-                    $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->first();
-                    if (!$rule86001) {
-                        throw new \RuntimeException('Posting rule for loss_writeoff_interest not found');
-                    }
+                    $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->firstOrFail();
                     $nextDocNum = Transaction::getNextDocumentNumber();
                     $loss86001Doc = DocumentJournal::create([
                         'date'              => $contract->date,

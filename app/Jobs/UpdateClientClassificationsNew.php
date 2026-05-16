@@ -334,6 +334,46 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     ->sum('amount_amd');
                                 $net16201NI = $debit16201NI - $credit16201NI;
 
+                                // ── Step 1: Net balance transfer ──────────────────────
+                                // Dr: Net Balance of (16200 + 16200NV + 16201NI) / Cr: 16605PS
+                                $totalNet = round($net16200 + $net16200NV + $net16201NI, 2);
+                                if ($totalNet != 0) {
+                                    $ruleStep1 = PostingRule::where('business_event_filter', 'loss_writeoff_net_transfer')->firstOrFail();
+                                    $nextDocNum = Transaction::getNextDocumentNumber();
+                                    $step1Doc = DocumentJournal::create([
+                                        'date'             => now()->toDateString(),
+                                        'document_number'  => $nextDocNum,
+                                        'document_type'    => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
+                                        'amount_amd'       => $totalNet,
+                                        'debit_partner_id' => $clientId,
+                                        'credit_partner_id'=> $clientId,
+                                        'comment'          => "Loss write-off net balance transfer for contract #{$contract->id}",
+                                        'debit_account_id' => $ruleStep1->debit_account_id,
+                                        'credit_account_id'=> $acc16605PS,
+                                        'user_id'          => auth()->check() ? auth()->id() : 1,
+                                        'journalable_type' => DocumentJournal::class,
+                                        'journalable_id'   => $journal->id,
+                                    ]);
+                                    Transaction::create([
+                                        'date'                 => now()->toDateString(),
+                                        'document_number'      => $nextDocNum,
+                                        'document_type'        => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
+                                        'debit_account_id'     => $ruleStep1->debit_account_id,
+                                        'debit_partner_id'     => $clientId,
+                                        'debit_currency_id'    => 1,
+                                        'credit_account_id'    => $acc16605PS,
+                                        'credit_currency_id'   => 1,
+                                        'credit_partner_id'    => $clientId,
+                                        'amount_amd'           => $totalNet,
+                                        'comment'              => "Loss write-off net balance transfer for contract #{$contract->id}",
+                                        'user_id'              => auth()->check() ? auth()->id() : 1,
+                                        'is_system'            => true,
+                                        'disbursement_date'    => now()->toDateString(),
+                                        'transactionable_type' => DocumentJournal::class,
+                                        'transactionable_id'   => $step1Doc->id,
+                                    ]);
+                                }
+
                                 // Entry 1: Dr 16605PS / Cr 16200
                                 if ($net16200 != 0) {
                                     $nextDocNum = Transaction::getNextDocumentNumber();

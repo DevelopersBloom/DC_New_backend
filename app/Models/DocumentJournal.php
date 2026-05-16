@@ -45,6 +45,7 @@ class DocumentJournal extends Model
     const OFF_BALANCE_OUTGOING  = 'Արտաբալանսային Ելքային';
     const RECOVERY_PRINCIPAL    = 'Հիմնական գումարի վերականգնում';
     const RECOVERY_INTEREST     = 'Տոկոսի վերականգնում';
+    const LOSS_WRITEOFF_NET_TRANSFER = 'Վարկի դուրս գրում - ընդհանուր գումարի տեղաշարժ';
     protected $fillable = [
         'date',
         'operation_number',
