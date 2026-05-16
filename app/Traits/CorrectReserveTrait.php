@@ -125,8 +125,8 @@ trait CorrectReserveTrait
 
                 $rule = $diffPS > 0 ? PostingRule::where('business_event_filter', 'provide_special_amount_change')->first()
                     : PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
-//-100,-90
-//                , 16605PS,63015
+//              -100,-90
+//                ,16605PS,63015
 //                73015, $acc16605PS,
 
                 $debit = $rule->credit_account_id;

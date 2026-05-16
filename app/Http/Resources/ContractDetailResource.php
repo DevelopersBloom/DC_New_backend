@@ -61,6 +61,7 @@ class ContractDetailResource extends JsonResource
                 'days_provided' => $this->days_provided,
                 'remaining_repayment_days' => $this->remaining_repayment_days,
                 'deadline' => Carbon::parse($this->deadline)->format('d-m-Y'),
+                'closed_at' => $this->closed_at ? Carbon::parse($this->closed_at)->format('d-m-Y') : null,
                 'daily_interest_sum' => $this->daily_interest_sum,
                 'daily_effective_sum' => $this->daily_effective_sum,
                 'interest_amount' => $this->interest_amount,
