@@ -97,10 +97,10 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
                 ->oldest('to_date')
                 ->first();
             $contractData['overdue_date_principal'] = $firstOverduePrincipal
-                ? \Carbon\Carbon::parse($firstOverduePrincipal->date)->format('d-m-Y')
+                ? \Carbon\Carbon::parse($firstOverduePrincipal->to_date)->format('d-m-Y')
                 : '';
             $contractData['overdue_date_interest'] = $firstOverdueInterest
-                ? \Carbon\Carbon::parse($firstOverdueInterest->date)->format('d-m-Y')
+                ? \Carbon\Carbon::parse($firstOverdueInterest->to_date)->format('d-m-Y')
                 : '';
 //            $contractData['written_off_amount'] = $contract->written_off_amount ?? 0;
 
