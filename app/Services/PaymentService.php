@@ -46,7 +46,10 @@ class PaymentService
             $payed_penalty = $penaltyResult['penalty'];
             $amount = $penaltyResult['amount'];
             if ($payed_penalty > 0) {
-                if ($cash) {
+                $classification = $contract->client->classification->name ?? '';
+                if ($classification === 'loss') {
+                    $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount_loss')->first();
+                } elseif ($cash) {
                     $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount_cash')->first();
                 } else {
                     $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount')->first();

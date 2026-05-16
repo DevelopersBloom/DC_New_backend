@@ -194,13 +194,16 @@ class PaymentControllerNew extends Controller
                 );
             }
 
-            // ---- Off Balance ----
+            // ---- Off Balance + Recovery (loss only) ----
             if ($class === 'loss') {
-                $rules = PostingRule::whereIn('business_event_filter', [
+                $lossRules = PostingRule::whereIn('business_event_filter', [
                     'off_balance_interest',
-                    'off_balance_principal'
+                    'off_balance_principal',
+                    'recovery_principal',
+                    'recovery_interest',
                 ])->get()->keyBy('business_event_filter');
 
+                // Off-balance outgoing for interest
                 if ($interest > 0) {
                     $this->postEntry(
                         $date,
@@ -208,13 +211,28 @@ class PaymentControllerNew extends Controller
                         DocumentJournal::OFF_BALANCE_OUTGOING,
                         $interest,
                         'interest_amount_payment_off_balance',
-                        $rules['off_balance_interest']->debit_account_id,
-                        $rules['off_balance_interest']->credit_account_id,
+                        $lossRules['off_balance_interest']->debit_account_id,
+                        $lossRules['off_balance_interest']->credit_account_id,
                         $deal->id,
                         $journalInterest->id
                     );
+                    // Write-off reversal: Dr 16605PS / Cr 86001 (interest recovery)
+
+                    $this->postEntry(
+                        $date,
+                        $docNum,
+                        DocumentJournal::RECOVERY_INTEREST,
+                        $interest,
+                        'interest_recovery',
+                        $lossRules['recovery_interest']->debit_account_id,
+                        $lossRules['recovery_interest']->credit_account_id,
+                        $deal->id,
+                        $journal->id,
+                        $clientId
+                    );
                 }
 
+                // Off-balance outgoing for principal
                 if ($principal > 0) {
                     $this->postEntry(
                         $date,
@@ -222,10 +240,23 @@ class PaymentControllerNew extends Controller
                         DocumentJournal::OFF_BALANCE_OUTGOING,
                         $principal,
                         'mother_amount_payment_off_balance',
-                        $rules['off_balance_principal']->debit_account_id,
-                        $rules['off_balance_principal']->credit_account_id,
+                        $lossRules['off_balance_principal']->debit_account_id,
+                        $lossRules['off_balance_principal']->credit_account_id,
                         $deal->id,
                         $journalPrincipal->id
+                    );
+                    // Write-off reversal: Dr 16605PS / Cr 86000 (principal recovery)
+                    $this->postEntry(
+                        $date,
+                        $docNum,
+                        DocumentJournal::RECOVERY_PRINCIPAL,
+                        $principal,
+                        'principal_recovery',
+                        $lossRules['recovery_principal']->debit_account_id,
+                        $lossRules['recovery_principal']->credit_account_id,
+                        $deal->id,
+                        $journal->id,
+                        $clientId
                     );
                 }
             }

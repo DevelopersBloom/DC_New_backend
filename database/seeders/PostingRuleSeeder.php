@@ -249,6 +249,27 @@ class PostingRuleSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'business_event_filter' => 'pay_penalty_amount_loss',
+                'debit_account_id'  => $acc10000,
+                'credit_account_id' => $acc60120,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'recovery_principal',
+                'debit_account_id'  => $acc16605PS,
+                'credit_account_id' => $acc86000,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'recovery_interest',
+                'debit_account_id'  => $acc16605PS,
+                'credit_account_id' => $acc86001,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
     }

@@ -41,8 +41,10 @@ class DocumentJournal extends Model
     const LOSS_RESERVE_AMOUNT = 'Վարկերի դուրս գրում-անվանական արժեքով';
     const LOSS_RESERVE_EFFECTIVE = 'Վարկերի դուրս գրում-արդյունավետ արժեքով';
     const LOSS_RESERVE = 'Վարկի դուրս գրում';
-    const OFF_BALANCE_INCOMING = 'Արտաբալան Մուտքային';
-    const OFF_BALANCE_OUTGOING = 'Արտաբալանսային Ելքային';
+    const OFF_BALANCE_INCOMING  = 'Արտաբալան Մուտքային';
+    const OFF_BALANCE_OUTGOING  = 'Արտաբալանսային Ելքային';
+    const RECOVERY_PRINCIPAL    = 'Հիմնական գումարի վերականգնում';
+    const RECOVERY_INTEREST     = 'Տոկոսի վերականգնում';
     protected $fillable = [
         'date',
         'operation_number',
