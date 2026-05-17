@@ -28,6 +28,7 @@ use App\Services\ContractCalculationService;
 use App\Services\ContractService;
 use App\Services\EffectiveRateService;
 use App\Services\FileService;
+use App\Traits\CalculatesAccountBalancesTrait;
 use App\Traits\ContractTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,7 +40,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ContractControllerNew extends Controller
 {
-    use ContractTrait;
+    use ContractTrait, CalculatesAccountBalancesTrait;
     protected ClientService $clientService;
     protected EffectiveRateService $effectiveRateService;
     protected ContractService $contractService;
@@ -539,19 +540,23 @@ class ContractControllerNew extends Controller
                 // ── Step 1: Net balance transfer ─────────────────────────────
                 // Dr: Net Balance of (16200 + 16200NV + 16201NI) / Cr: 16605PS
                 $totalNet = round($net16200 + $net16200NV + $net16201NI, 2);
-                if ($totalNet != 0) {
+                $currentPS = $this->getClientReserveBalance($clientId, $acc16605PS);
+                $diff = round($totalNet + $currentPS, 2);
+                if (abs($diff) >= 0.01) {
                     $ruleStep1 = PostingRule::where('business_event_filter', 'loss_writeoff_net_transfer')->firstOrFail();
                     $nextDocNum = Transaction::getNextDocumentNumber();
+                    $debitAcc  = $diff > 0 ? $ruleStep1->debit_account_id : $acc16605PS;
+                    $creditAcc = $diff > 0 ? $acc16605PS : $ruleStep1->debit_account_id;
                     $step1Doc = DocumentJournal::create([
                         'date'              => $contract->date,
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
-                        'amount_amd'        => $totalNet,
+                        'amount_amd'        => abs($diff),
                         'debit_partner_id'  => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment'           => "Loss write-off net balance transfer for contract #{$contract->id}",
-                        'debit_account_id'  => $ruleStep1->debit_account_id,
-                        'credit_account_id' => $acc16605PS,
+                        'debit_account_id'  => $debitAcc,
+                        'credit_account_id' => $creditAcc,
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
@@ -560,13 +565,13 @@ class ContractControllerNew extends Controller
                         'date'                 => $contract->date,
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
-                        'debit_account_id'     => $ruleStep1->debit_account_id,
+                        'debit_account_id'     => $debitAcc,
                         'debit_partner_id'     => $clientId,
                         'debit_currency_id'    => 1,
-                        'credit_account_id'    => $acc16605PS,
+                        'credit_account_id'    => $creditAcc,
                         'credit_currency_id'   => 1,
                         'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $totalNet,
+                        'amount_amd'           => abs($diff),
                         'comment'              => "Loss write-off net balance transfer for contract #{$contract->id}",
                         'user_id'              => auth()->id(),
                         'is_system'            => true,
@@ -577,18 +582,20 @@ class ContractControllerNew extends Controller
                 }
 
                 // ── Step 2: Individual account transfers ─────────────────────
-                if ($net16200 != 0) {
+                if (abs($net16200) >= 0.01) {
                     $nextDocNum = Transaction::getNextDocumentNumber();
+                    $dAcc16200  = $net16200 > 0 ? $acc16605PS : $acc16200;
+                    $cAcc16200  = $net16200 > 0 ? $acc16200   : $acc16605PS;
                     $lossEff16200Doc = DocumentJournal::create([
                         'date'              => $contract->date,
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
-                        'amount_amd'        => $net16200,
+                        'amount_amd'        => abs($net16200),
                         'debit_partner_id'  => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment'           => "Write-off 16200 for contract #{$contract->id} - loss client disbursement",
-                        'debit_account_id'  => $acc16605PS,
-                        'credit_account_id' => $acc16200,
+                        'debit_account_id'  => $dAcc16200,
+                        'credit_account_id' => $cAcc16200,
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
@@ -597,13 +604,13 @@ class ContractControllerNew extends Controller
                         'date'                 => $contract->date,
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
-                        'debit_account_id'     => $acc16605PS,
+                        'debit_account_id'     => $dAcc16200,
                         'debit_partner_id'     => $clientId,
                         'debit_currency_id'    => 1,
-                        'credit_account_id'    => $acc16200,
+                        'credit_account_id'    => $cAcc16200,
                         'credit_currency_id'   => 1,
                         'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $net16200,
+                        'amount_amd'           => abs($net16200),
                         'comment'              => "Write-off 16200 for contract #{$contract->id} - loss client disbursement",
                         'user_id'              => auth()->id(),
                         'is_system'            => true,
@@ -613,18 +620,20 @@ class ContractControllerNew extends Controller
                     ]);
                 }
 
-                if ($net16200NV != 0) {
+                if (abs($net16200NV) >= 0.01) {
                     $nextDocNum = Transaction::getNextDocumentNumber();
+                    $dAcc16200NV = $net16200NV > 0 ? $acc16605PS : $acc16200NV;
+                    $cAcc16200NV = $net16200NV > 0 ? $acc16200NV : $acc16605PS;
                     $lossNVDoc = DocumentJournal::create([
                         'date'              => $contract->date,
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'amount_amd'        => $net16200NV,
+                        'amount_amd'        => abs($net16200NV),
                         'debit_partner_id'  => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment'           => "Write-off 16200NV for contract #{$contract->id} - loss client disbursement",
-                        'debit_account_id'  => $acc16605PS,
-                        'credit_account_id' => $acc16200NV,
+                        'debit_account_id'  => $dAcc16200NV,
+                        'credit_account_id' => $cAcc16200NV,
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
@@ -633,13 +642,13 @@ class ContractControllerNew extends Controller
                         'date'                 => $contract->date,
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'debit_account_id'     => $acc16605PS,
+                        'debit_account_id'     => $dAcc16200NV,
                         'debit_partner_id'     => $clientId,
                         'debit_currency_id'    => 1,
-                        'credit_account_id'    => $acc16200NV,
+                        'credit_account_id'    => $cAcc16200NV,
                         'credit_currency_id'   => 1,
                         'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $net16200NV,
+                        'amount_amd'           => abs($net16200NV),
                         'comment'              => "Write-off 16200NV for contract #{$contract->id} - loss client disbursement",
                         'user_id'              => auth()->id(),
                         'is_system'            => true,
@@ -650,19 +659,21 @@ class ContractControllerNew extends Controller
                 }
 
                 $amount86000 = $net16200 + $net16200NV;
-                if ($amount86000 != 0) {
+                if (abs($amount86000) >= 0.01) {
                     $rule86000 = PostingRule::where('business_event_filter', 'loss_writeoff_principal')->firstOrFail();
                     $nextDocNum = Transaction::getNextDocumentNumber();
+                    $dAcc86000 = $amount86000 > 0 ? $rule86000->debit_account_id : $rule86000->credit_account_id;
+                    $cAcc86000 = $amount86000 > 0 ? $rule86000->credit_account_id : $rule86000->debit_account_id;
                     $loss86000Doc = DocumentJournal::create([
                         'date'              => $contract->date,
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'amount_amd'        => $amount86000,
+                        'amount_amd'        => abs($amount86000),
                         'debit_partner_id'  => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment'           => "Loss write-off expense 86000 for contract #{$contract->id} - loss client disbursement",
-                        'debit_account_id'  => $acc86000,
-                        'credit_account_id' => $rule86000->credit_account_id,
+                        'debit_account_id'  => $dAcc86000,
+                        'credit_account_id' => $cAcc86000,
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
@@ -671,13 +682,13 @@ class ContractControllerNew extends Controller
                         'date'                 => $contract->date,
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
-                        'debit_account_id'     => $acc86000,
+                        'debit_account_id'     => $dAcc86000,
                         'debit_partner_id'     => $clientId,
                         'debit_currency_id'    => 1,
-                        'credit_account_id'    => $rule86000->credit_account_id,
+                        'credit_account_id'    => $cAcc86000,
                         'credit_currency_id'   => 1,
                         'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $amount86000,
+                        'amount_amd'           => abs($amount86000),
                         'comment'              => "Loss write-off expense 86000 for contract #{$contract->id} - loss client disbursement",
                         'user_id'              => auth()->id(),
                         'is_system'            => true,
@@ -687,18 +698,20 @@ class ContractControllerNew extends Controller
                     ]);
                 }
 
-                if ($net16201NI != 0) {
+                if (abs($net16201NI) >= 0.01) {
                     $nextDocNum = Transaction::getNextDocumentNumber();
+                    $dAcc16201NI = $net16201NI > 0 ? $acc16605PS : $acc16201NI;
+                    $cAcc16201NI = $net16201NI > 0 ? $acc16201NI : $acc16605PS;
                     $lossNIDoc = DocumentJournal::create([
                         'date'              => $contract->date,
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_RESERVE,
-                        'amount_amd'        => $net16201NI,
+                        'amount_amd'        => abs($net16201NI),
                         'debit_partner_id'  => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment'           => "Write-off 16201NI for contract #{$contract->id} - loss client disbursement",
-                        'debit_account_id'  => $acc16605PS,
-                        'credit_account_id' => $acc16201NI,
+                        'debit_account_id'  => $dAcc16201NI,
+                        'credit_account_id' => $cAcc16201NI,
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
@@ -707,13 +720,13 @@ class ContractControllerNew extends Controller
                         'date'                 => $contract->date,
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_RESERVE,
-                        'debit_account_id'     => $acc16605PS,
+                        'debit_account_id'     => $dAcc16201NI,
                         'debit_partner_id'     => $clientId,
                         'debit_currency_id'    => 1,
-                        'credit_account_id'    => $acc16201NI,
+                        'credit_account_id'    => $cAcc16201NI,
                         'credit_currency_id'   => 1,
                         'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $net16201NI,
+                        'amount_amd'           => abs($net16201NI),
                         'comment'              => "Write-off 16201NI for contract #{$contract->id} - loss client disbursement",
                         'user_id'              => auth()->id(),
                         'is_system'            => true,
@@ -724,16 +737,18 @@ class ContractControllerNew extends Controller
 
                     $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->firstOrFail();
                     $nextDocNum = Transaction::getNextDocumentNumber();
+                    $dAcc86001 = $net16201NI > 0 ? $rule86001->debit_account_id : $rule86001->credit_account_id;
+                    $cAcc86001 = $net16201NI > 0 ? $rule86001->credit_account_id : $rule86001->debit_account_id;
                     $loss86001Doc = DocumentJournal::create([
                         'date'              => $contract->date,
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_RESERVE,
-                        'amount_amd'        => $net16201NI,
+                        'amount_amd'        => abs($net16201NI),
                         'debit_partner_id'  => $clientId,
                         'credit_partner_id' => $clientId,
                         'comment'           => "Loss write-off expense 86001 for contract #{$contract->id} - loss client disbursement",
-                        'debit_account_id'  => $acc86001,
-                        'credit_account_id' => $rule86001->credit_account_id,
+                        'debit_account_id'  => $dAcc86001,
+                        'credit_account_id' => $cAcc86001,
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
@@ -742,13 +757,13 @@ class ContractControllerNew extends Controller
                         'date'                 => $contract->date,
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_RESERVE,
-                        'debit_account_id'     => $acc86001,
+                        'debit_account_id'     => $dAcc86001,
                         'debit_partner_id'     => $clientId,
                         'debit_currency_id'    => 1,
-                        'credit_account_id'    => $rule86001->credit_account_id,
+                        'credit_account_id'    => $cAcc86001,
                         'credit_currency_id'   => 1,
                         'credit_partner_id'    => $clientId,
-                        'amount_amd'           => $net16201NI,
+                        'amount_amd'           => abs($net16201NI),
                         'comment'              => "Loss write-off expense 86001 for contract #{$contract->id} - loss client disbursement",
                         'user_id'              => auth()->id(),
                         'is_system'            => true,

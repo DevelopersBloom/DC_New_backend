@@ -245,14 +245,14 @@ class PostingRuleSeeder extends Seeder
             [
                 'business_event_filter' => 'loss_writeoff_principal',
                 'debit_account_id'  => $acc86000,
-                'credit_account_id' => $acc16605PS,
+                'credit_account_id' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'business_event_filter' => 'loss_writeoff_interest',
                 'debit_account_id'  => $acc86001,
-                'credit_account_id' => $acc16605PS,
+                'credit_account_id' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -265,14 +265,14 @@ class PostingRuleSeeder extends Seeder
             ],
             [
                 'business_event_filter' => 'recovery_principal',
-                'debit_account_id'  => $acc16605PS,
+                'debit_account_id'  => null,
                 'credit_account_id' => $acc86000,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'business_event_filter' => 'recovery_interest',
-                'debit_account_id'  => $acc16605PS,
+                'debit_account_id'  => null,
                 'credit_account_id' => $acc86001,
                 'created_at' => now(),
                 'updated_at' => now(),
