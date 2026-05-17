@@ -11,10 +11,12 @@ class PostingRuleController extends Controller
 {
     public function index(): JsonResponse
     {
-        $rules = PostingRule::select('id','business_event_filter','debit_account_id','credit_account_id')
+        $rules = PostingRule::select('id','business_event_filter','debit_account_id','credit_account_id','debit_partner_id','credit_partner_id')
             ->with([
                 'debitAccount:id,code,name',
                 'creditAccount:id,code,name',
+                'debitPartner:id,name,surname',
+                'creditPartner:id,name,surname',
             ])
             ->get();
         return response()->json($rules);
@@ -26,6 +28,8 @@ class PostingRuleController extends Controller
             'business_event_filter' => 'required',
             'debit_account_id' => 'required|exists:chart_of_accounts,id',
             'credit_account_id' => 'required|exists:chart_of_accounts,id',
+            'debit_partner_id' => 'nullable|exists:clients,id',
+            'credit_partner_id' => 'nullable|exists:clients,id',
         ]);
 
         $rule = PostingRule::create($data);
@@ -34,7 +38,7 @@ class PostingRuleController extends Controller
 
     public function show(PostingRule $postingRule): JsonResponse
     {
-        $postingRule->load(['debitAccount', 'creditAccount']);
+        $postingRule->load(['debitAccount', 'creditAccount', 'debitPartner', 'creditPartner']);
 
         return response()->json(new PostingRuleResource($postingRule));
     }
@@ -46,6 +50,8 @@ class PostingRuleController extends Controller
             'business_event_filter' => 'sometimes',
             'debit_account_id' => 'sometimes|exists:chart_of_accounts,id',
             'credit_account_id' => 'sometimes|exists:chart_of_accounts,id',
+            'debit_partner_id' => 'nullable|exists:clients,id',
+            'credit_partner_id' => 'nullable|exists:clients,id',
         ]);
 
         $postingRule->update($data);
