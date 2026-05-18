@@ -6,6 +6,7 @@ use App\Models\DocumentJournal;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use App\Models\Contract;
@@ -18,6 +19,8 @@ class AcraExport
     protected $from;
     protected $to;
     protected $customerCode = 'ACC';
+    private const DATE_FORMAT = 'dd/mm/yyyy';
+    private const INTEGER_FORMAT = '0';
 
     public function __construct($contracts, $allClients, $from, $to)
     {
@@ -85,6 +88,28 @@ class AcraExport
         } catch (\Exception $e) {
             return '';
         }
+    }
+
+    private function setDateCellValue($sheet, string $coordinate, $date): void
+    {
+        if (!$date) {
+            $sheet->setCellValue($coordinate, '');
+            return;
+        }
+
+        try {
+            $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
+            $sheet->setCellValue($coordinate, ExcelDate::PHPToExcel($carbon));
+            $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode(self::DATE_FORMAT);
+        } catch (\Exception $e) {
+            $sheet->setCellValue($coordinate, '');
+        }
+    }
+
+    private function setIntegerCellValue($sheet, string $coordinate, $value): void
+    {
+        $sheet->setCellValue($coordinate, (int) round((float) $value));
+        $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode(self::INTEGER_FORMAT);
     }
 
     private function fillPackageInfo($sheet)
@@ -158,8 +183,8 @@ class AcraExport
             $sheet->setCellValue('D' . $row, ($client->type === 'legal' ? $client->tax_number : $client->passport_series));
 
             if ($client->type !== 'legal') {
-                $sheet->setCellValue('E' . $row, $this->formatDate($client->date_of_birth));
-                $sheet->setCellValue('F' . $row, $this->formatDate($client->passport_validity));
+                $this->setDateCellValue($sheet, 'E' . $row, $client->date_of_birth);
+                $this->setDateCellValue($sheet, 'F' . $row, $client->passport_validity);
                 $sheet->setCellValue('G' . $row, $client->passport_issued ?? '');
                 $sheet->setCellValue('H' . $row, $client->social_card_number);
             }
@@ -210,8 +235,12 @@ class AcraExport
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
 
-            $sheet->setCellValue('C' . $row, $this->formatDate($contract->date));
-            $sheet->setCellValue('D' . $row, $contract->deadline ? $this->formatDate($contract->deadline) : '01.01.2999');
+            $this->setDateCellValue($sheet, 'C' . $row, $contract->date);
+            $this->setDateCellValue(
+                $sheet,
+                'D' . $row,
+                $contract->deadline ? $contract->deadline : '2999-01-01'
+            );
 
             $lastPaymentDate = null;
             $totalPaid = 0;
@@ -255,7 +284,7 @@ class AcraExport
             } elseif ($contract->status === 'completed' || $contract->status === 'executed') {
                 $lastPaymentDate = $contract->closed_at;
             }
-            $sheet->setCellValue('E' . $row, $this->formatDate($lastPaymentDate));
+            $this->setDateCellValue($sheet, 'E' . $row, $lastPaymentDate);
 //            $categoryName = $contract->category->name ?? '';
 //
 //            $creditType = match ($categoryName) {
@@ -269,9 +298,9 @@ class AcraExport
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
 
-            $sheet->setCellValue('I' . $row, $totalPaid);
+            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid);
 
-            $sheet->setCellValue('J' . $row, max(0, $contract->provided_amount));
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount));
 
             $overdueMother = 0;
             $overdueInterest = 0;
@@ -296,8 +325,8 @@ class AcraExport
                     ->sum('amount');
             }
 
-            $sheet->setCellValue('K' . $row, $overdueMother);
-            $sheet->setCellValue('L' . $row, $overdueInterest);
+            $this->setIntegerCellValue($sheet, 'K' . $row, $overdueMother);
+            $this->setIntegerCellValue($sheet, 'L' . $row, $overdueInterest);
 
             //  M , W
             $firstOverdue = $contract->payments()
@@ -308,7 +337,7 @@ class AcraExport
 
             if ($firstOverdue && ($overdueMother > 0 || $overdueInterest > 0)) {
                 $overdueDate = Carbon::parse($firstOverdue->date)->addDay();
-                $sheet->setCellValue('M' . $row, $this->formatDate($overdueDate));
+                $this->setDateCellValue($sheet, 'M' . $row, $overdueDate);
                 $days = Carbon::parse($firstOverdue->date)->diffInDays(Carbon::parse($this->from));
                 $sheet->setCellValue('W' . $row, $days);
             } else {
@@ -338,7 +367,7 @@ class AcraExport
             }
 //            $sheet->setCellValue('P' . $row, ($contract->status === 'completed' ? 'մարված' : 'գործող'));
             $sheet->setCellValue('Q' . $row, $contract->interest_rate * 365);
-            $sheet->setCellValue('U' . $row, $this->formatDate($contract->created_at));
+            $this->setDateCellValue($sheet, 'U' . $row, $contract->created_at);
 
             $row++;
         }
