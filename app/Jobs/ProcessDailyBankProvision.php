@@ -28,8 +28,7 @@ class ProcessDailyBankProvision implements ShouldQueue
     public function __construct(float $provisionPercent = 0.01, ?string $forDate = null)
     {
         $this->provisionPercent = $provisionPercent;
-        $this->forDate = $forDte;
-        //?? Carbon::today()->format('Y-m-d');
+        $this->forDate = $forDate ?? Carbon::today()->format('Y-m-d');
     }
 
     public function handle(): void
@@ -39,7 +38,7 @@ class ProcessDailyBankProvision implements ShouldQueue
 
         Log::info("Bank Provision started for {$toDay}");
 
-        $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
+        $bankAccountIds = ChartOfAccount::where('code', 'like', '99999910%')->pluck('id');
         if ($bankAccountIds->isEmpty()) {
             Log::error("Bank accounts 10210* not found.");
             return;
