@@ -145,7 +145,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/transactions/partner-balances/export', [ChartOfAccountController::class, 'exportPartnerAccountBalances'])->middleware('can:export_partner_balances');
 
 
-        Route::apiResource('posting-rules', PostingRuleController::class);
+        Route::apiResource('posting-rules', PostingRuleController::class)->except(['update']);
+        Route::put('posting-rules', [PostingRuleController::class, 'update']);
         Route::apiResource('business-events', BusinessEventController::class);
         Route::apiResource('reminder-orders', ReminderOrderController::class);
         Route::apiResource('loan-ndms', LoanNdmController::class);
