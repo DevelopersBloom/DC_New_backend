@@ -732,7 +732,7 @@ class FileController extends Controller
             'date' => isset($order->date) ? $this->formatArmenianDate($order->date) : null,
             'receiver' => $order->receiver ?? null,
             'contract_id' => $contract?->num,
-            'num' => $contract?->num ?? null,
+            'num' => $order->num ?? $contract?->num ?? null,
             'client' => $client ? $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '') : null,
             'cl_dob' => $client?->date_of_birth
                 ? Carbon::parse($client->date_of_birth)->format('d.m.Y')
