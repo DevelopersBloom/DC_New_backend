@@ -375,14 +375,14 @@ DealController extends Controller
         $name = $request->name;
         $amount = $request->amount;
         $receiver = $request->receiver;
+        $client_id = $request->client_id;
         $cash = $request->cash;
-        $save = $request->save_template;
         $type = 'cost_out';
         $purpose = $request->purpose;
 
         $filter_type = Order::EXPENSE_FILTER;
-        $order_id = $this->getOrder($request->cash, $type);
-        $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type);
+        $order_id = $this->getOrder($cash, $type);
+        $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type,$client_id);
 
         return response()->json([
             'success' => 'success',
@@ -398,14 +398,14 @@ DealController extends Controller
         return $order->id;
     }
 
-    private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type)
+    private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type, $client_id = null)
     {
-        $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver,$cash);
+        $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver,$cash,$client_id);
         $this->createDeal($amount, null, null, null, null,$type,null,null,$order->id, $cash,$receiver,$purpose,$filter_type);
         return $order->id;
     }
 
-    private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver,$cash)
+    private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver,$cash, $client_id = null)
     {
         return Order::create([
             'type' => $type,
@@ -416,6 +416,7 @@ DealController extends Controller
             'date' => Carbon::now()->format('Y-m-d'),
             'purpose' => $purpose,
             'receiver' => $receiver,
+            'client_id' => $client_id,
             'cash' => $cash,
             'user_id' => auth()->id(),
         ]);

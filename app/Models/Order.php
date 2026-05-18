@@ -34,6 +34,7 @@ class Order extends Model
         'client_name',
         'purpose',
         'receiver',
+        'client_id',
         'cashbox',
         'num',
         'cash',
@@ -48,5 +49,10 @@ class Order extends Model
     public function user()
     {
         return $this->belongsTo(\App\Models\User::class);
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(\App\Models\Client::class);
     }
 }
