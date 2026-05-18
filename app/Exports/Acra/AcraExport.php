@@ -338,7 +338,7 @@ class AcraExport
             if ($firstOverdue && ($overdueMother > 0 || $overdueInterest > 0)) {
                 $overdueDate = Carbon::parse($firstOverdue->date)->addDay();
                 $this->setDateCellValue($sheet, 'M' . $row, $overdueDate);
-                $days = Carbon::parse($firstOverdue->date)->diffInDays(Carbon::parse($this->from));
+                $days = Carbon::parse($firstOverdue->date)->diffInDays(Carbon::parse($this->to));
                 $sheet->setCellValue('W' . $row, $days);
             } else {
                 $sheet->setCellValue('W' . $row, 0);
