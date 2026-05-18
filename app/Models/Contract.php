@@ -19,6 +19,44 @@ class Contract extends Model
     use SoftDeletes;
     use ContractTrait;
 
+
+    public array $historyContext = [];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::updated(function (Contract $contract) {
+            $trackedFields = ['provided_amount', 'estimated_amount'];
+
+            foreach ($trackedFields as $field) {
+                $changes = $contract->getChanges();
+                if (!array_key_exists($field, $changes)) {
+                    continue;
+                }
+
+                $original = (float) $contract->getOriginal($field);
+                $new      = (float) $contract->$field;
+
+                if ($original == $new) {
+                    continue;
+                }
+
+                ContractAmountHistory::create([
+                    'contract_id' => $contract->id,
+                    'amount'      => abs($new - $original),
+                    'amount_type' => $field,
+                    'type'        => $new < $original ? 'out' : 'in',
+                    'date'        => $contract->historyContext['date'] ?? now()->toDateString(),
+                    'deal_id'     => $contract->historyContext['deal_id'] ?? null,
+                    'category_id' => $contract->category_id,
+                    'pawnshop_id' => $contract->historyContext['pawnshop_id']
+                                     ?? (auth()->user()->pawnshop_id ?? 1),
+                ]);
+            }
+        });
+    }
+
     const CONTRACT_OPENING = 'Պայմանագրի բացում';
     const LUMP_PAYMENT = 'Միանվագ վճար';
     const MOTHER_AMOUNT_PAYMENT = 'ՄԳ տրամադրում';

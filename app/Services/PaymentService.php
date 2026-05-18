@@ -33,6 +33,12 @@ class PaymentService
         $interest_amount = 0;
         $principal_amount = 0;
         $initial_amount = $amount;
+
+        $contract->historyContext = [
+            'deal_id'     => $deal_id,
+            'date'        => $date ?? now()->toDateString(),
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1,
+        ];
         $old_provided = $contract->provided_amount;
         $old_left = $contract->left;
         $old_collected = $contract->collected;
@@ -555,6 +561,12 @@ class PaymentService
         $now = $date ?? Carbon::now();
         $history = ['payment_changes' => []];
 
+        $contract->historyContext = [
+            'deal_id'     => $deal_id,
+            'date'        => $date ?? now()->toDateString(),
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1,
+        ];
+
         $payments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
             ->where('status', 'initial')
@@ -674,8 +686,6 @@ class PaymentService
             $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
             $contract->save();
         }
-
-        $this->recordContractHistory($contract, $partialAmount, $deal_id, $date);
         $this->handleAccountingForPartial($contract, $partialAmount, $date,$deal_id,$cash);
 
         if ($contract->payment_type == 'classic') {
@@ -845,19 +855,6 @@ class PaymentService
 
         return $history;
     }
-    protected function recordContractHistory($contract, $amount, $deal_id, $date = null)
-    {
-        ContractAmountHistory::create([
-            'contract_id' => $contract->id,
-            'amount' => $amount,
-            'amount_type' => 'provided_amount',
-            'type' => 'out',
-            'date' => $date ?? now()->toDateString(),
-            'deal_id' => $deal_id,
-            'category_id' => $contract->category_id,
-            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
-        ]);
-    }
 
 
     private function updateLastPayment($payment, $newMother, &$history) {
@@ -981,32 +978,29 @@ class PaymentService
             'updated_at' => now()->toDateTimeString()
         ];
 
-        ContractAmountHistory::create([
-            'contract_id' => $contract->id,
-            'amount' => $contract->provided_amount,
-            'amount_type' => 'provided_amount',
-            'type' => 'out',
-            'date' => $date ?? now()->toDateTimeString(),
-            'deal_id' => $deal_id,
-            'category_id' => $contract->category_id,
-            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
-        ]);
-        ContractAmountHistory::create([
-            'contract_id' => $contract->id,
-            'amount' => $contract->estimated_amount,
-            'amount_type' => 'estimated_amount',
-            'type' => 'out',
-            'date' => $date ?? now()->toDateTimeString(),
-            'deal_id' => $deal_id,
-            'category_id' => $contract->category_id,
-            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1
-        ]);
         $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash, $history, $deal_id,$date);
+
+        // estimated_amount does not become 0 on full payment, so record its 'out' event manually.
+        ContractAmountHistory::create([
+            'contract_id' => $contract->id,
+            'amount'      => $contract->estimated_amount,
+            'amount_type' => 'estimated_amount',
+            'type'        => 'out',
+            'date'        => $date ?? now()->toDateString(),
+            'deal_id'     => $deal_id,
+            'category_id' => $contract->category_id,
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1,
+        ]);
 
         $contract->status = 'completed';
         $contract->left = 0;
         $contract->collected += $interestAmount;
         $contract->provided_amount = 0;
+        $contract->historyContext = [
+            'deal_id'     => $deal_id,
+            'date'        => $date ?? now()->toDateString(),
+            'pawnshop_id' => auth()->user()->pawnshop_id ?? 1,
+        ];
         $contract->save();
 
         $nowDate = $date ?? now()->toDateString();
