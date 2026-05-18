@@ -42,18 +42,23 @@ class PostingRuleController extends Controller
     }
 
 
-    public function update(Request $request, PostingRule $postingRule): JsonResponse
+    public function update(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'business_event_filter' => 'sometimes|string',
-            'debit_account_id'      => 'nullable|exists:chart_of_accounts,id',
-            'credit_account_id'     => 'nullable|exists:chart_of_accounts,id',
-            'debit_partner'         => 'nullable|string|max:255',
-            'credit_partner'        => 'nullable|string|max:255',
+        $request->validate([
+            'rules'        => 'required|array',
+            'rules.*.id'   => 'required|exists:posting_rules,id',
         ]);
 
-        $postingRule->update($data);
-        return response()->json($postingRule);
+        foreach ($request->rules as $item) {
+            PostingRule::find($item['id'])->update([
+                'debit_account_id'  => $item['debit_account_id'] ?? null,
+                'credit_account_id' => $item['credit_account_id'] ?? null,
+                'debit_partner'     => $item['debit_partner'] ?? null,
+                'credit_partner'    => $item['credit_partner'] ?? null,
+            ]);
+        }
+
+        return response()->json(PostingRule::with(['debitAccount:id,code,name', 'creditAccount:id,code,name'])->get());
     }
 
     public function destroy(PostingRule $postingRule): JsonResponse
