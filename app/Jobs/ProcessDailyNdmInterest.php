@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Jobs;
 
@@ -19,9 +19,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
+use App\Traits\NotifiesOnFailure;
+
 class ProcessDailyNdmInterest implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use NotifiesOnFailure;
     public $tries = 3;
 
     public function handle()
@@ -61,7 +64,7 @@ class ProcessDailyNdmInterest implements ShouldQueue
                     $effectiveAmount = (float) ($result['effective_interest_amount'] ?? 0);
 
                     if ($interestAmount == 0 && $effectiveAmount == 0) {
-                        Log::info("Loan #{$loan->id} skipped — both amounts zero");
+                        Log::info("Loan #{$loan->id} skipped â€” both amounts zero");
                         $loan->calc_date = $today;
                         $loan->saveQuietly();
                         continue;
@@ -161,3 +164,5 @@ class ProcessDailyNdmInterest implements ShouldQueue
         Log::info("NdmInterestJob finished for date: {$today}");
     }
 }
+
+

@@ -281,6 +281,12 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::post('/download-monthly-export', [ExcelController::class, 'downloadMonthlyExport']);
     Route::post('/download-quarter-export', [ExcelController::class, 'downloadQuarterExport']);
 
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [\App\Http\Controllers\NotificationController::class, 'index']);
+        Route::post('/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+        Route::post('/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
+    });
+
 });
 
 

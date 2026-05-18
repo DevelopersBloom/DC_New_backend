@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Jobs;
 
@@ -14,9 +14,12 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+use App\Traits\NotifiesOnFailure;
+
 class ProcessDailyBankProvision implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use NotifiesOnFailure;
 
     public $tries = 3;
 
@@ -76,9 +79,9 @@ class ProcessDailyBankProvision implements ShouldQueue
             $date = $endOfDay->toDateString();
 
             if ($diff > 0) {
-                $this->createEntry($date, abs($diff), 'Պահուստավորում', '730041', '15300PC');
+                $this->createEntry($date, abs($diff), 'ÕŠÕ¡Õ°Õ¸Ö‚Õ½Õ¿Õ¡Õ¾Õ¸Ö€Õ¸Ö‚Õ´', '730041', '15300PC');
             } else {
-                $this->createEntry($date, abs($diff), 'Ապապահուստավորում', '15300PC', '63102');
+                $this->createEntry($date, abs($diff), 'Ô±ÕºÕ¡ÕºÕ¡Õ°Õ¸Ö‚Õ½Õ¿Õ¡Õ¾Õ¸Ö€Õ¸Ö‚Õ´', '15300PC', '63102');
             }
             DB::commit();
         } catch (\Throwable $e) {
@@ -131,7 +134,7 @@ class ProcessDailyBankProvision implements ShouldQueue
                 'debit_account_id'  => $debitAcc->id,
                 'credit_account_id' => $creditAcc->id,
                 'user_id'           => 1,
-                'comment'           => $label . ' (Օրվա ' . ($this->provisionPercent * 100) . '%)',
+                'comment'           => $label . ' (Õ•Ö€Õ¾Õ¡ ' . ($this->provisionPercent * 100) . '%)',
                 'journalable_type'  => DocumentJournal::class,
                 'journalable_id'    => 0,
             ]);
@@ -153,3 +156,5 @@ class ProcessDailyBankProvision implements ShouldQueue
         Log::info("{$label} created: {$amount}");
     }
 }
+
+

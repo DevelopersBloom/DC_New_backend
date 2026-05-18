@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Jobs;
 
@@ -10,9 +10,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
+use App\Traits\NotifiesOnFailure;
+
 class ProcessSingleDayJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use NotifiesOnFailure;
     public function __construct(
         public int $contractId,
         public string $date
@@ -26,3 +29,5 @@ class ProcessSingleDayJob implements ShouldQueue
         $service->processDay($contract, $this->date);
     }
 }
+
+

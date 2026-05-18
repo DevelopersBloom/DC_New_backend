@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Jobs;
 
@@ -19,9 +19,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Carbon\Carbon;
 
+use App\Traits\NotifiesOnFailure;
+
 class ProcessContractDailyRate implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use NotifiesOnFailure;
     use ContractTrait;
 
     public function __construct()
@@ -372,3 +375,5 @@ class ProcessContractDailyRate implements ShouldQueue
         }
     }
 }
+
+
