@@ -191,7 +191,7 @@ class AcraExport
 
             if ($client->gender) {
                 $genderCode = ($client->gender === 'F') ? 'իգական' : 'արական';
-                $sheet->setCellValue('I1' . $row, $genderCode);
+                $sheet->setCellValue('I' . $row, $genderCode);
             }
             if ($client->residency_status) {
                 $residencyStatusCode = ($client->residency_status === 'resident') ? 1 : 2;
@@ -338,7 +338,7 @@ class AcraExport
             if ($firstOverdue && ($overdueMother > 0 || $overdueInterest > 0)) {
                 $overdueDate = Carbon::parse($firstOverdue->date)->addDay();
                 $this->setDateCellValue($sheet, 'M' . $row, $overdueDate);
-                $days = Carbon::parse($firstOverdue->date)->diffInDays(Carbon::parse($this->from));
+                $days = Carbon::parse($firstOverdue->date)->diffInDays(Carbon::parse($this->to));
                 $sheet->setCellValue('W' . $row, $days-1);
             } else {
                 $sheet->setCellValue('W' . $row, 0);
