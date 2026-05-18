@@ -633,16 +633,11 @@ class FileController extends Controller
             switch ($order->type) {
                 case 'in':
                     return $this->downloadOrderIn($id);
-                    break;
                 case 'out':
+                case 'cost_out':
                     return $this->downloadOrderOut($id);
-                    break;
                 case 'cost_in':
                     return $this->downloadCostOrderIn($id);
-                    break;
-                case 'cost_out':
-                    return $this->downloadCostOrderOut($id);
-                    break;
             }
         }else{
             abort(404,"Page Not Found");
@@ -715,9 +710,9 @@ class FileController extends Controller
     public function downloadOrderOut($id)
     {
         $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_out_template.docx'));
-        $order = Order::where('id', $id)->first();
+        $order = Order::where('id', $id)->with('client')->first();
         $contract = Contract::where('id', $order->contract_id)->with('client')->first();
-        $client = $contract?->client;
+        $client = $order->client_id ? $order->client : $contract?->client;
         $user = $order->user ?? \App\Models\User::first();
 
         $passportDate = $client?->passport_validity
