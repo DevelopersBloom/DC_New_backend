@@ -40,6 +40,7 @@ class ProcessDailyBankProvision implements ShouldQueue
 
         $bankAccountIds = ChartOfAccount::where('code', 'like', '999910%')->pluck('id');
         if ($bankAccountIds->isEmpty()) {
+            $this->notifyAdmins(new \RuntimeException("Bank accounts 10210* not found."));
             Log::error("Bank accounts 10210* not found.");
             return;
         }
@@ -48,6 +49,7 @@ class ProcessDailyBankProvision implements ShouldQueue
 
         $acc15300PC = ChartOfAccount::idByCode('15300PC');
         if (!$acc15300PC) {
+            $this->notifyAdmins(new \RuntimeException("Bank account 15300PC not found."));
             Log::error("Bank account 15300PC not found.");
             return;
         }
