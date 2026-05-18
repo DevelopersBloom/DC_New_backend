@@ -38,7 +38,7 @@ class ProcessDailyBankProvision implements ShouldQueue
 
         Log::info("Bank Provision started for {$toDay}");
 
-        $bankAccountIds = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
+        $bankAccountIds = ChartOfAccount::where('code', 'like', '999910%')->pluck('id');
         if ($bankAccountIds->isEmpty()) {
             Log::error("Bank accounts 10210* not found.");
             return;
