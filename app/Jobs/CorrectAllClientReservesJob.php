@@ -16,13 +16,10 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-use App\Traits\NotifiesOnFailure;
-
 class CorrectAllClientReservesJob implements ShouldQueue
 {
     use Dispatchable, Queueable, SerializesModels;
     use CorrectReserveTrait;
-    use NotifiesOnFailure;
 
     private string $forDate;
 
@@ -130,5 +127,3 @@ class CorrectAllClientReservesJob implements ShouldQueue
         Log::info("Client reserve finished for {$dateStr}");
     }
 }
-
-

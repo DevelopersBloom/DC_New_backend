@@ -23,12 +23,9 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-use App\Traits\NotifiesOnFailure;
-
 class UpdateClientClassificationsNew implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    use NotifiesOnFailure;
     use CorrectReserveTrait;
     public int $timeout = 1800;
 
@@ -300,7 +297,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                 'date' => now(),
                             ]);
 
-                            // If new classification is 'loss' â€” write off all outstanding balances
+                            // If new classification is 'loss' — write off all outstanding balances
                             if ($client->classification->name === 'loss') {
 
 
@@ -337,7 +334,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     ->sum('amount_amd');
                                 $net16201NI = $debit16201NI - $credit16201NI;
 
-                                // â”€â”€ Step 1: Net balance transfer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                                // ── Step 1: Net balance transfer ──────────────────────
                                 // Dr: Net Balance of (16200 + 16200NV + 16201NI) / Cr: 16605PS
                                 $totalNet = round($net16200 + $net16200NV + $net16201NI, 2);
                                 $currentPS = $this->getClientReserveBalance($clientId, $acc16605PS);
@@ -459,7 +456,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     ]);
                                 }
 
-                                // Entry 3: Dr 86000 â€” combined net of 16200 + 16200NV
+                                // Entry 3: Dr 86000 — combined net of 16200 + 16200NV
                                 $amount86000 = $net16200 + $net16200NV;
                                 if (abs($amount86000) >= 0.01) {
                                     $rule86000 = PostingRule::where('business_event_filter', 'loss_writeoff_principal')->first();
@@ -542,7 +539,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                     ]);
                                 }
 
-                                // Entry 5: Dr 86001 â€” same amount as 16201NI net
+                                // Entry 5: Dr 86001 — same amount as 16201NI net
                                 if (abs($net16201NI) >= 0.01) {
                                     $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->first();
                                     if (!$rule86001) {
@@ -586,7 +583,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                 }
                             } // end if loss
 
-                            // If old reserve existed and old classification was 'standard' â€” create classification reversal doc
+                            // If old reserve existed and old classification was 'standard' — create classification reversal doc
                             if (!empty($amount16605PC) && $oldClassificationName === 'standard') {
                                 $classificationType = DocumentJournal::CLASSIFICATION;
 
@@ -641,5 +638,3 @@ class UpdateClientClassificationsNew implements ShouldQueue
         Log::info('Client classification job finished.');
     }
 }
-
-

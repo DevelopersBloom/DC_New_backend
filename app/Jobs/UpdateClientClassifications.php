@@ -22,12 +22,9 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-use App\Traits\NotifiesOnFailure;
-
 class UpdateClientClassifications implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    use NotifiesOnFailure;
 
     public int $timeout = 1800;
 
@@ -474,7 +471,7 @@ class UpdateClientClassifications implements ShouldQueue
                                 }
                             } // end if loss
 
-                            // If old reserve existed and old classification was 'standard' â€” create classification reversal doc
+                            // If old reserve existed and old classification was 'standard' — create classification reversal doc
                             if (!empty($amount16605PC) && $oldClassificationName === 'standard') {
                                 $classificationType = DocumentJournal::CLASSIFICATION;
 
@@ -795,5 +792,3 @@ class UpdateClientClassifications implements ShouldQueue
 //    }
 
 }
-
-
