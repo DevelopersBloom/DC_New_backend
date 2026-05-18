@@ -23,11 +23,11 @@ class PostingRuleController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'business_event_filter' => 'required',
-            'debit_account_id' => 'required|exists:chart_of_accounts,id',
-            'credit_account_id' => 'required|exists:chart_of_accounts,id',
-            'debit_partner' => 'nullable|string|max:255',
-            'credit_partner' => 'nullable|string|max:255',
+            'business_event_filter' => 'required|string',
+            'debit_account_id'      => 'nullable|exists:chart_of_accounts,id',
+            'credit_account_id'     => 'nullable|exists:chart_of_accounts,id',
+            'debit_partner'         => 'nullable|string|max:255',
+            'credit_partner'        => 'nullable|string|max:255',
         ]);
 
         $rule = PostingRule::create($data);
@@ -45,11 +45,11 @@ class PostingRuleController extends Controller
     public function update(Request $request, PostingRule $postingRule): JsonResponse
     {
         $data = $request->validate([
-            'business_event_filter' => 'sometimes',
-            'debit_account_id' => 'sometimes|exists:chart_of_accounts,id',
-            'credit_account_id' => 'sometimes|exists:chart_of_accounts,id',
-            'debit_partner' => 'nullable|string|max:255',
-            'credit_partner' => 'nullable|string|max:255',
+            'business_event_filter' => 'sometimes|string',
+            'debit_account_id'      => 'nullable|exists:chart_of_accounts,id',
+            'credit_account_id'     => 'nullable|exists:chart_of_accounts,id',
+            'debit_partner'         => 'nullable|string|max:255',
+            'credit_partner'        => 'nullable|string|max:255',
         ]);
 
         $postingRule->update($data);

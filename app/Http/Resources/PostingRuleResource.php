@@ -17,11 +17,12 @@ class PostingRuleResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            'id' => $this->id,
-
-            'business_event' => new BusinessEventResource($this->whenLoaded('businessEvent')),
-            'debit_account' => new AccountResource($this->whenLoaded('debitAccount')),
-            'credit_account' => new AccountResource($this->whenLoaded('creditAccount')),
+            'id'                     => $this->id,
+            'business_event_filter'  => $this->business_event_filter,
+            'debit_account'          => new AccountResource($this->whenLoaded('debitAccount')),
+            'credit_account'         => new AccountResource($this->whenLoaded('creditAccount')),
+            'debit_partner'          => $this->debit_partner,
+            'credit_partner'         => $this->credit_partner,
         ];
     }
 }
