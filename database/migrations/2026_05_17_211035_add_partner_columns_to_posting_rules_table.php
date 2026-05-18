@@ -14,8 +14,8 @@ return new class extends Migration
     public function up()
     {
         Schema::table('posting_rules', function (Blueprint $table) {
-            $table->foreignId('debit_partner_id')->after('debit_account_id')->nullable()->constrained('clients');
-            $table->foreignId('credit_partner_id')->after('credit_account_id')->nullable()->constrained('clients');
+            $table->string('debit_partner')->after('debit_account_id')->nullable();
+            $table->string('credit_partner')->after('credit_account_id')->nullable();
         });
     }
 
@@ -27,9 +27,7 @@ return new class extends Migration
     public function down()
     {
         Schema::table('posting_rules', function (Blueprint $table) {
-            $table->dropForeign(['debit_partner_id']);
-            $table->dropForeign(['credit_partner_id']);
-            $table->dropColumn(['debit_partner_id', 'credit_partner_id']);
+            $table->dropColumn(['debit_partner', 'credit_partner']);
         });
     }
 };
