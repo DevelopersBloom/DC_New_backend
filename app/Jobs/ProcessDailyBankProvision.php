@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Jobs;
 
@@ -29,7 +29,7 @@ class ProcessDailyBankProvision implements ShouldQueue
     public function __construct(float $provisionPercent = 0.01, ?string $forDate = null)
     {
         $this->provisionPercent = $provisionPercent;
-        $this->forDate = $forDte ?? Carbon::today()->format('Y-m-d');
+        $this->forDate = $forDate ?? Carbon::today()->format('Y-m-d');
     }
 
     public function handle(): void
