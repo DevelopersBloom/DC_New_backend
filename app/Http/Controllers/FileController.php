@@ -684,7 +684,7 @@ class FileController extends Controller
             'order' => $order->order,
             'date' => isset($order->date) ? $this->formatArmenianDate($order->date) : null,
             'receiver' => $order->receiver,
-            'client' => $client ? $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '') : null,
+            'client' => $client ? ($client->type === 'legal' ? $client->company_name : $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '')) : null,
             'contract_id' => $contract->num ?? null,
             'purpose' => $order->purpose,
             'amount1_text' => $this->numberToText((float) str_replace([' ', ',','.'], ['', '',''], $amount1)),
@@ -733,7 +733,7 @@ class FileController extends Controller
             'receiver' => $order->receiver ?? null,
             'contract_id' => $contract?->num,
             'num' => $order->num ?? $contract?->num ?? null,
-            'client' => $client ? $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '') : null,
+            'client' => $client ? ($client->type === 'legal' ? $client->company_name : $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '')) : null,
             'cl_dob' => $client?->date_of_birth
                 ? Carbon::parse($client->date_of_birth)->format('d.m.Y')
                 : null,
