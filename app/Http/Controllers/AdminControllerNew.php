@@ -22,6 +22,7 @@ use App\Models\Payment;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use App\Models\User;
+use App\Services\DealUpdateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -605,6 +606,8 @@ class AdminControllerNew extends Controller
             'order_id',
             'cash',
             'contract_id',
+            'payment_id',
+            'filter_type',
             'delay_days',
             'interest_amount',
             'purpose',
@@ -707,30 +710,21 @@ class AdminControllerNew extends Controller
     }
 
 
-    public function updateDeals(Request $request): JsonResponse
+    public function updateDeals(Request $request, DealUpdateService $dealUpdateService): JsonResponse
     {
         $validated = $request->validate([
             'deals' => 'required|array',
             'deals.*.id' => 'required|exists:deals,id',
-            'deals.*.date' => 'required|date_format:Y-m-d'
+            'deals.*.date' => 'required|date_format:Y-m-d',
+            'deals.*.amount' => 'nullable|numeric|min:0',
+            'deals.*.interest_amount' => 'nullable|numeric|min:0',
+            'deals.*.penalty' => 'nullable|numeric|min:0',
+            'deals.*.principal_payment' => 'nullable|numeric|min:0',
+            'deals.*.cash' => 'nullable|boolean',
         ]);
 
-        foreach ($validated['deals'] as $dealData) {
-            $deal = Deal::findOrFail($dealData['id']);
-            if (!$deal) continue;
-            if ($deal->filter_type === 'payment' || $deal->filter_type == 'partial_payment' || $deal->filter_type == 'full_payment') {
-                $dealActions = DealAction::where('deal_id',$dealData['id'])->get();
-                foreach ($dealActions as $dealAction) {
-                    $dealAction->date = $dealData['date'];
-                    $dealAction->update(['date' => $dealData['date']]);
-                    if ($dealAction->actionable) {
-                        $dealAction->actionable->update(['date' => $dealData['date']]);
-                    }
-                    ContractAmountHistory::where('deal_id', $deal->id)->update(['date' => $dealData['date']]);
-                }
-            }
-            $deal->update(['date' => $dealData['date']]);
-        }
+        $dealUpdateService->updateMany($validated['deals']);
+
         return response()->json(['message' => 'Deals updated successfully']);
     }
     public function calcAmount($amount,$days,$rate){
