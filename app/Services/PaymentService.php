@@ -22,9 +22,12 @@ class PaymentService
 {
     use ContractTrait;
     protected $contractService;
-    public function __construct(ContractService $contractService)
+    protected PrepaymentService $prepaymentService;
+
+    public function __construct(ContractService $contractService, PrepaymentService $prepaymentService)
     {
         $this->contractService = $contractService;
+        $this->prepaymentService = $prepaymentService;
     }
 
     public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false,$interestAmount = 0,$ispPaymentSelected = false,$date = null)
@@ -285,7 +288,28 @@ class PaymentService
                     ->get();
                 if ($remainingInitialPayments->isNotEmpty()) {
                     $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments,$now);
+                    $this->prepaymentService->createFromEarlyPayment(
+                        $contract->id,
+                        $payment->id,
+                        $deal_id,
+                        $remainingInitialPayments
+                    );
                 }
+            }
+        }
+
+        // If to_date < payment_date → this payment's period has passed, principal goes as prepayment
+        if ($contract->payment_type === 'amortized') {
+            $payDate = Carbon::parse($date ?? now())->startOfDay();
+            $toDt = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
+            if ($toDt->lt($payDate) && ($payment->principal_payment ?? 0) > 0) {
+                $this->prepaymentService->createSingle(
+                    $contract->id,
+                    $payment->id,
+                    $deal_id,
+                    (float) $payment->principal_payment,
+                    $payment->date
+                );
             }
         }
 
