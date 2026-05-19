@@ -287,19 +287,21 @@ class PaymentService
                     ->orderBy('id', 'asc')
                     ->get();
                 if ($remainingInitialPayments->isNotEmpty()) {
-                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments,$now);
-                    $this->prepaymentService->createFromEarlyPayment(
-                        $contract->id,
-                        $payment->id,
-                        $deal_id,
-                        $remainingInitialPayments
-                    );
+                    $this->recalculateAmortizedInterestFromSchedule($contract, $remainingInitialPayments, $now);
                 }
+                // Early payment — only this payment's principal goes to prepayments
+                $this->prepaymentService->createSingle(
+                    $contract->id,
+                    $payment->id,
+                    $deal_id,
+                    (float) $paidPrincipal,
+                    $payment->date
+                );
             }
         }
 
-        // If to_date < payment_date → this payment's period has passed, principal goes as prepayment
-        if ($contract->payment_type === 'amortized') {
+        // to_date < payment_date → period has passed, this payment's principal goes to prepayments
+        if (!$earlyHandled && $contract->payment_type === 'amortized') {
             $payDate = Carbon::parse($date ?? now())->startOfDay();
             $toDt = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
             if ($toDt->lt($payDate) && ($payment->principal_payment ?? 0) > 0) {
