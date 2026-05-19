@@ -114,6 +114,7 @@ class CorrectAllClientReservesJob implements ShouldQueue
                         DB::rollBack();
 
                         Log::error("Client {$client->id} failed for {$dateStr}: " . $e->getMessage());
+                        $this->notifyAdmins($e);
 
                         $failed[] = [
                             'client_id' => $client->id,

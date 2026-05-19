@@ -17,12 +17,14 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use App\Traits\NotifiesOnFailure;
 use Carbon\Carbon;
 
 class ProcessContractDailyRate implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     use ContractTrait;
+    use NotifiesOnFailure;
 
     public function __construct()
     {
@@ -65,6 +67,7 @@ class ProcessContractDailyRate implements ShouldQueue
         Log::info("Contract processed");
         if ($activeContracts->isEmpty()) {
             Log::info('No active contracts found to process.');
+            $this->notifyAdmins(new \RuntimeException('No active contracts found to process.'));
             return;
         }
 
@@ -270,6 +273,7 @@ class ProcessContractDailyRate implements ShouldQueue
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('ProcessContractDailyRate failed for contract ' . $contract->id . ': ' . $e->getMessage());
+                $this->notifyAdmins($e);
             }
         }
 

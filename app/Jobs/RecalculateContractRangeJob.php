@@ -11,9 +11,11 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Traits\NotifiesOnFailure;
 class RecalculateContractRangeJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use NotifiesOnFailure;
 
     public function __construct(
         public int $contractId,
@@ -31,7 +33,10 @@ class RecalculateContractRangeJob implements ShouldQueue
                     ->where('journalable_id', $this->contractId)
                     ->first();
 
-                if (!$journal) return;
+                if (!$journal) {
+                    $this->notifyAdmins(new \RuntimeException("DocumentJournal not found for contract #{$this->contractId}."));
+                    return;
+                }
 
                 $docIds = DocumentJournal::where('journalable_id', $journal->id)
                     ->whereBetween('date', [$this->from, $this->to])

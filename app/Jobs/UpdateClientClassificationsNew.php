@@ -22,11 +22,13 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Traits\NotifiesOnFailure;
 
 class UpdateClientClassificationsNew implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     use CorrectReserveTrait;
+    use NotifiesOnFailure;
     public int $timeout = 1800;
 
     public function __construct()
@@ -630,7 +632,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                     } catch (\Throwable $e) {
                         DB::rollBack();
                         Log::error("Failed to update client #{$client->id}: " . $e->getMessage());
-                        // continue to next client (do not rethrow)
+                        $this->notifyAdmins($e);
                     }
                 }
             });

@@ -9,10 +9,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Traits\NotifiesOnFailure;
 
 class ProcessSingleDayJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use NotifiesOnFailure;
     public function __construct(
         public int $contractId,
         public string $date
@@ -21,7 +23,10 @@ class ProcessSingleDayJob implements ShouldQueue
     public function handle(ContractDailyRateService $service)
     {
         $contract = Contract::with('client.classification')->find($this->contractId);
-        if (!$contract) return;
+        if (!$contract) {
+            $this->notifyAdmins(new \RuntimeException("Contract #{$this->contractId} not found."));
+            return;
+        }
 
         $service->processDay($contract, $this->date);
     }
