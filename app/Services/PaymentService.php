@@ -295,7 +295,7 @@ class PaymentService
                     $payment->id,
                     $deal_id,
                     (float) $paidPrincipal,
-                    $payment->date
+                    $payment->to_date
                 );
             }
         }
@@ -310,7 +310,7 @@ class PaymentService
                     $payment->id,
                     $deal_id,
                     (float) $payment->principal_payment,
-                    $payment->date
+                    $payment->to_date
                 );
             }
         }
@@ -654,7 +654,7 @@ class PaymentService
                 $contract->left = max(0, $contract->left - $partialAmount);
 //                $contract->collected += $partialAmount;
                 $contract->save();
-                $history['payment_changes'] = $this->processAmortizedPayments($contract, $payments, $partialAmount, $now);
+                $history['payment_changes'] = $this->processAmortizedPayments($contract, $payments, $partialAmount, $now, $deal_id);
                 $history['contract_changes'] = [
                     'old_left' => $contract->left,
                     'new_left' => $contract->left - $partialAmount,
@@ -725,7 +725,7 @@ class PaymentService
      * Applies prepayment to future installments: reduces principal_payment in order,
      * then recalculates interest on the outstanding balance for each period (same basis as schedule).
      */
-    protected function processAmortizedPayments(Contract $contract, $payments, $remainingPartial, $now)
+    protected function processAmortizedPayments(Contract $contract, $payments, $remainingPartial, $now, $deal_id = null)
     {
         $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();
         $changes = [];
@@ -757,6 +757,15 @@ class PaymentService
             $payment->principal_payment -= $reduction;
             $remainingPartial -= $reduction;
             $payment->save();
+
+            $this->prepaymentService->createSingle(
+                $contract->id,
+                $payment->id,
+                $deal_id,
+                $reduction,
+                $payment->date
+            );
+
             $changes[] = $oldData;
         }
         if (!empty($changes)) {
