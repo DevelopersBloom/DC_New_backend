@@ -204,7 +204,10 @@ class DealUpdateService
     $splitTargets = [
       DocumentJournal::PAY_INTEREST_AMOUNT => $interest,
       DocumentJournal::PAY_MOTHER_AMOUNT => $principal,
+      DocumentJournal::PAY_MOTHER_AMOUNT_CASH => $principal,
       DocumentJournal::PAY_PENALTY_AMOUNT => $penalty,
+      DocumentJournal::RECOVERY_INTEREST => $interest,
+      DocumentJournal::RECOVERY_PRINCIPAL => $principal,
     ];
 
     $handledTypes = array_keys($splitTargets);
@@ -227,13 +230,8 @@ class DealUpdateService
         continue;
       }
 
-      $newAmount = $this->journalAmountForType($journal->document_type, $interest, $principal, $penalty, $totalAmount);
-
-      if ($newAmount === null) {
-        continue;
-      }
-
-      $this->applyJournalAmountUpdate($deal, $journal, $newAmount, $cash, $deal->date, $classification);
+      // For unsupported document types, keep amount as-is and only sync date/cash/accounts.
+      $this->applyJournalMetadataUpdate($deal, $journal, $cash, $deal->date, $classification);
     }
   }
 
@@ -350,6 +348,37 @@ class DealUpdateService
       ->update($transactionUpdates);
   }
 
+  private function applyJournalMetadataUpdate(
+    Deal $deal,
+    DocumentJournal $journal,
+    bool $cash,
+    string $date,
+    ?string $classification = null
+  ): void
+  {
+    $journalUpdates = [
+      'cash' => $cash,
+      'date' => $date,
+    ];
+
+    $transactionUpdates = [
+      'date' => $date,
+    ];
+
+    $rule = $this->resolvePostingRuleForJournal($deal, $journal->document_type, $cash, $classification);
+    if ($rule) {
+      $journalUpdates['debit_account_id'] = $rule->debit_account_id;
+      $journalUpdates['credit_account_id'] = $rule->credit_account_id;
+      $transactionUpdates['debit_account_id'] = $rule->debit_account_id;
+      $transactionUpdates['credit_account_id'] = $rule->credit_account_id;
+    }
+
+    $journal->update($journalUpdates);
+    Transaction::where('transactionable_type', DocumentJournal::class)
+      ->where('transactionable_id', $journal->id)
+      ->update($transactionUpdates);
+  }
+
   private function resolvePostingRuleForJournal(
     Deal $deal,
     ?string $documentType,
@@ -366,12 +395,15 @@ class DealUpdateService
       DocumentJournal::PAY_INTEREST_AMOUNT => $classification === 'loss'
         ? 'pay_interest_amount_loss'
         : ($cash ? 'pay_interest_amount_cash' : 'pay_interest_amount'),
-      DocumentJournal::PAY_MOTHER_AMOUNT => $cash
+      DocumentJournal::PAY_MOTHER_AMOUNT,
+      DocumentJournal::PAY_MOTHER_AMOUNT_CASH => $cash
         ? 'pay_mother_amount_cash'
         : 'pay_mother_amount',
       DocumentJournal::PAY_PENALTY_AMOUNT => $classification === 'loss'
         ? 'pay_penalty_amount_loss'
         : ($cash ? 'pay_penalty_amount_cash' : 'pay_penalty_amount'),
+      DocumentJournal::RECOVERY_PRINCIPAL => 'recovery_principal',
+      DocumentJournal::RECOVERY_INTEREST => 'recovery_interest',
       default => null,
     };
 
