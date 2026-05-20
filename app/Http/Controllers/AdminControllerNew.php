@@ -727,23 +727,7 @@ class AdminControllerNew extends Controller
             'deal_ids' => array_map(static fn ($d) => $d['id'] ?? null, $validated['deals'] ?? []),
         ]);
 
-        $dealIds = collect($validated['deals'] ?? [])->pluck('id')->filter()->unique()->values();
-
-        DB::transaction(function () use ($validated, $dealIds) {
-            // Guard rail: keep documents_journal and transactions unchanged
-            // even if DB triggers / hidden runtime hooks fire on deal update.
-            $documentsBefore = DB::table('documents_journal')
-                ->whereIn('deal_id', $dealIds)
-                ->get();
-            $documentIds = $documentsBefore->pluck('id')->all();
-
-            $transactionsBefore = empty($documentIds)
-                ? collect()
-                : DB::table('transactions')
-                    ->where('transactionable_type', 'App\\Models\\DocumentJournal')
-                    ->whereIn('transactionable_id', $documentIds)
-                    ->get();
-
+        DB::transaction(function () use ($validated) {
             foreach ($validated['deals'] as $dealData) {
                 $existing = DB::table('deals')->where('id', $dealData['id'])->first();
                 DB::table('deals')
@@ -756,22 +740,6 @@ class AdminControllerNew extends Controller
                         'date' => $dealData['date'] ?? $existing?->date,
                         'updated_at' => now(),
                     ]);
-            }
-
-            foreach ($documentsBefore as $row) {
-                $data = (array) $row;
-                unset($data['id']);
-                DB::table('documents_journal')
-                    ->where('id', $row->id)
-                    ->update($data);
-            }
-
-            foreach ($transactionsBefore as $row) {
-                $data = (array) $row;
-                unset($data['id']);
-                DB::table('transactions')
-                    ->where('id', $row->id)
-                    ->update($data);
             }
         });
 
