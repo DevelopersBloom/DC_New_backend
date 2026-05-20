@@ -46,6 +46,7 @@ class ContractRequest extends FormRequest
             'loan_type'          => 'nullable|integer',
             'interest_rate_type' => 'nullable|integer',
             'security_type'      => 'nullable|integer',
+            'loan_use_field' => 'nullable|string',
 //            'files' => 'nullable|array',
 //            'files.*.file' => 'required|file',
 //            'files.*.file_type' => 'required|string',

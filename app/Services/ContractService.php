@@ -396,6 +396,7 @@ class   ContractService
             'loan_type'          => $data['loan_type'] ?? null,
             'interest_rate_type' => $data['interest_rate_type'] ?? 2,
             'security_type'      => $data['security_type'] ?? 4,
+            'loan_use_field'     => $data['loan_use_field'] ?? null,
 //            'kasko_amount' => $data['kasko_amount'] ?? null,
         ];
 
