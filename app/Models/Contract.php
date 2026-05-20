@@ -118,7 +118,8 @@ class Contract extends Model
         'contract_kind',
         'loan_type',
         'interest_rate_type',
-        'security_type'
+        'security_type',
+        'loan_use_field',
     ];
 
     protected $casts = [
@@ -139,7 +140,6 @@ class Contract extends Model
         'effective_rate_kasko'  => 'decimal:10',
         'kasko_amount'          => 'decimal:2',
         'fee_annual_rate'       => 'decimal:4',
-
     ];
 
     public function payments(): HasMany
