@@ -22,7 +22,6 @@ use App\Models\Payment;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use App\Models\User;
-use App\Services\DealUpdateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -710,7 +709,7 @@ class AdminControllerNew extends Controller
     }
 
 
-    public function updateDeals(Request $request, DealUpdateService $dealUpdateService): JsonResponse
+    public function updateDeals(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'deals' => 'required|array',
@@ -723,7 +722,21 @@ class AdminControllerNew extends Controller
             'deals.*.cash' => 'nullable|boolean',
         ]);
 
-        $dealUpdateService->updateMany($validated['deals']);
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['deals'] as $dealData) {
+                $existing = DB::table('deals')->where('id', $dealData['id'])->first();
+                DB::table('deals')
+                    ->where('id', $dealData['id'])
+                    ->update([
+                        'amount' => (float) ($dealData['amount'] ?? $existing?->amount ?? 0),
+                        'interest_amount' => (float) ($dealData['interest_amount'] ?? $existing?->interest_amount ?? 0),
+                        'penalty' => (float) ($dealData['penalty'] ?? $existing?->penalty ?? 0),
+                        'cash' => array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : (bool) ($existing?->cash ?? false),
+                        'date' => $dealData['date'] ?? $existing?->date,
+                        'updated_at' => now(),
+                    ]);
+            }
+        });
 
         return response()->json(['message' => 'Deals updated successfully']);
     }
