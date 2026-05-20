@@ -251,10 +251,10 @@ class PaymentService
                 $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
             }
 
-            // Period has passed: principal goes to prepayments
+            // Early payment: full principal goes to prepayments (will be applied on due date)
             $payDate = Carbon::parse($date ?? now())->startOfDay();
             $toDt    = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-            if ($toDt->lt($payDate) && $paidPrincipal > 0) {
+            if ($toDt->gt($payDate) && $paidPrincipal > 0) {
                 $this->prepaymentService->createSingle(
                     $contract->id,
                     $payment->id,
