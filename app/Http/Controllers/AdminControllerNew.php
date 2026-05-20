@@ -25,6 +25,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\DealsTableOnlyUpdateService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -709,7 +710,7 @@ class AdminControllerNew extends Controller
     }
 
 
-    public function updateDeals(Request $request): JsonResponse
+    public function updateDeals(Request $request, DealsTableOnlyUpdateService $dealsTableOnlyUpdate): JsonResponse
     {
         $validated = $request->validate([
             'deals' => 'required|array',
@@ -718,35 +719,20 @@ class AdminControllerNew extends Controller
             'deals.*.amount' => 'nullable|numeric|min:0',
             'deals.*.interest_amount' => 'nullable|numeric|min:0',
             'deals.*.penalty' => 'nullable|numeric|min:0',
-            'deals.*.principal_payment' => 'nullable|numeric|min:0',
             'deals.*.cash' => 'nullable|boolean',
         ]);
 
-        \Log::info('update-deals invoked (deals_only_mode)', [
+        \Log::info('update-deals invoked (deals_table_only)', [
             'count' => count($validated['deals'] ?? []),
             'deal_ids' => array_map(static fn ($d) => $d['id'] ?? null, $validated['deals'] ?? []),
         ]);
 
-        DB::transaction(function () use ($validated) {
-            foreach ($validated['deals'] as $dealData) {
-                $existing = DB::table('deals')->where('id', $dealData['id'])->first();
-                DB::table('deals')
-                    ->where('id', $dealData['id'])
-                    ->update([
-                        'amount' => (float) ($dealData['amount'] ?? $existing?->amount ?? 0),
-                        'interest_amount' => (float) ($dealData['interest_amount'] ?? $existing?->interest_amount ?? 0),
-                        'penalty' => (float) ($dealData['penalty'] ?? $existing?->penalty ?? 0),
-                        'cash' => array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : (bool) ($existing?->cash ?? false),
-                        'date' => $dealData['date'] ?? $existing?->date,
-                        'updated_at' => now(),
-                    ]);
-            }
-        });
+        $dealsTableOnlyUpdate->updateMany($validated['deals']);
 
         return response()->json([
             'message' => 'Deals updated successfully',
-            'mode' => 'deals_only_mode',
-            'guard' => 'deals_side_effect_reverted_v2',
+            'mode' => 'deals_table_only',
+            'tables_updated' => ['deals'],
         ]);
     }
     public function calcAmount($amount,$days,$rate){

@@ -9,10 +9,12 @@ use App\Models\Deal;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Http\Requests\UpdateContractAmountHistoryRequest;
 use App\Models\Transaction;
 use App\Traits\ContractTrait;
 use App\Traits\OrderTrait;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -95,7 +97,7 @@ DealController extends Controller
             ->sum('amount');
     }
 
-    public function calculatePawnshopCashbox($month,$year)
+    public function calculatePawnshopCashbox($month, $year)
     {
         $cashboxData = [];
         $pawnshopId = auth()->user()->pawnshop_id;
@@ -103,6 +105,18 @@ DealController extends Controller
         $daysInMonth = ($year == $now->year && $month == $now->month)
             ? $now->day
             : Carbon::createFromDate($year, $month, 1)->daysInMonth;
+
+        $monthStart = Carbon::createFromDate($year, $month, 1)->startOfDay();
+        $monthEnd = Carbon::createFromDate($year, $month, $daysInMonth)->endOfDay();
+
+        $dailyHistories = ContractAmountHistory::query()
+            ->with(['contract:id,num'])
+            ->where('pawnshop_id', $pawnshopId)
+            ->whereIn('amount_type', ['estimated_amount', 'provided_amount'])
+            ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn (ContractAmountHistory $history) => $history->date->format('Y-m-d'));
 
         for ($day = $daysInMonth; $day >= 1; $day--) {
             $date = Carbon::create($year, $month, $day)->format('Y-m-d');
@@ -172,9 +186,9 @@ DealController extends Controller
                 'provided_amount' => $data->provided ?? 0,
                 'car_estimated' => $data->car_estimated ?? 0,
                 'electronics_estimated' => $data->electronics_estimated ?? 0,
-//
-//                'appa' => $totals->appa ?? 0,
-//                'ndm' => ($totals->ndmIn ?? 0) - ($totalOuts->ndmOut ?? 0),
+                'contract_amount_histories' => $this->formatDailyContractAmountHistories(
+                    $dailyHistories->get($date, collect())
+                ),
                 'cashbox' => $totals->totalCashboxIn  - $totalOuts->totalCashboxOut,
                 'bank_cashbox' => $bankIn - $bankOut
             ];
@@ -184,6 +198,90 @@ DealController extends Controller
         ];
 
 
+    }
+
+    private function formatDailyContractAmountHistories($histories): array
+    {
+        return $histories->map(function (ContractAmountHistory $history) {
+            $signedAmount = $history->type === 'in'
+                ? (float) $history->amount
+                : -(float) $history->amount;
+
+            return [
+                'id' => $history->id,
+                'amount' => (float) $history->amount,
+                'type' => $history->type,
+                'amount_type' => $history->amount_type,
+                'signed_amount' => $signedAmount,
+                'contract_id' => $history->contract_id,
+                'contract_num' => $history->contract?->num,
+                'deal_id' => $history->deal_id,
+                'date' => $history->date->format('Y-m-d'),
+            ];
+        })->values()->all();
+    }
+
+    public function updateContractAmountHistory(
+        UpdateContractAmountHistoryRequest $request,
+        int $id
+    ): JsonResponse {
+        $pawnshopId = auth()->user()->pawnshop_id;
+
+        $history = ContractAmountHistory::query()
+            ->where('pawnshop_id', $pawnshopId)
+            ->whereIn('amount_type', ['estimated_amount', 'provided_amount'])
+            ->findOrFail($id);
+
+        $validated = $request->validated();
+        $contractId = $validated['contract_id'] ?? null;
+
+        if (!empty($validated['contract_num'])) {
+            $contract = Contract::query()
+                ->where('num', $validated['contract_num'])
+                ->first();
+
+            if (!$contract) {
+                return response()->json([
+                    'message' => 'Contract not found for the given number.',
+                ], 422);
+            }
+
+            $contractId = $contract->id;
+        }
+
+        $history->update([
+            'amount' => $validated['amount'],
+            'type' => $validated['type'],
+            'date' => $validated['date'],
+            'contract_id' => $contractId,
+            'deal_id' => $validated['deal_id'] ?? null,
+        ]);
+
+        $history->load('contract:id,num');
+
+        return response()->json([
+            'message' => 'History updated successfully.',
+            'history' => $this->formatContractAmountHistoryItem($history),
+        ]);
+    }
+
+    private function formatContractAmountHistoryItem(ContractAmountHistory $history): array
+    {
+        $signedAmount = $history->type === 'in'
+            ? (float) $history->amount
+            : -(float) $history->amount;
+
+        return [
+            'id' => $history->id,
+            'amount' => (float) $history->amount,
+            'type' => $history->type,
+            'amount_type' => $history->amount_type,
+            'signed_amount' => $signedAmount,
+            'contract_id' => $history->contract_id,
+            'contract_num' => $history->contract?->num,
+            'deal_id' => $history->deal_id,
+            'date' => $history->date->format('Y-m-d'),
+        ];
     }
 
 //    public function getCashBox(int $pawnshop_id)

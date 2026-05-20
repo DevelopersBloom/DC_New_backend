@@ -57,8 +57,10 @@ class Deal extends Model
     protected static function boot()
     {
         parent::boot();
+        // Admin PUT /admin/update-deals uses DealsTableOnlyUpdateService (query builder),
+        // not Eloquent save(), so this hook does not run for manager deal edits.
         static::updating(function ($deal) {
-            if ($deal->isDirty('date')) { // Check if date is changing
+            if ($deal->isDirty('date')) {
                 $newDate = $deal->date;
 
                 if ($deal->order) {
