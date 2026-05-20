@@ -2,11 +2,10 @@
 
 namespace App\Console;
 
+use App\Jobs\MarkDuePrepaymentsPaid;
 use App\Jobs\ProcessContractDailyRate;
-use App\Jobs\ProcessDailyBankProvision;
 use App\Jobs\ProcessDailyNdmInterest;
 use App\Jobs\UpdateClientClassificationsNew;
-use App\Jobs\UpdateClientClassifications;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -23,7 +22,6 @@ class Kernel extends ConsoleKernel
         $schedule->command('backup:clean')->dailyAt('18:10');
         $schedule->command('backup:run')->dailyAt('18:15');
 
-
         $schedule->job(new UpdateClientClassificationsNew)
             ->dailyAt('00:00')
             ->timezone('Asia/Yerevan')
@@ -31,7 +29,7 @@ class Kernel extends ConsoleKernel
             ->appendOutputTo(storage_path('logs/schedule.log'));
 
         $schedule->job(new ProcessContractDailyRate)
-            ->dailyAt('11:36')
+            ->dailyAt('00:05')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/schedule.log'));
@@ -42,11 +40,11 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/schedule.log'));
 
-//        $schedule->job(new ProcessDailyBankProvision)
-//            ->dailyAt('23:46')
-//            ->timezone('Asia/Yerevan')
-//            ->withoutOverlapping(10)
-//            ->appendOutputTo(storage_path('logs/laravel.log'));
+        $schedule->job(new MarkDuePrepaymentsPaid)
+            ->dailyAt('00:15')
+            ->timezone('Asia/Yerevan')
+            ->withoutOverlapping(10)
+            ->appendOutputTo(storage_path('logs/schedule.log'));
     }
 
     /**

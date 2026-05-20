@@ -7,6 +7,7 @@ use App\Models\DocumentJournal;
 use App\Models\Transaction;
 use App\Models\ChartOfAccount;
 use App\Models\PostingRule;
+use App\Models\Prepayment;
 use App\Models\Client;
 use App\Services\EffectiveRateService;
 use App\Traits\ContractTrait;
@@ -181,7 +182,11 @@ class ProcessContractDailyRate implements ShouldQueue
                     }
                 }
 
-                $calculatedInterest = ($contract->provided_amount * $contract->interest_rate / 100);
+                $unpaidPrepayments = Prepayment::where('contract_id', $contract->id)
+                    ->where('status', 'unpaid')
+                    ->sum('amount');
+
+                $calculatedInterest = (((float)$contract->provided_amount + (float)$unpaidPrepayments) * $contract->interest_rate / 100);
                 if ($calculatedInterest > 0) {
                     $ruleInterest = PostingRule::where('business_event_filter', 'interest_rate_amount')->first();
                     if ($ruleInterest) {
