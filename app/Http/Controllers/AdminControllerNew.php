@@ -722,6 +722,11 @@ class AdminControllerNew extends Controller
             'deals.*.cash' => 'nullable|boolean',
         ]);
 
+        \Log::info('update-deals invoked (deals_only_mode)', [
+            'count' => count($validated['deals'] ?? []),
+            'deal_ids' => array_map(static fn ($d) => $d['id'] ?? null, $validated['deals'] ?? []),
+        ]);
+
         DB::transaction(function () use ($validated) {
             foreach ($validated['deals'] as $dealData) {
                 $existing = DB::table('deals')->where('id', $dealData['id'])->first();
@@ -738,7 +743,10 @@ class AdminControllerNew extends Controller
             }
         });
 
-        return response()->json(['message' => 'Deals updated successfully']);
+        return response()->json([
+            'message' => 'Deals updated successfully',
+            'mode' => 'deals_only_mode',
+        ]);
     }
     public function calcAmount($amount,$days,$rate){
         return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
