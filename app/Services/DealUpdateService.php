@@ -49,7 +49,7 @@ class DealUpdateService
   public function updateOne(array $dealData): void
   {
     $deal = Deal::findOrFail($dealData['id']);
-    $deal->update([
+    Deal::query()->whereKey($deal->id)->update([
       'amount' => (float) ($dealData['amount'] ?? $deal->amount ?? 0),
       'interest_amount' => (float) ($dealData['interest_amount'] ?? $deal->interest_amount ?? 0),
       'penalty' => (float) ($dealData['penalty'] ?? $deal->penalty ?? 0),
