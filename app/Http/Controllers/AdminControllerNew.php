@@ -727,7 +727,51 @@ class AdminControllerNew extends Controller
             'deal_ids' => array_map(static fn ($d) => $d['id'] ?? null, $validated['deals'] ?? []),
         ]);
 
-        DB::transaction(function () use ($validated) {
+        $dealIds = collect($validated['deals'] ?? [])->pluck('id')->filter()->unique()->values();
+
+        DB::transaction(function () use ($validated, $dealIds) {
+            $affectedDeals = DB::table('deals')->whereIn('id', $dealIds)->get();
+            $contractIds = $affectedDeals->pluck('contract_id')->filter()->unique()->values();
+            $orderIds = $affectedDeals->pluck('order_id')->filter()->unique()->values();
+            $historyIds = $affectedDeals->pluck('history_id')->filter()->unique()->values();
+            $paymentIds = $affectedDeals->pluck('payment_id')->filter()->unique()->values();
+
+            $documentsBefore = DB::table('documents_journal')
+                ->whereIn('deal_id', $dealIds)
+                ->get();
+            $documentIds = $documentsBefore->pluck('id')->filter()->unique()->values();
+
+            $transactionsBefore = $documentIds->isEmpty()
+                ? collect()
+                : DB::table('transactions')
+                    ->where('transactionable_type', 'App\\Models\\DocumentJournal')
+                    ->whereIn('transactionable_id', $documentIds)
+                    ->get();
+
+            $contractsBefore = $contractIds->isEmpty()
+                ? collect()
+                : DB::table('contracts')->whereIn('id', $contractIds)->get();
+
+            $ordersBefore = $orderIds->isEmpty()
+                ? collect()
+                : DB::table('orders')->whereIn('id', $orderIds)->get();
+
+            $historiesBefore = $historyIds->isEmpty()
+                ? collect()
+                : DB::table('histories')->whereIn('id', $historyIds)->get();
+
+            $paymentsBefore = $paymentIds->isEmpty()
+                ? collect()
+                : DB::table('payments')->whereIn('id', $paymentIds)->get();
+
+            $dealActionsBefore = $dealIds->isEmpty()
+                ? collect()
+                : DB::table('deal_actions')->whereIn('deal_id', $dealIds)->get();
+
+            $contractAmountHistoriesBefore = $dealIds->isEmpty()
+                ? collect()
+                : DB::table('contract_amount_histories')->whereIn('deal_id', $dealIds)->get();
+
             foreach ($validated['deals'] as $dealData) {
                 $existing = DB::table('deals')->where('id', $dealData['id'])->first();
                 DB::table('deals')
@@ -741,11 +785,51 @@ class AdminControllerNew extends Controller
                         'updated_at' => now(),
                     ]);
             }
+
+            $restoreById = static function (string $table, $rows): void {
+                foreach ($rows as $row) {
+                    $data = (array) $row;
+                    $id = $data['id'] ?? null;
+                    unset($data['id']);
+                    if ($id !== null) {
+                        DB::table($table)->where('id', $id)->update($data);
+                    }
+                }
+            };
+
+            $restoreById('documents_journal', $documentsBefore);
+            $restoreById('transactions', $transactionsBefore);
+            $restoreById('contracts', $contractsBefore);
+            $restoreById('orders', $ordersBefore);
+            $restoreById('histories', $historiesBefore);
+            $restoreById('payments', $paymentsBefore);
+            $restoreById('deal_actions', $dealActionsBefore);
+            $restoreById('contract_amount_histories', $contractAmountHistoriesBefore);
+
+            // If hidden hooks inserted extra ledger rows during update, remove them.
+            if (!$dealIds->isEmpty()) {
+                $insertedDocumentIds = DB::table('documents_journal')
+                    ->whereIn('deal_id', $dealIds)
+                    ->whereNotIn('id', $documentIds->all())
+                    ->pluck('id');
+
+                if (!$insertedDocumentIds->isEmpty()) {
+                    DB::table('transactions')
+                        ->where('transactionable_type', 'App\\Models\\DocumentJournal')
+                        ->whereIn('transactionable_id', $insertedDocumentIds)
+                        ->delete();
+
+                    DB::table('documents_journal')
+                        ->whereIn('id', $insertedDocumentIds)
+                        ->delete();
+                }
+            }
         });
 
         return response()->json([
             'message' => 'Deals updated successfully',
             'mode' => 'deals_only_mode',
+            'guard' => 'deals_side_effect_reverted_v2',
         ]);
     }
     public function calcAmount($amount,$days,$rate){
