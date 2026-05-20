@@ -199,6 +199,7 @@ class DealUpdateService
   {
     $journals = DocumentJournal::where('deal_id', $deal->id)->get();
     $totalAmount = (float) $deal->fresh()->amount;
+    $classification = $this->resolveContractClassificationName($deal->contract_id);
 
     $splitTargets = [
       DocumentJournal::PAY_INTEREST_AMOUNT => $interest,
@@ -217,7 +218,7 @@ class DealUpdateService
       $amounts = $this->sequentialJournalAmounts($group, (float) $targetTotal);
       foreach ($group as $index => $journal) {
         $newAmount = $amounts[$index] ?? 0.0;
-        $this->applyJournalAmountUpdate($deal, $journal, $newAmount, $cash, $deal->date);
+        $this->applyJournalAmountUpdate($deal, $journal, $newAmount, $cash, $deal->date, $classification);
       }
     }
 
@@ -232,7 +233,7 @@ class DealUpdateService
         continue;
       }
 
-      $this->applyJournalAmountUpdate($deal, $journal, $newAmount, $cash, $deal->date);
+      $this->applyJournalAmountUpdate($deal, $journal, $newAmount, $cash, $deal->date, $classification);
     }
   }
 
@@ -311,7 +312,14 @@ class DealUpdateService
     return $journals->map(fn (DocumentJournal $j) => $newByKey[$rowKey($j)])->values()->all();
   }
 
-  private function applyJournalAmountUpdate(Deal $deal, DocumentJournal $journal, float $amountAmd, bool $cash, string $date): void
+  private function applyJournalAmountUpdate(
+    Deal $deal,
+    DocumentJournal $journal,
+    float $amountAmd,
+    bool $cash,
+    string $date,
+    ?string $classification = null
+  ): void
   {
     $journalUpdates = [
       'amount_amd' => $amountAmd,
@@ -319,7 +327,7 @@ class DealUpdateService
       'date' => $date,
     ];
 
-    $rule = $this->resolvePostingRuleForJournal($deal, $journal->document_type, $cash);
+    $rule = $this->resolvePostingRuleForJournal($deal, $journal->document_type, $cash, $classification);
     if ($rule) {
       $journalUpdates['debit_account_id'] = $rule->debit_account_id;
       $journalUpdates['credit_account_id'] = $rule->credit_account_id;
@@ -342,19 +350,17 @@ class DealUpdateService
       ->update($transactionUpdates);
   }
 
-  private function resolvePostingRuleForJournal(Deal $deal, ?string $documentType, bool $cash): ?PostingRule
+  private function resolvePostingRuleForJournal(
+    Deal $deal,
+    ?string $documentType,
+    bool $cash,
+    ?string $classification = null
+  ): ?PostingRule
   {
     if (!$deal->contract_id) {
       return null;
     }
-
-    $classification = Contract::query()
-      ->where('id', $deal->contract_id)
-      ->with('client.classification:id,name')
-      ->first()
-      ?->client
-      ?->classification
-      ?->name;
+    $classification = $classification ?? $this->resolveContractClassificationName($deal->contract_id);
 
     $eventFilter = match ($documentType) {
       DocumentJournal::PAY_INTEREST_AMOUNT => $classification === 'loss'
@@ -374,6 +380,21 @@ class DealUpdateService
     }
 
     return PostingRule::where('business_event_filter', $eventFilter)->first();
+  }
+
+  private function resolveContractClassificationName(?int $contractId): ?string
+  {
+    if (!$contractId) {
+      return null;
+    }
+
+    return Contract::query()
+      ->where('id', $contractId)
+      ->with('client.classification:id,name')
+      ->first()
+      ?->client
+      ?->classification
+      ?->name;
   }
 
   private function journalAmountForType(?string $documentType, float $interest, float $principal, float $penalty, float $totalAmount): ?float
