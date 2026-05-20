@@ -762,6 +762,25 @@ class PaymentService
      * Running balance: interest for each period = calcAmount(balance, days, rate) per schedule,
      * then balance -= principal_payment for that line.
      */
+    /**
+     * Recompute interest and line amounts on all open regular installments (e.g. after deal edit).
+     */
+    public function recalculateAmortizedSchedule(Contract $contract, ?string $date = null): void
+    {
+        $payments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->orderBy('to_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        if ($payments->isEmpty()) {
+            return;
+        }
+
+        $this->recalculateAmortizedInterestFromSchedule($contract, $payments, $date);
+    }
+
     protected function recalculateAmortizedInterestFromSchedule(Contract $contract, $payments,$date = null): void
     {
         $payments = $payments->where('status','initial')->sortBy(fn ($p) => [$p->date, $p->id ?? 0])->values();

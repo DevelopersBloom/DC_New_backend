@@ -11,6 +11,7 @@ use App\Models\History;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Pawnshop;
+use App\Models\PostingRule;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 
@@ -43,44 +44,13 @@ class DealUpdateService
   public function updateOne(array $dealData): void
   {
     $deal = Deal::findOrFail($dealData['id']);
-
-    $oldAmount = (float) ($deal->amount ?? 0);
-    $oldInterest = (float) ($deal->interest_amount ?? 0);
-    $oldPenalty = (float) ($deal->penalty ?? 0);
-    $oldCash = (bool) $deal->cash;
-    $oldDate = $deal->date;
-    $oldPrincipal = $this->resolvePrincipal($deal, $oldAmount, $oldInterest, $oldPenalty);
-
-    $newAmount = (float) ($dealData['amount'] ?? $oldAmount);
-    $newInterest = (float) ($dealData['interest_amount'] ?? $oldInterest);
-    $newPenalty = (float) ($dealData['penalty'] ?? $oldPenalty);
-    $newCash = array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : $oldCash;
-    $newDate = $dealData['date'] ?? $oldDate;
-    $newPrincipal = array_key_exists('principal_payment', $dealData)
-      ? (float) $dealData['principal_payment']
-      : $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
-
-    $this->adjustPawnshopCashbox($deal, $oldAmount, $oldCash, $newAmount, $newCash);
-
-    $pawnshop = $deal->pawnshop_id ? Pawnshop::find($deal->pawnshop_id) : null;
-
-    $deal->update([
-      'amount' => $newAmount,
-      'interest_amount' => $newInterest,
-      'penalty' => $newPenalty,
-      'cash' => $newCash,
-      'date' => $newDate,
-      'cashbox' => $pawnshop?->cashbox,
-      'bank_cashbox' => $pawnshop?->bank_cashbox,
+    Deal::query()->whereKey($deal->id)->update([
+      'amount' => (float) ($dealData['amount'] ?? $deal->amount ?? 0),
+      'interest_amount' => (float) ($dealData['interest_amount'] ?? $deal->interest_amount ?? 0),
+      'penalty' => (float) ($dealData['penalty'] ?? $deal->penalty ?? 0),
+      'cash' => array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : (bool) $deal->cash,
+      'date' => $dealData['date'] ?? $deal->date,
     ]);
-
-    $this->syncOrder($deal, $newAmount, $newCash, $newDate);
-    $this->syncHistory($deal, $newAmount, $newInterest, $newPenalty, $newDate);
-    $this->syncRelatedDates($deal, $newDate);
-    $this->syncAccounting($deal, $newInterest, $newPrincipal, $newPenalty, $newCash);
-    $this->syncContract($deal, $oldInterest, $oldPenalty, $oldPrincipal, $newInterest, $newPenalty, $newPrincipal);
-    $this->syncPayments($deal, $newAmount, $newInterest, $newPenalty, $newPrincipal, $newCash);
-    $this->syncDealActions($deal, $newAmount, $newInterest, $newPrincipal, $newPenalty, $newDate);
   }
 
   private function resolvePrincipal(Deal $deal, float $amount, float $interest, float $penalty): float
@@ -183,27 +153,234 @@ class DealUpdateService
   {
     $journals = DocumentJournal::where('deal_id', $deal->id)->get();
     $totalAmount = (float) $deal->fresh()->amount;
+    $classification = $this->resolveContractClassificationName($deal->contract_id);
 
-    foreach ($journals as $journal) {
-      $newAmount = $this->journalAmountForType($journal->document_type, $interest, $principal, $penalty, $totalAmount);
+    $splitTargets = [
+      DocumentJournal::PAY_INTEREST_AMOUNT => $interest,
+      DocumentJournal::PAY_MOTHER_AMOUNT => $principal,
+      DocumentJournal::PAY_MOTHER_AMOUNT_CASH => $principal,
+      DocumentJournal::PAY_PENALTY_AMOUNT => $penalty,
+      DocumentJournal::RECOVERY_INTEREST => $interest,
+      DocumentJournal::RECOVERY_PRINCIPAL => $principal,
+    ];
 
-      if ($newAmount === null) {
+    $handledTypes = array_keys($splitTargets);
+
+    foreach ($splitTargets as $documentType => $targetTotal) {
+      $group = $journals->where('document_type', $documentType)->sortBy('id')->values();
+      if ($group->isEmpty()) {
         continue;
       }
 
-      $journal->update([
-        'amount_amd' => $newAmount,
-        'cash' => $cash,
-        'date' => $deal->date,
-      ]);
-
-      Transaction::where('transactionable_type', DocumentJournal::class)
-        ->where('transactionable_id', $journal->id)
-        ->update([
-          'amount_amd' => $newAmount,
-          'date' => $deal->date,
-        ]);
+      $amounts = $this->sequentialJournalAmounts($group, (float) $targetTotal);
+      foreach ($group as $index => $journal) {
+        $newAmount = $amounts[$index] ?? 0.0;
+        $this->applyJournalAmountUpdate($deal, $journal, $newAmount, $cash, $deal->date, $classification);
+      }
     }
+
+    foreach ($journals as $journal) {
+      if (in_array($journal->document_type, $handledTypes, true)) {
+        continue;
+      }
+
+      // For unsupported document types, keep amount as-is and only sync date/cash/accounts.
+      $this->applyJournalMetadataUpdate($deal, $journal, $cash, $deal->date, $classification);
+    }
+  }
+
+  /**
+   * When several journal lines share one economic total (e.g. makePayment + partial mother posting),
+   * reallocate the new total in row order:
+   * - Decrease: take from the smallest amount line first until it hits zero, then the next smallest, etc.
+   * - Increase: add the full increase to the smallest amount line first (lower id breaks ties),
+   *   matching the reverse of decreases (same sort order as reductions).
+   *
+   * Returned amounts are in the same order as $journals.
+   *
+   * @param  \Illuminate\Support\Collection<int, DocumentJournal>  $journals
+   * @return list<float>
+   */
+  private function sequentialJournalAmounts($journals, float $targetTotal): array
+  {
+    $count = $journals->count();
+    if ($count === 0) {
+      return [];
+    }
+
+    if ($count === 1) {
+      return [$targetTotal];
+    }
+
+    $rowKey = static function (DocumentJournal $j): string {
+      return $j->id !== null ? 'id:' . (string) (int) $j->id : 'obj:' . spl_object_id($j);
+    };
+
+    $newByKey = [];
+    foreach ($journals as $j) {
+      $newByKey[$rowKey($j)] = max(0.0, (float) ($j->amount_amd ?? 0));
+    }
+
+    $sumOld = array_sum($newByKey);
+
+    if ($targetTotal <= $sumOld + 1e-9) {
+      $toRemove = $sumOld - $targetTotal;
+      $sorted = $journals->sort(function (DocumentJournal $a, DocumentJournal $b) {
+        $av = (float) ($a->amount_amd ?? 0);
+        $bv = (float) ($b->amount_amd ?? 0);
+        if (abs($av - $bv) > 1e-9) {
+          return $av <=> $bv;
+        }
+
+        return ((int) ($a->id ?? 0)) <=> ((int) ($b->id ?? 0));
+      })->values();
+
+      foreach ($sorted as $journal) {
+        if ($toRemove <= 1e-9) {
+          break;
+        }
+        $k = $rowKey($journal);
+        $current = $newByKey[$k];
+        $removable = min($current, $toRemove);
+        $newByKey[$k] = $current - $removable;
+        $toRemove -= $removable;
+      }
+    } else {
+      $toAdd = $targetTotal - $sumOld;
+      $sortedAsc = $journals->sort(function (DocumentJournal $a, DocumentJournal $b) {
+        $av = (float) ($a->amount_amd ?? 0);
+        $bv = (float) ($b->amount_amd ?? 0);
+        if (abs($av - $bv) > 1e-9) {
+          return $av <=> $bv;
+        }
+
+        return ((int) ($a->id ?? 0)) <=> ((int) ($b->id ?? 0));
+      })->values();
+
+      $smallest = $sortedAsc->first();
+      $newByKey[$rowKey($smallest)] += $toAdd;
+    }
+
+    return $journals->map(fn (DocumentJournal $j) => $newByKey[$rowKey($j)])->values()->all();
+  }
+
+  private function applyJournalAmountUpdate(
+    Deal $deal,
+    DocumentJournal $journal,
+    float $amountAmd,
+    bool $cash,
+    string $date,
+    ?string $classification = null
+  ): void
+  {
+    $journalUpdates = [
+      'amount_amd' => $amountAmd,
+      'cash' => $cash,
+      'date' => $date,
+    ];
+
+    $rule = $this->resolvePostingRuleForJournal($deal, $journal->document_type, $cash, $classification);
+    if ($rule) {
+      $journalUpdates['debit_account_id'] = $rule->debit_account_id;
+      $journalUpdates['credit_account_id'] = $rule->credit_account_id;
+    }
+
+    $journal->update($journalUpdates);
+
+    $transactionUpdates = [
+      'amount_amd' => $amountAmd,
+      'date' => $date,
+    ];
+
+    if ($rule) {
+      $transactionUpdates['debit_account_id'] = $rule->debit_account_id;
+      $transactionUpdates['credit_account_id'] = $rule->credit_account_id;
+    }
+
+    Transaction::where('transactionable_type', DocumentJournal::class)
+      ->where('transactionable_id', $journal->id)
+      ->update($transactionUpdates);
+  }
+
+  private function applyJournalMetadataUpdate(
+    Deal $deal,
+    DocumentJournal $journal,
+    bool $cash,
+    string $date,
+    ?string $classification = null
+  ): void
+  {
+    $journalUpdates = [
+      'cash' => $cash,
+      'date' => $date,
+    ];
+
+    $transactionUpdates = [
+      'date' => $date,
+    ];
+
+    $rule = $this->resolvePostingRuleForJournal($deal, $journal->document_type, $cash, $classification);
+    if ($rule) {
+      $journalUpdates['debit_account_id'] = $rule->debit_account_id;
+      $journalUpdates['credit_account_id'] = $rule->credit_account_id;
+      $transactionUpdates['debit_account_id'] = $rule->debit_account_id;
+      $transactionUpdates['credit_account_id'] = $rule->credit_account_id;
+    }
+
+    $journal->update($journalUpdates);
+    Transaction::where('transactionable_type', DocumentJournal::class)
+      ->where('transactionable_id', $journal->id)
+      ->update($transactionUpdates);
+  }
+
+  private function resolvePostingRuleForJournal(
+    Deal $deal,
+    ?string $documentType,
+    bool $cash,
+    ?string $classification = null
+  ): ?PostingRule
+  {
+    if (!$deal->contract_id) {
+      return null;
+    }
+    $classification = $classification ?? $this->resolveContractClassificationName($deal->contract_id);
+
+    $eventFilter = match ($documentType) {
+      DocumentJournal::PAY_INTEREST_AMOUNT => $classification === 'loss'
+        ? 'pay_interest_amount_loss'
+        : ($cash ? 'pay_interest_amount_cash' : 'pay_interest_amount'),
+      DocumentJournal::PAY_MOTHER_AMOUNT,
+      DocumentJournal::PAY_MOTHER_AMOUNT_CASH => $cash
+        ? 'pay_mother_amount_cash'
+        : 'pay_mother_amount',
+      DocumentJournal::PAY_PENALTY_AMOUNT => $classification === 'loss'
+        ? 'pay_penalty_amount_loss'
+        : ($cash ? 'pay_penalty_amount_cash' : 'pay_penalty_amount'),
+      DocumentJournal::RECOVERY_PRINCIPAL => 'recovery_principal',
+      DocumentJournal::RECOVERY_INTEREST => 'recovery_interest',
+      default => null,
+    };
+
+    if (!$eventFilter) {
+      return null;
+    }
+
+    return PostingRule::where('business_event_filter', $eventFilter)->first();
+  }
+
+  private function resolveContractClassificationName(?int $contractId): ?string
+  {
+    if (!$contractId) {
+      return null;
+    }
+
+    return Contract::query()
+      ->where('id', $contractId)
+      ->with('client.classification:id,name')
+      ->first()
+      ?->client
+      ?->classification
+      ?->name;
   }
 
   private function journalAmountForType(?string $documentType, float $interest, float $principal, float $penalty, float $totalAmount): ?float
@@ -256,60 +433,6 @@ class DealUpdateService
     $contract->save();
   }
 
-  private function syncPayments(
-    Deal $deal,
-    float $amount,
-    float $interest,
-    float $penalty,
-    float $principal,
-    bool $cash
-  ): void {
-    if ($deal->payment_id) {
-      Payment::where('id', $deal->payment_id)->update(['cash' => $cash]);
-    }
-
-    $paymentIds = DealAction::where('deal_id', $deal->id)
-      ->where('actionable_type', Payment::class)
-      ->pluck('actionable_id')
-      ->filter()
-      ->unique();
-
-    if ($paymentIds->isEmpty()) {
-      return;
-    }
-
-    Payment::whereIn('id', $paymentIds)->update(['cash' => $cash]);
-
-    $actions = DealAction::where('deal_id', $deal->id)
-      ->where('actionable_type', Payment::class)
-      ->orderBy('id')
-      ->get();
-
-    if ($actions->count() === 1) {
-      $action = $actions->first();
-      $payment = Payment::find($action->actionable_id);
-      if ($payment) {
-        $payment->paid = max(0, $amount);
-        $payment->cash = $cash;
-        if ($action->type === 'penalty') {
-          $payment->penalty = $penalty;
-        }
-        $payment->save();
-      }
-      return;
-    }
-
-    foreach ($actions as $action) {
-      if ($action->type === 'penalty' && $action->actionable_id) {
-        Payment::where('id', $action->actionable_id)->update([
-          'paid' => $penalty,
-          'penalty' => $penalty,
-          'cash' => $cash,
-        ]);
-      }
-    }
-  }
-
   private function syncDealActions(
     Deal $deal,
     float $amount,
@@ -318,13 +441,32 @@ class DealUpdateService
     float $penalty,
     string $date
   ): void {
-    DealAction::where('deal_id', $deal->id)->each(function (DealAction $action) use ($amount, $interest, $principal, $penalty, $date) {
+    $regularActions = DealAction::where('deal_id', $deal->id)
+      ->where('type', 'regular')
+      ->get();
+    $oldRegularTotal = (float) $regularActions->sum('amount');
+
+    DealAction::where('deal_id', $deal->id)->each(function (DealAction $action) use (
+      $amount,
+      $interest,
+      $principal,
+      $penalty,
+      $date,
+      $regularActions,
+      $oldRegularTotal
+    ) {
       $updates = ['date' => $date];
 
       if ($action->type === 'penalty') {
         $updates['amount'] = $penalty;
       } elseif ($action->type === 'regular') {
-        $updates['amount'] = $amount - $interest - $penalty;
+        if ($oldRegularTotal > 0) {
+          $updates['amount'] = $principal * ((float) $action->amount / $oldRegularTotal);
+        } elseif ($regularActions->count() > 0) {
+          $updates['amount'] = $principal / $regularActions->count();
+        } else {
+          $updates['amount'] = max(0, $amount - $interest - $penalty);
+        }
       } elseif ($action->type === 'partial') {
         $updates['amount'] = $principal;
       }
@@ -332,4 +474,5 @@ class DealUpdateService
       $action->update($updates);
     });
   }
+
 }
