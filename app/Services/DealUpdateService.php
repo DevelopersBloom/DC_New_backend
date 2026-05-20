@@ -49,54 +49,13 @@ class DealUpdateService
   public function updateOne(array $dealData): void
   {
     $deal = Deal::findOrFail($dealData['id']);
-
-    $oldAmount = (float) ($deal->amount ?? 0);
-    $oldInterest = (float) ($deal->interest_amount ?? 0);
-    $oldPenalty = (float) ($deal->penalty ?? 0);
-    $oldCash = (bool) $deal->cash;
-    $oldDate = $deal->date;
-    $oldPrincipal = $this->resolvePrincipal($deal, $oldAmount, $oldInterest, $oldPenalty);
-
-    $newAmount = (float) ($dealData['amount'] ?? $oldAmount);
-    $newInterest = (float) ($dealData['interest_amount'] ?? $oldInterest);
-    $newPenalty = (float) ($dealData['penalty'] ?? $oldPenalty);
-    $newCash = array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : $oldCash;
-    $newDate = $dealData['date'] ?? $oldDate;
-    $newPrincipal = array_key_exists('principal_payment', $dealData)
-      ? (float) $dealData['principal_payment']
-      : $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
-
-    $this->adjustPawnshopCashbox($deal, $oldAmount, $oldCash, $newAmount, $newCash);
-
-    $pawnshop = $deal->pawnshop_id ? Pawnshop::find($deal->pawnshop_id) : null;
-
     $deal->update([
-      'amount' => $newAmount,
-      'interest_amount' => $newInterest,
-      'penalty' => $newPenalty,
-      'cash' => $newCash,
-      'date' => $newDate,
-      'cashbox' => $pawnshop?->cashbox,
-      'bank_cashbox' => $pawnshop?->bank_cashbox,
+      'amount' => (float) ($dealData['amount'] ?? $deal->amount ?? 0),
+      'interest_amount' => (float) ($dealData['interest_amount'] ?? $deal->interest_amount ?? 0),
+      'penalty' => (float) ($dealData['penalty'] ?? $deal->penalty ?? 0),
+      'cash' => array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : (bool) $deal->cash,
+      'date' => $dealData['date'] ?? $deal->date,
     ]);
-
-    $this->syncOrder($deal, $newAmount, $newCash, $newDate);
-    $this->syncHistory($deal, $newAmount, $newInterest, $newPenalty, $newDate);
-    $this->syncRelatedDates($deal, $newDate);
-    $this->syncAccounting($deal, $newInterest, $newPrincipal, $newPenalty, $newCash);
-    $this->syncContract($deal, $oldInterest, $oldPenalty, $oldPrincipal, $newInterest, $newPenalty, $newPrincipal);
-    $this->syncDealActions($deal, $newAmount, $newInterest, $newPrincipal, $newPenalty, $newDate);
-    $this->syncPayments(
-      $deal,
-      $oldInterest,
-      $oldPenalty,
-      $oldPrincipal,
-      $newInterest,
-      $newPenalty,
-      $newPrincipal,
-      $newCash,
-      $newDate
-    );
   }
 
   private function resolvePrincipal(Deal $deal, float $amount, float $interest, float $penalty): float
