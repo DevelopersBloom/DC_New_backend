@@ -123,6 +123,7 @@ class PaymentService
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount  += $result['interest_amount'];
                     $principal_amount += $result['principal_amount'];
+                    dd($interestAmount,$amount,$principal_amount,$interest_amount);
                 }
             }
             if ($amount > 0) {
