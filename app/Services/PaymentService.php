@@ -101,17 +101,32 @@ class PaymentService
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
             });
-            // If the entered amount can fully cover all selected rows, or the caller explicitly
-            // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
+
+            $isTyped = in_array($overpaymentType, ['principal', 'interest']);
+            $mandatoryPrincipal = 0.0;
+            if ($isTyped) {
+                $parsedDate = Carbon::parse($date)->startOfDay();
+                foreach ($payments as $p) {
+                    $toDate = Carbon::parse($p->to_date ?? $p->date)->startOfDay();
+                    if ($toDate->lte($parsedDate)) {
+                        $mandatoryPrincipal += (float) ($p->principal_payment ?? 0);
+                    }
+                }
+            }
+            $scheduledBudget = $isTyped
+                ? min($amount, max(0.0, (float) $interestAmount) + $mandatoryPrincipal)
+                : $amount;
+            $budgetLeft = $scheduledBudget;
+
             foreach ($payments as $payment) {
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
-                if ($amount > 0) {
+                if ($budgetLeft > 0) {
                     $result = $this->processSinglePayment(
                         $contract,
                         $payment,
-                        $amount,
+                        $budgetLeft,
                         $payer,
                         $cash,
                         $deal_id,
@@ -119,23 +134,25 @@ class PaymentService
                         $interestAmount,
                         $date
                     );
-                    $amount = $result['amount'];
+                    $budgetLeft     = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
-                    $interest_amount += $result['interest_amount'];
+                    $interest_amount  += $result['interest_amount'];
                     $principal_amount += $result['principal_amount'];
                 }
             }
-            if ($amount > 0) {
-                if ($overpaymentType === 'interest') {
-                    $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
-                } elseif ($overpaymentType === 'principal') {
-                    $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, false);
-                } else {
-                    $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id, $date);
-                }
-                $amount = 0;
-            }
 
+            // Remaining = held-back portion + whatever the loop did not consume
+            $remaining = ($amount - $scheduledBudget) + $budgetLeft;
+
+            if ($remaining > 0) {
+                if ($overpaymentType === 'interest') {
+                    $this->applyExtraToFutureInterest($contract, $remaining, $payments->last()->id ?? null);
+                } elseif ($overpaymentType === 'principal') {
+                    $this->payPartial($contract, $remaining, false, $cash, $deal_id, $date, false, false);
+                } else {
+                    $this->handleRemainingAmount($contract, $remaining, $cash, $payments->last()->id, $deal_id, $date);
+                }
+            }
         }
         $contract->collected += $interest_amount;
         $contract->save();
