@@ -32,6 +32,7 @@ class PaymentService
 
     public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $interestAmount = 0, $ispPaymentSelected = false, $date = null, string $overpaymentType = 'interest')
     {
+        dd($interestAmount);
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
