@@ -126,6 +126,7 @@ class PaymentService
                 }
             }
             if ($amount > 0) {
+                dd($amount,$overpaymentType);
                 if ($overpaymentType === 'interest') {
                     $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
                 } elseif ($overpaymentType === 'principal') {
