@@ -245,7 +245,7 @@ class PaymentService
                 $interestPayment -= $paidInterest;
                 $payment->interest_payment  -= $paidInterest;
 
-                dd($payment->to_date >= $date, $payment->to_date,$date,  $payment->interest_payment ,$interestPayment,$paidInterest);
+                dd($payment->to_date <= $date, $payment->to_date,$date,  $payment->interest_payment ,$interestPayment,$paidInterest);
                 if ($payment->to_date <= $date) {
                     $paidPrincipal = min($amount - $paidInterest, $principalPayment);
                     $remainingAmount = 0;
