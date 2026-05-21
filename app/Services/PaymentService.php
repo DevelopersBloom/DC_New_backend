@@ -726,7 +726,6 @@ class PaymentService
                 break;
             }
             $reduction = min($remainingPartial, (float) $payment->principal_payment);
-            dd($reduction,$remainingPartial);
             if ($reduction <= 0) {
                 continue;
             }
@@ -814,6 +813,7 @@ class PaymentService
             $fee = (float) ($payment->service_fee_payment ?? 0);
             $paid = (float) ($payment->paid ?? 0);
             $payment->amount = $payment->interest_payment + $principal;
+            dd($payment->amount,$payment->interest_payment + $principal);
             if ((float) $payment->amount <= 0) {
                 $payment->status = 'completed';
             }
