@@ -124,7 +124,7 @@ class PaymentService
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
                     $principal_amount += $result['principal_amount'];
-                    dd($amount,$interestAmount,$principal_amount,$interest_amount,$date);
+                    dd($payments->count(),$amount,$interestAmount,$principal_amount,$interest_amount,$date);
                 }
             }
             if ($amount > 0) {
