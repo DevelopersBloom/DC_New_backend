@@ -8,7 +8,7 @@ use App\Services\IncomeExpenseMonthlyReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
+use PhpOffice\PhpSpreadsheet\Reader\Xls as XlsReader;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -60,12 +60,12 @@ class MonthlyIncomeExpenseController extends Controller
             $prevBy[(string)$r['code']] = $r;
         }
 
-        $templatePath = base_path('v05.xlsx');
+        $templatePath = base_path('v05.xls');
         if (!is_file($templatePath)) {
             return response()->json(['message' => "Template not found at {$templatePath}"], 404);
         }
 
-        $reader = new XlsxReader();
+        $reader = new XlsReader();
         $reader->setReadDataOnly(false);
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
