@@ -126,7 +126,6 @@ class PaymentService
                 }
             }
             if ($amount > 0) {
-                dd($amount);
                 if ($overpaymentType === 'interest') {
                     $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
                 } elseif ($overpaymentType === 'principal') {
@@ -243,15 +242,18 @@ class PaymentService
                 // Partial: interest first, then principal with what remains
                 $paidInterest  = min($amount,$interestAmount, $interestPayment);
                 $interestPayment -= $paidInterest;
-                $paidPrincipal = min($amount - $paidInterest, $principalPayment);
-                $remainingAmount = 0;
-
                 $payment->interest_payment  -= $paidInterest;
-                $payment->principal_payment -= $paidPrincipal;
-                $contract->left             = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
 
-                $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
+                if ($payment->to_date >= $date) {
+                    $paidPrincipal = min($amount - $paidInterest, $principalPayment);
+                    $remainingAmount = 0;
+
+                    $payment->principal_payment -= $paidPrincipal;
+                    $contract->left             = max(0, $contract->left - $paidPrincipal);
+                    $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
+
+                    $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
+                }
             }
 
             // Early payment: full principal goes to prepayments (will be applied on due date)
