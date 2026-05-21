@@ -32,7 +32,6 @@ class PaymentService
 
     public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $interestAmount = 0, $ispPaymentSelected = false, $date = null, string $overpaymentType = 'interest')
     {
-        dd($interestAmount);
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
@@ -240,6 +239,7 @@ class PaymentService
 
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
             } else {
+                dd($interestAmount);
                 // Partial: interest first, then principal with what remains
                 $paidInterest  = min($amount, $interestPayment);
                 $paidPrincipal = min($amount - $paidInterest, $principalPayment);
