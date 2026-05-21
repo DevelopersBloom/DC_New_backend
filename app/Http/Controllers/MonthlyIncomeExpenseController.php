@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
-use PhpOffice\PhpSpreadsheet\Writer\Xls as XlsWriter;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Carbon\Carbon;
@@ -109,10 +109,10 @@ class MonthlyIncomeExpenseController extends Controller
 
         Log::debug('D161 before save = ' . var_export($sheet->getCell('D161')->getValue(), true));
 
-        $writer = new XlsWriter($spreadsheet);
+        $writer = new XlsxWriter($spreadsheet);
         $writer->setPreCalculateFormulas(false);
 
-        $filename = "monthly_income_expense.xls";
+        $filename = "monthly_income_expense.xlsx";
         $dir = storage_path('app/reports');
 
         if (!is_dir($dir)) {
@@ -128,7 +128,7 @@ class MonthlyIncomeExpenseController extends Controller
         $writer->save($path);
 
         return response()->download($path, $filename, [
-            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
             'Pragma' => 'public',
         ])->deleteFileAfterSend(true);
