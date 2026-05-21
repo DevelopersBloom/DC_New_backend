@@ -240,9 +240,9 @@ class PaymentService
 
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
             } else {
-                dd($amount,$interestPayment);
                 // Partial: interest first, then principal with what remains
-                $paidInterest  = min($amount, $interestPayment);
+                $paidInterest  = min($amount,$interestAmount, $interestPayment);
+                dd($paidInterest);
                 $paidPrincipal = min($amount - $paidInterest, $principalPayment);
                 $remainingAmount = 0;
 
