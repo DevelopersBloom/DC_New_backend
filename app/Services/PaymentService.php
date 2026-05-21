@@ -129,9 +129,9 @@ class PaymentService
                 if ($overpaymentType === 'interest') {
                     $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
                 } elseif ($overpaymentType === 'principal') {
-                    $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, false);
-                } else {
                     $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id, $date);
+
+//                    $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, false);
                 }
                 $amount = 0;
             }
