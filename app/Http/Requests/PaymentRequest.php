@@ -37,6 +37,7 @@ class PaymentRequest extends FormRequest
             'payer.surname' => 'nullable|string',
             'payer.phone'   => 'nullable|string',
             'cash'          => 'required|boolean',
+            'payment_type'  => 'nullable|string|in:interest,principal',
         ];
     }
 }

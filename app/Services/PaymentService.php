@@ -35,6 +35,7 @@ class PaymentService
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
+        $extra_principal = 0;
         $initial_amount = $amount;
 
         $contract->historyContext = [
@@ -128,6 +129,9 @@ class PaymentService
             if ($amount > 0) {
                 if ($overpaymentType === 'interest') {
                     $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
+                } elseif ($overpaymentType === 'principal') {
+                    $this->applyExtraToPrincipal($contract, $amount, $deal_id, $date);
+                    $extra_principal = $amount;
                 } else {
                     $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id, $date);
                 }
@@ -183,12 +187,12 @@ class PaymentService
         }
 
         return [
-            'payments_sum' => $payments_sum,
+            'payments_sum'    => $payments_sum,
             'interest_amount' => $interest_amount,
-            'principal_amount' => $principal_amount,
-            'penalty' => $payed_penalty,
-            'delay_days' => $delay_days,
-            'discount' => 0
+            'principal_amount' => $principal_amount + $extra_principal,
+            'penalty'         => $payed_penalty,
+            'delay_days'      => $delay_days,
+            'discount'        => 0
         ];
     }
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false,$date = null)
@@ -493,6 +497,58 @@ class PaymentService
         return $decrease;
 
 
+    }
+
+    private function applyExtraToPrincipal(Contract $contract, float $extra, $deal_id, $date): void
+    {
+        $oldProvided = (float) $contract->provided_amount;
+        $oldLeft     = (float) $contract->left;
+
+        $contract->provided_amount = max(0, $oldProvided - $extra);
+        $contract->left            = max(0, $oldLeft - $extra);
+        $contract->save();
+
+        // Recalculate interest on remaining schedule without touching the prepayment table
+        $remainingPayments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->orderBy('to_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        if ($remainingPayments->isNotEmpty()) {
+            $this->recalculateAmortizedInterestFromSchedule($contract, $remainingPayments, $date);
+        }
+
+        Modification::create([
+            'subject_type'      => Contract::class,
+            'subject_id'        => $contract->id,
+            'modification_type' => 'Modificator',
+            'field_code'        => 'PrincipalAmount',
+            'element_code'      => 'Amount',
+            'old_value'         => (string) $oldProvided,
+            'new_value'         => (string) max(0, $oldProvided - $extra),
+            'effective_date'    => $date ?? now()->toDateString(),
+        ]);
+
+        DealAction::create([
+            'deal_id'          => $deal_id,
+            'actionable_id'    => $contract->id,
+            'actionable_type'  => Contract::class,
+            'amount'           => $extra,
+            'type'             => 'partial',
+            'description'      => 'Overpayment applied to principal with interest recalculation',
+            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+            'history'          => [
+                'contract_changes' => [
+                    'old_left'     => $oldLeft,
+                    'new_left'     => max(0, $oldLeft - $extra),
+                    'old_provided' => $oldProvided,
+                    'new_provided' => max(0, $oldProvided - $extra),
+                    'contract_id'  => $contract->id,
+                ],
+            ],
+        ]);
     }
 
     private function applyExtraToFutureInterest(Contract $contract, float $extra, ?int $excludePaymentId = null): void
