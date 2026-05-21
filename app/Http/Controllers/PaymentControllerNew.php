@@ -127,7 +127,7 @@ class PaymentControllerNew extends Controller
                 ->firstOrFail();
 
             // ===== Payment Logic =====
-            $overpaymentType = $request->input('payment_type', 'interest');
+            $overpaymentType = $request->payment_type;
 
             $result = $this->paymentService->processPayments(
                 $contract,
