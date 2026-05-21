@@ -33,6 +33,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\ChartOfAccountController;
+use App\Http\Controllers\TAccountReportController;
+use App\Http\Controllers\TPartnerReportController;
 use App\Http\Controllers\TurnoverReportController;
 use App\Http\Controllers\CreditRegistryController;
 /*
@@ -114,6 +116,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::prefix('reports')->group(function (){
             Route::get('/monthly-income-expense', MonthlyIncomeExpenseController::class)->middleware('can:view_v05_report');
             Route::get('/turnover', TurnoverReportController::class)->middleware('can:view_account_balances');
+            Route::get('/t-account', TAccountReportController::class)->middleware('can:view_account_balances');
+            Route::get('/t-partner', TPartnerReportController::class)->middleware('can:view_partner_balances');
             Route::get('/v03',  [ReportController::class, 'getV03Report'])->middleware('can:view_v03_report');
             Route::get('/v06',  [ReportController::class, 'getV06Report'])->middleware('can:view_v06_report');
             Route::get('/v07',  [ReportController::class, 'getV07Report'])->middleware('can:view_v07_report');
