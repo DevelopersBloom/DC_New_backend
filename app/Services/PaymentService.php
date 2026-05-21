@@ -232,7 +232,7 @@ class PaymentService
                 $paidInterest  = $interestPayment;
                 $paidPrincipal = $principalPayment;
                 $remainingAmount = $amount - $scheduledAmount;
-
+                $interestAmount -= $payment->interest_payment;
                 $payment->interest_payment  = 0;
                 $payment->principal_payment = 0;
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
@@ -284,7 +284,7 @@ class PaymentService
             'interest_amount'    => $paidInterest,
             'principal_amount'   => $paidPrincipal,
             'amount'             => $remainingAmount,
-            'remaining_interest' => 0,
+            'remaining_interest' => $interestAmount,
         ];
     }
 
