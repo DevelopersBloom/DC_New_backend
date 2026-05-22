@@ -199,6 +199,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/store-client', [ClientControllerNew::class, 'storeClient'])->middleware('can:create_client');
         Route::post('/store-non-client', [ClientControllerNew::class, 'storeNonClient'])->middleware('can:create_client');
         Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification'])->middleware('can:classify_client');
+        Route::post('/{id}/fetch-bank-id', [CreditRegistryController::class, 'fetchBankId']);
     });
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');
     Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index']);
