@@ -175,10 +175,10 @@ class   ContractService
 
             switch ($category->name) {
                 case 'electronics':
-                    $subcategory = Subcategory::firstOrCreate([
-                        'name'        => $data['subcategory'],
-                        'category_id' => $data['category_id'],
-                    ]);
+//                    $subcategory = Subcategory::firstOrCreate([
+//                        'name'        => $data['subcategory'],
+//                        'category_id' => $data['category_id'],
+//                    ]);
 //                    if (!empty($data['model'])) {
 //                        $subcategoryItem = SubcategoryItem::firstOrCreate([
 //                            'subcategory_id' => $subcategory->id,
