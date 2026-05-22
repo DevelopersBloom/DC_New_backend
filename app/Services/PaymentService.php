@@ -35,6 +35,7 @@ class PaymentService
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
+        $prepayment_principal = 0;
         $initial_amount = $amount;
 
         $contract->historyContext = [
@@ -119,10 +120,11 @@ class PaymentService
                         $interestAmount,
                         $date
                     );
-                    $amount         = $result['amount'];
-                    $interestAmount = $result['remaining_interest'];
-                    $interest_amount  += $result['interest_amount'];
-                    $principal_amount += $result['principal_amount'];
+                    $amount               = $result['amount'];
+                    $interestAmount       = $result['remaining_interest'];
+                    $interest_amount      += $result['interest_amount'];
+                    $principal_amount     += $result['principal_amount'];
+                    $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
             if ($amount > 0) {
@@ -183,12 +185,13 @@ class PaymentService
         }
 
         return [
-            'payments_sum'    => $payments_sum,
-            'interest_amount' => $interest_amount,
-            'principal_amount' => $principal_amount,
-            'penalty'         => $payed_penalty,
-            'delay_days'      => $delay_days,
-            'discount'        => 0
+            'payments_sum'         => $payments_sum,
+            'interest_amount'      => $interest_amount,
+            'principal_amount'     => $principal_amount,
+            'prepayment_principal' => $prepayment_principal,
+            'penalty'              => $payed_penalty,
+            'delay_days'           => $delay_days,
+            'discount'             => 0
         ];
     }
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false,$date = null)
@@ -256,7 +259,8 @@ class PaymentService
             // Early payment: full principal goes to prepayments (will be applied on due date)
             $payDate = Carbon::parse($date ?? now())->startOfDay();
             $toDt    = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-            if ($toDt->gt($payDate) && $paidPrincipal > 0) {
+            $isPrepayment = $toDt->gt($payDate) && $paidPrincipal > 0;
+            if ($isPrepayment) {
                 $this->prepaymentService->createSingle(
                     $contract->id,
                     $payment->id,
@@ -269,6 +273,7 @@ class PaymentService
             $paidInterest    = min($amount, $scheduledAmount);
             $remainingAmount = $amount - $paidInterest;
             $paidPrincipal   = 0;
+            $isPrepayment    = false;
 
             if ($amount >= $scheduledAmount) {
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, null, $interestPayment, $date);
@@ -280,10 +285,11 @@ class PaymentService
         $contract->save();
         $payment->save();
         return [
-            'interest_amount'    => $paidInterest,
-            'principal_amount'   => $paidPrincipal,
-            'amount'             => $remainingAmount,
-            'remaining_interest' => $interestAmount,
+            'interest_amount'      => $paidInterest,
+            'principal_amount'     => $paidPrincipal,
+            'prepayment_principal' => ($isPrepayment ?? false) ? $paidPrincipal : 0,
+            'amount'               => $remainingAmount,
+            'remaining_interest'   => $interestAmount,
         ];
     }
 

@@ -32,6 +32,7 @@ class PostingRuleSeeder extends Seeder
         $acc10000 =  ChartOfAccount::idByCode('10000');
         $acc86000 = ChartOfAccount::idByCode('86000');
         $acc86001 = ChartOfAccount::idByCode('86001');
+        $acc39920 = ChartOfAccount::idByCode('39920');
 
         DB::table('posting_rules')->insert([
             [
@@ -274,6 +275,20 @@ class PostingRuleSeeder extends Seeder
                 'business_event_filter' => 'recovery_interest',
                 'debit_account_id'  => null,
                 'credit_account_id' => $acc86001,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'prepayment_received',
+                'debit_account_id'  => $acc102101,
+                'credit_account_id' => $acc39920,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'prepayment_received_cash',
+                'debit_account_id'  => $acc10000,
+                'credit_account_id' => $acc39920,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

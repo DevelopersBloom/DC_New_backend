@@ -158,8 +158,10 @@ class PaymentControllerNew extends Controller
             $clientId = $contract->client_id;
             $docNum   = Transaction::getNextDocumentNumber();
 
-            $interest = $result['interest_amount'];
-            $principal= $result['principal_amount'];
+            $interest            = $result['interest_amount'];
+            $principal           = $result['principal_amount'];
+            $prepaymentPrincipal = $result['prepayment_principal'] ?? 0;
+            $regularPrincipal    = $principal - $prepaymentPrincipal;
 
             // ---- Interest ----
             if ($interest > 0) {
@@ -179,16 +181,35 @@ class PaymentControllerNew extends Controller
                 );
             }
 
-            // ---- Principal ----
-            if ($principal > 0) {
+            // ---- Regular principal (on time or past due) ----
+            if ($regularPrincipal > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash));
 
-                $journalPrincipal = $this->postEntry(
+                $this->postEntry(
                     $date,
                     $docNum,
                     DocumentJournal::PAY_MOTHER_AMOUNT,
-                    $principal,
+                    $regularPrincipal,
                     'mother_amount_payment',
+                    $rule->debit_account_id,
+                    $rule->credit_account_id,
+                    $deal->id,
+                    $journal->id,
+                    $clientId
+                );
+            }
+
+            // ---- Prepayment principal (paid before due date) → Dr 10000/102101 / Cr 39920 ----
+            if ($prepaymentPrincipal > 0) {
+                $prepaymentEvent = $cash ? 'prepayment_received_cash' : 'prepayment_received';
+                $rule = $this->getPostingRule($prepaymentEvent);
+
+                $this->postEntry(
+                    $date,
+                    $docNum,
+                    DocumentJournal::PREPAYMENT_RECEIVED,
+                    $prepaymentPrincipal,
+                    'prepayment_payment',
                     $rule->debit_account_id,
                     $rule->credit_account_id,
                     $deal->id,
