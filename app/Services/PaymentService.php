@@ -129,7 +129,8 @@ class PaymentService
             }
             if ($amount > 0) {
                 if ($overpaymentType === 'interest') {
-                    $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
+                    $applied = $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
+                    $interest_amount += $applied;
                 } elseif ($overpaymentType === 'principal') {
 //                    $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id, $date);
                     $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, false);
@@ -503,8 +504,10 @@ class PaymentService
 
     }
 
-    private function applyExtraToFutureInterest(Contract $contract, float $extra, ?int $excludePaymentId = null): void
+    private function applyExtraToFutureInterest(Contract $contract, float $extra, ?int $excludePaymentId = null): float
     {
+        $applied = 0.0;
+
         $futurePayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
             ->where('status', 'initial')
@@ -523,7 +526,8 @@ class PaymentService
             $payment->interest_payment -= $deduct;
             // amount = interest + principal — only interest portion changes, principal is untouched
             $payment->amount = $payment->interest_payment + (float) ($payment->principal_payment ?? 0);
-            $extra -= $deduct;
+            $extra   -= $deduct;
+            $applied += $deduct;
 
             if ((float) $payment->amount <= 0) {
                 $payment->status = 'completed';
@@ -531,6 +535,8 @@ class PaymentService
 
             $payment->save();
         }
+
+        return $applied;
     }
 
     public function createPayment($contract_id, $amount, $type, $payer, $cash, $history = [], $deal_id = null, $date = null, $is_completed = false, $parent_id = null, $discountAmount = 0)
