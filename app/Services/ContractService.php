@@ -154,44 +154,35 @@ class   ContractService
 //    }
     public function storeContractItem(int $contract_id, array $data)
     {
-        $query = Item::query();
-        if (!empty($data['serialNumber'])) {
-            $query->orWhere('sn', $data['serialNumber']);
-        }
-        if (!empty($data['imei'])) {
-            $query->orWhere('imei', $data['imei']);
-        }
-
-        $item = $query->first();
         $category = Category::findOrFail($data['category_id']);
 
-        if ($category->name == 'electronics' && (!empty($data['serialNumber']) || !empty($data['imei'])) && $item) {
-            $item->update($data);
-            $item->sn = $data['serialNumber'];
-            $item->save();
-        } else {
+        $item = null;
+        if ($category->name !== 'electronics') {
+            $query = Item::query();
+            if (!empty($data['serialNumber'])) {
+                $query->orWhere('sn', $data['serialNumber']);
+            }
+            if (!empty($data['imei'])) {
+                $query->orWhere('imei', $data['imei']);
+            }
+            $existing = $query->first();
+
+            if ((!empty($data['serialNumber']) || !empty($data['imei'])) && $existing) {
+                $existing->update($data);
+                $existing->sn = $data['serialNumber'] ?? null;
+                $existing->save();
+                $item = $existing;
+            }
+        }
+
+        if ($item === null) {
             $item = new Item();
             $item->category_id = $category->id;
 
+            $realEstateData = null;
             switch ($category->name) {
                 case 'electronics':
-//                    $subcategory = Subcategory::firstOrCreate([
-//                        'name'        => $data['subcategory'],
-//                        'category_id' => $data['category_id'],
-//                    ]);
-//                    if (!empty($data['model'])) {
-//                        $subcategoryItem = SubcategoryItem::firstOrCreate([
-//                            'subcategory_id' => $subcategory->id,
-//                            'model'          => $data['model'],
-//                        ]);
-//                        $item->model = $subcategoryItem->model;
-//                    }
-//                    $item->subcategory = $subcategory->name;
-                    $item->sn          = $data['serialNumber'] ?? null;
-                    $item->imei        = $data['imei'] ?? null;
-
-                    ItemRealEstate::create([
-                        'item_id'                    => $item->id,
+                    $realEstateData = [
                         'certificate_number'         => $data['certificate_number'] ?? null,
                         'certificate_password'       => $data['certificate_password'] ?? null,
                         'cadastral_code'             => $data['cadastral_code'] ?? null,
@@ -203,7 +194,7 @@ class   ContractService
                         'unified_reference_number'   => $data['unified_reference_number'] ?? null,
                         'unified_reference_password' => $data['unified_reference_password'] ?? null,
                         'is_joint'                   => $data['is_joint'] ?? false,
-                    ]);
+                    ];
                     break;
 
                 case 'gold':
@@ -246,6 +237,10 @@ class   ContractService
             $item->description     = $data['description'] ?? null;
             $item->provided_amount = $data['rated'] ?? null;
             $item->save();
+
+            if ($realEstateData !== null) {
+                ItemRealEstate::create(array_merge(['item_id' => $item->id], $realEstateData));
+            }
         }
 
         $contract = Contract::findOrFail($contract_id);
