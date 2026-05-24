@@ -231,12 +231,12 @@ class PaymentService
         if ($contract->payment_type == 'amortized') {
             if ($amount >= $scheduledAmount) {
                 // Full payment: pay exactly the scheduled interest + principal, extra is returned
-                $paidInterest  = $interestPayment;
+                $paidInterest  = min($interestAmount,$interestPayment);
                 $paidPrincipal = $principalPayment;
                 $remainingAmount = $amount - $scheduledAmount;
-                $interestAmount -= $payment->interest_payment;
+                $interestAmount -= $paidInterest;
                 dd($paidInterest, $paidPrincipal, $remainingAmount);
-                $payment->interest_payment  = 0;
+                $payment->interest_payment  = min(0,$payment->interest_payment-$paidInterest);
                 $payment->principal_payment = 0;
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
                 $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
