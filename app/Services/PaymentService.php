@@ -127,6 +127,7 @@ class PaymentService
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
+            dd($amount,$interestAmount,$interest_amount,$principal_amount,$prepayment_principal);
             if ($amount > 0) {
                 if ($overpaymentType === 'interest') {
                     $applied = $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
@@ -244,7 +245,6 @@ class PaymentService
 //            } else {
                 // Partial: interest first, then principal with what remains
                 $paidInterest  = min($amount,$interestAmount, $interestPayment);
-                dd($amount,$interestAmount, $interestPayment);
                 $interestPayment -= $paidInterest;
                 $payment->interest_payment  -= $paidInterest;
 
