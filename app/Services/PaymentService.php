@@ -109,7 +109,6 @@ class PaymentService
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
                 if ($amount > 0) {
-                    dd($interestAmount);
                     $result = $this->processSinglePayment(
                         $contract,
                         $payment,
@@ -236,6 +235,7 @@ class PaymentService
                 $paidPrincipal = $principalPayment;
                 $remainingAmount = $amount - $scheduledAmount;
                 $interestAmount -= $payment->interest_payment;
+                dd($paidInterest, $paidPrincipal, $remainingAmount);
                 $payment->interest_payment  = 0;
                 $payment->principal_payment = 0;
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
