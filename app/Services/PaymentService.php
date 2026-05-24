@@ -125,6 +125,7 @@ class PaymentService
                     $interest_amount      += $result['interest_amount'];
                     $principal_amount     += $result['principal_amount'];
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
+                    dd($payment->amount);
                 }
             }
             if ($amount > 0) {
