@@ -334,7 +334,7 @@ trait ContractTrait
                 $interestAmount += (float) $payment->interest_payment;
             } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
-
+dd($daysIntoCurrentPeriod);
                 $interestAmount += $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
