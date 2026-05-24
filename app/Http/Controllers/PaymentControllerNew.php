@@ -181,14 +181,14 @@ class PaymentControllerNew extends Controller
             }
 
             // ---- Regular principal (on time or past due) ----
-            if ($regularPrincipal > 0) {
+            if ($principal > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash));
 
                 $this->postEntry(
                     $date,
                     $docNum,
                     DocumentJournal::PAY_MOTHER_AMOUNT,
-                    $regularPrincipal,
+                    $principal,
                     'mother_amount_payment',
                     $rule->debit_account_id,
                     $rule->credit_account_id,
