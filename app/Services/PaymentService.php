@@ -248,7 +248,7 @@ class PaymentService
                 $payment->interest_payment  -= $paidInterest;
 
                 $paidPrincipal = min($amount - $paidInterest, $principalPayment);
-                $remainingAmount = 0;
+                $remainingAmount = $amount - $paidPrincipal - $paidInterest;
 
                 $payment->principal_payment -= $paidPrincipal;
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
