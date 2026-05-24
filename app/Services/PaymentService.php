@@ -288,7 +288,6 @@ class PaymentService
 
         $contract->save();
         $payment->save();
-        dd($isPrepayment);
         return [
             'interest_amount'      => $paidInterest,
             'principal_amount'     => (!$isPrepayment) ? $paidPrincipal : 0,
