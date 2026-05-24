@@ -322,8 +322,9 @@ trait ContractTrait
         $count = 0;
         foreach ($scheduledPayments as $payment) {
             $payment = $this->normalizePaymentDates($payment, $contract);
+            dd($payment->date, $payment->to_date, $payment->date < $payment->to_date);
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
-            $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
+            $toDate   = Carbon::parse($payment->to_date)->startOfDay(); // payment date = period end
             if ($fromDate->gte($currentDate)) {
                 break;
             }
@@ -333,6 +334,7 @@ trait ContractTrait
             if ($toDate->lte($currentDate)) {
                 $interestAmount += (float) $payment->interest_payment;
             } else {
+
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
 dd($daysIntoCurrentPeriod);
                 $interestAmount += $this->calcAmount(
