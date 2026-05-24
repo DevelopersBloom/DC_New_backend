@@ -244,6 +244,7 @@ class PaymentService
 //            } else {
                 // Partial: interest first, then principal with what remains
                 $paidInterest  = min($amount,$interestAmount, $interestPayment);
+                dd($amount,$interestAmount, $interestPayment);
                 $interestPayment -= $paidInterest;
                 $payment->interest_payment  -= $paidInterest;
 
