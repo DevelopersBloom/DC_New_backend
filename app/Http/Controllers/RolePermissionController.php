@@ -38,7 +38,8 @@ class RolePermissionController extends Controller
             }
         }
 
-        $roles = Role::where('guard_name', self::GUARD)
+        $roles = Role::with('permissions')
+            ->where('guard_name', self::GUARD)
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -46,8 +47,7 @@ class RolePermissionController extends Controller
 
         $rolePermissions = [];
         foreach ($roles as $role) {
-            $rolePermissions[(string) $role->id] = $role->permissions()
-                ->where('guard_name', self::GUARD)
+            $rolePermissions[(string) $role->id] = $role->permissions
                 ->pluck('id')
                 ->values()
                 ->all();
@@ -90,13 +90,11 @@ class RolePermissionController extends Controller
 
         $role->syncPermissions($permissions);
 
+        $role->load('permissions');
+
         return response()->json([
             'role_permissions' => [
-                (string) $role->id => $role->permissions()
-                    ->where('guard_name', self::GUARD)
-                    ->pluck('id')
-                    ->values()
-                    ->all(),
+                (string) $role->id => $role->permissions->pluck('id')->values()->all(),
             ],
         ]);
     }

@@ -182,19 +182,37 @@ class   ContractService
             $realEstateData = null;
             switch ($category->name) {
                 case 'electronics':
-                    $realEstateData = [
-                        'certificate_number'         => $data['certificate_number'] ?? null,
-                        'certificate_password'       => $data['certificate_password'] ?? null,
-                        'cadastral_code'             => $data['cadastral_code'] ?? null,
-                        'area_sqm'                   => $data['area_sqm'] ?? null,
-                        'appraiser_company'          => $data['appraiser_company'] ?? null,
-                        'appraisal_report_number'    => $data['appraisal_report_number'] ?? null,
-                        'appraisal_date'             => $data['appraisal_date'] ?? null,
-                        'appraised_value'            => $data['appraised_value'] ?? null,
-                        'unified_reference_number'   => $data['unified_reference_number'] ?? null,
-                        'unified_reference_password' => $data['unified_reference_password'] ?? null,
-                        'is_joint'                   => $data['is_joint'] ?? false,
-                    ];
+                    if ($this->isRealEstateItem($data) || empty($data['subcategory'] ?? null)) {
+                        $item->subcategory = $category->title;
+                        $realEstateData = [
+                            'certificate_number'         => $data['certificate_number'] ?? null,
+                            'certificate_password'       => $data['certificate_password'] ?? null,
+                            'cadastral_code'             => $data['cadastral_code'] ?? null,
+                            'area_sqm'                   => $data['area_sqm'] ?? null,
+                            'appraiser_company'          => $data['appraiser_company'] ?? null,
+                            'appraisal_report_number'    => $data['appraisal_report_number'] ?? null,
+                            'appraisal_date'             => $data['appraisal_date'] ?? null,
+                            'appraised_value'            => $data['appraised_value'] ?? null,
+                            'unified_reference_number'   => $data['unified_reference_number'] ?? null,
+                            'unified_reference_password' => $data['unified_reference_password'] ?? null,
+                            'is_joint'                   => $data['is_joint'] ?? false,
+                        ];
+                    } else {
+                        $subcategory = Subcategory::firstOrCreate([
+                            'name'        => $data['subcategory'] ?? '',
+                            'category_id' => $data['category_id'],
+                        ]);
+                        if (!empty($data['model'])) {
+                            $subcategoryItem = SubcategoryItem::firstOrCreate([
+                                'subcategory_id' => $subcategory->id,
+                                'model'          => $data['model'],
+                            ]);
+                            $item->model = $subcategoryItem->model;
+                        }
+                        $item->subcategory = $subcategory->name;
+                        $item->sn = $data['serialNumber'] ?? null;
+                        $item->imei = $data['imei'] ?? null;
+                    }
                     break;
 
                 case 'gold':
@@ -211,7 +229,7 @@ class   ContractService
                 case 'car':
                 case 'car-purchase':
                     $subcategory = Subcategory::firstOrCreate([
-                        'name'        => $data['model'],
+                        'name'        => $data['model'] ?? '',
                         'category_id' => $data['category_id'],
                     ]);
                     if (!empty($data['car_make'])) {
@@ -241,7 +259,6 @@ class   ContractService
             }
             if ($realEstateData !== null) {
                 ItemRealEstate::create(array_merge(['item_id' => $item->id], $realEstateData));
-            }
             }
         }
 
@@ -291,7 +308,7 @@ class   ContractService
 
                 switch ($category->name) {
                     case 'electronics':
-                        if ($this->isRealEstateItem($data)) {
+                        if ($this->isRealEstateItem($data) || empty($data['subcategory'] ?? null)) {
                             $item->subcategory = $category->title;
                             $item->save();
                             $this->syncRealEstateDetails($item, $data);
@@ -326,8 +343,9 @@ class   ContractService
                         break;
 
                     case 'car':
+                    case 'car-purchase':
                         $subcategory = Subcategory::firstOrCreate([
-                            'name' => $data['model'],
+                            'name' => $data['model'] ?? '',
                             'category_id' => $data['category_id'],
                         ]);
                         if (!empty($data['car_make'])) {

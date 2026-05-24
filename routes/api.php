@@ -74,7 +74,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/update-users', [AdminControllerNew::class, 'updateUsers'])->middleware('can:update_user');
         Route::delete('/delete-user/{id}', [AdminControllerNew::class, 'deleteUser'])->middleware('can:delete_user');
 
-        // role permissions
+        // role permissions (IsAdmin gate; Spatie can: when permissions are seeded)
         Route::get('/role-permissions', [RolePermissionController::class, 'index'])
             ->middleware('can:view_role_permissions');
         Route::put('/roles/{role}/permissions', [RolePermissionController::class, 'update'])
