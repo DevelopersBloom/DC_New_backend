@@ -235,7 +235,6 @@ class PaymentService
                 $paidPrincipal = $principalPayment;
                 $remainingAmount = $amount - $scheduledAmount;
                 $interestAmount -= $paidInterest;
-                dd($paidInterest, $paidPrincipal, $remainingAmount);
                 $payment->interest_payment  = min(0,$payment->interest_payment-$paidInterest);
                 $payment->principal_payment = 0;
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
