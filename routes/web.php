@@ -9,7 +9,9 @@ use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\InnerController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\TestController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -68,6 +70,13 @@ Route::group(['middleware' => 'jwt.auth', 'prefix' => 'api'], function () {
         Route::post('/set-orders', [ConfigController::class, 'setOrders']);
     });
 
+    Route::group(['middleware' => 'admin', 'prefix' => 'admin'], function () {
+        Route::get('/role-has-permissions', [RolePermissionController::class, 'index']);
+        Route::put('/roles/{roleId}/role-has-permissions', [RolePermissionController::class, 'update']);
+        Route::get('/role-permissions', [RolePermissionController::class, 'index']);
+        Route::put('/roles/{roleId}/permissions', [RolePermissionController::class, 'update']);
+    });
+
 //    Route::group(['prefix' => 'admin'], function () {
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
 //        Route::get('/get-discounts', [AdminController::class, 'getDiscounts']);
@@ -106,6 +115,11 @@ Route::get('/api/get-document', [FileController::class, 'getDocument']);
 //});
 
 
-Route::get('/{vue_capture?}', function () {
+// SPA fallback only — never swallow /api/* (those belong in routes/api.php or the api group above)
+Route::get('/{vue_capture?}', function (Request $request) {
+    if ($request->is('api') || $request->is('api/*')) {
+        return response()->json(['message' => 'API route not found'], 404);
+    }
+
     return view('welcome');
 })->where('vue_capture', '[\/\w\.-]*');
