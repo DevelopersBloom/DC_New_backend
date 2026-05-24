@@ -229,19 +229,19 @@ class PaymentService
         $scheduledAmount  = (float) $payment->amount;
 
         if ($contract->payment_type == 'amortized') {
-            if ($amount >= $scheduledAmount) {
-                // Full payment: pay exactly the scheduled interest + principal, extra is returned
-                $paidInterest  = min($interestAmount,$interestPayment);
-                $paidPrincipal = $principalPayment;
-                $remainingAmount = $amount - $scheduledAmount;
-                $interestAmount -= $paidInterest;
-                $payment->interest_payment  = min(0,$payment->interest_payment-$paidInterest);
-                $payment->principal_payment = 0;
-                $contract->left             = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
-
-                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
-            } else {
+//            if ($amount >= $scheduledAmount) {
+//                // Full payment: pay exactly the scheduled interest + principal, extra is returned
+//                $paidInterest  = min($interestAmount,$interestPayment);
+//                $paidPrincipal = $principalPayment;
+//                $remainingAmount = $amount - $scheduledAmount;
+//                $interestAmount -= $paidInterest;
+//                $payment->interest_payment  = min(0,$payment->interest_payment-$paidInterest);
+//                $payment->principal_payment = 0;
+//                $contract->left             = max(0, $contract->left - $paidPrincipal);
+//                $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
+//                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
+//
+//            } else {
                 // Partial: interest first, then principal with what remains
                 $paidInterest  = min($amount,$interestAmount, $interestPayment);
                 $interestPayment -= $paidInterest;
@@ -254,8 +254,14 @@ class PaymentService
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
                 $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
 
-                $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
-            }
+                dd($paidInterest,$paidPrincipal,$remainingAmount);
+                if ( $payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
+                    $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
+                } else {
+                    $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
+
+                }
+//            }
 
             // Early payment: full principal goes to prepayments (will be applied on due date)
             $payDate = Carbon::parse($date ?? now())->startOfDay();
