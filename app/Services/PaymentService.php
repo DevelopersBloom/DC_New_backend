@@ -125,7 +125,6 @@ class PaymentService
                     $interest_amount      += $result['interest_amount'];
                     $principal_amount     += $result['principal_amount'];
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
-                    dd($principal_amount,$prepayment_principal);
                 }
             }
             if ($amount > 0) {
@@ -228,7 +227,7 @@ class PaymentService
         $principalPayment = (float) ($payment->principal_payment ?? 0);
         $interestPayment  = (float) ($payment->interest_payment ?? 0);
         $scheduledAmount  = (float) $payment->amount;
-
+        $isPrepayment    = false;
         if ($contract->payment_type == 'amortized') {
 //            if ($amount >= $scheduledAmount) {
 //                // Full payment: pay exactly the scheduled interest + principal, extra is returned
@@ -244,28 +243,29 @@ class PaymentService
 //
 //            } else {
                 // Partial: interest first, then principal with what remains
-                $paidInterest  = min($amount,$interestAmount, $interestPayment);
-                $interestPayment -= $paidInterest;
-                $payment->interest_payment  -= $paidInterest;
 
-                $paidPrincipal = min($amount - $paidInterest, $principalPayment);
-                $remainingAmount = $amount - $paidPrincipal - $paidInterest;
 
-                $payment->principal_payment -= $paidPrincipal;
-                $contract->left             = max(0, $contract->left - $paidPrincipal);
-                $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
-                if ($payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
-                    $this->partiallyCompletePayment($payment, $paidInterest+$paidPrincipal, $deal_id, [], $principalPayment, $interestPayment);
-                } else {
-                    $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
+            $paidInterest  = min($amount,$interestAmount, $interestPayment);
+            $interestPayment -= $paidInterest;
+            $payment->interest_payment  -= $paidInterest;
 
-                }
-//            }
+            $paidPrincipal = min($amount - $paidInterest, $principalPayment);
+            $remainingAmount = $amount - $paidPrincipal - $paidInterest;
+
+            $payment->principal_payment -= $paidPrincipal;
+            $contract->left             = max(0, $contract->left - $paidPrincipal);
+            $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
 
             // Early payment: full principal goes to prepayments (will be applied on due date)
             $payDate = Carbon::parse($date ?? now())->startOfDay();
             $toDt    = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
             $isPrepayment = $toDt->gt($payDate) && $paidPrincipal > 0;
+
+            if ($payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
+                $this->partiallyCompletePayment($payment, $paidInterest+$paidPrincipal, $deal_id, [], $principalPayment, $interestPayment);
+            } else {
+                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
+            }
             if ($isPrepayment) {
                 $this->prepaymentService->createSingle(
                     $contract->id,
@@ -279,8 +279,6 @@ class PaymentService
             $paidInterest    = min($amount, $scheduledAmount);
             $remainingAmount = $amount - $paidInterest;
             $paidPrincipal   = 0;
-            $isPrepayment    = false;
-
             if ($amount >= $scheduledAmount) {
                 $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, null, $interestPayment, $date);
             } else {
@@ -292,8 +290,8 @@ class PaymentService
         $payment->save();
         return [
             'interest_amount'      => $paidInterest,
-            'principal_amount'     => $paidPrincipal,
-            'prepayment_principal' => ($isPrepayment ?? false) ? $paidPrincipal : 0,
+            'principal_amount'     => (!$isPrepayment) ? $paidPrincipal : 0,
+            'prepayment_principal' => ($isPrepayment) ? $paidPrincipal : 0,
             'amount'               => $remainingAmount,
             'remaining_interest'   => $interestAmount,
         ];

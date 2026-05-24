@@ -199,7 +199,7 @@ class PaymentControllerNew extends Controller
             }
 
             // ---- Prepayment principal (paid before due date) → Dr 10000/102101 / Cr 39920 ----
-            if ($prepaymentPrincipal > 0) {
+            if ($overpaymentType == 'interest' && $prepaymentPrincipal > 0) {
                 $prepaymentEvent = $cash ? 'prepayment_received_cash' : 'prepayment_received';
                 $rule = $this->getPostingRule($prepaymentEvent);
 
