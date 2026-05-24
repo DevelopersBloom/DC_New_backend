@@ -156,7 +156,7 @@ class PaymentControllerNew extends Controller
             $class    = $contract->client->classification->name;
             $clientId = $contract->client_id;
             $docNum   = Transaction::getNextDocumentNumber();
-
+dd($result);
             $interest            = $result['interest_amount'];
             $principal           = $result['principal_amount'];
             $prepaymentPrincipal = $result['prepayment_principal'] ?? 0;
