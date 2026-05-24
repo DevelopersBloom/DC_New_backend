@@ -127,7 +127,6 @@ class PaymentService
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
-            dd($amount,$overpaymentType);
             if ($amount > 0) {
                 if ($overpaymentType === 'interest') {
                     $applied = $this->applyExtraToFutureInterest($contract, $amount, $payments->last()->id ?? null);
@@ -654,6 +653,7 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
+                dd($partialAmount);
                 $providedAmount = $contract->provided_amount - $partialAmount;
                 $contract->provided_amount = max(0, $providedAmount);
                 $contract->left = max(0, $contract->left - $partialAmount);
