@@ -118,7 +118,8 @@ class PaymentService
                         $deal_id,
                         $forceScheduledForSelected,
                         $interestAmount,
-                        $date
+                        $date,
+                        $overpaymentType
                     );
                     $amount               = $result['amount'];
                     $interestAmount       = $result['remaining_interest'];
@@ -218,7 +219,7 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $interestAmount = 0, $date = null)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $interestAmount = 0, $date = null,$overpaymentType = null)
     {
         $paidInterest = 0;
         $paidPrincipal = 0;
@@ -259,8 +260,8 @@ class PaymentService
             // Early payment: full principal goes to prepayments (will be applied on due date)
             $payDate = Carbon::parse($date ?? now())->startOfDay();
             $toDt    = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-            $isPrepayment = $toDt->gt($payDate) && $paidPrincipal > 0;
-
+            $isPrepayment = $toDt->gt($payDate) && $paidPrincipal > 0 && $overpaymentType == 'interest' ;
+dd($isPrepayment);
             if ($payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
                 $this->partiallyCompletePayment($payment, $paidInterest+$paidPrincipal, $deal_id, [], $principalPayment, $interestPayment);
             } else {
@@ -288,6 +289,7 @@ class PaymentService
 
         $contract->save();
         $payment->save();
+        dd($isPrepayment);
         return [
             'interest_amount'      => $paidInterest,
             'principal_amount'     => (!$isPrepayment) ? $paidPrincipal : 0,
