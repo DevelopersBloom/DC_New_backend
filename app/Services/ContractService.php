@@ -175,8 +175,17 @@ class   ContractService
 
             switch ($category->name) {
                 case 'electronics':
+                    if ($this->isRealEstateItem($data)) {
+                        $item->subcategory = $category->title;
+                        $item->description = $data['description'] ?? $item->description;
+                        $item->provided_amount = $data['rated'] ?? $item->provided_amount;
+                        $item->save();
+                        $this->syncRealEstateDetails($item, $data);
+                        break;
+                    }
+
                     $subcategory = Subcategory::firstOrCreate([
-                        'name'        => $data['subcategory'],
+                        'name'        => $data['subcategory'] ?? '',
                         'category_id' => $data['category_id'],
                     ]);
                     if (!empty($data['model'])) {
@@ -189,26 +198,11 @@ class   ContractService
                     $item->subcategory = $subcategory->name;
                     $item->sn          = $data['serialNumber'] ?? null;
                     $item->imei        = $data['imei'] ?? null;
-
-                    ItemRealEstate::create([
-                        'item_id'                    => $item->id,
-                        'certificate_number'         => $data['certificate_number'] ?? null,
-                        'certificate_password'       => $data['certificate_password'] ?? null,
-                        'cadastral_code'             => $data['cadastral_code'] ?? null,
-                        'area_sqm'                   => $data['area_sqm'] ?? null,
-                        'appraiser_company'          => $data['appraiser_company'] ?? null,
-                        'appraisal_report_number'    => $data['appraisal_report_number'] ?? null,
-                        'appraisal_date'             => $data['appraisal_date'] ?? null,
-                        'appraised_value'            => $data['appraised_value'] ?? null,
-                        'unified_reference_number'   => $data['unified_reference_number'] ?? null,
-                        'unified_reference_password' => $data['unified_reference_password'] ?? null,
-                        'is_joint'                   => $data['is_joint'] ?? false,
-                    ]);
                     break;
 
                 case 'gold':
                     $subcategory = Subcategory::firstOrCreate([
-                        'name'        => $data['subcategory'],
+                        'name'        => $data['subcategory'] ?? '',
                         'category_id' => $data['category_id'],
                     ]);
                     $item->subcategory   = $subcategory->name;
@@ -243,9 +237,11 @@ class   ContractService
                     break;
             }
 
-            $item->description     = $data['description'] ?? null;
-            $item->provided_amount = $data['rated'] ?? null;
-            $item->save();
+            if (!$item->exists) {
+                $item->description     = $data['description'] ?? null;
+                $item->provided_amount = $data['rated'] ?? null;
+                $item->save();
+            }
         }
 
         $contract = Contract::findOrFail($contract_id);
@@ -294,8 +290,15 @@ class   ContractService
 
                 switch ($category->name) {
                     case 'electronics':
+                        if ($this->isRealEstateItem($data)) {
+                            $item->subcategory = $category->title;
+                            $item->save();
+                            $this->syncRealEstateDetails($item, $data);
+                            break;
+                        }
+
                         $subcategory = Subcategory::firstOrCreate([
-                            'name'        => $data['subcategory'],
+                            'name'        => $data['subcategory'] ?? '',
                             'category_id' => $data['category_id'],
                         ]);
                         if (!empty($data['model'])) {
@@ -312,7 +315,7 @@ class   ContractService
 
                     case 'gold':
                         $subcategory = Subcategory::firstOrCreate([
-                            'name' => $data['subcategory'],
+                            'name' => $data['subcategory'] ?? '',
                             'category_id' => $data['category_id'],
                         ]);
                         $item->subcategory = $subcategory->name;
@@ -402,6 +405,50 @@ class   ContractService
 
         return Contract::create($values);
     }
+    private function isRealEstateItem(array $data): bool
+    {
+        $realEstateKeys = [
+            'certificate_number',
+            'certificate_password',
+            'cadastral_code',
+            'area_sqm',
+            'appraiser_company',
+            'appraisal_report_number',
+            'appraisal_date',
+            'appraised_value',
+            'unified_reference_number',
+            'unified_reference_password',
+        ];
+
+        foreach ($realEstateKeys as $key) {
+            if (!empty($data[$key])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function syncRealEstateDetails(Item $item, array $data): void
+    {
+        ItemRealEstate::updateOrCreate(
+            ['item_id' => $item->id],
+            [
+                'certificate_number'         => $data['certificate_number'] ?? null,
+                'certificate_password'       => $data['certificate_password'] ?? null,
+                'cadastral_code'             => $data['cadastral_code'] ?? null,
+                'area_sqm'                   => $data['area_sqm'] ?? null,
+                'appraiser_company'          => $data['appraiser_company'] ?? null,
+                'appraisal_report_number'    => $data['appraisal_report_number'] ?? null,
+                'appraisal_date'             => $data['appraisal_date'] ?? null,
+                'appraised_value'            => $data['appraised_value'] ?? null,
+                'unified_reference_number'   => $data['unified_reference_number'] ?? null,
+                'unified_reference_password' => $data['unified_reference_password'] ?? null,
+                'is_joint'                   => filter_var($data['is_joint'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            ]
+        );
+    }
+
     private function generateContractNumber(string $categoryName): string
     {
         $prefix = match ($categoryName) {

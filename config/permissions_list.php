@@ -22,6 +22,8 @@ return [
             'view_rules',
             'create_rule',
             'view_logs',
+            'view_role_permissions',
+            'update_role_permissions',
         ],
         'rates_and_categories' => [
             'view_categories',

@@ -37,6 +37,7 @@ use App\Http\Controllers\TAccountReportController;
 use App\Http\Controllers\TPartnerReportController;
 use App\Http\Controllers\TurnoverReportController;
 use App\Http\Controllers\CreditRegistryController;
+use App\Http\Controllers\RolePermissionController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -72,6 +73,12 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::put('/update-user/{id}', [AdminControllerNew::class, 'updateUser'])->middleware('can:update_user');
         Route::post('/update-users', [AdminControllerNew::class, 'updateUsers'])->middleware('can:update_user');
         Route::delete('/delete-user/{id}', [AdminControllerNew::class, 'deleteUser'])->middleware('can:delete_user');
+
+        // role permissions
+        Route::get('/role-permissions', [RolePermissionController::class, 'index'])
+            ->middleware('can:view_role_permissions');
+        Route::put('/roles/{role}/permissions', [RolePermissionController::class, 'update'])
+            ->middleware('can:update_role_permissions');
 
         // conditions
         //Interest rate
