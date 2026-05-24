@@ -57,8 +57,8 @@ class RolePermissionController extends Controller
             'roles' => $roles->map(fn ($role) => [
                 'id' => $role->id,
                 'name' => $role->name,
-            ])->values(),
-            'groups' => $groups,
+            ])->values()->all(),
+            'groups' => array_values($groups),
             'role_permissions' => $rolePermissions,
             'admin_role_id' => $adminRole?->id,
         ]);
