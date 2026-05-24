@@ -341,7 +341,7 @@ trait ContractTrait
                     $daysIntoCurrentPeriod,
                     $contract->interest_rate
                 );
-                $interestAmount += max(0,$interestAmountCalc - $paidInterest)
+                $interestAmount += max(0,$interestAmountCalc - $paidInterest);
                 break;
             }
         }
