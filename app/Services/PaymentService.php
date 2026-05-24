@@ -737,7 +737,6 @@ class PaymentService
             if ($remainingPartial <= 0) {
                 break;
             }
-            dd($remainingPartial);
             $reduction = min($remainingPartial, (float) $payment->principal_payment);
             if ($reduction <= 0) {
                 continue;
