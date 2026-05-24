@@ -254,7 +254,7 @@ class PaymentService
                 $payment->principal_payment -= $paidPrincipal;
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
                 $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
-
+dd($amount,$paidInterest,$paidPrincipal);
                 if ($payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
                     $this->partiallyCompletePayment($payment, $paidInterest+$paidPrincipal, $deal_id, [], $principalPayment, $interestPayment);
                 } else {
