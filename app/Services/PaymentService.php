@@ -244,6 +244,7 @@ class PaymentService
 //            } else {
                 // Partial: interest first, then principal with what remains
                 $paidInterest  = min($amount,$interestAmount, $interestPayment);
+                dd($paidInterest,$amount,$interestPayment,$interestAmount);
                 $interestPayment -= $paidInterest;
                 $payment->interest_payment  -= $paidInterest;
 
@@ -254,7 +255,7 @@ class PaymentService
                 $contract->left             = max(0, $contract->left - $paidPrincipal);
                 $contract->provided_amount  = max(0, $contract->provided_amount - $paidPrincipal);
 
-                if ( $payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
+                if ($payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
                     $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
                 } else {
                     $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment, $date);
