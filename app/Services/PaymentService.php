@@ -653,7 +653,6 @@ class PaymentService
                     $this->contractService->createPayment($contract, $targetDate, null, $remainingMonths);
                 }
             } else {
-                dd($partialAmount);
                 $providedAmount = $contract->provided_amount - $partialAmount;
                 $contract->provided_amount = max(0, $providedAmount);
                 $contract->left = max(0, $contract->left - $partialAmount);
@@ -738,6 +737,7 @@ class PaymentService
             if ($remainingPartial <= 0) {
                 break;
             }
+            dd($remainingPartial);
             $reduction = min($remainingPartial, (float) $payment->principal_payment);
             if ($reduction <= 0) {
                 continue;
