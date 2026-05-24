@@ -261,7 +261,6 @@ class PaymentService
             $payDate = Carbon::parse($date ?? now())->startOfDay();
             $toDt    = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
             $isPrepayment = $toDt->gt($payDate) && $paidPrincipal > 0 && $overpaymentType == 'interest' ;
-dd($isPrepayment);
             if ($payment->principal_payment > 0 || $payment->interest_payment > 0 ) {
                 $this->partiallyCompletePayment($payment, $paidInterest+$paidPrincipal, $deal_id, [], $principalPayment, $interestPayment);
             } else {
