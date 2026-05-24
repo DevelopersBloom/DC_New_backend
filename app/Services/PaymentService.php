@@ -125,7 +125,6 @@ class PaymentService
                     $interest_amount      += $result['interest_amount'];
                     $principal_amount     += $result['principal_amount'];
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
-                    dd($payment->id,$payment->amount,$payment->paid,$payment->interest_payment,$payment->principal_payment);
                 }
             }
             if ($amount > 0) {
@@ -426,7 +425,6 @@ class PaymentService
         $oldAmount = $payment->amount;
         $oldDate = $payment->date;
         $payment->amount -= $paid;
-        dd($paid,$payment->amount);
         $payment->paid += $paid;
         if ($payment->last_payment && $payment->amount == 0) {
             $payment->mother -= $payment->paid;
