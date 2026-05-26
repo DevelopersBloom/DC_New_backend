@@ -42,7 +42,7 @@ class DocumentJournalController
             'debitPartner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])
-            ->when($documentType, fn($q) => $q->where('document_type','LIKE', $documentType . '%'))
+            ->when($documentType, fn($q) => $q->where('document_type','LIKE', '%' . $documentType . '%'))
             ->when($documentNumber, fn($q) => $q->where('document_number', 'LIKE', $documentNumber . '%'))
             ->when($from && $to,  fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
