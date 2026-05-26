@@ -709,6 +709,46 @@ class PaymentControllerNew extends Controller
         }
     }
 
+    public function bulkUpdate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'payments'                    => ['required', 'array', 'min:1'],
+            'payments.*.id'               => ['required', 'integer', 'exists:payments,id'],
+            'payments.*.date'             => ['sometimes', 'nullable', 'date'],
+            'payments.*.amount'           => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'payments.*.paid'             => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'payments.*.interest_payment' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'payments.*.principal_payment'=> ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'payments.*.penalty'          => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'payments.*.status'           => ['sometimes', 'nullable', 'string', 'in:initial,completed,overdue'],
+        ]);
+
+        $allowed = ['date', 'amount', 'paid', 'interest_payment', 'principal_payment', 'penalty', 'status'];
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->input('payments') as $row) {
+                $fields = array_intersect_key($row, array_flip($allowed));
+
+                if (empty($fields)) {
+                    continue;
+                }
+
+                Payment::where('id', $row['id'])->update($fields);
+            }
+
+            DB::commit();
+
+            return response()->json(['message' => 'Վճարումները հաջողությամբ թարմացվեցին']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Թարմացումը ձախողվեց',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     private function calcPaidAmount(Contract $contract)
     {
         return $contract->payments()->sum('paid');
