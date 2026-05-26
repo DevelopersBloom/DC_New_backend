@@ -102,7 +102,7 @@ class Transaction extends Model
     }
 
 
-    public function scopeByDocument($query, string $type = null, string $number = null)
+    public function scopeByDocument($query, ?string $type = null, ?string $number = null)
     {
         if ($type)   $query->where('document_type', $type);
         if ($number) $query->where('document_number', $number);

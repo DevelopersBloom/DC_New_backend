@@ -6,6 +6,7 @@ use App\Exports\AccountsBalanceReportExport;
 use App\Exports\AccountsBalancesExport;
 use App\Exports\TransactionsExport;
 use App\Models\ChartOfAccount;
+use App\Models\Client;
 use App\Models\Transaction;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
@@ -17,8 +18,11 @@ class TransactionController
     use CalculatesAccountBalancesTrait;
     public function index(Request $request)
     {
-        $from = $request->query('from_date');
-        $to   = $request->query('to_date');
+        $from           = $request->query('from_date');
+        $to             = $request->query('to_date');
+        $documentType   = $request->query('document_type');
+        $documentNumber = $request->query('document_number');
+        $partnerName    = $request->query('partner_name');
 
         $query = Transaction::select([
             'id',
@@ -54,6 +58,21 @@ class TransactionController
             $query->where('date', '>=', $from);
         } elseif ($to) {
             $query->where('date', '<=', $to);
+        }
+        $query->byDocument($documentType, $documentNumber);
+
+        if ($partnerName) {
+            $partnerIds = Client::where(function ($q) use ($partnerName) {
+                $q->where('company_name', 'LIKE', '%' . $partnerName . '%')
+                  ->orWhereRaw("CONCAT(COALESCE(name,''), ' ', COALESCE(surname,'')) LIKE ?", ['%' . $partnerName . '%'])
+                  ->orWhere('name', 'LIKE', '%' . $partnerName . '%')
+                  ->orWhere('surname', 'LIKE', '%' . $partnerName . '%');
+            })->pluck('id');
+
+            $query->where(function ($q) use ($partnerIds) {
+                $q->whereIn('debit_partner_id', $partnerIds)
+                  ->orWhereIn('credit_partner_id', $partnerIds);
+            });
         }
 
         $perPage = (int) $request->query('per_page', 20);
