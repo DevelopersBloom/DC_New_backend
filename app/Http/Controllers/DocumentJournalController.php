@@ -27,6 +27,7 @@ class DocumentJournalController
         $to             = $request->query('to_date');
         $documentNumber = $request->query('document_number');
         $partnerName    = $request->query('partner_name');
+        $partnerIds     = $request->query('partner_ids', []);
 
         $typeMap = [
             'ndm' => DocumentJournal::LOAN_NDM_TYPE,
@@ -47,17 +48,24 @@ class DocumentJournalController
             ->when($from && $to,  fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
             ->when(!$from && $to, fn($q) => $q->where('date', '<=', $to))
+            ->when(!empty($partnerIds), function ($q) use ($partnerIds) {
+                $ids = is_array($partnerIds) ? $partnerIds : [$partnerIds];
+                $q->where(function ($q2) use ($ids) {
+                    $q2->whereIn('debit_partner_id', $ids)
+                       ->orWhereIn('credit_partner_id', $ids);
+                });
+            })
             ->when($partnerName, function ($q) use ($partnerName) {
-                $ids = Client::where(function ($c) use ($partnerName) {
+                $nameIds = Client::where(function ($c) use ($partnerName) {
                     $c->where('company_name', 'LIKE', '%' . $partnerName . '%')
                       ->orWhereRaw("CONCAT(COALESCE(name,''), ' ', COALESCE(surname,'')) LIKE ?", ['%' . $partnerName . '%'])
                       ->orWhere('name', 'LIKE', '%' . $partnerName . '%')
                       ->orWhere('surname', 'LIKE', '%' . $partnerName . '%');
                 })->pluck('id');
 
-                $q->where(function ($q2) use ($ids) {
-                    $q2->whereIn('debit_partner_id', $ids)
-                       ->orWhereIn('credit_partner_id', $ids);
+                $q->where(function ($q2) use ($nameIds) {
+                    $q2->whereIn('debit_partner_id', $nameIds)
+                       ->orWhereIn('credit_partner_id', $nameIds);
                 });
             })
             ->orderByDesc('id');

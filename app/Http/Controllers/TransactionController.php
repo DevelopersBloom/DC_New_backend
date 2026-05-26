@@ -23,6 +23,7 @@ class TransactionController
         $documentType   = $request->query('document_type');
         $documentNumber = $request->query('document_number');
         $partnerName    = $request->query('partner_name');
+        $partnerIds     = $request->query('partner_ids', []);
 
         $query = Transaction::select([
             'id',
@@ -61,17 +62,25 @@ class TransactionController
         }
         $query->byDocument($documentType, $documentNumber);
 
+        if (!empty($partnerIds)) {
+            $ids = is_array($partnerIds) ? $partnerIds : [$partnerIds];
+            $query->where(function ($q) use ($ids) {
+                $q->whereIn('debit_partner_id', $ids)
+                  ->orWhereIn('credit_partner_id', $ids);
+            });
+        }
+
         if ($partnerName) {
-            $partnerIds = Client::where(function ($q) use ($partnerName) {
+            $nameIds = Client::where(function ($q) use ($partnerName) {
                 $q->where('company_name', 'LIKE', '%' . $partnerName . '%')
                   ->orWhereRaw("CONCAT(COALESCE(name,''), ' ', COALESCE(surname,'')) LIKE ?", ['%' . $partnerName . '%'])
                   ->orWhere('name', 'LIKE', '%' . $partnerName . '%')
                   ->orWhere('surname', 'LIKE', '%' . $partnerName . '%');
             })->pluck('id');
 
-            $query->where(function ($q) use ($partnerIds) {
-                $q->whereIn('debit_partner_id', $partnerIds)
-                  ->orWhereIn('credit_partner_id', $partnerIds);
+            $query->where(function ($q) use ($nameIds) {
+                $q->whereIn('debit_partner_id', $nameIds)
+                  ->orWhereIn('credit_partner_id', $nameIds);
             });
         }
 
