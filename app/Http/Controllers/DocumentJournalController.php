@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\DocumentsJournalExport;
 use App\Http\Resources\DocumentJournalResource;
+use App\Models\Client;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use App\Services\ActivityService;
@@ -22,8 +23,10 @@ class DocumentJournalController
     }
     public function index(Request $request): JsonResponse
     {
-        $from   = $request->query('from_date');
-        $to     = $request->query('to_date');
+        $from           = $request->query('from_date');
+        $to             = $request->query('to_date');
+        $documentNumber = $request->query('document_number');
+        $partnerName    = $request->query('partner_name');
 
         $typeMap = [
             'ndm' => DocumentJournal::LOAN_NDM_TYPE,
@@ -31,8 +34,7 @@ class DocumentJournalController
             // 'cash_out' => DocumentJournal::CASH_OUT_TYPE,
         ];
 
-        $requestType = $request->query('document_type');
-
+        $requestType  = $request->query('document_type');
         $documentType = $typeMap[$requestType] ?? null;
 
         $query = DocumentJournal::with([
@@ -40,10 +42,24 @@ class DocumentJournalController
             'debitPartner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])
-            ->when($documentType,fn($q) => $q->where('document_type', $documentType))
-            ->when($from && $to, fn($q) => $q->whereBetween('date', [$from, $to]))
+            ->when($documentType, fn($q) => $q->where('document_type','LIKE', $documentType . '%'))
+            ->when($documentNumber, fn($q) => $q->where('document_number', 'LIKE', $documentNumber . '%'))
+            ->when($from && $to,  fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
             ->when(!$from && $to, fn($q) => $q->where('date', '<=', $to))
+            ->when($partnerName, function ($q) use ($partnerName) {
+                $ids = Client::where(function ($c) use ($partnerName) {
+                    $c->where('company_name', 'LIKE', '%' . $partnerName . '%')
+                      ->orWhereRaw("CONCAT(COALESCE(name,''), ' ', COALESCE(surname,'')) LIKE ?", ['%' . $partnerName . '%'])
+                      ->orWhere('name', 'LIKE', '%' . $partnerName . '%')
+                      ->orWhere('surname', 'LIKE', '%' . $partnerName . '%');
+                })->pluck('id');
+
+                $q->where(function ($q2) use ($ids) {
+                    $q2->whereIn('debit_partner_id', $ids)
+                       ->orWhereIn('credit_partner_id', $ids);
+                });
+            })
             ->orderByDesc('id');
 
         $perPage = (int) $request->query('per_page', 20);
