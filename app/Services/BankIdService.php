@@ -181,6 +181,15 @@ class BankIdService
             throw new RuntimeException("BankID requestId={$requestId}: datark pataskhan");
         }
 
+        // Ensure UTF-8 so the response can safely be logged and JSON-encoded
+        $encoding = mb_detect_encoding($xml, ['UTF-8', 'UTF-16', 'Windows-1252', 'ISO-8859-1'], true);
+        if ($encoding && $encoding !== 'UTF-8') {
+            $xml = mb_convert_encoding($xml, 'UTF-8', $encoding);
+        } else {
+            // Strip any invalid UTF-8 bytes
+            $xml = mb_convert_encoding($xml, 'UTF-8', 'UTF-8');
+        }
+
         \Log::debug('BankID raw response', ['requestId' => $requestId, 'xml' => $xml]);
 
         $stripped = trim(strip_tags($xml));

@@ -83,7 +83,8 @@ class CreditRegistryController extends Controller
                 'dry_run'   => $dryRun,
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+            $errorMsg = mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8');
+            return response()->json(['ok' => false, 'error' => $errorMsg], 500);
         }
     }
 
