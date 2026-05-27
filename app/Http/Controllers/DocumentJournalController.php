@@ -35,7 +35,7 @@ class DocumentJournalController
         ];
 
         $requestType  = $request->query('document_type');
-        $documentType = $typeMap[$requestType] ?? null;
+        $documentType = $typeMap[$requestType] ?? $requestType;
 
         $query = DocumentJournal::with([
             'currency:id,code',

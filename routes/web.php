@@ -9,7 +9,6 @@ use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\InnerController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -70,12 +69,6 @@ Route::group(['middleware' => 'jwt.auth', 'prefix' => 'api'], function () {
         Route::post('/set-orders', [ConfigController::class, 'setOrders']);
     });
 
-    Route::group(['middleware' => 'admin', 'prefix' => 'admin'], function () {
-        Route::get('/role-has-permissions', [RolePermissionController::class, 'index']);
-        Route::put('/roles/{roleId}/role-has-permissions', [RolePermissionController::class, 'update']);
-        Route::get('/role-permissions', [RolePermissionController::class, 'index']);
-        Route::put('/roles/{roleId}/permissions', [RolePermissionController::class, 'update']);
-    });
 
 //    Route::group(['prefix' => 'admin'], function () {
 //        Route::get('/get-users', [AdminController::class, 'getUsers']);
