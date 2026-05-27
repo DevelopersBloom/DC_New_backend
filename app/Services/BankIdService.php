@@ -12,6 +12,10 @@ class BankIdService
     private const POLL_MAX      = 30;
     private const POLL_SLEEP_MS = 2000;
 
+    private const NS            = 'urn:cba-am:bankid';
+    private const ORG_CODE      = '66100';
+    private const BRANCH_CODE   = '00001';
+
     public function __construct(private DegsClient $degs) {}
 
 
@@ -54,40 +58,89 @@ class BankIdService
 
     private function buildP001Xml(Client $client): string
     {
-        $ssn      = trim((string) ($client->social_card_number ?? ''));
-        $passport = trim((string) ($client->passport_series ?? ''))
-                  . trim((string) ($client->passport_issued ?? ''));
-        $dob      = $client->date_of_birth
-                        ? \Carbon\Carbon::parse($client->date_of_birth)->format('d/m/Y')
-                        : '';
-        $name     = trim((string) ($client->name    ?? ''));
-        $surname  = trim((string) ($client->surname ?? ''));
+        $now = \Carbon\Carbon::now();
 
-        if ($ssn === '' && $passport === '') {
-            throw new RuntimeException(
-                'Client #' . $client->id . ': BankID hetk e social_card_number kame passport_series+passport_issued'
-            );
+        $firstName    = trim((string) ($client->name         ?? ''));
+        $lastName     = trim((string) ($client->surname      ?? ''));
+        $familyName   = trim((string) ($client->middle_name  ?? ''));
+        $identityType = trim((string) ($client->document_type ?? ''));
+        $identityNum  = trim((string) ($client->passport_series ?? ''));
+        $ssn          = trim((string) ($client->social_card_number ?? ''));
+        $dob          = $client->date_of_birth
+                            ? \Carbon\Carbon::parse($client->date_of_birth)->format('d/m/Y')
+                            : '';
+        $gender       = match ($client->gender) {
+                            'MALE'   => 'M',
+                            'FEMALE' => 'F',
+                            default  => '',
+                        };
+        $residency    = trim((string) ($client->residency_country ?? 'ARM'));
+        $expiry       = $client->passport_validity
+                            ? \Carbon\Carbon::parse($client->passport_validity)->format('d/m/Y')
+                            : '';
+
+        // Validate required fields
+        if ($firstName === '') {
+            throw new RuntimeException("Client #{$client->id}: BankID P001 - name (FirstName) petq e");
+        }
+        if ($lastName === '') {
+            throw new RuntimeException("Client #{$client->id}: BankID P001 - surname (LastName) petq e");
+        }
+        if ($identityType === '') {
+            throw new RuntimeException("Client #{$client->id}: BankID P001 - document_type (IdentityType) petq e");
+        }
+        if ($identityNum === '') {
+            throw new RuntimeException("Client #{$client->id}: BankID P001 - passport_series (IdentityNumber) petq e");
+        }
+        if ($dob === '') {
+            throw new RuntimeException("Client #{$client->id}: BankID P001 - date_of_birth petq e");
+        }
+        if ($gender === '') {
+            throw new RuntimeException("Client #{$client->id}: BankID P001 - gender (M/F) petq e");
+        }
+        if ($residency === '') {
+            throw new RuntimeException("Client #{$client->id}: BankID P001 - residency_country petq e");
         }
 
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        $root = $dom->createElement('P001');
+        $dom  = new \DOMDocument('1.0', 'UTF-8');
+
+        // Root P001 with correct namespace
+        $root = $dom->createElementNS(self::NS, 'P001');
         $dom->appendChild($root);
 
+        // --- ReportHeader ---
+        $header = $dom->createElement('ReportHeader');
+        $header->appendChild($dom->createElement('OrganisationCode',       self::ORG_CODE));
+        $header->appendChild($dom->createElement('OrganisationBranchCode', self::BRANCH_CODE));
+        $header->appendChild($dom->createElement('OrganizationStatus',     '0'));
+        $sendDt = $dom->createElement('SendDateTime');
+        $sendDt->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
+        $sendDt->appendChild($dom->createElement('Time', $now->format('H:i:s')));
+        $header->appendChild($sendDt);
+        $root->appendChild($header);
+
+        // --- PersonFP (ֆիզիկական անձ) ---
+        // Element order is strict per XSD xs:sequence
+        $person = $dom->createElement('PersonFP');
+
+        $person->appendChild($dom->createElement('FirstName',  htmlspecialchars($firstName,  ENT_XML1)));
+        $person->appendChild($dom->createElement('LastName',   htmlspecialchars($lastName,   ENT_XML1)));
+        if ($familyName !== '') {
+            $person->appendChild($dom->createElement('FamilyName', htmlspecialchars($familyName, ENT_XML1)));
+        }
+        $person->appendChild($dom->createElement('IdentityType',   $identityType));
+        $person->appendChild($dom->createElement('IdentityNumber', htmlspecialchars($identityNum, ENT_XML1)));
+        if ($expiry !== '') {
+            $person->appendChild($dom->createElement('IdentityDateOfExpiry', $expiry));
+        }
         if ($ssn !== '') {
-            $root->appendChild($dom->createElement('SocialCardNumber', $ssn));
+            $person->appendChild($dom->createElement('SSN', $ssn));
         }
-        if ($passport !== '') {
-            $root->appendChild($dom->createElement('PassportNumber', htmlspecialchars($passport, ENT_XML1)));
-        }
-        if ($dob !== '') {
-            $root->appendChild($dom->createElement('DateOfBirth', $dob));
-        }
-        if ($name !== '') {
-            $root->appendChild($dom->createElement('FirstName', htmlspecialchars($name, ENT_XML1)));
-        }
-        if ($surname !== '') {
-            $root->appendChild($dom->createElement('LastName', htmlspecialchars($surname, ENT_XML1)));
-        }
+        $person->appendChild($dom->createElement('DateOfBirth',      $dob));
+        $person->appendChild($dom->createElement('Gender',           $gender));
+        $person->appendChild($dom->createElement('ResidencyCountry', $residency));
+
+        $root->appendChild($person);
 
         return $dom->saveXML($dom->documentElement);
     }
