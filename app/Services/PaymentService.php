@@ -199,7 +199,7 @@ class PaymentService
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false,$date = null)
     {
         if ($amount < $penalty) {
-            $discountAmount = $isDiscount ? $amount : 0;
+            $discountAmount = 0;
             $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash, [], $deal_id, $date, false, $parent_id, $discountAmount);
             //return 0;
             return [
@@ -208,8 +208,8 @@ class PaymentService
                 'payment_id' => $paymentId
             ];
         } else {
-            $discountAmount = $isDiscount ? $penalty : 0;
-            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash, [], $deal_id, $date, true, $parent_id, $discountAmount,$date);
+            $discountAmount = 0;
+            $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash, [], $deal_id, $date, true, $parent_id, $discountAmount);
             //  return $amount - $penalty;
             return [
                 'penalty' => $penalty,
