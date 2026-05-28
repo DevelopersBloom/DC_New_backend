@@ -666,12 +666,11 @@ trait ContractTrait
     private function resolveEvent(string $base, string $class, bool $cash): string
     {
         if ($class === 'loss') {
-            return "{$base}_loss";
+            $base = "{$base}_loss";
         }
-dd($cash);
         if ($cash) {
             dd("{$base}_cash");
-            return "{$base}_cash";
+            $base = "{$base}_cash";
         }
 
         return $base;
