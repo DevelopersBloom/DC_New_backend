@@ -668,7 +668,7 @@ trait ContractTrait
         if ($class === 'loss') {
             return "{$base}_loss";
         }
-
+dd($cash);
         if ($cash) {
             dd("{$base}_cash");
             return "{$base}_cash";
