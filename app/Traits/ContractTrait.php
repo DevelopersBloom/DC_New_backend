@@ -670,6 +670,7 @@ trait ContractTrait
         }
 
         if ($cash) {
+            dd("{$base}_cash");
             return "{$base}_cash";
         }
 
