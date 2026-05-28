@@ -669,7 +669,6 @@ trait ContractTrait
             $base = "{$base}_loss";
         }
         if ($cash) {
-            dd("{$base}_cash");
             $base = "{$base}_cash";
         }
 
