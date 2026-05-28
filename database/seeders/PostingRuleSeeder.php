@@ -202,8 +202,15 @@ class PostingRuleSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'business_event_filter' => 'pay_mother_amount_loss',
+                'business_event_filter' => 'pay_mother_amount_loss_cash',
                 'debit_account_id'  => $acc10000,
+                'credit_account_id' => $acc63015,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'pay_mother_amount_loss',
+                'debit_account_id'  => $acc102101,
                 'credit_account_id' => $acc63015,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -223,8 +230,15 @@ class PostingRuleSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'business_event_filter' => 'pay_interest_amount_loss',
+                'business_event_filter' => 'pay_interest_amount_loss_cash',
                 'debit_account_id'  => $acc10000,
+                'credit_account_id' => $acc60120,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'business_event_filter' => 'pay_interest_amount_loss',
+                'debit_account_id'  => $acc102101,
                 'credit_account_id' => $acc60120,
                 'created_at' => now(),
                 'updated_at' => now(),

@@ -163,7 +163,8 @@ class PaymentControllerNew extends Controller
 
             // ---- Interest ----
             if ($interest > 0) {
-                $rule = $this->getPostingRule($this->resolveEvent('pay_interest_amount', $class, $cash));
+                $eventInterest = $class == 'loss' ? 'pay_interest_amount_loss' : 'pay_interest_amount';
+                $rule = $this->getPostingRule($this->resolveEvent($eventInterest, $class, $cash));
 
                 $journalInterest = $this->postEntry(
                     $date,
@@ -181,7 +182,8 @@ class PaymentControllerNew extends Controller
 
             // ---- Regular principal (on time or past due) ----
             if ($principal > 0) {
-                $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash));
+                $eventPrincipal = $class == 'loss' ? 'pay_mother_amount_loss' : 'pay_principal';
+                $rule = $this->getPostingRule($this->resolveEvent($eventPrincipal, $class, $cash));
 
                 $this->postEntry(
                     $date,
