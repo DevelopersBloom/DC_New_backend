@@ -164,7 +164,7 @@ class PaymentControllerNew extends Controller
             // ---- Interest ----
             if ($interest > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_interest_amount', $class, $cash));
-
+dd($rule,$cash);
                 $journalInterest = $this->postEntry(
                     $date,
                     $docNum,
