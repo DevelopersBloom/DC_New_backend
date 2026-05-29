@@ -181,20 +181,23 @@ class BankIdService
             throw new RuntimeException("BankID requestId={$requestId}: datark pataskhan");
         }
 
-        // Ensure UTF-8 so the response can safely be logged and JSON-encoded
-        $encoding = mb_detect_encoding($xml, ['UTF-8', 'UTF-16', 'Windows-1252', 'ISO-8859-1'], true);
-        if ($encoding && $encoding !== 'UTF-8') {
-            $xml = mb_convert_encoding($xml, 'UTF-8', $encoding);
-        } else {
-            // Strip any invalid UTF-8 bytes
-            $xml = mb_convert_encoding($xml, 'UTF-8', 'UTF-8');
-        }
-
         \Log::debug('BankID raw response', ['requestId' => $requestId, 'xml' => $xml]);
 
-        $stripped = trim(strip_tags($xml));
-        if (preg_match('/\b([0-9]{13})\b/', $stripped, $m)) {
-            return $m[1];
+        // DOMDocument reads encoding from the XML declaration — no manual conversion needed.
+        $dom = new \DOMDocument();
+        if (@$dom->loadXML($xml)) {
+            foreach ($dom->getElementsByTagName('Info') as $info) {
+                if (strtoupper($info->getAttribute('Type')) === 'ERROR') {
+                    $code = $dom->getElementsByTagName('ErrorCode')->item(0)?->textContent ?? 'UNKNOWN';
+                    $desc = $dom->getElementsByTagName('ErrorDescription')->item(0)?->textContent ?? '';
+                    throw new RuntimeException("BankID error {$code}: {$desc}");
+                }
+            }
+
+            $stripped = trim(strip_tags($dom->saveXML()));
+            if (preg_match('/\b([0-9]{13})\b/', $stripped, $m)) {
+                return $m[1];
+            }
         }
 
         if (preg_match('/<(?:BankID|ClientID|ID|bankId|client_id)[^>]*>([0-9]{13})</', $xml, $m)) {
