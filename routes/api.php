@@ -246,7 +246,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment'])->middleware('can:make_full_contract_payment');
         Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial'])->middleware('can:make_partial_contract_payment');
         Route::post('/execute',[PaymentControllerNew::class,'executeItem'])->middleware('can:execute_contract_item');
-        Route::match(['put', 'patch'], '/payments/bulk-update', [PaymentControllerNew::class, 'bulkUpdate']);
+        Route::match('put', '/payments/bulk-update', [PaymentControllerNew::class, 'bulkUpdate']);
         Route::get('/history-detail/{id}',[ContractControllerNew::class,'getHistoryDetails'])->middleware('can:view_contract_history_details');
         Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount'])->middleware('can:pay_contract_amount');
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount'])->middleware('can:request_contract_discount');
