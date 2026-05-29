@@ -67,7 +67,7 @@ class BankIdService
         $identityNum  = trim((string) ($client->passport_series ?? ''));
         $ssn          = trim((string) ($client->social_card_number ?? ''));
         $dob          = $client->date_of_birth
-                            ? \Carbon\Carbon::parse($client->date_of_birth)->format('d/m/Y')
+                            ? \Carbon\Carbon::parse($client->date_of_birth)->format('dd/mm/yyyy')
                             : '';
         $gender       = match ($client->gender) {
                             'MALE'   => 'M',
@@ -76,7 +76,7 @@ class BankIdService
                         };
         $residency    = trim((string) ($client->residency_country ?? 'ARM'));
         $expiry       = $client->passport_validity
-                            ? \Carbon\Carbon::parse($client->passport_validity)->format('d/m/Y')
+                            ? \Carbon\Carbon::parse($client->passport_validity)->format('dd/mm/yyyy')
                             : '';
 
         // Validate required fields
@@ -114,7 +114,7 @@ class BankIdService
         $header->appendChild($dom->createElement('OrganisationBranchCode', self::BRANCH_CODE));
         $header->appendChild($dom->createElement('OrganizationStatus',     '0'));
         $sendDt = $dom->createElement('SendDateTime');
-        $sendDt->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
+        $sendDt->appendChild($dom->createElement('Date', $now->format('dd/mm/yyyy')));
         $sendDt->appendChild($dom->createElement('Time', $now->format('H:i:s')));
         $header->appendChild($sendDt);
         $root->appendChild($header);
