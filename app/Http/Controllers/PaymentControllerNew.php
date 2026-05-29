@@ -23,6 +23,7 @@ use App\Services\PaymentService;
 use App\Services\PostingDatePolicy;
 use App\Traits\CalculatesAccountBalancesTrait;
 use App\Traits\ContractTrait;
+use App\Traits\CorrectReserveTrait;
 use App\Traits\FileTrait;
 use App\Traits\HistoryTrait;
 use Carbon\Carbon;
@@ -33,6 +34,7 @@ use PhpParser\Node\Expr\AssignOp\Mod;
 
 class PaymentControllerNew extends Controller
 {
+    use CorrectReserveTrait;
     use ContractTrait, HistoryTrait;
     use FileTrait;
     use CalculatesAccountBalancesTrait;
@@ -293,11 +295,13 @@ class PaymentControllerNew extends Controller
     private function updateContractStatus($contract, $date = null)
     {
         $paymentsLeft = $contract->payments->where('status', 'initial');
+        $justCompleted = false;
 
         if ($paymentsLeft->isEmpty()) {
             $contract->status = 'completed';
             $contract->closed_at = $date ?? Carbon::now()->toDateString();
             $contract->left = 0;
+            $justCompleted = true;
 
             $modifications = [
                 [
@@ -312,9 +316,23 @@ class PaymentControllerNew extends Controller
                 ],
             ];
             Modification::insert($modifications);
-
         }
+
         $contract->save();
+
+        if ($justCompleted) {
+            try {
+                $this->releaseReserveBalancesIfClientFullyClosed(
+                    clientId:   $contract->client_id,
+                    contractId: $contract->id,
+                    date:       $date ?? now()->format('Y-m-d'),
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error(
+                    "Reserve release after contract completion failed for contract #{$contract->id}: " . $e->getMessage()
+                );
+            }
+        }
     }
 
     public function makeFullPayment(Request $request): JsonResponse
