@@ -203,5 +203,9 @@ class BankIdService
         if (preg_match('/<(?:BankID|ClientID|ID|bankId|client_id)[^>]*>([0-9]{13})</', $xml, $m)) {
             return $m[1];
         }
+
+        throw new RuntimeException(
+            "BankID: 13-nish ID-n chi gtvyel pataskhanum. Raw:\n" . substr($xml, 0, 500)
+        );
     }
 }
