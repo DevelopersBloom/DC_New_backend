@@ -210,48 +210,67 @@ class ChartOfAccountController
     public function reserveBalanceCheck(Request $request): JsonResponse
     {
         $dateTo = $request->query('to_date');
+        $codes  = ['16605PC', '16605PS'];
 
-        $codes = ['16605PC', '16605PS'];
-dd($this->balancesSubquery($dateTo)->orderBy('ca.code')
-    ->get());
-        $accountBalances = $this->balancesSubquery($dateTo)
-            ->where('ca.code', '16605PC')
+        // ── 1. Account-level balances ─────────────────────────────────────────
+        // Wrap in fromSub so the outer WHERE filters on the aliased 'code' column
+        $accountBalances = DB::query()
+            ->fromSub($this->balancesSubquery($dateTo), 'ab')
+            ->whereIn('ab.code', $codes)
+            ->select(['ab.account_id', 'ab.code', 'ab.name', 'ab.type', 'ab.balance'])
             ->get()
             ->keyBy('code');
 
-        $partnerTotals = $this->partnerAccountBalancesSubquery($dateTo)
-            ->whereIn('ca.code', $codes)
+        // ── 2. Partner totals per account ─────────────────────────────────────
+        // partnerAccountBalancesSubquery already returns SUM(delta) as 'balance'
+        // per (partner_id, account_id). Wrap it and SUM those balances by account.
+        $partnerTotals = DB::query()
+            ->fromSub($this->partnerAccountBalancesSubquery($dateTo), 'pab')
+            ->whereIn('pab.account_code', $codes)
             ->select([
-                'ca.code as account_code',
-                DB::raw('SUM(u.delta) as partners_total'),
+                'pab.account_code',
+                DB::raw('SUM(pab.balance) as partners_total'),
             ])
-            ->groupBy('ca.code')
+            ->groupBy('pab.account_code')
             ->get()
             ->keyBy('account_code');
 
-        $partnerRows = $this->partnerAccountBalancesRowsQuery($dateTo)
-            ->whereIn('b.account_code', $codes)
+        // ── 3. Partner detail rows (for the table) ────────────────────────────
+        $partnerRows = DB::query()
+            ->fromSub($this->partnerAccountBalancesSubquery($dateTo), 'pr')
+            ->whereIn('pr.account_code', $codes)
+            ->select([
+                'pr.partner_id',
+                'pr.partner_name',
+                'pr.partner_code',
+                'pr.partner_type',
+                'pr.account_code',
+                'pr.account_name',
+                'pr.balance',
+            ])
+            ->orderBy('pr.partner_name')
             ->get()
             ->groupBy('account_code');
-dd($accountBalances,$partnerTotals,$partnerRows);
+
+        // ── 4. Build result ───────────────────────────────────────────────────
         $result = [];
         foreach ($codes as $code) {
-            $accountBalance  = (float) ($accountBalances[$code]->balance   ?? 0);
-            $partnersTotal   = (float) ($partnerTotals[$code]->partners_total ?? 0);
-            $diff            = round($accountBalance - $partnersTotal, 2);
+            $accountBalance = (float) ($accountBalances[$code]->balance       ?? 0);
+            $partnersTotal  = (float) ($partnerTotals[$code]->partners_total  ?? 0);
+            $diff           = round($accountBalance - $partnersTotal, 2);
 
             $result[$code] = [
-                'account_balance'  => round($accountBalance, 2),
-                'partners_total'   => round($partnersTotal, 2),
-                'difference'       => $diff,
-                'ok'               => abs($diff) <= 1,
-                'partners'         => $partnerRows[$code] ?? [],
+                'account_balance' => round($accountBalance, 2),
+                'partners_total'  => round($partnersTotal, 2),
+                'difference'      => $diff,
+                'ok'              => abs($diff) <= 1,
+                'partners'        => $partnerRows[$code] ?? [],
             ];
         }
 
         return response()->json([
-            'date'   => $dateTo ?? now()->toDateString(),
-            'data'   => $result,
+            'date' => $dateTo ?? now()->toDateString(),
+            'data' => $result,
         ]);
     }
 
