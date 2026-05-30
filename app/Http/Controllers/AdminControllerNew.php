@@ -25,6 +25,10 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\DealDeleteImpactService;
+use App\Services\DealScopedDeleteService;
+use App\Services\DealUpdatePreviewService;
+use App\Services\DealUpdateService;
 use App\Services\DealsTableOnlyUpdateService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -710,8 +714,39 @@ class AdminControllerNew extends Controller
     }
 
 
-    public function updateDeals(Request $request, DealsTableOnlyUpdateService $dealsTableOnlyUpdate): JsonResponse
+    public function previewDealUpdate(Request $request, DealUpdatePreviewService $dealUpdatePreviewService): JsonResponse
     {
+        $validated = $request->validate([
+            'deals' => 'sometimes|array',
+            'deals.*.id' => 'required_with:deals|exists:deals,id',
+            'deals.*.date' => 'sometimes|date_format:Y-m-d',
+            'deals.*.amount' => 'nullable|numeric|min:0',
+            'deals.*.interest_amount' => 'nullable|numeric|min:0',
+            'deals.*.penalty' => 'nullable|numeric|min:0',
+            'deals.*.cash' => 'nullable|boolean',
+            'deal_id' => 'sometimes|exists:deals,id',
+            'amount' => 'nullable|numeric|min:0',
+            'interest_amount' => 'nullable|numeric|min:0',
+            'penalty' => 'nullable|numeric|min:0',
+            'cash' => 'nullable|boolean',
+            'date' => 'sometimes|date_format:Y-m-d',
+        ]);
+
+        if (!empty($validated['deals'])) {
+            return response()->json($dealUpdatePreviewService->previewMany($validated['deals']));
+        }
+
+        $dealId = (int) $validated['deal_id'];
+        unset($validated['deal_id']);
+
+        return response()->json($dealUpdatePreviewService->preview($dealId, $validated));
+    }
+
+    public function updateDeals(
+        Request $request,
+        DealsTableOnlyUpdateService $dealsTableOnlyUpdate,
+        DealUpdateService $dealUpdateService
+    ): JsonResponse {
         $validated = $request->validate([
             'deals' => 'required|array',
             'deals.*.id' => 'required|exists:deals,id',
@@ -720,12 +755,31 @@ class AdminControllerNew extends Controller
             'deals.*.interest_amount' => 'nullable|numeric|min:0',
             'deals.*.penalty' => 'nullable|numeric|min:0',
             'deals.*.cash' => 'nullable|boolean',
+            'scopes' => 'sometimes|array',
+            'scopes.pawnshop' => 'sometimes|boolean',
+            'scopes.order_history' => 'sometimes|boolean',
+            'scopes.order' => 'sometimes|boolean',
+            'scopes.history' => 'sometimes|boolean',
+            'scopes.contract' => 'sometimes|boolean',
+            'scopes.payments' => 'sometimes|boolean',
+            'scopes.documents_journal' => 'sometimes|boolean',
+            'scopes.transactions' => 'sometimes|boolean',
+            'scopes.accounting' => 'sometimes|boolean',
+            'scopes.deal_actions' => 'sometimes|boolean',
         ]);
 
-        \Log::info('update-deals invoked (deals_table_only)', [
-            'count' => count($validated['deals'] ?? []),
-            'deal_ids' => array_map(static fn ($d) => $d['id'] ?? null, $validated['deals'] ?? []),
-        ]);
+        $scopes = $validated['scopes'] ?? [];
+        $useScoped = $dealUpdateService->hasAnyScope($scopes);
+
+        if ($useScoped) {
+            $dealUpdateService->updateMany($validated['deals'], $scopes);
+
+            return response()->json([
+                'message' => 'Deals updated successfully',
+                'mode' => 'scoped_sync',
+                'scopes_applied' => array_keys(array_filter($scopes)),
+            ]);
+        }
 
         $dealsTableOnlyUpdate->updateMany($validated['deals']);
 
@@ -739,12 +793,71 @@ class AdminControllerNew extends Controller
         return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
     }
 
-    public function deleteDeal($id)
+    public function getDealDeleteImpact($id, DealDeleteImpactService $dealDeleteImpactService): JsonResponse
     {
         $deal = Deal::find($id);
         if (!$deal) {
             return response()->json(['message' => 'Deal not found'], 404);
         }
+
+        return response()->json($dealDeleteImpactService->getImpact($deal));
+    }
+
+    public function deleteDeal(Request $request, $id, DealScopedDeleteService $dealScopedDeleteService): JsonResponse
+    {
+        $deal = Deal::find($id);
+        if (!$deal) {
+            return response()->json(['message' => 'Deal not found'], 404);
+        }
+
+        $scopes = $request->input('scopes', []);
+        $hasScopedDelete = is_array($scopes) && count(array_filter($scopes)) > 0;
+
+        if (!$hasScopedDelete) {
+            return $this->deleteDealLegacy($deal);
+        }
+
+        $validated = $request->validate([
+            'scopes' => 'required|array',
+            'scopes.deal' => 'sometimes|boolean',
+            'scopes.payments' => 'sometimes|boolean',
+            'scopes.contract' => 'sometimes|boolean',
+            'scopes.documents_journal' => 'sometimes|boolean',
+            'scopes.transactions' => 'sometimes|boolean',
+            'scopes.accounting' => 'sometimes|boolean',
+            'scopes.order_history' => 'sometimes|boolean',
+            'scopes.deal_actions' => 'sometimes|boolean',
+        ]);
+
+        if (empty($validated['scopes']['deal'])) {
+            return response()->json(['message' => 'Deal row must be selected for deletion.'], 422);
+        }
+
+        if (in_array($deal->filter_type, ['full_payment', 'payment', 'partial_payment'], true)) {
+            return $this->deleteDealLegacy($deal);
+        }
+
+        if (!empty($validated['scopes']['payments'])) {
+            return $this->deleteDealLegacy($deal);
+        }
+
+        try {
+            $dealScopedDeleteService->delete($deal, $validated['scopes']);
+
+            return response()->json([
+                'message' => 'Deal deleted successfully',
+                'scopes_applied' => array_keys(array_filter($validated['scopes'])),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error while deleting data',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function deleteDealLegacy(Deal $deal): JsonResponse
+    {
         return DB::transaction(function () use ($deal) {
             try {
                 if ($deal->filter_type === 'full_payment') {
@@ -758,15 +871,13 @@ class AdminControllerNew extends Controller
                 $deal->delete();
 
                 return response()->json(['message' => 'Deal deleted successfully']);
-
             } catch (\Exception $e) {
                 return response()->json([
                     'message' => 'Error while deleting data',
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ], 500);
             }
         });
-
     }
 
     private function handleFullPaymentDeal(Deal $deal)
