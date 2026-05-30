@@ -235,7 +235,7 @@ class ChartOfAccountController
             ->groupBy('pab.account_code')
             ->get()
             ->keyBy('account_code');
-
+dd($accountBalances,$partnerTotals);
         // ── 3. Orphan transactions (no partner_id) per account ────────────────
         $accountIds = ChartOfAccount::whereIn('code', $codes)->pluck('id', 'code');
 
