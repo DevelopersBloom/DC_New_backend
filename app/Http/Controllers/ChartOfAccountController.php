@@ -202,6 +202,58 @@ class ChartOfAccountController
         ]);
     }
 
+    /**
+     * Compares 16605PC / 16605PS account-level balance
+     * against the sum of all partner balances for those accounts.
+     * Difference should be 0 (±1 AMD rounding allowed).
+     */
+    public function reserveBalanceCheck(Request $request): JsonResponse
+    {
+        $dateTo = $request->query('to_date');
+
+        $codes = ['16605PC', '16605PS'];
+
+        $accountBalances = $this->balancesSubquery($dateTo)
+            ->whereIn('ca.code', $codes)
+            ->get()
+            ->keyBy('code');
+
+        $partnerTotals = $this->partnerAccountBalancesSubquery($dateTo)
+            ->whereIn('ca.code', $codes)
+            ->select([
+                'ca.code as account_code',
+                DB::raw('SUM(u.delta) as partners_total'),
+            ])
+            ->groupBy('ca.code')
+            ->get()
+            ->keyBy('account_code');
+
+        $partnerRows = $this->partnerAccountBalancesRowsQuery($dateTo)
+            ->whereIn('b.account_code', $codes)
+            ->get()
+            ->groupBy('account_code');
+
+        $result = [];
+        foreach ($codes as $code) {
+            $accountBalance  = (float) ($accountBalances[$code]->balance   ?? 0);
+            $partnersTotal   = (float) ($partnerTotals[$code]->partners_total ?? 0);
+            $diff            = round($accountBalance - $partnersTotal, 2);
+
+            $result[$code] = [
+                'account_balance'  => round($accountBalance, 2),
+                'partners_total'   => round($partnersTotal, 2),
+                'difference'       => $diff,
+                'ok'               => abs($diff) <= 1,
+                'partners'         => $partnerRows[$code] ?? [],
+            ];
+        }
+
+        return response()->json([
+            'date'   => $dateTo ?? now()->toDateString(),
+            'data'   => $result,
+        ]);
+    }
+
     public function exportPartnerAccountBalances(Request $request)
     {
         $dateTo    = $request->query('to_date');

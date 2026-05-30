@@ -159,6 +159,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/transactions/account-balance/export', [TransactionController::class, 'exportAccountBalances'])->middleware('can:export_account_balances');
         Route::get('/accounts/partner-balances',[ChartOfAccountController::class,'partnerAccountBalances'])->middleware('can:view_partner_balances');
         Route::get('/transactions/partner-balances/export', [ChartOfAccountController::class, 'exportPartnerAccountBalances'])->middleware('can:export_partner_balances');
+        Route::get('/accounts/reserve-balance-check', [ChartOfAccountController::class, 'reserveBalanceCheck'])->middleware('can:view_partner_balances');
 
 
         Route::apiResource('posting-rules', PostingRuleController::class)->except(['update']);
