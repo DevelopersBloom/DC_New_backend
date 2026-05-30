@@ -317,7 +317,7 @@ class LoanNdmController extends Controller
                 $debitAccountId = $rule->debit_account_id;
                 $creditAccountId = $rule->credit_account_id;
 
-                $partnerId = Client::where('company_name','Diamond Credit')->first()->id;
+                $partnerId = Client::where('company_name','«Ակրեդիտ» ՎՄ ՍՊԸ')->value('id') ?? 1;
                 $creditPartnerId = $loan->client_id;
 
                 $journalDoc = DocumentJournal::create([
@@ -692,7 +692,7 @@ class LoanNdmController extends Controller
 
 
         return DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt) {
-            $lombardId = Client::where('company_name','Diamond Credit')->first()->id;
+            $lombardId = Client::where('company_name','Diamond Credit')->value('id') ?? 1;
             $clientId = $loan->client_id;
             $loanAccountId = $loan->account_id;
 
