@@ -205,15 +205,18 @@ class ChartOfAccountController
     /**
      * Compares 16605PC / 16605PS account-level balance
      * against the sum of all partner balances for those accounts.
-     * Difference should be 0 (±1 AMD rounding allowed).
+     *
+     * account_balance  = all transactions (same as /accounts/balances)
+     * partners_total   = only transactions that have a partner_id
+     * orphan_amount    = account_balance − partners_total
+     *                    (transactions WITHOUT partner_id — should be 0)
      */
     public function reserveBalanceCheck(Request $request): JsonResponse
     {
-        $dateTo = $request->query('to_date');
+        $dateTo = $request->query('to_date') ?? now()->toDateString();
         $codes  = ['16605PC', '16605PS'];
 
-        // ── 1. Account-level balances ─────────────────────────────────────────
-        // Wrap in fromSub so the outer WHERE filters on the aliased 'code' column
+        // ── 1. Account-level balances (all transactions, same as /accounts/balances)
         $accountBalances = DB::query()
             ->fromSub($this->balancesSubquery($dateTo), 'ab')
             ->whereIn('ab.code', $codes)
@@ -221,9 +224,7 @@ class ChartOfAccountController
             ->get()
             ->keyBy('code');
 
-        // ── 2. Partner totals per account ─────────────────────────────────────
-        // partnerAccountBalancesSubquery already returns SUM(delta) as 'balance'
-        // per (partner_id, account_id). Wrap it and SUM those balances by account.
+        // ── 2. Partner totals (only transactions WITH partner_id)
         $partnerTotals = DB::query()
             ->fromSub($this->partnerAccountBalancesSubquery($dateTo), 'pab')
             ->whereIn('pab.account_code', $codes)
@@ -235,7 +236,45 @@ class ChartOfAccountController
             ->get()
             ->keyBy('account_code');
 
-        // ── 3. Partner detail rows (for the table) ────────────────────────────
+        // ── 3. Orphan transactions (no partner_id) per account ────────────────
+        $accountIds = ChartOfAccount::whereIn('code', $codes)->pluck('id', 'code');
+
+        $orphanRows = [];
+        foreach ($codes as $code) {
+            $accId = $accountIds[$code] ?? null;
+            if (!$accId) continue;
+
+            $rows = DB::table('transactions as t')
+                ->whereNull('t.deleted_at')
+                ->whereDate('t.date', '<=', $dateTo)
+                ->where(function ($q) use ($accId) {
+                    $q->orWhere(function ($q2) use ($accId) {
+                        $q2->where('t.debit_account_id', $accId)
+                           ->whereNull('t.debit_partner_id');
+                    })->orWhere(function ($q2) use ($accId) {
+                        $q2->where('t.credit_account_id', $accId)
+                           ->whereNull('t.credit_partner_id');
+                    });
+                })
+                ->select([
+                    't.id',
+                    't.date',
+                    't.document_number',
+                    't.document_type',
+                    't.amount_amd',
+                    't.debit_account_id',
+                    't.debit_partner_id',
+                    't.credit_account_id',
+                    't.credit_partner_id',
+                    't.comment',
+                ])
+                ->orderBy('t.date')
+                ->get();
+
+            $orphanRows[$code] = $rows;
+        }
+
+        // ── 4. Partner detail rows ────────────────────────────────────────────
         $partnerRows = DB::query()
             ->fromSub($this->partnerAccountBalancesSubquery($dateTo), 'pr')
             ->whereIn('pr.account_code', $codes)
@@ -251,25 +290,26 @@ class ChartOfAccountController
             ->orderBy('pr.partner_name')
             ->get()
             ->groupBy('account_code');
-dd($accountBalances,$partnerTotals,$partnerRows);
-        // ── 4. Build result ───────────────────────────────────────────────────
+
+        // ── 5. Build result ───────────────────────────────────────────────────
         $result = [];
         foreach ($codes as $code) {
-            $accountBalance = (float) ($accountBalances[$code]->balance       ?? 0);
-            $partnersTotal  = (float) ($partnerTotals[$code]->partners_total  ?? 0);
-            $diff           = round($accountBalance - $partnersTotal, 2);
+            $accountBalance = (float) ($accountBalances[$code]->balance      ?? 0);
+            $partnersTotal  = (float) ($partnerTotals[$code]->partners_total ?? 0);
+            $orphanAmount   = round($accountBalance - $partnersTotal, 2);
 
             $result[$code] = [
                 'account_balance' => round($accountBalance, 2),
                 'partners_total'  => round($partnersTotal, 2),
-                'difference'      => $diff,
-                'ok'              => abs($diff) <= 1,
-                'partners'        => $partnerRows[$code] ?? [],
+                'orphan_amount'   => $orphanAmount,          // transactions without partner_id
+                'ok'              => abs($orphanAmount) <= 1,
+                'orphan_transactions' => $orphanRows[$code] ?? [],
+                'partners'            => $partnerRows[$code] ?? [],
             ];
         }
 
         return response()->json([
-            'date' => $dateTo ?? now()->toDateString(),
+            'date' => $dateTo,
             'data' => $result,
         ]);
     }
