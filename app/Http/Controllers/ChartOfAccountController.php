@@ -214,7 +214,7 @@ class ChartOfAccountController
         $codes = ['16605PC', '16605PS'];
 
         $accountBalances = $this->balancesSubquery($dateTo)
-            ->whereIn('ca.code', $codes)
+            ->where('ca.code', '16605PC')
             ->get()
             ->keyBy('code');
 
