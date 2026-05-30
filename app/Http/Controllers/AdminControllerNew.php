@@ -25,6 +25,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\DealUpdateService;
 use App\Services\DealsTableOnlyUpdateService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -710,8 +711,11 @@ class AdminControllerNew extends Controller
     }
 
 
-    public function updateDeals(Request $request, DealsTableOnlyUpdateService $dealsTableOnlyUpdate): JsonResponse
-    {
+    public function updateDeals(
+        Request $request,
+        DealsTableOnlyUpdateService $dealsTableOnlyUpdate,
+        DealUpdateService $dealUpdateService
+    ): JsonResponse {
         $validated = $request->validate([
             'deals' => 'required|array',
             'deals.*.id' => 'required|exists:deals,id',
@@ -720,12 +724,31 @@ class AdminControllerNew extends Controller
             'deals.*.interest_amount' => 'nullable|numeric|min:0',
             'deals.*.penalty' => 'nullable|numeric|min:0',
             'deals.*.cash' => 'nullable|boolean',
+            'scopes' => 'sometimes|array',
+            'scopes.pawnshop' => 'sometimes|boolean',
+            'scopes.order_history' => 'sometimes|boolean',
+            'scopes.order' => 'sometimes|boolean',
+            'scopes.history' => 'sometimes|boolean',
+            'scopes.contract' => 'sometimes|boolean',
+            'scopes.payments' => 'sometimes|boolean',
+            'scopes.documents_journal' => 'sometimes|boolean',
+            'scopes.transactions' => 'sometimes|boolean',
+            'scopes.accounting' => 'sometimes|boolean',
+            'scopes.deal_actions' => 'sometimes|boolean',
         ]);
 
-        \Log::info('update-deals invoked (deals_table_only)', [
-            'count' => count($validated['deals'] ?? []),
-            'deal_ids' => array_map(static fn ($d) => $d['id'] ?? null, $validated['deals'] ?? []),
-        ]);
+        $scopes = $validated['scopes'] ?? [];
+        $useScoped = $dealUpdateService->hasAnyScope($scopes);
+
+        if ($useScoped) {
+            $dealUpdateService->updateMany($validated['deals'], $scopes);
+
+            return response()->json([
+                'message' => 'Deals updated successfully',
+                'mode' => 'scoped_sync',
+                'scopes_applied' => array_keys(array_filter($scopes)),
+            ]);
+        }
 
         $dealsTableOnlyUpdate->updateMany($validated['deals']);
 

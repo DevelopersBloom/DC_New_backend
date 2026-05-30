@@ -32,25 +32,85 @@ class DealUpdateService
     'full',
   ];
 
-  public function updateMany(array $dealsData): void
+  public function updateMany(array $dealsData, array $globalScopes = []): void
   {
-    DB::transaction(function () use ($dealsData) {
+    DB::transaction(function () use ($dealsData, $globalScopes) {
       foreach ($dealsData as $dealData) {
-        $this->updateOne($dealData);
+        $scopes = $dealData['scopes'] ?? $globalScopes;
+        if (isset($dealData['scopes'])) {
+          unset($dealData['scopes']);
+        }
+        $this->updateOne($dealData, is_array($scopes) ? $scopes : []);
       }
     });
   }
 
-  public function updateOne(array $dealData): void
+  public function hasAnyScope(array $scopes): bool
+  {
+    return count(array_filter($scopes)) > 0;
+  }
+
+  public function updateOne(array $dealData, array $scopes = []): void
   {
     $deal = Deal::findOrFail($dealData['id']);
+
+    $oldAmount = (float) ($deal->amount ?? 0);
+    $oldInterest = (float) ($deal->interest_amount ?? 0);
+    $oldPenalty = (float) ($deal->penalty ?? 0);
+    $oldCash = (bool) $deal->cash;
+    $oldDate = (string) $deal->date;
+
+    $newAmount = (float) ($dealData['amount'] ?? $oldAmount);
+    $newInterest = (float) ($dealData['interest_amount'] ?? $oldInterest);
+    $newPenalty = (float) ($dealData['penalty'] ?? $oldPenalty);
+    $newCash = array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : $oldCash;
+    $newDate = (string) ($dealData['date'] ?? $oldDate);
+
+    $oldPrincipal = $this->resolvePrincipal($deal, $oldAmount, $oldInterest, $oldPenalty);
+    $newPrincipal = $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
+
     Deal::query()->whereKey($deal->id)->update([
-      'amount' => (float) ($dealData['amount'] ?? $deal->amount ?? 0),
-      'interest_amount' => (float) ($dealData['interest_amount'] ?? $deal->interest_amount ?? 0),
-      'penalty' => (float) ($dealData['penalty'] ?? $deal->penalty ?? 0),
-      'cash' => array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : (bool) $deal->cash,
-      'date' => $dealData['date'] ?? $deal->date,
+      'amount' => $newAmount,
+      'interest_amount' => $newInterest,
+      'penalty' => $newPenalty,
+      'cash' => $newCash,
+      'date' => $newDate,
     ]);
+
+    $deal->refresh();
+
+    if (!$this->hasAnyScope($scopes)) {
+      return;
+    }
+
+    if (!empty($scopes['pawnshop'])) {
+      $this->adjustPawnshopCashbox($deal, $oldAmount, $oldCash, $newAmount, $newCash);
+    }
+
+    if (!empty($scopes['order']) || !empty($scopes['history']) || !empty($scopes['order_history'])) {
+      $this->syncOrder($deal, $newAmount, $newCash, $newDate);
+      $this->syncHistory($deal, $newAmount, $newInterest, $newPenalty, $newDate);
+    }
+
+    if (!empty($scopes['deal_actions'])) {
+      $this->syncDealActions($deal, $newAmount, $newInterest, $newPrincipal, $newPenalty, $newDate);
+    }
+
+    if (!empty($scopes['payments'])) {
+      $this->syncPayment($deal, $newAmount, $newInterest, $newPrincipal, $newPenalty, $newDate, $newCash);
+    }
+
+    if (!empty($scopes['contract'])) {
+      $this->syncContract($deal, $oldInterest, $oldPenalty, $oldPrincipal, $newInterest, $newPenalty, $newPrincipal);
+    }
+
+    if (!empty($scopes['documents_journal']) || !empty($scopes['transactions']) || !empty($scopes['accounting'])) {
+      $this->syncAccounting($deal, $newInterest, $newPrincipal, $newPenalty, $newCash);
+    }
+
+    if ($oldDate !== $newDate) {
+      $this->syncRelatedDates($deal, $newDate);
+    }
   }
 
   private function resolvePrincipal(Deal $deal, float $amount, float $interest, float $penalty): float
@@ -474,5 +534,310 @@ class DealUpdateService
       $action->update($updates);
     });
   }
+
+
+  private function syncPayment(
+    Deal $deal,
+    float $amount,
+    float $interest,
+    float $principal,
+    float $penalty,
+    string $date,
+    bool $cash
+  ): void {
+    if ($deal->payment_id) {
+      Payment::whereKey($deal->payment_id)->update([
+        'interest_payment' => $interest,
+        'principal_payment' => $principal,
+        'paid' => $amount,
+        'amount' => $amount,
+        'date' => $date,
+        'cash' => $cash,
+      ]);
+    }
+
+    $regularActions = DealAction::where('deal_id', $deal->id)->where('type', 'regular')->get();
+    $oldRegularTotal = (float) $regularActions->sum('amount');
+
+    DealAction::where('deal_id', $deal->id)->with('actionable')->each(function (DealAction $action) use (
+      $amount,
+      $interest,
+      $principal,
+      $penalty,
+      $date,
+      $cash,
+      $regularActions,
+      $oldRegularTotal
+    ) {
+      if (!($action->actionable instanceof Payment)) {
+        return;
+      }
+
+      $updates = ['date' => $date, 'cash' => $cash];
+
+      if ($action->type === 'penalty') {
+        $updates['paid'] = $penalty;
+        $updates['penalty'] = $penalty;
+      } elseif ($action->type === 'regular') {
+        $share = $oldRegularTotal > 0
+          ? $principal * ((float) $action->amount / $oldRegularTotal)
+          : ($regularActions->count() > 0 ? $principal / $regularActions->count() : $principal);
+        $updates['principal_payment'] = $share;
+        $updates['paid'] = $share;
+        $interestShare = $regularActions->count() > 0 ? $interest / $regularActions->count() : $interest;
+        $updates['interest_payment'] = $interestShare;
+      } elseif ($action->type === 'partial') {
+        $updates['principal_payment'] = $principal;
+        $updates['interest_payment'] = $interest;
+        $updates['paid'] = $amount;
+      }
+
+      $action->actionable->update($updates);
+    });
+  }
+
+  public function previewUpdate(int $dealId, array $proposed): array
+  {
+    $deal = Deal::with(['contract.client.classification'])->findOrFail($dealId);
+
+    $oldAmount = (float) ($deal->amount ?? 0);
+    $oldInterest = (float) ($deal->interest_amount ?? 0);
+    $oldPenalty = (float) ($deal->penalty ?? 0);
+    $oldCash = (bool) $deal->cash;
+    $oldDate = (string) $deal->date;
+
+    $newAmount = (float) ($proposed['amount'] ?? $oldAmount);
+    $newInterest = (float) ($proposed['interest_amount'] ?? $oldInterest);
+    $newPenalty = (float) ($proposed['penalty'] ?? $oldPenalty);
+    $newCash = array_key_exists('cash', $proposed) ? (bool) $proposed['cash'] : $oldCash;
+    $newDate = (string) ($proposed['date'] ?? $oldDate);
+
+    $oldPrincipal = $this->resolvePrincipal($deal, $oldAmount, $oldInterest, $oldPenalty);
+    $newPrincipal = $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
+
+    $availableScopes = [];
+    $diffs = [
+      'deal' => $this->diffRow([
+        'amount' => $oldAmount,
+        'interest_amount' => $oldInterest,
+        'penalty' => $oldPenalty,
+        'cash' => $oldCash,
+        'date' => $oldDate,
+      ], [
+        'amount' => $newAmount,
+        'interest_amount' => $newInterest,
+        'penalty' => $newPenalty,
+        'cash' => $newCash,
+        'date' => $newDate,
+      ]),
+    ];
+
+    if ($deal->pawnshop_id && ($oldAmount != $newAmount || $oldCash !== $newCash)) {
+      $availableScopes[] = 'pawnshop';
+      $pawnshop = Pawnshop::find($deal->pawnshop_id);
+      if ($pawnshop) {
+        $diffs['pawnshop'] = $this->diffRow(
+          ['cashbox' => $pawnshop->cashbox, 'bank_cashbox' => $pawnshop->bank_cashbox],
+          ['cashbox' => $pawnshop->cashbox, 'bank_cashbox' => $pawnshop->bank_cashbox, 'note' => 'Cashbox adjusted on save']
+        );
+      }
+    }
+
+    if ($deal->order_id || $deal->history_id) {
+      $availableScopes[] = 'order_history';
+      if ($deal->order_id) {
+        $order = Order::find($deal->order_id);
+        if ($order) {
+          $diffs['order'] = $this->diffRow(
+            ['amount' => $order->amount, 'cash' => $order->cash, 'date' => $order->date],
+            ['amount' => $newAmount, 'cash' => $newCash, 'date' => $newDate]
+          );
+        }
+      }
+      if ($deal->history_id) {
+        $history = History::find($deal->history_id);
+        if ($history) {
+          $diffs['history'] = $this->diffRow(
+            ['amount' => $history->amount, 'interest_amount' => $history->interest_amount, 'penalty' => $history->penalty, 'date' => $history->date],
+            ['amount' => $newAmount, 'interest_amount' => $newInterest, 'penalty' => $newPenalty, 'date' => $newDate]
+          );
+        }
+      }
+    }
+
+    if ($deal->contract_id && in_array($deal->filter_type, self::PAYMENT_FILTER_TYPES, true)) {
+      $availableScopes[] = 'contract';
+      $contract = Contract::find($deal->contract_id);
+      if ($contract) {
+        $after = [
+          'left' => max(0, (float) ($contract->left ?? 0) - ($newPrincipal - $oldPrincipal)),
+          'collected' => max(0, (float) ($contract->collected ?? 0) + ($newInterest - $oldInterest)),
+          'penalty_amount' => max(0, (float) ($contract->penalty_amount ?? 0) - ($newPenalty - $oldPenalty)),
+        ];
+        if ($contract->payment_type === 'amortized') {
+          $after['provided_amount'] = max(0, (float) ($contract->provided_amount ?? 0) - ($newPrincipal - $oldPrincipal));
+        }
+        $diffs['contract'] = $this->diffRow([
+          'left' => $contract->left,
+          'collected' => $contract->collected,
+          'penalty_amount' => $contract->penalty_amount,
+          'provided_amount' => $contract->provided_amount,
+        ], $after);
+      }
+    }
+
+    $journals = DocumentJournal::where('deal_id', $deal->id)->get();
+    if ($journals->isNotEmpty()) {
+      $availableScopes[] = 'documents_journal';
+      $availableScopes[] = 'transactions';
+      $classification = $this->resolveContractClassificationName($deal->contract_id);
+      $journalDiffs = [];
+      $transactionDiffs = [];
+      $splitTargets = [
+        DocumentJournal::PAY_INTEREST_AMOUNT => $newInterest,
+        DocumentJournal::PAY_MOTHER_AMOUNT => $newPrincipal,
+        DocumentJournal::PAY_MOTHER_AMOUNT_CASH => $newPrincipal,
+        DocumentJournal::PAY_PENALTY_AMOUNT => $newPenalty,
+        DocumentJournal::RECOVERY_INTEREST => $newInterest,
+        DocumentJournal::RECOVERY_PRINCIPAL => $newPrincipal,
+      ];
+      $handledTypes = array_keys($splitTargets);
+
+      foreach ($splitTargets as $documentType => $targetTotal) {
+        $group = $journals->where('document_type', $documentType)->sortBy('id')->values();
+        if ($group->isEmpty()) {
+          continue;
+        }
+        $amounts = $this->sequentialJournalAmounts($group, (float) $targetTotal);
+        foreach ($group as $index => $journal) {
+          $newJournalAmount = $amounts[$index] ?? 0.0;
+          $rule = $this->resolvePostingRuleForJournal($deal, $journal->document_type, $newCash, $classification);
+          $journalDiffs[] = [
+            'id' => $journal->id,
+            'document_type' => $journal->document_type,
+            'changes' => $this->diffRow(
+              ['amount_amd' => $journal->amount_amd, 'cash' => $journal->cash, 'date' => $journal->date],
+              [
+                'amount_amd' => $newJournalAmount,
+                'cash' => $newCash,
+                'date' => $newDate,
+                'debit_account_id' => $rule?->debit_account_id ?? $journal->debit_account_id,
+                'credit_account_id' => $rule?->credit_account_id ?? $journal->credit_account_id,
+              ]
+            ),
+          ];
+          $txn = Transaction::where('transactionable_type', DocumentJournal::class)
+            ->where('transactionable_id', $journal->id)->first();
+          if ($txn) {
+            $transactionDiffs[] = [
+              'id' => $txn->id,
+              'journal_id' => $journal->id,
+              'changes' => $this->diffRow(
+                ['amount_amd' => $txn->amount_amd, 'date' => $txn->date, 'debit_account_id' => $txn->debit_account_id, 'credit_account_id' => $txn->credit_account_id],
+                [
+                  'amount_amd' => $newJournalAmount,
+                  'date' => $newDate,
+                  'debit_account_id' => $rule?->debit_account_id ?? $txn->debit_account_id,
+                  'credit_account_id' => $rule?->credit_account_id ?? $txn->credit_account_id,
+                ]
+              ),
+            ];
+          }
+        }
+      }
+
+      foreach ($journals as $journal) {
+        if (in_array($journal->document_type, $handledTypes, true)) {
+          continue;
+        }
+        $rule = $this->resolvePostingRuleForJournal($deal, $journal->document_type, $newCash, $classification);
+        $journalDiffs[] = [
+          'id' => $journal->id,
+          'document_type' => $journal->document_type,
+          'changes' => $this->diffRow(
+            ['cash' => $journal->cash, 'date' => $journal->date],
+            [
+              'cash' => $newCash,
+              'date' => $newDate,
+              'debit_account_id' => $rule?->debit_account_id ?? $journal->debit_account_id,
+              'credit_account_id' => $rule?->credit_account_id ?? $journal->credit_account_id,
+            ]
+          ),
+        ];
+      }
+
+      $diffs['documents_journal'] = $journalDiffs;
+      $diffs['transactions'] = $transactionDiffs;
+    }
+
+    if (DealAction::where('deal_id', $deal->id)->exists()) {
+      $availableScopes[] = 'deal_actions';
+    }
+
+    if ($deal->payment_id || DealAction::where('deal_id', $deal->id)->where('actionable_type', Payment::class)->exists()) {
+      $availableScopes[] = 'payments';
+      $paymentDiffs = [];
+      if ($deal->payment_id) {
+        $p = Payment::find($deal->payment_id);
+        if ($p) {
+          $paymentDiffs[] = [
+            'id' => $p->id,
+            'changes' => $this->diffRow(
+              ['interest_payment' => $p->interest_payment, 'principal_payment' => $p->principal_payment, 'paid' => $p->paid, 'date' => $p->date],
+              ['interest_payment' => $newInterest, 'principal_payment' => $newPrincipal, 'paid' => $newAmount, 'date' => $newDate]
+            ),
+          ];
+        }
+      }
+      $diffs['payments'] = $paymentDiffs;
+    }
+
+    return [
+      'deal_id' => $deal->id,
+      'available_scopes' => array_values(array_unique($availableScopes)),
+      'default_scopes' => $this->defaultScopesForDeal($deal, $availableScopes),
+      'diffs' => $diffs,
+    ];
+  }
+
+  private function defaultScopesForDeal(Deal $deal, array $availableScopes): array
+  {
+    $defaults = [];
+    foreach ($availableScopes as $scope) {
+      if ($scope === 'pawnshop') {
+        continue;
+      }
+      $defaults[$scope] = true;
+    }
+    if (in_array('documents_journal', $availableScopes, true)) {
+      $defaults['documents_journal'] = true;
+      $defaults['transactions'] = true;
+    }
+    if (in_array($deal->filter_type, self::PAYMENT_FILTER_TYPES, true)) {
+      if (in_array('payments', $availableScopes, true)) {
+        $defaults['payments'] = true;
+      }
+      if (in_array('contract', $availableScopes, true)) {
+        $defaults['contract'] = true;
+      }
+      if (in_array('deal_actions', $availableScopes, true)) {
+        $defaults['deal_actions'] = true;
+      }
+    }
+    return $defaults;
+  }
+
+  private function diffRow(array $before, array $after): array
+  {
+    $fields = [];
+    foreach ($after as $key => $newVal) {
+      $oldVal = $before[$key] ?? null;
+      if ($oldVal != $newVal) {
+        $fields[] = ['field' => $key, 'before' => $oldVal, 'after' => $newVal];
+      }
+    }
+    return ['before' => $before, 'after' => $after, 'fields' => $fields];
+  }
+
 
 }

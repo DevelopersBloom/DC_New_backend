@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Models\DocumentJournal;
 use App\Services\DealUpdateService;
-use App\Services\PaymentService;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -12,8 +11,7 @@ class DealUpdateServiceTest extends TestCase
 {
     private function invokeJournalAmount(string $documentType, float $interest, float $principal, float $penalty, float $total): ?float
     {
-        $paymentService = $this->createMock(PaymentService::class);
-        $service = new DealUpdateService($paymentService);
+        $service = new DealUpdateService();
         $method = (new ReflectionClass($service))->getMethod('journalAmountForType');
         $method->setAccessible(true);
 
@@ -48,8 +46,7 @@ class DealUpdateServiceTest extends TestCase
         $j2 = new DocumentJournal(['id' => 2, 'amount_amd' => 18000]);
         $collection = collect([$j1, $j2]);
 
-        $paymentService = $this->createMock(PaymentService::class);
-        $service = new DealUpdateService($paymentService);
+        $service = new DealUpdateService();
         $method = (new ReflectionClass($service))->getMethod('sequentialJournalAmounts');
         $method->setAccessible(true);
 
@@ -64,8 +61,7 @@ class DealUpdateServiceTest extends TestCase
         $j2 = new DocumentJournal(['id' => 2, 'amount_amd' => 18000]);
         $collection = collect([$j1, $j2]);
 
-        $paymentService = $this->createMock(PaymentService::class);
-        $service = new DealUpdateService($paymentService);
+        $service = new DealUpdateService();
         $method = (new ReflectionClass($service))->getMethod('sequentialJournalAmounts');
         $method->setAccessible(true);
 
@@ -80,8 +76,7 @@ class DealUpdateServiceTest extends TestCase
         $j2 = new DocumentJournal(['id' => 2, 'amount_amd' => 18000]);
         $collection = collect([$j1, $j2]);
 
-        $paymentService = $this->createMock(PaymentService::class);
-        $service = new DealUpdateService($paymentService);
+        $service = new DealUpdateService();
         $method = (new ReflectionClass($service))->getMethod('sequentialJournalAmounts');
         $method->setAccessible(true);
 

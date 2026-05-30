@@ -787,6 +787,52 @@ class ContractControllerNew extends Controller
             ], 500);
         }
     }
+
+    public function regenerateSchedule(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'contract_id' => 'required|integer|exists:contracts,id',
+            'start_date'  => 'nullable|date',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $contract = Contract::findOrFail($validated['contract_id']);
+
+            if ($contract->status === Contract::STATUS_EXECUTED) {
+                return response()->json([
+                    'message' => 'Cannot regenerate schedule for an executed contract.',
+                ], 422);
+            }
+
+            $startDate = !empty($validated['start_date'])
+                ? Carbon::parse($validated['start_date'], 'Asia/Yerevan')->format('Y-m-d')
+                : Carbon::now('Asia/Yerevan')->format('Y-m-d');
+
+            $months = $this->contractService->regenerateSchedule($contract, $startDate);
+
+            DB::commit();
+
+            return response()->json([
+                'message'     => 'Schedule regenerated successfully.',
+                'contract_id' => $contract->id,
+                'start_date'  => $startDate,
+                'months'      => $months,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error regenerating schedule',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function updateContractNumber(Request $request, $id): JsonResponse
     {
         $validatedData = $request->validate([
