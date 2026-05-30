@@ -856,4 +856,62 @@ class FileController extends Controller
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
+    public function downloadSchedule($id)
+    {
+        $contract = Contract::with(['client', 'payments'])->findOrFail($id);
+        $client   = $contract->client;
+
+        $templatePath = public_path('files/gravatoms_schedule.docx');
+        if (!file_exists($templatePath)) {
+            abort(404, 'Template not found: gravatoms_schedule.docx');
+        }
+
+        $templateProcessor = new TemplateProcessor($templatePath);
+
+        $clientName = $client->name . ' ' . $client->surname
+            . ($client->middle_name ? ' ' . $client->middle_name : '');
+
+        $templateProcessor->setValues([
+            'num'            => $contract->num,
+            'client'         => $clientName,
+            'passport_series'=> $client->passport_series ?? '',
+            'city'           => $client->actual_province ?? $client->city ?? '',
+            'street'         => $client->actual_street_building ?? $client->street ?? '',
+            'phone'          => $client->phone ?? $contract->additional_phone ?? '',
+            'bank_name'      => $client->bank_name ?? '',
+            'account_number' => $client->account_number ?? '',
+            'card_number'    => $client->card_number ?? '',
+        ]);
+
+        $paymentRows = [];
+        foreach ($contract->payments as $p) {
+            $paymentRows[] = [
+                'p_d' => \Carbon\Carbon::parse($p->date)->format('d.m.Y'),
+                'p_m' => $this->makeMoney((int) $p->principal_payment),
+                'p_i' => $this->makeMoney((int) $p->interest_payment),
+                'p_a' => $this->makeMoney((int) $p->amount),
+                'p_r' => $this->makeMoney((int) $p->remaining),
+            ];
+        }
+
+        if (!empty($paymentRows)) {
+            $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
+        }
+
+        $filename = storage_path('app/tmp/' . $contract->num . '_վճարման_գրաֆիկ.docx');
+        if (!file_exists(dirname($filename))) {
+            mkdir(dirname($filename), 0775, true);
+        }
+        $templateProcessor->saveAs($filename);
+
+        $this->activity->log(
+            'download_gravatoms_schedule',
+            'Contract #' . $contract->num . ' վճարման գրաֆիկ',
+            Contract::class,
+            $contract->id
+        );
+
+        return response()->download($filename, $contract->num . '_վճարման_գրաֆիկ.docx')->deleteFileAfterSend(true);
+    }
+
 }
