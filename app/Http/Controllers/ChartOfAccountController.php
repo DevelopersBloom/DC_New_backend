@@ -212,7 +212,7 @@ class ChartOfAccountController
         $dateTo = $request->query('to_date');
 
         $codes = ['16605PC', '16605PS'];
-
+dd($this->balancesSubquery($dateTo));
         $accountBalances = $this->balancesSubquery($dateTo)
             ->where('ca.code', '16605PC')
             ->get()
