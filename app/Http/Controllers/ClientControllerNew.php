@@ -883,27 +883,38 @@ class ClientControllerNew extends Controller
         $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
 
         $firstContract = $client->contracts()->where('status', 'initial')->first();
+        $hasActiveContracts = $client->contracts()->where('status', 'initial')->exists();
 
-        $journal = $firstContract
+        $journalId = $firstContract
             ? DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $firstContract->id)
-                ->first()
-            : null;
+                ->value('id')
+            : $this->resolveReserveJournalIdForClient($client->id);
 
         DB::beginTransaction();
 
         try {
-            $this->correctClientReserveBalance(
-                clientId: $client->id,
-                acc16605PC: $acc16605PC,
-                acc16605PS: $acc16605PS,
-                targetAccountIds: $targetAccountIds,
-                reservePercent: $classification->reserve_percent,
-                classificationName: $classification->name,
-                diamondId: $diamondId,
-                journalId: $journal?->id,
-                now: $now,
-            );
+            if (!$hasActiveContracts) {
+                $this->zeroClientReserveBalances(
+                    clientId:    $client->id,
+                    acc16605PC:  $acc16605PC,
+                    acc16605PS:  $acc16605PS,
+                    journalId:   $journalId,
+                    date:        $now,
+                );
+            } else {
+                $this->correctClientReserveBalance(
+                    clientId:           $client->id,
+                    acc16605PC:         $acc16605PC,
+                    acc16605PS:         $acc16605PS,
+                    targetAccountIds:   $targetAccountIds,
+                    reservePercent:     $classification->reserve_percent,
+                    classificationName: $classification->name,
+                    diamondId:          $diamondId,
+                    journalId:          $journalId,
+                    now:                $now,
+                );
+            }
 
             DB::commit();
 

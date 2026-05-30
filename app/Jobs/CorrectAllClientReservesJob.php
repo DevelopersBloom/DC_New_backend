@@ -50,7 +50,7 @@ class CorrectAllClientReservesJob implements ShouldQueue
         $failed    = [];
 
         Client::with(['classification'])
-            ->whereHas('contracts', fn($q) => $q->where('status', 'initial'))
+            ->whereHas('contracts', fn($q) => $q->whereIn('status', ['initial', 'completed']))
             ->whereHas('classification')
             ->chunkById(200, function ($clients) use (
                 $acc16605PC, $acc16605PS, $targetAccountIds,
@@ -71,23 +71,27 @@ class CorrectAllClientReservesJob implements ShouldQueue
                         continue;
                     }
 
-                    $initialContractIds = $client->contracts()
+                    $hasActiveContracts = $client->contracts()
                         ->where('status', 'initial')
+                        ->exists();
+
+                    $contractIds = $client->contracts()
+                        ->when($hasActiveContracts, fn($q) => $q->where('status', 'initial'))
                         ->orderBy('id')
                         ->pluck('id');
 
-                    if ($initialContractIds->isEmpty()) {
+                    if ($contractIds->isEmpty()) {
                         continue;
                     }
 
-                    $journal = DocumentJournal::where('journalable_type', Contract::class)
-                        ->whereIn('journalable_id', $initialContractIds)
+                    $journalId = DocumentJournal::where('journalable_type', Contract::class)
+                        ->whereIn('journalable_id', $contractIds)
                         ->orderBy('journalable_id')
-                        ->first();
+                        ->value('id');
 
-                    if (!$journal) {
-                        Log::warning("Client {$client->id} reserve skipped for {$dateStr}: no DocumentJournal for any initial contract", [
-                            'initial_contract_ids' => $initialContractIds->all(),
+                    if (!$journalId) {
+                        Log::warning("Client {$client->id} reserve skipped for {$dateStr}: no DocumentJournal for contracts", [
+                            'contract_ids' => $contractIds->all(),
                         ]);
                         continue;
                     }
@@ -95,17 +99,27 @@ class CorrectAllClientReservesJob implements ShouldQueue
                     DB::beginTransaction();
 
                     try {
-                        $this->correctClientReserveBalance(
-                            clientId:           $client->id,
-                            acc16605PC:         $acc16605PC,
-                            acc16605PS:         $acc16605PS,
-                            targetAccountIds:   $targetAccountIds,
-                            reservePercent:     $clientClassification->reserve_percent,
-                            classificationName: $clientClassification->classification->name,
-                            diamondId:          $diamondId,
-                            journalId:          $journal->id,
-                            now:                $dateStr,
-                        );
+                        if (!$hasActiveContracts) {
+                            $this->zeroClientReserveBalances(
+                                clientId:    $client->id,
+                                acc16605PC:  $acc16605PC,
+                                acc16605PS:  $acc16605PS,
+                                journalId:   $journalId,
+                                date:        $dateStr,
+                            );
+                        } else {
+                            $this->correctClientReserveBalance(
+                                clientId:           $client->id,
+                                acc16605PC:         $acc16605PC,
+                                acc16605PS:         $acc16605PS,
+                                targetAccountIds:   $targetAccountIds,
+                                reservePercent:     $clientClassification->reserve_percent,
+                                classificationName: $clientClassification->classification->name,
+                                diamondId:          $diamondId,
+                                journalId:          $journalId,
+                                now:                $dateStr,
+                            );
+                        }
 
                         DB::commit();
                         $processed++;

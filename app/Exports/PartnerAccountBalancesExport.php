@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\ChartOfAccount;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -42,27 +41,27 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
 
     public function map($row): array
     {
-        $acc = ChartOfAccount::where('code', $row->account_code)->first();
-        $type = $acc?->type ?? 'active';
-
-        $amount = $row->balance;
+        $type = $row->type ?? 'active';
+        $balance = (float) ($row->balance ?? 0);
 
         $debitAmd = '';
         $creditAmd = '';
 
-        if ($type === 'active') {
-            if ($amount >= 0) {
-                $debitAmd = $amount;
+        // Same rules as AccountsBalancesExport / partner balances UI
+        if (in_array($type, ['active', 'expense', 'off_balance'], true)) {
+            if ($balance >= 0) {
+                $debitAmd = round($balance, 2);
             } else {
-                $creditAmd = abs($amount);
+                $creditAmd = round(abs($balance), 2);
             }
-        } elseif ($type === 'passive') {
-            if ($amount >= 0) {
-                $creditAmd = $amount;
+        } else {
+            if ($balance >= 0) {
+                $creditAmd = round($balance, 2);
             } else {
-                $debitAmd = abs($amount);
+                $debitAmd = round(abs($balance), 2);
             }
         }
+
         return [
             $row->partner_code,
             $row->partner_name,
@@ -84,7 +83,7 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
             ->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:H1')->getFont()->setBold(true);
 
         return [];
     }

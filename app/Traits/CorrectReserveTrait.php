@@ -2,6 +2,8 @@
 
 namespace App\Traits;
 
+use App\Models\ChartOfAccount;
+use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\PostingRule;
 use App\Models\Transaction;
@@ -10,6 +12,128 @@ use Illuminate\Support\Facades\Log;
 trait CorrectReserveTrait
 {
     use CalculatesAccountBalancesTrait;
+
+    /**
+     * Zero both 16605PC and 16605PS when the client has no active (initial) contracts.
+     */
+    protected function zeroClientReserveBalances(
+        int    $clientId,
+        int    $acc16605PC,
+        int    $acc16605PS,
+        ?int   $journalId,
+        string $date,
+    ): void {
+        $balance16605PC = $this->getClientReserveBalance($clientId, $acc16605PC, $date);
+        $balance16605PS = $this->getClientReserveBalance($clientId, $acc16605PS, $date);
+
+        Log::info("zeroClientReserveBalances client#{$clientId}", [
+            'balance16605PC' => $balance16605PC,
+            'balance16605PS' => $balance16605PS,
+            'date'           => $date,
+        ]);
+
+        if (abs($balance16605PC) >= 0.01) {
+            $rule = PostingRule::where('business_event_filter', 'provide_general_amount_change')->first();
+            [$debit, $credit] = $balance16605PC > 0
+                ? [$rule->credit_account_id, $rule->debit_account_id]
+                : [$rule->debit_account_id, $rule->credit_account_id];
+            $debitClientId = $balance16605PC > 0 ? null : $clientId;
+            $creditClientId = $balance16605PC > 0 ? $clientId : null;
+
+            $this->postCorrectionEntry(
+                clientId:        $clientId,
+                debitPartnerId:  $debitClientId,
+                creditPartnerId: $creditClientId,
+                debitAccountId:  $debit,
+                creditAccountId: $credit,
+                amount:          abs($balance16605PC),
+                documentType:    DocumentJournal::RESERVE_GENERAL_AMOUNT,
+                comment:         "Zero 16605PC (closed contract) for client #{$clientId}",
+                journalId:       $journalId,
+                now:             $date,
+            );
+        }
+
+        if (abs($balance16605PS) >= 0.01) {
+            $rule = PostingRule::where('business_event_filter', 'provide_special_amount_change')->first();
+            [$debit, $credit] = $balance16605PS > 0
+                ? [$rule->credit_account_id, $rule->debit_account_id]
+                : [$rule->debit_account_id, $rule->credit_account_id];
+            $debitClientId = $balance16605PS > 0 ? null : $clientId;
+            $creditClientId = $balance16605PS > 0 ? $clientId : null;
+
+            $this->postCorrectionEntry(
+                clientId:        $clientId,
+                debitPartnerId:  $debitClientId,
+                creditPartnerId: $creditClientId,
+                debitAccountId:  $debit,
+                creditAccountId: $credit,
+                amount:          abs($balance16605PS),
+                documentType:    DocumentJournal::RESERVE_SPECIAL_AMOUNT,
+                comment:         "Zero 16605PS (closed contract) for client #{$clientId}",
+                journalId:       $journalId,
+                now:             $date,
+            );
+        }
+    }
+
+    protected function resolveReserveJournalIdForClient(int $clientId, ?int $contractId = null): ?int
+    {
+        if ($contractId) {
+            $journal = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contractId)
+                ->first();
+            if ($journal) {
+                return $journal->id;
+            }
+        }
+
+        $contractIds = Contract::where('client_id', $clientId)
+            ->orderByDesc('id')
+            ->pluck('id');
+
+        if ($contractIds->isEmpty()) {
+            return null;
+        }
+
+        return DocumentJournal::where('journalable_type', Contract::class)
+            ->whereIn('journalable_id', $contractIds)
+            ->orderByDesc('journalable_id')
+            ->value('id');
+    }
+
+    protected function releaseReserveBalancesIfClientFullyClosed(
+        int    $clientId,
+        ?int   $contractId = null,
+        ?string $date = null,
+    ): void {
+        $hasActiveContracts = Contract::where('client_id', $clientId)
+            ->where('status', 'initial')
+            ->exists();
+
+        if ($hasActiveContracts) {
+            return;
+        }
+
+        $date = $date ?? now()->format('Y-m-d');
+        $acc16605PC = ChartOfAccount::idByCode('16605PC');
+        $acc16605PS = ChartOfAccount::idByCode('16605PS');
+        $journalId = $this->resolveReserveJournalIdForClient($clientId, $contractId);
+
+        if (!$journalId) {
+            Log::warning("Reserve release skipped for client {$clientId}: no contract journal found");
+            return;
+        }
+
+        $this->zeroClientReserveBalances(
+            clientId:    $clientId,
+            acc16605PC:  $acc16605PC,
+            acc16605PS:  $acc16605PS,
+            journalId:   $journalId,
+            date:        $date,
+        );
+    }
+
     private function correctClientReserveBalance(
         int    $clientId,
         int    $acc16605PC,

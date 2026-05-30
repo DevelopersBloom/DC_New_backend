@@ -15,12 +15,15 @@ use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Traits\ContractTrait;
+use App\Traits\CorrectReserveTrait;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
     use ContractTrait;
+    use CorrectReserveTrait;
     protected $contractService;
     public function __construct(ContractService $contractService)
     {
@@ -1138,6 +1141,17 @@ class PaymentService
         ];
 
         Modification::insert($modifications);
+
+        try {
+            $this->releaseReserveBalancesIfClientFullyClosed(
+                clientId:   $contract->client_id,
+                contractId: $contract->id,
+                date:       $nowDate,
+            );
+        } catch (\Throwable $e) {
+            Log::error("Reserve release after full payment failed for contract #{$contract->id}: " . $e->getMessage());
+        }
+
         return $payment;
     }
 }
