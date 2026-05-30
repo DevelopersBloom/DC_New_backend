@@ -4,6 +4,8 @@ namespace App\Exports;
 use App\Http\Resources\ContractDetailResource;
 use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
+use App\Models\User;
+use App\Notifications\MissingClassificationHistoryNotification;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -62,6 +64,7 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
     public function collection(): Collection
     {
         $rows = collect();
+        $admins = User::role('admin')->get();
 
         $firstContract = $this->contracts->first();
         $balance = $firstContract ? $firstContract->calc_date?->format('d-m-Y') : '';
@@ -133,8 +136,15 @@ class ContractsCalcExport implements FromCollection, WithStyles, ShouldAutoSize
                 $contractData['risk_weight_percent'] = $classHistory->risk_weight ?? 0;
                 $contractData['reserve_percent'] = $classHistory->reserve_percent ?? 0;
             } else {
-                $contractData['risk_weight_percent'] = $contract->client->classification->risk_weight;
-                $contractData['reserve_percent'] = $contract->client->classification->reserve_percent;
+                $contractData['risk_weight_percent'] = null;//$contract->client->classification->risk_weight ?? 0;
+                $contractData['reserve_percent'] = null;$contract->client->classification->reserve_percent ?? 0;
+
+                $admins->each->notify(new MissingClassificationHistoryNotification(
+                    clientId:    $contract->client_id,
+                    clientName:  trim(($contract->client->name ?? '') . ' ' . ($contract->client->surname ?? '')),
+                    contractNum: $contract->num,
+                    calcDate:    $contract->calc_date?->format('d-m-Y') ?? '',
+                ));
             }
 
             // client_full_name
