@@ -251,7 +251,7 @@ class ChartOfAccountController
             ->orderBy('pr.partner_name')
             ->get()
             ->groupBy('account_code');
-
+dd($accountBalances,$partnerTotals,$partnerRows);
         // ── 4. Build result ───────────────────────────────────────────────────
         $result = [];
         foreach ($codes as $code) {
