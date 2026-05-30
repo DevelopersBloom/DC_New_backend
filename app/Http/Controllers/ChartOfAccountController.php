@@ -232,7 +232,7 @@ class ChartOfAccountController
             ->whereIn('b.account_code', $codes)
             ->get()
             ->groupBy('account_code');
-
+dd($accountBalances,$partnerTotals,$partnerRows);
         $result = [];
         foreach ($codes as $code) {
             $accountBalance  = (float) ($accountBalances[$code]->balance   ?? 0);
