@@ -10,8 +10,6 @@ class EnsureIdempotency
 {
     public function handle(Request $request, Closure $next, string $route): mixed
     {
-        dd($request->header('Idempotency-Key'), $request->headers->all());
-
         $key = $request->header('Idempotency-Key');
 
         if (!$key) {
