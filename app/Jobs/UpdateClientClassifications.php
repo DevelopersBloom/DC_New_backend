@@ -50,8 +50,6 @@ class UpdateClientClassifications implements ShouldQueue
                 $acc16201NI = ChartOfAccount::idByCode('16201NI');
                 $acc63015 = ChartOfAccount::idByCode('63015');
 
-                $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-
                 foreach ($clients as $client) {
 
                     try {

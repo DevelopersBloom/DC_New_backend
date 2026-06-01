@@ -141,7 +141,6 @@ trait CorrectReserveTrait
         array  $targetAccountIds,
         float  $reservePercent,
         string $classificationName,
-        int    $diamondId,
         ?int   $journalId,
         string $now,
     ): void {

@@ -329,8 +329,6 @@ class ClientControllerNew extends Controller
             $acc16201NI,
         ]);
 
-        $diamondId  = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-
         DB::beginTransaction();
         try {
             // ── Save old values ───────────────────────────────────────────────
@@ -380,7 +378,6 @@ class ClientControllerNew extends Controller
                     targetAccountIds:   $targetAccountIds,
                     reservePercent:     $client->classification->reserve_percent ?? 0,
                     classificationName: $newClassificationName,
-                    diamondId:          $diamondId,
                     journalId:          $firstJournal->id,
                     now:                now()->toDateString(),
                 );
@@ -485,7 +482,6 @@ class ClientControllerNew extends Controller
                         'document_number'  => $nextDocNum,
                         'document_type'    => $documentType,
                         'amount_amd'       => $amount,
-                        'debit_partner_id' => $diamondId,
                         'credit_partner_id'=> $clientId,
                         'comment'          => "Reserve for contract #{$contract->id} due to classification change (manual)",
                         'debit_account_id' => $debitReserve,
@@ -500,7 +496,6 @@ class ClientControllerNew extends Controller
                         'document_number'      => $nextDocNum,
                         'document_type'        => $documentType,
                         'debit_account_id'     => $debitReserve,
-                        'debit_partner_id'     => $diamondId,
                         'debit_currency_id'    => 1,
                         'credit_account_id'    => $creditReserve,
                         'credit_currency_id'   => 1,
@@ -880,8 +875,6 @@ class ClientControllerNew extends Controller
             ChartOfAccount::idByCode('16200'),
         ]);
 
-        $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-
         $firstContract = $client->contracts()->where('status', 'initial')->first();
         $hasActiveContracts = $client->contracts()->where('status', 'initial')->exists();
 
@@ -910,7 +903,6 @@ class ClientControllerNew extends Controller
                     targetAccountIds:   $targetAccountIds,
                     reservePercent:     $classification->reserve_percent,
                     classificationName: $classification->name,
-                    diamondId:          $diamondId,
                     journalId:          $journalId,
                     now:                $now,
                 );

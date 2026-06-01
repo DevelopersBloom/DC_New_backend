@@ -371,7 +371,6 @@ class ContractControllerNew extends Controller
             $creditContractAmount =  $ruleContractAmount->credit_account_id;
 
             $clientId = $contract->client_id;
-            $diamondId = Client::where('company_name','Diamond Credit')->first()->id ?? 1;
 
             $client->loadMissing('classification');
 
@@ -385,7 +384,6 @@ class ContractControllerNew extends Controller
                 'document_type'      => $document_type,
                 'amount_amd'         => $contract->provided_amount,
                 'debit_partner_id'   => $clientId,
-                'credit_partner_id'  => $diamondId,
                 'comment'            => 'contract_payment',
                 'debit_account_id'   => $debitContractAmount,
                 'credit_account_id'  => $creditContractAmount,
@@ -406,7 +404,6 @@ class ContractControllerNew extends Controller
 
                 'credit_account_id'  => $creditContractAmount,
                 'credit_currency_id' => 1,
-                'credit_partner_id'  => $diamondId,
 
                 'amount_amd'         => $contract->provided_amount,
 
@@ -455,7 +452,6 @@ class ContractControllerNew extends Controller
                         'document_number'    => $nextDocNum,
                         'document_type'      => $reserveDocumentType,
                         'amount_amd'         => $reserveAmount,
-                        'debit_partner_id'   => $diamondId,
                         'credit_partner_id'  => $clientId,
                         'comment'            => "General reserve for contract #{$contract->id} on disbursement",
                         'debit_account_id'   => $debitReserve,
@@ -471,7 +467,6 @@ class ContractControllerNew extends Controller
                     'document_type'      => $reserveDocumentType,
 
                     'debit_account_id'   => $debitReserve,
-                    'debit_partner_id'   => $diamondId,
                     'debit_currency_id'  => 1,
 
                     'credit_account_id'  => $creditReserve,
@@ -1083,14 +1078,11 @@ class ContractControllerNew extends Controller
                     $debitReserve = $ruleReserve->debit_account_id;
                     $creditReserve = $ruleReserve->credit_account_id;
                 }
-                $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-
                 $journalDoc = DocumentJournal::create([
                     'date' => $date,
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeReserve,
                     'amount_amd' => $reserveAmount,
-                    'debit_partner_id' => $diamondId,
                     'credit_partner_id' => $clientId,
                     'comment' => "Old reserve for contract #{$contract->id} due to classification change",
                     'debit_account_id' => $debitReserve,
@@ -1105,7 +1097,6 @@ class ContractControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeReserve,
                     'debit_account_id' => $debitReserve,
-                    'debit_partner_id' => $diamondId,
                     'debit_currency_id' => 1,
                     'credit_account_id' => $creditReserve,
                     'credit_currency_id' => 1,

@@ -56,8 +56,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                 $acc86000 = ChartOfAccount::idByCode('86000');
                 $acc86001 = ChartOfAccount::idByCode('86001');
 
-                $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-
                 foreach ($clients as $client) {
 
                     try {
@@ -115,7 +113,6 @@ class UpdateClientClassificationsNew implements ShouldQueue
                                 targetAccountIds:   $targetAccountIds,
                                 reservePercent:     $client->classification->reserve_percent ?? 0,
                                 classificationName: $newClassificationName,
-                                diamondId:          $diamondId,
                                 journalId:          $firstJournal->id,
                                 now:                now()->toDateString(),
                             );

@@ -71,7 +71,6 @@ class ProcessContractDailyRate implements ShouldQueue
             return;
         }
 
-        $diamondId = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
         $date = Carbon::now()->format('Y-m-d');
         $systemUserId = 1;
 
@@ -108,7 +107,6 @@ class ProcessContractDailyRate implements ShouldQueue
                             'document_type' => DocumentJournal::EFFECTIVE_RATE_AMOUNT,
                             'amount_amd' => $effectiveAmount,
                             'debit_partner_id' => $contract->client_id,
-                            'credit_partner_id' => $diamondId,
                             'comment' => 'Daily effective interest accrual for contract #' . $contract->id,
                             'debit_account_id' => $ruleEffective->debit_account_id,
                             'credit_account_id' => $ruleEffective->credit_account_id,
@@ -124,7 +122,6 @@ class ProcessContractDailyRate implements ShouldQueue
                             'debit_account_id' => $ruleEffective->debit_account_id,
                             'debit_partner_id' => $contract->client_id,
                             'credit_account_id' => $ruleEffective->credit_account_id,
-                            'credit_partner_id' => $diamondId,
                             'amount_amd' => $effectiveAmount,
                             'comment' => 'Daily effective interest accrual for contract #' . $contract->id,
                             'user_id' => $systemUserId,
@@ -239,7 +236,6 @@ class ProcessContractDailyRate implements ShouldQueue
                                 'document_type' => DocumentJournal::PENALTY_RATE_AMOUNT,
                                 'amount_amd' => $dailyPenaltyAmount,
                                 'debit_partner_id' => $contract->client_id,
-                                'credit_partner_id' => $diamondId,
                                 'comment' => 'Daily penalty accrual for contract #' . $contract->id,
                                 'debit_account_id' => $rulePenalty->debit_account_id,
                                 'credit_account_id' => $rulePenalty->credit_account_id,
@@ -255,7 +251,6 @@ class ProcessContractDailyRate implements ShouldQueue
                                 'debit_account_id' => $rulePenalty->debit_account_id,
                                 'debit_partner_id' => $contract->client_id,
                                 'credit_account_id' => $rulePenalty->credit_account_id,
-                                'credit_partner_id' => $diamondId,
                                 'amount_amd' => $dailyPenaltyAmount,
                                 'comment' => 'Daily penalty accrual for contract #' . $contract->id,
                                 'user_id' => $systemUserId,

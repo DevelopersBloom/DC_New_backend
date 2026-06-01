@@ -44,8 +44,6 @@ class CorrectAllClientReservesJob implements ShouldQueue
             ChartOfAccount::idByCode('16200'),
         ]);
 
-        $diamondId  = Client::where('company_name', 'Diamond Credit')->value('id') ?? 1;
-
         $processed = 0;
         $failed    = [];
 
@@ -54,7 +52,7 @@ class CorrectAllClientReservesJob implements ShouldQueue
             ->whereHas('classification')
             ->chunkById(200, function ($clients) use (
                 $acc16605PC, $acc16605PS, $targetAccountIds,
-                $diamondId, $date, $dateStr, &$processed, &$failed
+                $date, $dateStr, &$processed, &$failed
             ) {
                 foreach ($clients as $client) {
 
@@ -115,7 +113,6 @@ class CorrectAllClientReservesJob implements ShouldQueue
                                 targetAccountIds:   $targetAccountIds,
                                 reservePercent:     $clientClassification->reserve_percent,
                                 classificationName: $clientClassification->classification->name,
-                                diamondId:          $diamondId,
                                 journalId:          $journalId,
                                 now:                $dateStr,
                             );
