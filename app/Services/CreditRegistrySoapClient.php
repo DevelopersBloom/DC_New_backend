@@ -60,7 +60,7 @@ class CreditRegistrySoapClient
             \Log::debug('DEGS DryRun BankID P001', ['xml' => $xmlContent]);
             return 0;
         }
-dd($xmlContent);
+        \Storage::disk('local')->put('logs/bankid_p001_' . now()->format('Y-m-d_H-i-s') . '.xml', $xmlContent);
         $r = $this->post('/send-request', [
             'appName' => 'BANKID',
             'docType' => 'P001',
