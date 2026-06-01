@@ -17,6 +17,7 @@ use App\Models\Modification;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PostingRule;
+use App\Models\IdempotencyKey;
 use App\Models\Transaction;
 use App\Services\ActivityService;
 use App\Services\PaymentService;
@@ -264,6 +265,13 @@ class PaymentControllerNew extends Controller
 
             DB::commit();
 
+            $successPayload = ['success' => true, 'message' => 'Successfully created payment!'];
+            IdempotencyKey::where('key', $request->header('Idempotency-Key'))->update([
+                'status_code' => 200,
+                'response'    => json_encode($successPayload),
+                'locked_at'   => null,
+            ]);
+
             if ($date < now()->toDateString()) {
                 $lastCalculatedDate = DocumentJournal::where('journalable_id', $journal->id)
                     ->where('journalable_type', DocumentJournal::class)
@@ -278,10 +286,7 @@ class PaymentControllerNew extends Controller
                 }
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Successfully created payment!'
-            ]);
+            return response()->json($successPayload);
 
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -337,6 +342,7 @@ class PaymentControllerNew extends Controller
 
     public function makeFullPayment(Request $request): JsonResponse
     {
+            $idempotencyKey = $request->header('Idempotency-Key');
             $contract = Contract::findOrFail($request->contract_id);
             $totalAmount = $request->amount;
             $payer = $request->payer;
@@ -485,22 +491,26 @@ class PaymentControllerNew extends Controller
                         'description' => 'Refund payment',
                         'date' => $date,
                     ]);
-                    return response()->json([
-                        'success' => 'success',
-                        'message' => 'Full payment created successfully with a lump sum refund',
-                        'refund_amount' => $refundAmount
-                    ]);
+                    $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a lump sum refund', 'refund_amount' => $refundAmount];
+                    if ($idempotencyKey) {
+                        IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
+                    }
+                    return response()->json($payload);
                 }
             }
             if (isset($refundAmount) && $refundAmount > 0) {
-                return response()->json([
-                    'success' => 'success',
-                    'message' => 'Full payment created successfully with a refund',
-                    'refund_amount' => $refundAmount
-                ]);
+                $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a refund', 'refund_amount' => $refundAmount];
+                if ($idempotencyKey) {
+                    IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
+                }
+                return response()->json($payload);
             }
 
-            return response()->json(['success' => 'success', 'message' => 'Full payment created successfully']);
+            $payload = ['success' => 'success', 'message' => 'Full payment created successfully'];
+            if ($idempotencyKey) {
+                IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
+            }
+            return response()->json($payload);
 
 
 

@@ -8,6 +8,7 @@ use App\Models\BusinessEvent;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
 use App\Models\DocumentJournal;
+use App\Models\IdempotencyKey;
 use App\Models\LoanNdm;
 use App\Models\NdmRepaymentDetail;
 use App\Models\Order;
@@ -293,7 +294,7 @@ class LoanNdmController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($data) {
+            $result = DB::transaction(function () use ($data) {
                 $journal = DocumentJournal::with('journalable')
                     ->findOrFail($data['document_journal_id']);
 
@@ -371,6 +372,14 @@ class LoanNdmController extends Controller
                     'message'     => 'Վարկի ներգրավումը հաջողությամբ ստեղծվեց',
                 ], 201);
             });
+
+            IdempotencyKey::where('key', $request->header('Idempotency-Key'))->update([
+                'status_code' => $result->getStatusCode(),
+                'response'    => $result->getContent(),
+                'locked_at'   => null,
+            ]);
+
+            return $result;
         } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Տեղի ունեցավ սխալ',
@@ -691,7 +700,7 @@ class LoanNdmController extends Controller
         $taxInt    = (float)($data['tax_from_interest'] ?? 0);
 
 
-        return DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt) {
+        $result = DB::transaction(function () use ($data, $baseJournal, $loan, $principal, $interest, $taxInt) {
             $lombardId = Client::where('company_name','Diamond Credit')->value('id') ?? 1;
             $clientId = $loan->client_id;
             $loanAccountId = $loan->account_id;
@@ -850,6 +859,14 @@ class LoanNdmController extends Controller
 
             return response()->json(['status' => 'ok']);
         });
+
+        IdempotencyKey::where('key', $request->header('Idempotency-Key'))->update([
+            'status_code' => $result->getStatusCode(),
+            'response'    => $result->getContent(),
+            'locked_at'   => null,
+        ]);
+
+        return $result;
     }
 
 

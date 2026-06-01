@@ -167,13 +167,13 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('business-events', BusinessEventController::class);
         Route::apiResource('reminder-orders', ReminderOrderController::class);
         Route::apiResource('loan-ndms', LoanNdmController::class);
-        Route::post('/loan-ndm/attach', [LoanNdmController::class, 'attachLoanNdm'])->middleware('can:attach_loan_ndm');
+        Route::post('/loan-ndm/attach', [LoanNdmController::class, 'attachLoanNdm'])->middleware(['can:attach_loan_ndm', 'idempotent:loan_ndm.attach']);
         Route::get('/loan-ndm/attraction/{journalId}', [LoanNdmController::class, 'getLoanAttraction'])->middleware('can:view_loan_attraction');
         Route::put('/loan-ndm/attraction', [LoanNdmController::class, 'updateLoanAttraction'])->middleware('can:update_loan_attraction');
 
         Route::get('loan-ndm/interest', [LoanNdmController::class, 'calculateInterest'])->middleware('can:calculate_loan_interest');
         Route::post('loan-ndm/post-interest',[LoanNdmController::class,'postInterest'])->middleware('can:post_loan_interest');
-        Route::post('loan-ndm/repay',[LoanNdmController::class, 'repay'])->middleware('can:repay_loan_interest');
+        Route::post('loan-ndm/repay',[LoanNdmController::class, 'repay'])->middleware(['can:repay_loan_interest', 'idempotent:loan_ndm.repay']);
         Route::get('/loan-ndm/remaining/{id}', [ChartOfAccountController::class, 'remainingAmount'])->middleware('can:view_remaining_loan');
         Route::get('/loan-ndm/by-journal/{journal}', [LoanNdmController::class, 'get'])->middleware('can:view_loan_by_journal');
         Route::get('/transactions', [TransactionController::class, 'index'])->middleware('can:view_transactions');
@@ -244,8 +244,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/{id}/credit-registry/l005/send', [CreditRegistryController::class, 'sendL005']);
         Route::post('/{id}/credit-registry/l006/send', [CreditRegistryController::class, 'sendL006']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
-        Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware('can:make_contract_payment');
-        Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment'])->middleware('can:make_full_contract_payment');
+        Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware(['can:make_contract_payment', 'idempotent:contracts.make-payment']);
+        Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment'])->middleware(['can:make_full_contract_payment', 'idempotent:contracts.make-full-payment']);
         Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial'])->middleware('can:make_partial_contract_payment');
         Route::post('/execute',[PaymentControllerNew::class,'executeItem'])->middleware('can:execute_contract_item');
         Route::match('put', '/payments/bulk-update', [PaymentControllerNew::class, 'bulkUpdate']);
