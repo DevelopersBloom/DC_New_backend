@@ -136,7 +136,7 @@ class BankIdService
         if ($ssn !== '') {
             $person->appendChild($dom->createElement('SSN', $ssn));
         }
-        $person->appendChild($dom->createElement('DateOfBirth',      $dob));
+//        $person->appendChild($dom->createElement('DateOfBirth',      $dob));
         $person->appendChild($dom->createElement('Gender',           $gender));
         $person->appendChild($dom->createElement('ResidencyCountry', $residency));
 
