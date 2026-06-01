@@ -224,17 +224,6 @@ class ChartOfAccountController
             ->get()
             ->keyBy('code');
 
-        // ── 2. Partner totals (only transactions WITH partner_id)
-        $partnerTotals = DB::query()
-            ->fromSub($this->partnerAccountBalancesSubquery($dateTo), 'pab')
-            ->whereIn('pab.account_code', $codes)
-            ->select([
-                'pab.account_code',
-                DB::raw('SUM(pab.balance) as partners_total'),
-            ])
-            ->groupBy('pab.account_code')
-            ->get()
-            ->keyBy('account_code');
         // ── 3. Orphan transactions (no partner_id) per account ────────────────
         $accountIds = ChartOfAccount::whereIn('code', $codes)->pluck('id', 'code');
 
@@ -293,8 +282,8 @@ class ChartOfAccountController
         // ── 5. Build result ───────────────────────────────────────────────────
         $result = [];
         foreach ($codes as $code) {
-            $accountBalance = (float) ($accountBalances[$code]->balance      ?? 0);
-            $partnersTotal  = (float) ($partnerTotals[$code]->partners_total ?? 0);
+            $accountBalance = (float) ($accountBalances[$code]->balance ?? 0);
+            $partnersTotal  = (float) ($partnerRows[$code] ?? collect())->sum('balance');
             $orphanAmount   = round($accountBalance - $partnersTotal, 2);
 
             $result[$code] = [
