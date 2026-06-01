@@ -62,7 +62,7 @@ class BankIdService
 
         $firstName    = trim((string) ($client->name         ?? ''));
         $lastName     = trim((string) ($client->surname      ?? ''));
-        $familyName   = trim((string) ($client->middle_name  ?? ''));
+//        $familyName   = trim((string) ($client->middle_name  ?? ''));
         $identityType = trim((string) ($client->document_type ?? ''));
         $identityNum  = trim((string) ($client->passport_series ?? ''));
         $ssn          = trim((string) ($client->social_card_number ?? ''));
@@ -125,9 +125,9 @@ class BankIdService
 
         $person->appendChild($dom->createElement('FirstName',  htmlspecialchars($firstName,  ENT_XML1)));
         $person->appendChild($dom->createElement('LastName',   htmlspecialchars($lastName,   ENT_XML1)));
-        if ($familyName !== '') {
-            $person->appendChild($dom->createElement('FamilyName', htmlspecialchars($familyName, ENT_XML1)));
-        }
+//        if ($familyName !== '') {
+//            $person->appendChild($dom->createElement('FamilyName', htmlspecialchars($familyName, ENT_XML1)));
+//        }
         $person->appendChild($dom->createElement('IdentityType',   $identityType));
         $person->appendChild($dom->createElement('IdentityNumber', htmlspecialchars($identityNum, ENT_XML1)));
         if ($expiry !== '') {
