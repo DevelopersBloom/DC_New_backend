@@ -130,13 +130,13 @@ class BankIdService
 //        }
         $person->appendChild($dom->createElement('IdentityType',   $identityType));
         $person->appendChild($dom->createElement('IdentityNumber', htmlspecialchars($identityNum, ENT_XML1)));
-        if ($expiry !== '') {
-            $person->appendChild($dom->createElement('IdentityDateOfExpiry', $expiry));
-        }
-        if ($ssn !== '') {
-            $person->appendChild($dom->createElement('SSN', $ssn));
-        }
-//        $person->appendChild($dom->createElement('DateOfBirth',      $dob));
+//        if ($expiry !== '') {
+//            $person->appendChild($dom->createElement('IdentityDateOfExpiry', $expiry));
+//        }
+//        if ($ssn !== '') {
+//            $person->appendChild($dom->createElement('SSN', $ssn));
+//        }
+        $person->appendChild($dom->createElement('DateOfBirth',      $dob));
         $person->appendChild($dom->createElement('Gender',           $gender));
         $person->appendChild($dom->createElement('ResidencyCountry', $residency));
 
