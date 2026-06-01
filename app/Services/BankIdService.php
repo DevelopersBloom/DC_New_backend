@@ -133,9 +133,9 @@ class BankIdService
 //        if ($expiry !== '') {
 //            $person->appendChild($dom->createElement('IdentityDateOfExpiry', $expiry));
 //        }
-//        if ($ssn !== '') {
-//            $person->appendChild($dom->createElement('SSN', $ssn));
-//        }
+        if ($ssn !== '') {
+            $person->appendChild($dom->createElement('SSN', $ssn));
+        }
         $person->appendChild($dom->createElement('DateOfBirth',      $dob));
         $person->appendChild($dom->createElement('Gender',           $gender));
         $person->appendChild($dom->createElement('ResidencyCountry', $residency));
