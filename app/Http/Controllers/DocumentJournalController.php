@@ -468,6 +468,102 @@ class DocumentJournalController
         ]);
     }
     /**
+     * GET /api/inner/tx-dj-diff-ids?to=2026-04-30
+     *
+     * Ցույց է տալիս ԿՈՆԿՐԵՏ ID-ները որոնք պատճառ են difference-ի:
+     *   tx_only  = transactions որ journal-ում ՉԿԱՆ  → ավելացնում են tx side
+     *   dj_only  = journals      որ transaction-ում ՉԿԱՆ → ավելացնում են dj side
+     *   difference = tx_only_total - dj_only_total
+     */
+    public function txDjDiffIds(Request $request)
+    {
+        $to      = $request->query('to', now()->toDateString());
+        $djClass = DocumentJournal::class;
+
+        // ── A. Transactions-ն ՈՐ JOURNAL-ՈՒՄ ՉԿԱՆ ──────────────────────────
+        // A1. transactionable_type = null
+        $txNullType = DB::table('transactions')
+            ->whereNull('deleted_at')
+            ->whereNull('transactionable_type')
+            ->whereDate('date', '<=', $to)
+            ->select('id as tx_id', 'date', 'document_type', 'document_number', 'amount_amd', 'comment')
+            ->orderBy('id')->get();
+
+        // A2. transactionable_type = DocumentJournal, բայց journal soft-deleted
+        $txJournalDeleted = DB::table('transactions as t')
+            ->join('documents_journal as dj', 'dj.id', '=', 't.transactionable_id')
+            ->whereNull('t.deleted_at')
+            ->whereNotNull('dj.deleted_at')
+            ->where('t.transactionable_type', $djClass)
+            ->whereDate('t.date', '<=', $to)
+            ->select('t.id as tx_id', 't.date', 't.document_type', 't.document_number',
+                     't.amount_amd', 't.comment',
+                     'dj.id as journal_id', 'dj.deleted_at as journal_deleted_at')
+            ->orderBy('t.id')->get();
+
+        // A3. transactionable_type = DocumentJournal, բայց journal row-ն ընդհանրապես չկա
+        $txOrphan = DB::table('transactions as t')
+            ->leftJoin('documents_journal as dj', function ($j) use ($djClass) {
+                $j->on('dj.id', '=', 't.transactionable_id')
+                  ->where('t.transactionable_type', '=', $djClass);
+            })
+            ->whereNull('t.deleted_at')
+            ->where('t.transactionable_type', $djClass)
+            ->whereDate('t.date', '<=', $to)
+            ->whereNull('dj.id')
+            ->select('t.id as tx_id', 't.date', 't.document_type', 't.document_number',
+                     't.amount_amd', 't.comment', 't.transactionable_id as missing_journal_id')
+            ->orderBy('t.id')->get();
+
+        $txOnlyTotal = $txNullType->sum('amount_amd')
+                     + $txJournalDeleted->sum('amount_amd')
+                     + $txOrphan->sum('amount_amd');
+
+        // ── B. Journals-ն ՈՐ TRANSACTION-ՈՒՄ ՉԿԱՆ ──────────────────────────
+        $djNoTx = DB::table('documents_journal as dj')
+            ->leftJoin('transactions as t', function ($j) use ($djClass) {
+                $j->on('t.transactionable_id', '=', 'dj.id')
+                  ->where('t.transactionable_type', '=', $djClass)
+                  ->whereNull('t.deleted_at');
+            })
+            ->whereNull('dj.deleted_at')
+            ->whereDate('dj.date', '<=', $to)
+            ->whereNull('t.id')
+            ->select('dj.id as journal_id', 'dj.date', 'dj.document_type', 'dj.document_number',
+                     'dj.amount_amd', 'dj.comment')
+            ->orderBy('dj.id')->get();
+
+        $djOnlyTotal = $djNoTx->sum('amount_amd');
+
+        // ── Totals & check ───────────────────────────────────────────────────
+        $txTotal = DB::table('transactions')->whereNull('deleted_at')->whereDate('date', '<=', $to)->sum('amount_amd');
+        $djTotal = DB::table('documents_journal')->whereNull('deleted_at')->whereDate('date', '<=', $to)->sum('amount_amd');
+
+        return response()->json([
+            'to'                      => $to,
+            'transactions_total'      => $txTotal,
+            'documents_journal_total' => $djTotal,
+            'difference'              => round($txTotal - $djTotal, 2),
+
+            'tx_only' => [
+                'total'           => round($txOnlyTotal, 2),
+                'null_type'       => ['cnt' => $txNullType->count(),       'total' => $txNullType->sum('amount_amd'),       'rows' => $txNullType],
+                'journal_deleted' => ['cnt' => $txJournalDeleted->count(), 'total' => $txJournalDeleted->sum('amount_amd'), 'rows' => $txJournalDeleted],
+                'orphan'          => ['cnt' => $txOrphan->count(),         'total' => $txOrphan->sum('amount_amd'),         'rows' => $txOrphan],
+            ],
+
+            'dj_only' => [
+                'total' => round($djOnlyTotal, 2),
+                'cnt'   => $djNoTx->count(),
+                'rows'  => $djNoTx,
+            ],
+
+            // tx_only_total - dj_only_total պետք է = difference
+            'check_formula' => round($txOnlyTotal - $djOnlyTotal, 2),
+        ]);
+    }
+
+    /**
      * GET /api/inner/tx-vs-journal-diff?to=2026-04-30
      */
     public function txVsJournalDiff(Request $request)

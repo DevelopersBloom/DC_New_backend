@@ -202,7 +202,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/clients/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
         Route::post('/clients/correct-all-reserves', [ClientControllerNew::class, 'correctAllClientReserves']);
         Route::get('/journal-vs-transaction-mismatch', [DocumentJournalController::class, 'journalVsTransactionMismatch']);
-        Route::get('/inner/tx-vs-journal-diff', [\App\Http\Controllers\InnerController::class, 'txVsJournalDiff']);
+        Route::get('/inner/tx-vs-journal-diff', [DocumentJournalController::class, 'txVsJournalDiff']);
+        Route::get('/inner/tx-dj-diff-ids', [DocumentJournalController::class, 'txDjDiffIds']);
 
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
