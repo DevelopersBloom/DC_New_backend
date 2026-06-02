@@ -201,6 +201,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/bank-provision/run', [BankProvisionController::class, 'run']);
         Route::post('/clients/correct-reserve', [ClientControllerNew::class, 'correctClientReserve']);
         Route::post('/clients/correct-all-reserves', [ClientControllerNew::class, 'correctAllClientReserves']);
+        Route::get('/journal-vs-transaction-mismatch', [DocumentJournalController::class, 'journalVsTransactionMismatch']);
+
     });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search-partner', [ClientControllerNew::class, 'searchPartner']);
@@ -312,8 +314,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
 
 Route::get('/test', [TestController::class, 'test']);
-Route::get('/test/journal-vs-transaction-mismatch', [TestController::class, 'journalVsTransactionMismatch']);
-
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

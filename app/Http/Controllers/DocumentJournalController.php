@@ -439,4 +439,33 @@ class DocumentJournalController
 
         return $ids;
     }
+    public function journalVsTransactionMismatch(Request $request)
+    {
+        $rows = DB::table('documents_journal as dj')
+            ->join('transactions as t', function ($join) {
+                $join->on('t.transactionable_id', '=', 'dj.id')
+                    ->where('t.transactionable_type', '=', DocumentJournal::class);
+            })
+            ->whereNull('dj.deleted_at')
+            ->whereNull('t.deleted_at')
+            ->whereRaw('ABS(dj.amount_amd - t.amount_amd) > 0.01')
+            ->select([
+                'dj.id as journal_id',
+                'dj.date',
+                'dj.document_type',
+                'dj.document_number',
+                'dj.amount_amd as journal_amount',
+                't.id as transaction_id',
+                't.amount_amd as transaction_amount',
+                DB::raw('(dj.amount_amd - t.amount_amd) as diff'),
+            ])
+            ->orderBy('dj.id')
+            ->get();
+
+        return response()->json([
+            'count' => $rows->count(),
+            'data'  => $rows,
+        ]);
+    }
+
 }
