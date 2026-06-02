@@ -469,28 +469,21 @@ class DocumentJournalController
     }
     /**
      * GET /api/inner/tx-vs-journal-diff?to=2026-04-30
-     *
-     * Ցույց է տալիս թե ուր կա transactions vs documents_journal sum-ի տարբերություն:
-     * 1. breakdown_by_type   — transactions-ի sum-ը ըստ transactionable_type
-     * 2. journal_soft_deleted — transactions կան, բայց journal-ն արդեն deleted_at-ված է
-     * 3. orphan_transactions  — transactions կան, բայց documents_journal row-ն ընդհանրապես չկա
-     * 4. non_journal_tx       — transactions-ի transactionable_type ≠ DocumentJournal
      */
     public function txVsJournalDiff(Request $request)
     {
-        $to   = $request->query('to', now()->toDateString());
+        $to      = $request->query('to', now()->toDateString());
         $djClass = DocumentJournal::class;
 
-        // 1. Sum breakdown ըստ transactionable_type
         $byType = DB::table('transactions')
             ->whereNull('deleted_at')
             ->whereDate('date', '<=', $to)
-            ->selectRaw('transactionable_type, COUNT(*) as cnt, SUM(amount_amd) as total')
+            ->selectRaw('COALESCE(transactionable_type, "(null)") as transactionable_type, COUNT(*) as cnt, SUM(amount_amd) as total')
             ->groupBy('transactionable_type')
             ->orderByRaw('SUM(amount_amd) DESC')
             ->get();
 
-        // 2. Transactions կան, բայց journal-ն soft-deleted է
+        // 2. Journal soft-deleted, transaction active
         $journalDeletedRows = DB::table('transactions as t')
             ->join('documents_journal as dj', 'dj.id', '=', 't.transactionable_id')
             ->whereNull('t.deleted_at')
@@ -498,19 +491,12 @@ class DocumentJournalController
             ->where('t.transactionable_type', $djClass)
             ->whereDate('t.date', '<=', $to)
             ->select([
-                't.id as transaction_id',
-                't.date',
-                't.document_type',
-                't.document_number',
-                't.amount_amd as tx_amount',
-                't.comment as tx_comment',
-                'dj.id as journal_id',
-                'dj.amount_amd as journal_amount',
-                'dj.comment as journal_comment',
-                'dj.deleted_at as journal_deleted_at',
+                't.id as transaction_id', 't.date', 't.document_type', 't.document_number',
+                't.amount_amd as tx_amount', 't.comment as tx_comment',
+                'dj.id as journal_id', 'dj.amount_amd as journal_amount',
+                'dj.comment as journal_comment', 'dj.deleted_at as journal_deleted_at',
             ])
-            ->orderBy('t.date')
-            ->get();
+            ->orderBy('t.date')->get();
 
         $journalDeleted = [
             'cnt'   => $journalDeletedRows->count(),
@@ -518,27 +504,22 @@ class DocumentJournalController
             'rows'  => $journalDeletedRows,
         ];
 
-        // 3. Orphan transactions — documents_journal row-ն ընդհանրապես չկա
+        // 3. Orphan — transactionable_type = DocumentJournal, բայց journal row չկա
         $orphanRows = DB::table('transactions as t')
             ->leftJoin('documents_journal as dj', function ($join) use ($djClass) {
                 $join->on('dj.id', '=', 't.transactionable_id')
-                    ->where('t.transactionable_type', '=', $djClass);
+                     ->where('t.transactionable_type', '=', $djClass);
             })
             ->whereNull('t.deleted_at')
             ->where('t.transactionable_type', $djClass)
             ->whereDate('t.date', '<=', $to)
             ->whereNull('dj.id')
             ->select([
-                't.id as transaction_id',
-                't.date',
-                't.document_type',
-                't.document_number',
-                't.amount_amd as tx_amount',
-                't.comment as tx_comment',
+                't.id as transaction_id', 't.date', 't.document_type', 't.document_number',
+                't.amount_amd as tx_amount', 't.comment as tx_comment',
                 't.transactionable_id as missing_journal_id',
             ])
-            ->orderBy('t.date')
-            ->get();
+            ->orderBy('t.date')->get();
 
         $orphan = [
             'cnt'   => $orphanRows->count(),
@@ -546,40 +527,59 @@ class DocumentJournalController
             'rows'  => $orphanRows,
         ];
 
-        // 4. Transactions NOT linked to DocumentJournal — breakdown ըստ type-ի
-        $nonJournalRows = DB::table('transactions')
+        // 4. NULL transactionable_type (NULL != X → NULL in SQL, ուստի առանձին query)
+        $nullTypeRows = DB::table('transactions')
             ->whereNull('deleted_at')
-            ->where('transactionable_type', '!=', $djClass)
+            ->whereNull('transactionable_type')
             ->whereDate('date', '<=', $to)
-            ->selectRaw('transactionable_type, document_type, COUNT(*) as cnt, SUM(amount_amd) as total')
-            ->groupBy('transactionable_type', 'document_type')
-            ->orderByRaw('SUM(amount_amd) DESC')
-            ->get();
+            ->select([
+                'id as transaction_id', 'date', 'document_type', 'document_number',
+                'amount_amd as tx_amount', 'comment as tx_comment', 'transactionable_id',
+            ])
+            ->orderBy('date')->get();
 
-        $nonJournal = [
-            'cnt'   => $nonJournalRows->sum('cnt'),
-            'total' => $nonJournalRows->sum('total'),
-            'rows'  => $nonJournalRows,
+        $nullType = [
+            'cnt'   => $nullTypeRows->count(),
+            'total' => $nullTypeRows->sum('tx_amount'),
+            'rows'  => $nullTypeRows,
+        ];
+
+        // 5. Journals WITHOUT any active transaction
+        $journalNoTxRows = DB::table('documents_journal as dj')
+            ->leftJoin('transactions as t', function ($join) use ($djClass) {
+                $join->on('t.transactionable_id', '=', 'dj.id')
+                     ->where('t.transactionable_type', '=', $djClass)
+                     ->whereNull('t.deleted_at');
+            })
+            ->whereNull('dj.deleted_at')
+            ->whereDate('dj.date', '<=', $to)
+            ->whereNull('t.id')
+            ->select([
+                'dj.id as journal_id', 'dj.date', 'dj.document_type', 'dj.document_number',
+                'dj.amount_amd as journal_amount', 'dj.comment as journal_comment',
+            ])
+            ->orderBy('dj.date')->get();
+
+        $journalNoTx = [
+            'cnt'   => $journalNoTxRows->count(),
+            'total' => $journalNoTxRows->sum('journal_amount'),
+            'rows'  => $journalNoTxRows,
         ];
 
         // Totals
-        $txTotal = DB::table('transactions')
-            ->whereNull('deleted_at')->whereDate('date', '<=', $to)
-            ->sum('amount_amd');
-
-        $djTotal = DB::table('documents_journal')
-            ->whereNull('deleted_at')->whereDate('date', '<=', $to)
-            ->sum('amount_amd');
+        $txTotal = DB::table('transactions')->whereNull('deleted_at')->whereDate('date', '<=', $to)->sum('amount_amd');
+        $djTotal = DB::table('documents_journal')->whereNull('deleted_at')->whereDate('date', '<=', $to)->sum('amount_amd');
 
         return response()->json([
-            'to'                      => $to,
-            'transactions_total'      => $txTotal,
-            'documents_journal_total' => $djTotal,
-            'difference'              => round($txTotal - $djTotal, 2),
-            'breakdown_by_type'       => $byType,
-            'journal_soft_deleted'    => $journalDeleted,
-            'orphan_transactions'     => $orphan,
-            'non_journal_tx'          => $nonJournal,
+            'to'                           => $to,
+            'transactions_total'           => $txTotal,
+            'documents_journal_total'      => $djTotal,
+            'difference'                   => round($txTotal - $djTotal, 2),
+            'breakdown_by_type'            => $byType,
+            'journal_soft_deleted'         => $journalDeleted,
+            'orphan_transactions'          => $orphan,
+            'null_type_transactions'       => $nullType,
+            'journals_without_transaction' => $journalNoTx,
         ]);
     }
 }
