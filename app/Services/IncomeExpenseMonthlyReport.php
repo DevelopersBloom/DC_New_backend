@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 class IncomeExpenseMonthlyReport
 {
-    public function build(string $date): array
+    public function buildDoc(string $date): array
     {
         $debit = DB::table('documents_journal as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
@@ -92,7 +92,7 @@ class IncomeExpenseMonthlyReport
     }
 
 
-    public function buildTr(string $date): array
+    public function build(string $date): array
     {
         $debit = DB::table('transactions as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
