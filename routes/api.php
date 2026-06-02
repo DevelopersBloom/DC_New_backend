@@ -312,6 +312,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
 
 Route::get('/test', [TestController::class, 'test']);
+Route::get('/test/journal-vs-transaction-mismatch', [TestController::class, 'journalVsTransactionMismatch']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

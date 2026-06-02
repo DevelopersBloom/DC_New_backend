@@ -8,10 +8,12 @@ use App\Exports\QuarterExport;
 use App\Imports\ContractImport;
 use App\Models\Contract;
 use App\Models\Deal;
+use App\Models\DocumentJournal;
 use App\Models\Payment;
 use App\Traits\ContractTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpWord\TemplateProcessor;
 use PhpOffice\PhpWord\Settings;
@@ -130,125 +132,33 @@ class TestController extends Controller
 //        $payments = Payment::where('status','completed')->where('date','03.01.2024')->sum('amount');
 //        dd($payments);
 //    }
-    public function test(Request $request){
-        return response()->json([
-            'user' => 'Saten'
-        ]);
-//        $a = intval(300000.97);
-//        dd($a);
-    }
-//    public function test4444(){
-//        $iitial_cashbox = 8852134;
-//        $in = 0;
-//        $out = 0;
-//        $date = Carbon::parse('2024-01-01');
-//        for($i = 0; $i < 31; $i ++){
-//            $deals_out = Deal::where('date',$date->format('d.m.Y'))->whereIn('type',['regular_out','out'])->sum('amount');
-//            $deals_in = Deal::where('date',$date->format('d.m.Y'))->where('type','in')->sum('amount');
-//            $iitial_cashbox = $iitial_cashbox + $deals_in - $deals_out;
-//            dump($date->format('d.m.Y'));
-//            dump($iitial_cashbox);
-//            $date->addDays();
-//        }
-//
-////        foreach ($deals_in as $deal){
-////            $in += $deal->amount;
-////        }
-////        foreach ($deals_out as $deal){
-////            $out += $deal->amount;
-////        }
-//    }
-//    public function testBefoeChange(){
-//        $in = 0;
-//        $out = 0;
-//        $date = Carbon::parse('2024-01-16');
-//        $completed_payments = Payment::where('date','16.01.2024')->where('status','completed')->get();
-//        $completed_payments1 = Payment::where('date','16.01.2024')->where('status','completed');
-//        $contracts = Contract::where('date','16.01.2024')->get();
-//        $deals_out = Deal::where('date','16.01.2024')->where('type','regular_out')->get();
-//        $deals_in = Deal::where('date','16.01.2024')->where('type','in')->get();
-//        foreach ($completed_payments as $payment){
-//            $in += $payment->amount + $payment->mother;
-//        }
-//        foreach ($contracts as $contract){
-//            $out += $contract->given;
-//            if($contract->one_time_payment){
-//                $in += $contract->one_time_payment;
-//            }else{
-//                if($contract->given>= 400000){
-//                    $in += intval(round($contract->given * 0.01 * 2 /10) * 10);
-//                }else{
-//                    $in += intval(round($contract->given * 0.01 * 2.5 /10) * 10);
-//                }
-//            }
-//        }
-//        foreach ($deals_in as $deal){
-//            $in += $deal->amount;
-//        }
-//        foreach ($deals_out as $deal){
-//            $out += $deal->amount;
-//        }
-//        dump('$deals_in amount');
-//        dump($deals_in->pluck('amount'));
-//        dump('$deals_out  amount');
-//        dump($deals_out->pluck('amount'));
-//        dump('$contracts given');
-//        dump($contracts->pluck('given'));
-//        dump('$in');
-//        dump($in);
-//        dump('$completed_payments');
-//        dump($completed_payments1->get()->groupBy(function ($payment){
-//            return $payment->contract->ADB_ID;
-//        }));
-//        dump('$out');
-//        dump($out);
-//        dump('$in - $out');
-//        dump($in - $out);
-//        dump(7778802 + $in - $out);
-//        dump(round(375 / 10) * 10);
-//    }
-//    public function testfffff(){
-//        $date = Carbon::parse('2010-01-01');
-//        $in = Deal::whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [$date])->where('type','in')->sum('amount');
-//        $out = Deal::whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [$date])->where('type','out')->sum('amount');
-//        $regular_out = Deal::whereRaw("STR_TO_DATE(date, '%d.%m.%Y') >= ?", [$date])->where('type','regular_out')->sum('amount');
-//        dump('in');
-//        dump(intval(round($in/1000)));
-//        dump('out');
-//        dump(intval(round($out/1000)));
-//        dump('regular_out');
-//        dump(intval(round($regular_out/1000)));
-//        dump('26500000 - $regular_out + $in - $out');
-//        dump(intval(round((26500000 - $regular_out + $in - $out)/1000)));
-//        dump('funds');
-//        dump(26500);
-//        dump('res');
-//        dump(intval(round(4825548/1000)));
-//
-//    }
-//    public function test10(){
-//        $cashbox = 4825548;
-//        $in_sum = Deal::where('type','in')->sum('amount');
-//        $out_sum = Deal::where('type','out')->sum('amount');
-//        $initial_cashbox = $cashbox - $in_sum + $out_sum;
-//        $deals = Deal::orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') ASC")->orderBy('id','ASC')->get();
-//        foreach ($deals as $deal){
-//            if($deal->type === 'in'){
-//                $initial_cashbox = $initial_cashbox + $deal->amount;
-//                $deal->cashbox = $initial_cashbox;
-//            }elseif ($deal->type === 'out'){
-//                $initial_cashbox = $initial_cashbox - $deal->amount;
-//                $deal->cashbox = $initial_cashbox;
-//            }
-//            $deal->save();
-//        }
-//        dd(123);
-//    }
-//    public function test3(){
-//        $needle = 'Իրացված է';
-//        $str = 'Իրացված է';
-//        dd(strpos($str,'Իրացվadwած է'));
-//    }
+    public function journalVsTransactionMismatch(Request $request)
+    {
+        $rows = DB::table('documents_journal as dj')
+            ->join('transactions as t', function ($join) {
+                $join->on('t.transactionable_id', '=', 'dj.id')
+                     ->where('t.transactionable_type', '=', DocumentJournal::class);
+            })
+            ->whereNull('dj.deleted_at')
+            ->whereNull('t.deleted_at')
+            ->whereRaw('ABS(dj.amount_amd - t.amount_amd) > 0.01')
+            ->select([
+                'dj.id as journal_id',
+                'dj.date',
+                'dj.document_type',
+                'dj.document_number',
+                'dj.amount_amd as journal_amount',
+                't.id as transaction_id',
+                't.amount_amd as transaction_amount',
+                DB::raw('(dj.amount_amd - t.amount_amd) as diff'),
+            ])
+            ->orderBy('dj.id')
+            ->get();
 
+        return response()->json([
+            'count' => $rows->count(),
+            'data'  => $rows,
+        ]);
+    }
 
 }
