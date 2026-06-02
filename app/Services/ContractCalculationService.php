@@ -3,7 +3,8 @@
 namespace App\Services;
 
 use App\Models\Contract;
-use App\Models\DocumentJournal;
+use App\Models\ContractAmountHistory;
+use App\Models\Deal;
 use App\Traits\ContractTrait;
 use Illuminate\Support\Carbon;
 
@@ -61,28 +62,22 @@ class ContractCalculationService
     //    Տոկոսագումարը, որը հաշվարկվում է օրական
     public function calculateDailyRates(Contract $contract,$calcToday): void
     {
-        $journal = DocumentJournal::where('journalable_type', Contract::class)
-            ->where('journalable_id', $contract->id)
-            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->first();
-        $contract->daily_interest_sum = 0;
-        $contract->daily_effective_sum = 0;
+        $calcDay = Carbon::parse($calcToday, 'Asia/Yerevan')->startOfDay();
+        $nominalDailyRate = (float)($contract->interest_rate ?? 0);
+        $effectiveDailyRate = (float)($contract->effective_daily_rate ?? 0);
+        $paidInterests = $this->calculatePaidInterestsToDate($contract, $calcDay);
 
-        if ($journal) {
-            $dailyInterestSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                ->where('journalable_id', $journal->id)
-                ->where('document_type',DocumentJournal::INTEREST_RATE_AMOUNT)
-                ->sum('amount_amd');
+        $accruedNominal = $this->calculateAccruedByProvidedAmountHistory($contract, $calcDay, $nominalDailyRate);
+        $accruedEffective = $this->calculateAccruedByProvidedAmountHistory($contract, $calcDay, $effectiveDailyRate);
 
-            $dailyEffectiveSum = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                ->where('journalable_id', $journal->id)
-                ->where('document_type',DocumentJournal::EFFECTIVE_RATE_AMOUNT)
-                ->sum('amount_amd');
-
-            $contract->daily_interest_sum = $dailyInterestSum;
-            $contract->daily_effective_sum =  $dailyEffectiveSum;
-        }
-
+        $contract->daily_interest_sum = round(
+            max(0, $accruedNominal - $paidInterests['nominal']),
+            2
+        );
+        $contract->daily_effective_sum = round(
+            max(0, $accruedEffective - $paidInterests['effective']),
+            2
+        );
     }
 
 
@@ -122,49 +117,156 @@ class ContractCalculationService
     public function calculateInterestRates(Contract $contract, Carbon $calcToday): void
     {
         $calcToday = $calcToday->copy()->setTimezone('Asia/Yerevan')->startOfDay();
+        $accruedNominal = $this->calculateAccruedByProvidedAmountHistory(
+            $contract,
+            $calcToday,
+            (float)($contract->interest_rate ?? 0)
+        );
+        $accruedEffective = $this->calculateAccruedByProvidedAmountHistory(
+            $contract,
+            $calcToday,
+            (float)($contract->effective_daily_rate ?? 0)
+        );
+        $paidInterests = $this->calculatePaidInterestsToDate($contract, $calcToday);
 
-        $providedAmount = (float) ($contract->provided_amount ?? 0);
-        $calculatedInterest = 0.0;
-        $calculatedEffectiveInterest = 0.0;
+        $calculatedInterest = max(0, $accruedNominal - $paidInterests['nominal']);
+        $calculatedEffectiveInterest = max(0, $accruedEffective - $paidInterests['effective']);
 
-        $contractJournal = DocumentJournal::where('journalable_type', Contract::class)
-            ->where('journalable_id', $contract->id)
-            ->first();
-
-        $lastEffective = null;
-
-        if ($contractJournal) {
-            $lastEffective = DocumentJournal::where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
-                ->where('journalable_type', DocumentJournal::class)
-                ->where('journalable_id', $contractJournal->id)
-                ->orderBy('date', 'desc')
-                ->first();
-        }
-
-        if ($lastEffective) {
-            $startDate = Carbon::parse($lastEffective->date, 'Asia/Yerevan')->startOfDay();
-        } else {
-            $startDate = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
-        }
-
-        if ($startDate->greaterThan($calcToday)) {
-            $days = 0;
-        } else {
-            $days = $calcToday->diffInDays($startDate);
-        }
-
-        if ($providedAmount > 0 && !empty($contract->interest_rate) && $days > 0) {
-            $calculatedInterest = $providedAmount * ($contract->interest_rate / 100.0) * $days;
-        }
-
-        $openingAmount = $this->calculateCurrentAmortizedBalance($contract);
-        if ($openingAmount > 0 && !empty($contract->effective_daily_rate) && $days > 0) {
-            $calculatedEffectiveInterest = $openingAmount * ($contract->effective_daily_rate / 100.0) * $days;
-        }
         $contract->effectiveRate = $contract->effective_daily_rate;
         $contract->calculatedInterest = round($calculatedInterest, 2);
         $contract->calculatedEffectiveInterest = round($calculatedEffectiveInterest, 2);
 
+    }
+
+    /**
+     * Calculates daily-rate accrual using only provided amount history up to calc day.
+     * If no history exists, falls back to contract provided amount from contract date.
+     */
+    private function calculateAccruedByProvidedAmountHistory(Contract $contract, Carbon $calcDay, float $dailyRate): float
+    {
+        if ($dailyRate <= 0) {
+            return 0.0;
+        }
+
+        $startDate = $contract->date
+            ? Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay()
+            : $calcDay->copy();
+
+        if ($startDate->greaterThan($calcDay)) {
+            return 0.0;
+        }
+
+        $providedAmountHistory = ContractAmountHistory::query()
+            ->where('contract_id', $contract->id)
+            ->where('amount_type', 'provided_amount')
+            ->whereDate('date', '<=', $calcDay->toDateString())
+            ->orderBy('date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get(['amount', 'type', 'date']);
+
+        if ($providedAmountHistory->isEmpty()) {
+            $baseBalance = max(0, (float)($contract->provided_amount ?? 0));
+            if ($baseBalance <= 0) {
+                return 0.0;
+            }
+
+            $days = $startDate->diffInDays($calcDay);
+            return $days > 0 ? $baseBalance * ($dailyRate / 100) * $days : 0.0;
+        }
+
+        $changesByDate = $providedAmountHistory
+            ->groupBy(function ($row) {
+                return Carbon::parse($row->date, 'Asia/Yerevan')->toDateString();
+            })
+            ->map(function ($rows) {
+                return $rows->sum(function ($row) {
+                    $amount = (float)($row->amount ?? 0);
+                    return $row->type === 'out' ? -$amount : $amount;
+                });
+            });
+
+        $accrued = 0.0;
+        $currentDate = $startDate->copy();
+        $balance = 0.0;
+
+        foreach ($changesByDate as $date => $delta) {
+            $changeDate = Carbon::parse($date, 'Asia/Yerevan')->startOfDay();
+            $effectiveDate = $changeDate->copy()->addDay();
+
+            if ($effectiveDate->greaterThan($calcDay)) {
+                break;
+            }
+
+            if ($effectiveDate->greaterThan($currentDate) && $balance > 0) {
+                $days = $currentDate->diffInDays($effectiveDate);
+                if ($days > 0) {
+                    $accrued += $balance * ($dailyRate / 100) * $days;
+                }
+            }
+
+            $balance = max(0, $balance + (float)$delta);
+
+            if ($effectiveDate->greaterThan($currentDate)) {
+                $currentDate = $effectiveDate->copy();
+            }
+        }
+
+        if ($calcDay->greaterThan($currentDate) && $balance > 0) {
+            $days = $currentDate->diffInDays($calcDay);
+            if ($days > 0) {
+                $accrued += $balance * ($dailyRate / 100) * $days;
+            }
+        }
+
+        return $accrued;
+    }
+
+    /**
+     * Non-journal paid interest totals up to calculation day.
+     */
+    private function calculatePaidInterestsToDate(Contract $contract, Carbon $calcDay): array
+    {
+        $paymentPurposes = [
+            Contract::REGULAR_PAYMENT,
+            Contract::PARTIAL_PAYMENT,
+            Contract::FULL_PAYMENT,
+        ];
+
+        $paidNominal = Deal::query()
+            ->where('contract_id', $contract->id)
+            ->whereIn('purpose', $paymentPurposes)
+            ->get(['date', 'interest_amount'])
+            ->sum(function ($deal) use ($calcDay) {
+                $dealDate = $this->parseDealDate($deal->date);
+                if (!$dealDate || $dealDate->greaterThan($calcDay)) {
+                    return 0.0;
+                }
+
+                return (float)($deal->interest_amount ?? 0);
+            });
+
+        return [
+            'nominal' => (float)$paidNominal,
+            // Deals table does not store paid effective interest separately.
+            'effective' => 0.0,
+        ];
+    }
+
+    private function parseDealDate(?string $dealDate): ?Carbon
+    {
+        if (!$dealDate) {
+            return null;
+        }
+
+        try {
+            if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $dealDate) === 1) {
+                return Carbon::createFromFormat('d.m.Y', $dealDate, 'Asia/Yerevan')->startOfDay();
+            }
+
+            return Carbon::parse($dealDate, 'Asia/Yerevan')->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
