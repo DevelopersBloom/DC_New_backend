@@ -161,32 +161,6 @@ class V03Export
                 $dailyData[$riskKey]['reserve'] += ($balance * 0.01);
             }
 
-//            $journals = DocumentJournal::with(['journalable.client.classification'])
-//                ->where('date', '<=', $current->format('Y-m-d'))
-//                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-//                ->get();
-////
-//            foreach ($journals as $j) {
-//                if ($j->journalable->status != 'initial') continue;
-//                $client = optional($j->journalable)->client;
-//                if (!$client) continue;
-//
-//                $classification = ClassificationHistory::where('client_id', $client->id)
-//                    ->where('date', '<=', $current->format('Y-m-d'))
-//                    ->orderBy('date', 'desc')
-//                    ->first() ?: $client->classification;
-//                //$classification = optional(optional($j->journalable)->client)->classification;
-//                if ($classification && isset($riskColumns[(int)$classification->risk_weight])) {
-//                    $riskKey = (int)$classification->risk_weight;
-//                    $amount = $j->amount_amd;
-//
-//                    $dailyData[$riskKey]['amount'] += $amount;
-//
-//                    $reservePercent = $classification->reserve_percent ?? 0;
-//                    $dailyData[$riskKey]['reserve'] += ($amount * $reservePercent / 100);
-//                }
-//            }
-            // Partner block: only 16200, 16200NV, 16201NI (not all 16% chart accounts).
             $loanPortionIds = array_values(array_filter([
                 ChartOfAccount::idByCode('16200'),
                 ChartOfAccount::idByCode('16200NV'),
@@ -194,39 +168,54 @@ class V03Export
             ]));
 
             if ($loanPortionIds !== []) {
-                $debit = DB::table('transactions as t')
-                    ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
-                    ->whereNull('t.deleted_at')
-                    ->whereNotNull('t.debit_partner_id')
-                    ->whereIn('t.debit_account_id', $loanPortionIds)
-                    ->whereDate('t.date', '<=', $current->format('Y-m-d'))
-                    ->selectRaw("
-                        t.debit_partner_id as partner_id,
-                        SUM(
-                            CASE
-                                WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
-                                ELSE -t.amount_amd
-                            END
-                        ) as amount
-                    ")
-                    ->groupBy('t.debit_partner_id');
+//                $debit = DB::table('transactions as t')
+//                    ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
+//                    ->whereNull('t.deleted_at')
+//                    ->whereNotNull('t.debit_partner_id')
+//                    ->whereIn('t.debit_account_id', $loanPortionIds)
+//                    ->whereDate('t.date', '<=', $current->format('Y-m-d'))
+//                    ->selectRaw("
+//                        t.debit_partner_id as partner_id,
+//                        SUM(
+//                            CASE
+//                                WHEN a.type IN ('active','expense','off_balance') THEN t.amount_amd
+//                                ELSE -t.amount_amd
+//                            END
+//                        ) as amount
+//                    ")
+//                    ->groupBy('t.debit_partner_id');
+//
+//                $credit = DB::table('transactions as t')
+//                    ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
+//                    ->whereNull('t.deleted_at')
+//                    ->whereNotNull('t.credit_partner_id')
+//                    ->whereIn('t.credit_account_id', $loanPortionIds)
+//                    ->whereDate('t.date', '<=', $current->format('Y-m-d'))
+//                    ->selectRaw("
+//                        t.credit_partner_id as partner_id,
+//                        SUM(
+//                            CASE
+//                                WHEN a.type IN ('active','expense','off_balance') THEN -t.amount_amd
+//                                ELSE t.amount_amd
+//                            END
+//                        ) as amount
+//                    ")
+//                    ->groupBy('t.credit_partner_id');
+                $debit = DB::table('documents_journal')
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('debit_partner_id')
+                    ->whereIn('debit_account_id', $loanPortionIds)
+                    ->whereDate('date', '<=', $current->format('Y-m-d'))
+                    ->selectRaw('debit_partner_id as partner_id, SUM(amount_amd) as amount')
+                    ->groupBy('debit_partner_id');
 
-                $credit = DB::table('transactions as t')
-                    ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
-                    ->whereNull('t.deleted_at')
-                    ->whereNotNull('t.credit_partner_id')
-                    ->whereIn('t.credit_account_id', $loanPortionIds)
-                    ->whereDate('t.date', '<=', $current->format('Y-m-d'))
-                    ->selectRaw("
-                        t.credit_partner_id as partner_id,
-                        SUM(
-                            CASE
-                                WHEN a.type IN ('active','expense','off_balance') THEN -t.amount_amd
-                                ELSE t.amount_amd
-                            END
-                        ) as amount
-                    ")
-                    ->groupBy('t.credit_partner_id');
+                $credit = DB::table('documents_journal')
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('credit_partner_id')
+                    ->whereIn('credit_account_id', $loanPortionIds)
+                    ->whereDate('date', '<=', $current->format('Y-m-d'))
+                    ->selectRaw('credit_partner_id as partner_id, SUM(-amount_amd) as amount')
+                    ->groupBy('credit_partner_id');
 
                 $partnerBalances = DB::query()
                     ->fromSub($debit->unionAll($credit), 'x')
