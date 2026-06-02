@@ -10,7 +10,7 @@ class IncomeExpenseMonthlyReport
 
     public function build(string $date): array
     {
-        $debit = DB::table('transactions as t')
+        $debit = DB::table('documents_journal as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.debit_account_id')
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.debit_account_id')
@@ -23,7 +23,7 @@ class IncomeExpenseMonthlyReport
         ")
             ->groupBy('a.income_expense');
 
-        $credit = DB::table('transactions as t')
+        $credit = DB::table('documents_journal as t')
             ->join('chart_of_accounts as a', 'a.id', '=', 't.credit_account_id')
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.credit_account_id')
@@ -57,7 +57,7 @@ class IncomeExpenseMonthlyReport
             ];
         }
 
-        $val52 = DB::table('transactions as t')
+        $val52 = DB::table('documents_journal as t')
             ->join('chart_of_accounts as da', 'da.id', '=', 't.debit_account_id')
             ->join('chart_of_accounts as ca', 'ca.id', '=', 't.credit_account_id')
             ->whereNull('t.deleted_at')
@@ -66,7 +66,7 @@ class IncomeExpenseMonthlyReport
             ->where('t.date', '<=', $date)
             ->sum('t.amount_amd');
 
-        $val62 = DB::table('transactions as t')
+        $val62 = DB::table('documents_journal as t')
             ->join('chart_of_accounts as da', 'da.id', '=', 't.debit_account_id')
             ->join('chart_of_accounts as ca', 'ca.id', '=', 't.credit_account_id')
             ->whereNull('t.deleted_at')
