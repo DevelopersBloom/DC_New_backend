@@ -170,7 +170,8 @@ class ContractCalculationService
                 return 0.0;
             }
 
-            $days = $startDate->diffInDays($calcDay);
+            // Inclusive calc day: "as of 26.05" includes interest for that calendar day.
+            $days = $startDate->diffInDays($calcDay) + 1;
             return $days > 0 ? $baseBalance * ($dailyRate / 100) * $days : 0.0;
         }
 
@@ -211,10 +212,11 @@ class ContractCalculationService
             }
         }
 
-        if ($calcDay->greaterThan($currentDate) && $balance > 0) {
-            $days = $currentDate->diffInDays($calcDay);
-            if ($days > 0) {
-                $accrued += $balance * ($dailyRate / 100) * $days;
+        // Inclusive calc day (e.g. as of 26.05 includes interest on 26.05 at prior-day principal).
+        if ($balance > 0 && $currentDate->lessThanOrEqualTo($calcDay)) {
+            while ($currentDate->lessThanOrEqualTo($calcDay)) {
+                $accrued += $balance * ($dailyRate / 100);
+                $currentDate->addDay();
             }
         }
 
