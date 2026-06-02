@@ -414,7 +414,23 @@ class V17Export
 
         foreach ($docs as $doc) {
             $ndm = $doc->parentDoc->journalable;
-            $days = Carbon::parse($ndm->repayment_end_date)->diffInDays(Carbon::parse($ndm->disbursement_date));
+            $endDate = $ndm->repayment_end_date ?? $ndm->maturity_date;
+
+            // For Ցպահանջ buckets we use remaining days as of report download date ($to).
+            // If deadline is missing, force the record into column C.
+            if (!$endDate) {
+                $days = 0;
+            } else {
+                $asOf = Carbon::parse($to)->startOfDay();
+                $deadline = Carbon::parse($endDate)->startOfDay();
+                $days = $asOf->diffInDays($deadline, false);
+                if ($days < 0) {
+                    $days = 0;
+                } elseif ($days > 0) {
+                    // Include the deadline day (e.g. Jun 1 -> Jun 25 = 25 days).
+                    $days++;
+                }
+            }
 
             // Sheet 1 logic
             $col1 = $this->getColumnByDays($days, 'sheet1');
