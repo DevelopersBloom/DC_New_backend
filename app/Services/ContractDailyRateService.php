@@ -93,6 +93,7 @@ class ContractDailyRateService
             'credit_account_id' => $rule->credit_account_id,
             'journalable_type' => DocumentJournal::class,
             'journalable_id' => $journal->id,
+            'contract_id' => $contract->id,
         ]);
 
         Transaction::create([
@@ -102,6 +103,7 @@ class ContractDailyRateService
             'amount_amd' => $amount,
             'transactionable_type' => DocumentJournal::class,
             'transactionable_id' => $doc->id,
+            'contract_id' => $contract->id,
         ]);
     }
 

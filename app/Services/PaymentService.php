@@ -78,6 +78,7 @@ class PaymentService
                         'user_id' =>$userId,
                         'journalable_type' => DocumentJournal::class,
                         'journalable_id' => $journal_id,
+                        'contract_id' => $contract->id,
                     ]);
 
                     Transaction::create([
@@ -93,6 +94,7 @@ class PaymentService
                         'is_system' => true,
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id' => $journalDocPenalty->id,
+                        'contract_id' => $contract->id,
                     ]);
                 }
             }
@@ -995,6 +997,7 @@ class PaymentService
                 'journalable_type' => DocumentJournal::class,
                 'journalable_id' => $journal->id,
                 'deal_id' => $deal_id,
+                'contract_id' => $contract->id,
             ]);
 
             Transaction::create([
@@ -1009,6 +1012,7 @@ class PaymentService
                 'user_id' => auth()->id(),
                 'transactionable_type' => DocumentJournal::class,
                 'transactionable_id' => $journalDoc->id,
+                'contract_id' => $contract->id,
             ]);
         }
 
@@ -1040,6 +1044,7 @@ class PaymentService
                     'user_id' => auth()->id(),
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal->id,
+                    'contract_id' => $contract->id,
                 ]);
 
                 Transaction::create([
@@ -1054,6 +1059,7 @@ class PaymentService
                     'user_id' => auth()->id(),
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id' => $journalDocRes->id,
+                    'contract_id' => $contract->id,
                 ]);
             }
         }

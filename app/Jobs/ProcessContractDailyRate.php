@@ -113,6 +113,7 @@ class ProcessContractDailyRate implements ShouldQueue
                             'user_id' => $systemUserId,
                             'journalable_type' => DocumentJournal::class,
                             'journalable_id' => $journal->id,
+                            'contract_id' => $contract->id,
                         ]);
 
                         Transaction::create([
@@ -128,6 +129,7 @@ class ProcessContractDailyRate implements ShouldQueue
                             'is_system' => true,
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id' => $journalDocEffective->id,
+                            'contract_id' => $contract->id,
                         ]);
                         $nextDocNum++;
 
@@ -154,6 +156,7 @@ class ProcessContractDailyRate implements ShouldQueue
                                     'user_id' => $systemUserId,
                                     'journalable_type' => DocumentJournal::class,
                                     'journalable_id' => $journal->id,
+                                    'contract_id' => $contract->id,
                                 ]);
 
                                 Transaction::create([
@@ -169,6 +172,7 @@ class ProcessContractDailyRate implements ShouldQueue
                                     'is_system' => true,
                                     'transactionable_type' => DocumentJournal::class,
                                     'transactionable_id' => $journalDocReserve->id,
+                                    'contract_id' => $contract->id,
                                 ]);
                                 $nextDocNum++;
                             }
@@ -193,6 +197,7 @@ class ProcessContractDailyRate implements ShouldQueue
                             'user_id' => $systemUserId,
                             'journalable_type' => DocumentJournal::class,
                             'journalable_id' => $journal->id,
+                            'contract_id' => $contract->id,
                         ]);
 
                         Transaction::create([
@@ -209,6 +214,7 @@ class ProcessContractDailyRate implements ShouldQueue
                             'is_system' => true,
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id' => $journalDocInterest->id,
+                            'contract_id' => $contract->id,
                         ]);
                     }
                 }
@@ -242,6 +248,7 @@ class ProcessContractDailyRate implements ShouldQueue
                                 'user_id' => $systemUserId,
                                 'journalable_type' => DocumentJournal::class,
                                 'journalable_id' => $journal->id,
+                                'contract_id' => $contract->id,
                             ]);
 
                             Transaction::create([
@@ -257,6 +264,7 @@ class ProcessContractDailyRate implements ShouldQueue
                                 'is_system' => true,
                                 'transactionable_type' => DocumentJournal::class,
                                 'transactionable_id' => $journalDocPenalty->id,
+                                'contract_id' => $contract->id,
                             ]);
                         }
                     }
@@ -305,6 +313,7 @@ class ProcessContractDailyRate implements ShouldQueue
                     'user_id'           => $systemUserId,
                     'journalable_type'  => DocumentJournal::class,
                     'journalable_id'    => $journal->id,
+                    'contract_id'       => $contract->id,
                 ]);
                 Transaction::create([
                     'date'                 => $date,
@@ -323,6 +332,7 @@ class ProcessContractDailyRate implements ShouldQueue
                     'disbursement_date'    => $date,
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id'   => $doc86000->id,
+                    'contract_id'          => $contract->id,
                 ]);
             }
         }
@@ -346,6 +356,7 @@ class ProcessContractDailyRate implements ShouldQueue
                     'user_id'           => $systemUserId,
                     'journalable_type'  => DocumentJournal::class,
                     'journalable_id'    => $journal->id,
+                    'contract_id'       => $contract->id,
                 ]);
                 Transaction::create([
                     'date'                 => $date,
@@ -364,6 +375,7 @@ class ProcessContractDailyRate implements ShouldQueue
                     'disbursement_date'    => $date,
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id'   => $doc86001->id,
+                    'contract_id'          => $contract->id,
                 ]);
             }
         }

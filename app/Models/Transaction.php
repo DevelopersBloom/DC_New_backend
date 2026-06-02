@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\DocumentJournal;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -50,6 +51,7 @@ class Transaction extends Model
 
         'transactionable_type',
         'transactionable_id',
+        'contract_id',
     ];
 
     protected $casts = [
@@ -99,6 +101,11 @@ class Transaction extends Model
     public function transactionable()
     {
         return $this->morphTo();
+    }
+
+    public function contract(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Contract::class, 'contract_id');
     }
 
 

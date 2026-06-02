@@ -698,6 +698,7 @@ trait ContractTrait
                 'journalable_type' => Contract::class,
                 'journalable_id' => $contract->id,
                 'deal_id' => $dealId,
+                'contract_id' => $contract->id,
             ]);
 
             Transaction::create([
@@ -713,6 +714,7 @@ trait ContractTrait
                 'user_id' => auth()->id(),
                 'transactionable_type' => DocumentJournal::class,
                 'transactionable_id' => $journalDoc->id,
+                'contract_id' => $contract->id,
             ]);
 
             return $journalDoc->id;
@@ -783,7 +785,8 @@ trait ContractTrait
         $debitAccount,
         $creditAccount,
         $dealId,
-        $journalableId
+        $journalableId,
+        $contractId = null
     ) {
         $journal = DocumentJournal::create([
             'date'               => $date,
@@ -797,6 +800,7 @@ trait ContractTrait
             'journalable_type'   => DocumentJournal::class,
             'journalable_id'     => $journalableId,
             'deal_id'            => $dealId,
+            'contract_id'        => $contractId,
         ]);
 
         Transaction::create([
@@ -814,6 +818,7 @@ trait ContractTrait
             'disbursement_date'  => $date,
             'transactionable_type'=> DocumentJournal::class,
             'transactionable_id' => $journal->id,
+            'contract_id'        => $contractId,
         ]);
 
         $docNum++;
@@ -854,7 +859,8 @@ trait ContractTrait
         $credit,
         $dealId,
         $journalId,
-        $clientId = null
+        $clientId = null,
+        $contractId = null
     ) {
         $journal = DocumentJournal::create([
             'date' => $date,
@@ -869,6 +875,7 @@ trait ContractTrait
             'journalable_type' => DocumentJournal::class,
             'journalable_id' => $journalId,
             'deal_id' => $dealId,
+            'contract_id' => $contractId,
         ]);
 
         Transaction::create([
@@ -886,6 +893,7 @@ trait ContractTrait
             'disbursement_date' => $date,
             'transactionable_type' => DocumentJournal::class,
             'transactionable_id' => $journal->id,
+            'contract_id' => $contractId,
         ]);
 
         $docNum++;

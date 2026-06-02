@@ -489,6 +489,7 @@ class ClientControllerNew extends Controller
                         'user_id'          => auth()->id() ?? 1,
                         'journalable_type' => DocumentJournal::class,
                         'journalable_id'   => $journal->id,
+                        'contract_id'      => $contract->id,
                     ]);
 
                     Transaction::create([
@@ -507,6 +508,7 @@ class ClientControllerNew extends Controller
                         'disbursement_date'    => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $docJournal->id,
+                        'contract_id'          => $contract->id,
                     ]);
                 }
 
@@ -579,6 +581,7 @@ class ClientControllerNew extends Controller
                             'user_id'           => auth()->id() ?? 1,
                             'journalable_type'  => DocumentJournal::class,
                             'journalable_id'    => $journal->id,
+                            'contract_id'       => $contract->id,
                         ]);
                         Transaction::create([
                             'date'                 => now()->toDateString(),
@@ -597,6 +600,7 @@ class ClientControllerNew extends Controller
                             'disbursement_date'    => now()->toDateString(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id'   => $step1Doc->id,
+                            'contract_id'          => $contract->id,
                         ]);
                     }
 
@@ -618,6 +622,7 @@ class ClientControllerNew extends Controller
                             'user_id'           => auth()->id() ?? 1,
                             'journalable_type'  => DocumentJournal::class,
                             'journalable_id'    => $journal->id,
+                            'contract_id'       => $contract->id,
                         ]);
                         Transaction::create([
                             'date'                 => now()->toDateString(),
@@ -636,6 +641,7 @@ class ClientControllerNew extends Controller
                             'disbursement_date'    => now()->toDateString(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id'   => $lossEff16200Doc->id,
+                            'contract_id'          => $contract->id,
                         ]);
                     }
 
@@ -656,6 +662,7 @@ class ClientControllerNew extends Controller
                             'user_id'           => auth()->id() ?? 1,
                             'journalable_type'  => DocumentJournal::class,
                             'journalable_id'    => $journal->id,
+                            'contract_id'       => $contract->id,
                         ]);
                         Transaction::create([
                             'date'                 => now()->toDateString(),
@@ -674,6 +681,7 @@ class ClientControllerNew extends Controller
                             'disbursement_date'    => now()->toDateString(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id'   => $lossNVDoc->id,
+                            'contract_id'          => $contract->id,
                         ]);
                     }
 
@@ -699,6 +707,7 @@ class ClientControllerNew extends Controller
                             'user_id'           => auth()->id() ?? 1,
                             'journalable_type'  => DocumentJournal::class,
                             'journalable_id'    => $journal->id,
+                            'contract_id'       => $contract->id,
                         ]);
                         Transaction::create([
                             'date'                 => now()->toDateString(),
@@ -717,6 +726,7 @@ class ClientControllerNew extends Controller
                             'disbursement_date'    => now()->toDateString(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id'   => $loss86000Doc->id,
+                            'contract_id'          => $contract->id,
                         ]);
                     }
 
@@ -737,6 +747,7 @@ class ClientControllerNew extends Controller
                             'user_id'           => auth()->id() ?? 1,
                             'journalable_type'  => DocumentJournal::class,
                             'journalable_id'    => $journal->id,
+                            'contract_id'       => $contract->id,
                         ]);
                         Transaction::create([
                             'date'                 => now()->toDateString(),
@@ -755,6 +766,7 @@ class ClientControllerNew extends Controller
                             'disbursement_date'    => now()->toDateString(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id'   => $lossNIDoc->id,
+                            'contract_id'          => $contract->id,
                         ]);
                     }
 
@@ -780,6 +792,7 @@ class ClientControllerNew extends Controller
                             'user_id'           => auth()->id() ?? 1,
                             'journalable_type'  => DocumentJournal::class,
                             'journalable_id'    => $journal->id,
+                            'contract_id'       => $contract->id,
                         ]);
                         Transaction::create([
                             'date'                 => now()->toDateString(),
@@ -798,6 +811,7 @@ class ClientControllerNew extends Controller
                             'disbursement_date'    => now()->toDateString(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id'   => $loss86001Doc->id,
+                            'contract_id'          => $contract->id,
                         ]);
                     }
                 }
@@ -817,6 +831,7 @@ class ClientControllerNew extends Controller
                         'user_id'           => auth()->id() ?? 1,
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journal->id,
+                        'contract_id'       => $contract->id,
                     ]);
 
                     Transaction::create([
@@ -836,6 +851,7 @@ class ClientControllerNew extends Controller
                         'disbursement_date'    => now()->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $classificationDoc->id,
+                        'contract_id'          => $contract->id,
                     ]);
                 }
 

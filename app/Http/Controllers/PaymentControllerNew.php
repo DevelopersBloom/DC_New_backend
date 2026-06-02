@@ -175,7 +175,8 @@ class PaymentControllerNew extends Controller
                     $rule->credit_account_id,
                     $deal->id,
                     $journal->id,
-                    $clientId
+                    $clientId,
+                    $contract->id
                 );
             }
 
@@ -193,7 +194,8 @@ class PaymentControllerNew extends Controller
                     $rule->credit_account_id,
                     $deal->id,
                     $journal->id,
-                    $clientId
+                    $clientId,
+                    $contract->id
                 );
             }
 
@@ -219,7 +221,8 @@ class PaymentControllerNew extends Controller
                         $lossRules['recovery_interest']->credit_account_id,
                         $deal->id,
                         $journal->id,
-                        $clientId
+                        $clientId,
+                        $contract->id
                     );
                 }
 
@@ -236,7 +239,8 @@ class PaymentControllerNew extends Controller
                         $lossRules['recovery_principal']->credit_account_id,
                         $deal->id,
                         $journal->id,
-                        $clientId
+                        $clientId,
+                        $contract->id
                     );
                 }
             }
@@ -412,6 +416,7 @@ class PaymentControllerNew extends Controller
                             'user_id' => auth()->id(),
                             'journalable_type' => DocumentJournal::class,
                             'journalable_id' => $docId,
+                            'contract_id' => $contract->id,
                         ]);
 
                         Transaction::create([
@@ -426,6 +431,7 @@ class PaymentControllerNew extends Controller
                             'user_id' => auth()->id(),
                             'transactionable_type' => DocumentJournal::class,
                             'transactionable_id' => $journalDocRes->id,
+                            'contract_id' => $contract->id,
                         ]);
                     }
                 }

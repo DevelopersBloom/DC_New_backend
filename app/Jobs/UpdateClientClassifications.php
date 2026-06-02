@@ -223,6 +223,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     'user_id' => auth()->check() ? auth()->id() : 1,
                                     'journalable_type' => DocumentJournal::class,
                                     'journalable_id' => $journal->id,
+                                    'contract_id' => $contract->id,
                                 ]);
 
                                 Transaction::create([
@@ -241,6 +242,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     'disbursement_date' => now()->toDateString(),
                                     'transactionable_type' => DocumentJournal::class,
                                     'transactionable_id' => $docJournal->id,
+                                    'contract_id' => $contract->id,
                                 ]);
 
                                 ClassificationHistory::create([
@@ -292,6 +294,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'user_id' => auth()->check() ? auth()->id() : 1,
                                         'journalable_type' => DocumentJournal::class,
                                         'journalable_id' => $journal->id,
+                                        'contract_id' => $contract->id,
                                     ]);
 
                                     Transaction::create([
@@ -311,6 +314,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'disbursement_date' => now()->toDateString(),
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossDoc->id,
+                                        'contract_id' => $contract->id,
                                     ]);
                                 }
 
@@ -344,6 +348,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'user_id' => auth()->check() ? auth()->id() : 1,
                                         'journalable_type' => DocumentJournal::class,
                                         'journalable_id' => $journal->id,
+                                        'contract_id' => $contract->id,
                                     ]);
 
                                     Transaction::create([
@@ -363,6 +368,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'disbursement_date' => now()->toDateString(),
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossEffectiveDoc->id,
+                                        'contract_id' => $contract->id,
                                     ]);
                                 }
 
@@ -394,6 +400,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'user_id' => auth()->check() ? auth()->id() : 1,
                                         'journalable_type' => DocumentJournal::class,
                                         'journalable_id' => $journal->id,
+                                        'contract_id' => $contract->id,
                                     ]);
 
                                     Transaction::create([
@@ -413,6 +420,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'disbursement_date' => now()->toDateString(),
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $lossInterestDoc->id,
+                                        'contract_id' => $contract->id,
                                     ]);
                                 }
 
@@ -446,6 +454,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'user_id' => auth()->check() ? auth()->id() : 1,
                                         'journalable_type' => DocumentJournal::class,
                                         'journalable_id' => $journal->id,
+                                        'contract_id' => $contract->id,
                                     ]);
 
                                     Transaction::create([
@@ -465,6 +474,7 @@ class UpdateClientClassifications implements ShouldQueue
                                         'disbursement_date' => now()->toDateString(),
                                         'transactionable_type' => DocumentJournal::class,
                                         'transactionable_id' => $loss16201NI->id,
+                                        'contract_id' => $contract->id,
                                     ]);
                                 }
                             } // end if loss
@@ -487,6 +497,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     'user_id' => auth()->check() ? auth()->id() : 1,
                                     'journalable_type' => DocumentJournal::class,
                                     'journalable_id' => $journal->id,
+                                    'contract_id' => $contract->id,
                                 ]);
 
                                 Transaction::create([
@@ -506,6 +517,7 @@ class UpdateClientClassifications implements ShouldQueue
                                     'disbursement_date' => now()->toDateString(),
                                     'transactionable_type' => DocumentJournal::class,
                                     'transactionable_id' => $classificationDoc->id,
+                                    'contract_id' => $contract->id,
                                 ]);
                             }
 

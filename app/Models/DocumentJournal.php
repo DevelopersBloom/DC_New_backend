@@ -74,7 +74,8 @@ class DocumentJournal extends Model
 
         'journalable_type',
         'journalable_id',
-        'deal_id'
+        'deal_id',
+        'contract_id',
     ];
 
     protected $casts = [
@@ -323,6 +324,11 @@ class DocumentJournal extends Model
     public function deal(): BelongsTo
     {
         return $this->belongsTo(Deal::class, 'deal_id');
+    }
+
+    public function contract(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class, 'contract_id');
     }
     public function journalable(): MorphTo
     {

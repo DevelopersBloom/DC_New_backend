@@ -391,6 +391,7 @@ class ContractControllerNew extends Controller
                 'journalable_type'   => Contract::class,
                 'journalable_id'     => $contract->id,
                 'deal_id'            => $deal_id,
+                'contract_id'        => $contract->id,
             ]);
 
             Transaction::create([
@@ -414,6 +415,7 @@ class ContractControllerNew extends Controller
                 'disbursement_date'    =>  $contract->date,
                 'transactionable_type' => DocumentJournal::class,
                 'transactionable_id'   => $journalDoc->id,
+                'contract_id'          => $contract->id,
             ]);
             $reservePercent = $client->classification->reserve_percent;
             $reserveAmount = $reservePercent/100 * $contract->provided_amount;
@@ -459,6 +461,7 @@ class ContractControllerNew extends Controller
                         'user_id'            => auth()->id(),
                         'journalable_type'   => DocumentJournal::class,
                         'journalable_id'     => $journalDoc->id,
+                        'contract_id'        => $contract->id,
                     ]);
 
                 Transaction::create([
@@ -482,6 +485,7 @@ class ContractControllerNew extends Controller
                     'disbursement_date'    => $contract->date->toDateString(),
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id'   => $reserveJournal->id,
+                    'contract_id'          => $contract->id,
                 ]);
                 if (!$oldClassification) {
                     ClassificationHistory::create([
@@ -555,6 +559,7 @@ class ContractControllerNew extends Controller
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
+                        'contract_id'       => $contract->id,
                     ]);
                     Transaction::create([
                         'date'                 => $contract->date,
@@ -573,6 +578,7 @@ class ContractControllerNew extends Controller
                         'disbursement_date'    => $contract->date->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $step1Doc->id,
+                        'contract_id'          => $contract->id,
                     ]);
                 }
 
@@ -594,6 +600,7 @@ class ContractControllerNew extends Controller
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
+                        'contract_id'       => $contract->id,
                     ]);
                     Transaction::create([
                         'date'                 => $contract->date,
@@ -612,6 +619,7 @@ class ContractControllerNew extends Controller
                         'disbursement_date'    => $contract->date->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $lossEff16200Doc->id,
+                        'contract_id'          => $contract->id,
                     ]);
                 }
 
@@ -632,6 +640,7 @@ class ContractControllerNew extends Controller
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
+                        'contract_id'       => $contract->id,
                     ]);
                     Transaction::create([
                         'date'                 => $contract->date,
@@ -650,6 +659,7 @@ class ContractControllerNew extends Controller
                         'disbursement_date'    => $contract->date->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $lossNVDoc->id,
+                        'contract_id'          => $contract->id,
                     ]);
                 }
 
@@ -672,6 +682,7 @@ class ContractControllerNew extends Controller
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
+                        'contract_id'       => $contract->id,
                     ]);
                     Transaction::create([
                         'date'                 => $contract->date,
@@ -690,6 +701,7 @@ class ContractControllerNew extends Controller
                         'disbursement_date'    => $contract->date->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $loss86000Doc->id,
+                        'contract_id'          => $contract->id,
                     ]);
                 }
 
@@ -710,6 +722,7 @@ class ContractControllerNew extends Controller
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
+                        'contract_id'       => $contract->id,
                     ]);
                     Transaction::create([
                         'date'                 => $contract->date,
@@ -728,6 +741,7 @@ class ContractControllerNew extends Controller
                         'disbursement_date'    => $contract->date->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $lossNIDoc->id,
+                        'contract_id'          => $contract->id,
                     ]);
 
                     $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->firstOrFail();
@@ -747,6 +761,7 @@ class ContractControllerNew extends Controller
                         'user_id'           => auth()->id(),
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journalDoc->id,
+                        'contract_id'       => $contract->id,
                     ]);
                     Transaction::create([
                         'date'                 => $contract->date,
@@ -765,6 +780,7 @@ class ContractControllerNew extends Controller
                         'disbursement_date'    => $contract->date->toDateString(),
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $loss86001Doc->id,
+                        'contract_id'          => $contract->id,
                     ]);
                 }
             }
@@ -979,6 +995,7 @@ class ContractControllerNew extends Controller
                     'user_id' => $systemUserId,
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal->id,
+                    'contract_id' => $contract->id,
                 ]);
 
                 Transaction::create([
@@ -998,6 +1015,7 @@ class ContractControllerNew extends Controller
                     'disbursement_date' => $date,
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id' => $journalInterest->id,
+                    'contract_id' => $contract->id,
                 ]);
 
                 $nextDocNum++;
@@ -1017,6 +1035,7 @@ class ContractControllerNew extends Controller
                     'user_id' => $systemUserId,
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal->id,
+                    'contract_id' => $contract->id,
                 ]);
 
                 Transaction::create([
@@ -1036,6 +1055,7 @@ class ContractControllerNew extends Controller
                     'disbursement_date' => $date,
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id' => $journalEffective->id,
+                    'contract_id' => $contract->id,
                 ]);
 
                 $nextDocNum++;
@@ -1090,6 +1110,7 @@ class ContractControllerNew extends Controller
                     'user_id' => auth()->check() ? auth()->id() : 1,
                     'journalable_type' => DocumentJournal::class,
                     'journalable_id' => $journal?->id,
+                    'contract_id' => $contract->id,
                 ]);
 
                 Transaction::create([
@@ -1108,6 +1129,7 @@ class ContractControllerNew extends Controller
                     'disbursement_date' => now()->toDateString(),
                     'transactionable_type' => DocumentJournal::class,
                     'transactionable_id' => $journalDoc->id,
+                    'contract_id' => $contract->id,
                 ]);
 
                 $nextDocNum++;
