@@ -681,7 +681,7 @@ trait ContractTrait
         $creditAccountId = $rule->credit_account_id;
         $debetPartnerId = Client::where('company_name', 'Diamond Credit')->first()->id ?? 1;
 
-        return DB::transaction(function () use ($contract, $amount, $ruleKey, $comment, $dealId, $date, $debitAccountId, $creditAccountId, $debetPartnerId) {
+        return DB::transaction(function () use ($contract, $amount, $ruleKey, $comment, $dealId, $date, $debitAccountId, $creditAccountId, $debetPartnerId, $rule) {
             $nextDocNum = Transaction::getNextDocumentNumber();
 
             $journalDoc = DocumentJournal::create([
