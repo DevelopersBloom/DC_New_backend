@@ -443,27 +443,45 @@ class V06Export
         $sheet2->setCellValue("H91", 0);
         $sheet2->setCellValue("H87", ($balance86000 + $balance860001) / 1000);
 
-        $debit86000_J = $this->sumAccountBetween($acc86000, 'debit_account_id', $dateFrom, $date);
-        $debit860001_J = $this->sumAccountBetween($acc860001, 'debit_account_id', $dateFrom, $date);
-        // Backward-safe alias: prevents runtime error if any old reference uses $debit86000_.
-        $debit86000_ = $debit86000_J;
+        $acc860Ids = array_values(array_filter([$acc86000, $acc860001]));
 
-        $credit86000_J = $this->sumAccountBetween($acc86000, 'credit_account_id', $dateFrom, $date);
-        $credit860001_J = $this->sumAccountBetween($acc860001, 'credit_account_id', $dateFrom, $date);
+        // Column J/L: 86000+86001 turnover split by car / gold / category2 (partner + contract aware).
+        $jByRow = [
+            88 => 0.0,
+            89 => $this->sumSheet286000TurnoverByCategory('car', 'debit', $dateFrom, $date, $acc860Ids),
+            90 => 0.0,
+            91 => $this->sumSheet286000TurnoverByCategory('gold', 'debit', $dateFrom, $date, $acc860Ids),
+            92 => $this->sumSheet286000TurnoverByCategory('category2', 'debit', $dateFrom, $date, $acc860Ids),
+        ];
+        $lByRow = [
+            88 => 0.0,
+            89 => $this->sumSheet286000TurnoverByCategory('car', 'credit', $dateFrom, $date, $acc860Ids),
+            90 => 0.0,
+            91 => $this->sumSheet286000TurnoverByCategory('gold', 'credit', $dateFrom, $date, $acc860Ids),
+            92 => $this->sumSheet286000TurnoverByCategory('category2', 'credit', $dateFrom, $date, $acc860Ids),
+        ];
+        $j87 = array_sum($jByRow);
+        $l87 = array_sum($lByRow);
 
-        $sheet2->setCellValue("J89", ($debit86000_J + $debit860001_J) / 1000);
-        $sheet2->setCellValue("J91", 0);
-        $sheet2->setCellValue("J87", ($debit86000_J + $debit860001_J) / 1000);
+        foreach ($jByRow as $row => $amount) {
+            $sheet2->setCellValue("J{$row}", $amount / 1000);
+            $sheet2->getStyle("J{$row}")->getNumberFormat()->setFormatCode('#,##0');
+        }
+        $sheet2->setCellValue('J87', $j87 / 1000);
+        $sheet2->getStyle('J87')->getNumberFormat()->setFormatCode('#,##0');
 
-        $sheet2->setCellValue("L89", ($credit86000_J + $credit860001_J) / 1000);
-        $sheet2->setCellValue("L91", 0);
-        $sheet2->setCellValue("L87", ($credit86000_J + $credit860001_J) / 1000);
+        foreach ($lByRow as $row => $amount) {
+            $sheet2->setCellValue("L{$row}", $amount / 1000);
+            $sheet2->getStyle("L{$row}")->getNumberFormat()->setFormatCode('#,##0');
+        }
+        $sheet2->setCellValue('L87', $l87 / 1000);
+        $sheet2->getStyle('L87')->getNumberFormat()->setFormatCode('#,##0');
 
-        // R6/R7/R87 must match v01 86000+86001 remaining balance at report `to` (not H+J−L template).
+        // R87 left to template formula; R6/R7 still match v01 86000+86001 closing at report `to`.
         $closing86000Accounts = $this->ledgerBalanceAsOf($acc86000, $date)
             + $this->ledgerBalanceAsOf($acc860001, $date);
         $closing86000Thousands = $closing86000Accounts / 1000;
-        foreach ([6, 7, 87] as $row) {
+        foreach ([6, 7] as $row) {
             $sheet2->setCellValue("R{$row}", $closing86000Thousands);
             $sheet2->getStyle("R{$row}")->getNumberFormat()->setFormatCode('#,##0');
         }
@@ -1069,6 +1087,84 @@ class V06Export
             ->sum('amount_amd');
 
         return (float) $debit - (float) $credit;
+    }
+
+    /**
+     * Sheet2 columns J/L: sum 86000+86001 debits or credits in period for car / gold / category2.
+     * Uses contract_id, journalable, comment contract #, and debit/credit partner to attribute rows.
+     */
+    private function sumSheet286000TurnoverByCategory(
+        string $categoryName,
+        string $side,
+        string $dateFrom,
+        string $dateTo,
+        array $accountIds
+    ): float {
+        $accountIds = array_values(array_filter($accountIds));
+        if ($accountIds === []) {
+            return 0.0;
+        }
+
+        $column = $side === 'credit' ? 'credit_account_id' : 'debit_account_id';
+
+        $rows = DocumentJournal::query()
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->whereIn($column, $accountIds)
+            ->get();
+
+        $sum = 0.0;
+        foreach ($rows as $row) {
+            if ($this->resolveJournal86000Category($row) === $categoryName) {
+                $sum += (float) $row->amount_amd;
+            }
+        }
+
+        return $sum;
+    }
+
+    /**
+     * Map a documents_journal row on 86000/86001 to car, gold, or category2.
+     */
+    private function resolveJournal86000Category(DocumentJournal $journal): ?string
+    {
+        if ($journal->contract_id) {
+            return $this->contractCategoryKey((int) $journal->contract_id);
+        }
+
+        if ($journal->journalable_type === Contract::class && $journal->journalable_id) {
+            return $this->contractCategoryKey((int) $journal->journalable_id);
+        }
+
+        if (preg_match('/contract\s*#(\d+)/i', (string) $journal->comment, $matches)) {
+            return $this->contractCategoryKey((int) $matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return 'car'|'gold'|'category2'|null
+     */
+    private function contractCategoryKey(int $contractId): ?string
+    {
+        static $cache = [];
+
+        if (!array_key_exists($contractId, $cache)) {
+            $contract = Contract::query()->with('category')->find($contractId);
+            if (!$contract) {
+                $cache[$contractId] = null;
+            } elseif ((int) $contract->category_id === 2) {
+                $cache[$contractId] = 'category2';
+            } elseif (in_array($contract->category?->name, ['car', 'car-purchase'], true)) {
+                $cache[$contractId] = 'car';
+            } elseif ($contract->category?->name === 'gold') {
+                $cache[$contractId] = 'gold';
+            } else {
+                $cache[$contractId] = null;
+            }
+        }
+
+        return $cache[$contractId];
     }
 
     /**
