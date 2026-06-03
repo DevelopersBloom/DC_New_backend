@@ -176,7 +176,9 @@ class PaymentControllerNew extends Controller
                     $deal->id,
                     $journal->id,
                     $clientId,
-                    $contract->id
+                    $contract->id,
+                    $rule,
+                    $contract
                 );
             }
 
@@ -195,7 +197,9 @@ class PaymentControllerNew extends Controller
                     $deal->id,
                     $journal->id,
                     $clientId,
-                    $contract->id
+                    $contract->id,
+                    $rule,
+                    $contract
                 );
             }
 
@@ -222,7 +226,9 @@ class PaymentControllerNew extends Controller
                         $deal->id,
                         $journal->id,
                         $clientId,
-                        $contract->id
+                        $contract->id,
+                        $lossRules['recovery_interest'],
+                        $contract
                     );
                 }
 
@@ -240,7 +246,9 @@ class PaymentControllerNew extends Controller
                         $deal->id,
                         $journal->id,
                         $clientId,
-                        $contract->id
+                        $contract->id,
+                        $lossRules['recovery_principal'],
+                        $contract
                     );
                 }
             }
@@ -409,7 +417,8 @@ class PaymentControllerNew extends Controller
                             'document_number' => $nextDocNum,
                             'document_type' => $documentType,
                             'amount_amd' => $reserveAmount,
-                            'debit_partner_id' => $clientId,
+                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract) ?? $clientId,
+                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract) ?? null,
                             'comment' => 'reserve_payment',
                             'debit_account_id' => $ruleReserve->debit_account_id,
                             'credit_account_id' => $ruleReserve->credit_account_id,
@@ -424,8 +433,9 @@ class PaymentControllerNew extends Controller
                             'document_number' => $nextDocNum,
                             'document_type' => $documentType,
                             'debit_account_id' => $ruleReserve->debit_account_id,
-                            'debit_partner_id' => $clientId,
+                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract) ?? $clientId,
                             'credit_account_id' => $ruleReserve->credit_account_id,
+                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract) ?? null,
                             'amount_amd' => $reserveAmount,
                             'comment' => 'reserve_amount',
                             'user_id' => auth()->id(),
