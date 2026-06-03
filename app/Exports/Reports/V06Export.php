@@ -701,7 +701,8 @@ class V06Export
 
     /**
      * Sheet2 column D: net portfolio change during [$dateFrom, $dateTo] for clients in class 3/4/5 at report end.
-     * Change = balance at $dateTo minus balance at day before $dateFrom (partner-aware journal scope).
+     * Change = balance at $dateTo minus opening balance for that row (same as column B at period start).
+     * Clients not yet in class 3/4/5 on the day before $dateFrom contribute 0 opening — not their pre-downgrade balance.
      */
     private function sumSheet2ColumnDPeriodChangeByCategory(
         string $categoryName,
@@ -743,9 +744,19 @@ class V06Export
                 continue;
             }
 
-            $classAtOpen = $this->clientClassificationIdAsOf((int) $contract->client_id, $openSnapshotDate) ?? $classAtTo;
+            $classAtOpen = $this->clientClassificationIdAsOf((int) $contract->client_id, $openSnapshotDate);
 
-            $openNet = $this->contractPortfolioNetAtDate($doc, $contract, $openSnapshotDate, $classAtOpen);
+            // Opening for D matches column B: only clients already in 3/4/5 at period start have a non-zero base.
+            $openNet = 0.0;
+            if (in_array($classAtOpen, [3, 4, 5], true)) {
+                $openNet = $this->contractPortfolioNetAtDate(
+                    $doc,
+                    $contract,
+                    $openSnapshotDate,
+                    (int) $classAtOpen
+                );
+            }
+
             $closeNet = $this->contractPortfolioNetAtDate($doc, $contract, $dateTo, $classAtTo);
             $change += $closeNet - $openNet;
         }
