@@ -33,7 +33,7 @@ class V13Export
         $acc10000s = ChartOfAccount::where('code', 'like', '10000%')->pluck('id')->toArray();
 
         $openingBalance = $this->getAccountBalance($acc10000, $fromDate);
-        $sheet1->setCellValue('C21', $openingBalance / 1000);
+        $sheet1->setCellValue('C21', abs($openingBalance / 1000));
 
 //        $debit10000NotFromBank = DocumentJournal::where('debit_account_id', $acc10000)
 //            ->where('credit_account_id', '!=', $acc102101)
@@ -45,7 +45,7 @@ class V13Export
             ->where('date', '>=', $fromDate)
             ->sum('amount_amd');
 
-        $sheet1->setCellValue('C22', $debit10000NotFromBank / 1000);
+        $sheet1->setCellValue('C22', abs($debit10000NotFromBank / 1000));
 
         $sheet1->setCellValue('C23', 0);
 
@@ -53,14 +53,14 @@ class V13Export
             ->where('credit_account_id', $acc102101)
             ->where('date', '<=', $toDate)
             ->sum('amount_amd');
-        $sheet1->setCellValue('C24', $debit10000FromBank / 1000);
+        $sheet1->setCellValue('C24', abs($debit10000FromBank / 1000));
 
         $credit10000NotToBank = DocumentJournal::where('credit_account_id', $acc10000)
             ->where('debit_account_id', '!=', $acc102101)
             ->where('date','<=', $toDate)
             ->where('date', '>=', $fromDate)
             ->sum('amount_amd');
-        $sheet1->setCellValue('C25', -$credit10000NotToBank / 1000);
+        $sheet1->setCellValue('C25', abs($credit10000NotToBank / 1000));
 
         $credit10000NotFromBank = DocumentJournal::whereIn('credit_account_id', $acc10000s)
             ->where('date', '<=', $toDate)
@@ -73,10 +73,10 @@ class V13Export
             ->where('debit_account_id', $acc102101)
             ->where('date', '<=', $toDate)
             ->sum('amount_amd');
-        $sheet1->setCellValue('C27', $credit10000ToBank / 1000);
+        $sheet1->setCellValue('C27', abs($credit10000ToBank / 1000));
 
         $closingBalance = $this->getAccountBalance($acc10000, $toDate);
-        $sheet1->setCellValue('C28', $closingBalance / 1000);
+        $sheet1->setCellValue('C28', abs($closingBalance / 1000));
 
         $fileName = 'v13_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
