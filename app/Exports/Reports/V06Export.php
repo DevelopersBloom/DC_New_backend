@@ -6,7 +6,6 @@ use App\Models\ChartOfAccount;
 use App\Models\ClassificationHistory;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
-use App\Traits\CalculatesAccountBalancesTrait;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -15,7 +14,6 @@ use PhpOffice\PhpSpreadsheet\Writer\Xls;
 
 class V06Export
 {
-    use CalculatesAccountBalancesTrait;
     public function export($from, $to)
     {
         $path = base_path('v06.xls');
@@ -443,48 +441,72 @@ class V06Export
         $sheet2->setCellValue("H91", 0);
         $sheet2->setCellValue("H87", ($balance86000 + $balance860001) / 1000);
 
-        $acc860Ids = array_values(array_filter([$acc86000, $acc860001]));
+        // Columns J/L: 86000+86001 turnover split by car (89), gold (91), category2 (92); row 87 = sum rows 88–92.
+        $debitCar860 = $this->sumSheet286000TurnoverByCategory(
+            'car',
+            'debit_account_id',
+            $dateFrom,
+            $date,
+            $acc86000,
+            $acc860001
+        );
+        $debitGold860 = $this->sumSheet286000TurnoverByCategory(
+            'gold',
+            'debit_account_id',
+            $dateFrom,
+            $date,
+            $acc86000,
+            $acc860001
+        );
+        $debitCategory2860 = $this->sumSheet286000TurnoverByCategory(
+            'category2',
+            'debit_account_id',
+            $dateFrom,
+            $date,
+            $acc86000,
+            $acc860001
+        );
 
-        // Column J/L: 86000+86001 turnover split by car / gold / category2 (partner + contract aware).
-        $jByRow = [
-            88 => 0.0,
-            89 => $this->sumSheet286000TurnoverByCategory('car', 'debit', $dateFrom, $date, $acc860Ids),
-            90 => 0.0,
-            91 => $this->sumSheet286000TurnoverByCategory('gold', 'debit', $dateFrom, $date, $acc860Ids),
-            92 => $this->sumSheet286000TurnoverByCategory('category2', 'debit', $dateFrom, $date, $acc860Ids),
-        ];
-        $lByRow = [
-            88 => 0.0,
-            89 => $this->sumSheet286000TurnoverByCategory('car', 'credit', $dateFrom, $date, $acc860Ids),
-            90 => 0.0,
-            91 => $this->sumSheet286000TurnoverByCategory('gold', 'credit', $dateFrom, $date, $acc860Ids),
-            92 => $this->sumSheet286000TurnoverByCategory('category2', 'credit', $dateFrom, $date, $acc860Ids),
-        ];
-        $j87 = array_sum($jByRow);
-        $l87 = array_sum($lByRow);
+        $creditCar860 = $this->sumSheet286000TurnoverByCategory(
+            'car',
+            'credit_account_id',
+            $dateFrom,
+            $date,
+            $acc86000,
+            $acc860001
+        );
+        $creditGold860 = $this->sumSheet286000TurnoverByCategory(
+            'gold',
+            'credit_account_id',
+            $dateFrom,
+            $date,
+            $acc86000,
+            $acc860001
+        );
+        $creditCategory2860 = $this->sumSheet286000TurnoverByCategory(
+            'category2',
+            'credit_account_id',
+            $dateFrom,
+            $date,
+            $acc86000,
+            $acc860001
+        );
 
-        foreach ($jByRow as $row => $amount) {
-            $sheet2->setCellValue("J{$row}", $amount / 1000);
-            $sheet2->getStyle("J{$row}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet2->setCellValue("J{$rowCar}", $debitCar860 / 1000);
+        $sheet2->setCellValue("J{$rowGold}", $debitGold860 / 1000);
+        $sheet2->setCellValue("J{$rowCategory2}", $debitCategory2860 / 1000);
+        $sheet2->setCellValue('J87', ($debitCar860 + $debitGold860 + $debitCategory2860) / 1000);
+
+        $sheet2->setCellValue("L{$rowCar}", $creditCar860 / 1000);
+        $sheet2->setCellValue("L{$rowGold}", $creditGold860 / 1000);
+        $sheet2->setCellValue("L{$rowCategory2}", $creditCategory2860 / 1000);
+        $sheet2->setCellValue('L87', ($creditCar860 + $creditGold860 + $creditCategory2860) / 1000);
+
+        foreach (['J87', "J{$rowCar}", "J{$rowGold}", "J{$rowCategory2}", 'L87', "L{$rowCar}", "L{$rowGold}", "L{$rowCategory2}"] as $cell) {
+            $sheet2->getStyle($cell)->getNumberFormat()->setFormatCode('#,##0');
         }
-        $sheet2->setCellValue('J87', $j87 / 1000);
-        $sheet2->getStyle('J87')->getNumberFormat()->setFormatCode('#,##0');
 
-        foreach ($lByRow as $row => $amount) {
-            $sheet2->setCellValue("L{$row}", $amount / 1000);
-            $sheet2->getStyle("L{$row}")->getNumberFormat()->setFormatCode('#,##0');
-        }
-        $sheet2->setCellValue('L87', $l87 / 1000);
-        $sheet2->getStyle('L87')->getNumberFormat()->setFormatCode('#,##0');
-
-        // R87 left to template formula; R6/R7 still match v01 86000+86001 closing at report `to`.
-        $closing86000Accounts = $this->ledgerBalanceAsOf($acc86000, $date)
-            + $this->ledgerBalanceAsOf($acc860001, $date);
-        $closing86000Thousands = $closing86000Accounts / 1000;
-        foreach ([6, 7] as $row) {
-            $sheet2->setCellValue("R{$row}", $closing86000Thousands);
-            $sheet2->getStyle("R{$row}")->getNumberFormat()->setFormatCode('#,##0');
-        }
+        // Column R: left to Excel template formulas (H+J−L per row).
 
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
@@ -1054,19 +1076,123 @@ class V06Export
     }
 
     /**
-     * Ledger balance as of $dateTo — same rules as v01 (CalculatesAccountBalancesTrait / documents_journal).
+     * Sheet2 columns J/L: sum 86000+86001 debits or credits in period for car / gold / category2.
+     * Category from contract_id, journalable link, comment ("contract #N"), or debit/credit partner.
      */
-    private function ledgerBalanceAsOf(?int $accountId, string $dateTo): float
-    {
-        if (!$accountId) {
+    private function sumSheet286000TurnoverByCategory(
+        string $categoryName,
+        string $amountColumn,
+        string $dateFrom,
+        string $dateTo,
+        ?int $acc86000,
+        ?int $acc86001
+    ): float {
+        if (!in_array($amountColumn, ['debit_account_id', 'credit_account_id'], true)) {
             return 0.0;
         }
 
-        $balance = $this->balancesSubquery($dateTo)
-            ->where('u.account_id', $accountId)
-            ->value('balance');
+        $accountIds = array_values(array_filter([$acc86000, $acc86001]));
+        if ($accountIds === []) {
+            return 0.0;
+        }
 
-        return (float) ($balance ?? 0);
+        $sum = 0.0;
+        $rows = DocumentJournal::query()
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->whereIn($amountColumn, $accountIds)
+            ->get();
+
+        foreach ($rows as $row) {
+            if ($this->sheet2JournalCategoryName($row) !== $categoryName) {
+                continue;
+            }
+            $sum += (float) $row->amount_amd;
+        }
+
+        return $sum;
+    }
+
+    /**
+     * Resolve car / gold / category2 for an 86000/86001 journal row.
+     */
+    private function sheet2JournalCategoryName(DocumentJournal $row): ?string
+    {
+        if (preg_match('/contract #(\d+)/i', (string) $row->comment, $matches)) {
+            $fromComment = $this->sheet2CategoryNameForContractId((int) $matches[1]);
+            if ($fromComment !== null) {
+                return $fromComment;
+            }
+        }
+
+        if ($row->contract_id) {
+            $fromContractId = $this->sheet2CategoryNameForContractId((int) $row->contract_id);
+            if ($fromContractId !== null) {
+                return $fromContractId;
+            }
+        }
+
+        if ($row->journalable_type === Contract::class && $row->journalable_id) {
+            $fromJournalable = $this->sheet2CategoryNameForContractId((int) $row->journalable_id);
+            if ($fromJournalable !== null) {
+                return $fromJournalable;
+            }
+        }
+
+        if ($row->journalable_type === DocumentJournal::class && $row->journalable_id) {
+            $parent = DocumentJournal::query()->find($row->journalable_id);
+            if ($parent && $parent->journalable_type === Contract::class && $parent->journalable_id) {
+                $fromParent = $this->sheet2CategoryNameForContractId((int) $parent->journalable_id);
+                if ($fromParent !== null) {
+                    return $fromParent;
+                }
+            }
+        }
+
+        $partnerId = (int) ($row->debit_partner_id ?: $row->credit_partner_id ?: 0);
+        if ($partnerId > 0) {
+            $contractIds = Contract::query()
+                ->where('client_id', $partnerId)
+                ->pluck('id');
+            foreach ($contractIds as $contractId) {
+                $fromPartner = $this->sheet2CategoryNameForContractId((int) $contractId);
+                if ($fromPartner !== null) {
+                    return $fromPartner;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return 'car'|'gold'|'category2'|null
+     */
+    private function sheet2CategoryNameForContractId(int $contractId): ?string
+    {
+        static $cache = [];
+
+        if (array_key_exists($contractId, $cache)) {
+            return $cache[$contractId];
+        }
+
+        $contract = Contract::query()->with('category')->find($contractId);
+        if (!$contract) {
+            return $cache[$contractId] = null;
+        }
+
+        if ((int) $contract->category_id === 2) {
+            return $cache[$contractId] = 'category2';
+        }
+
+        $name = $contract->category?->name;
+        if (in_array($name, ['car', 'car-purchase'], true)) {
+            return $cache[$contractId] = 'car';
+        }
+        if ($name === 'gold') {
+            return $cache[$contractId] = 'gold';
+        }
+
+        return $cache[$contractId] = null;
     }
 
     /**
@@ -1087,84 +1213,6 @@ class V06Export
             ->sum('amount_amd');
 
         return (float) $debit - (float) $credit;
-    }
-
-    /**
-     * Sheet2 columns J/L: sum 86000+86001 debits or credits in period for car / gold / category2.
-     * Uses contract_id, journalable, comment contract #, and debit/credit partner to attribute rows.
-     */
-    private function sumSheet286000TurnoverByCategory(
-        string $categoryName,
-        string $side,
-        string $dateFrom,
-        string $dateTo,
-        array $accountIds
-    ): float {
-        $accountIds = array_values(array_filter($accountIds));
-        if ($accountIds === []) {
-            return 0.0;
-        }
-
-        $column = $side === 'credit' ? 'credit_account_id' : 'debit_account_id';
-
-        $rows = DocumentJournal::query()
-            ->whereBetween('date', [$dateFrom, $dateTo])
-            ->whereIn($column, $accountIds)
-            ->get();
-
-        $sum = 0.0;
-        foreach ($rows as $row) {
-            if ($this->resolveJournal86000Category($row) === $categoryName) {
-                $sum += (float) $row->amount_amd;
-            }
-        }
-
-        return $sum;
-    }
-
-    /**
-     * Map a documents_journal row on 86000/86001 to car, gold, or category2.
-     */
-    private function resolveJournal86000Category(DocumentJournal $journal): ?string
-    {
-        if ($journal->contract_id) {
-            return $this->contractCategoryKey((int) $journal->contract_id);
-        }
-
-        if ($journal->journalable_type === Contract::class && $journal->journalable_id) {
-            return $this->contractCategoryKey((int) $journal->journalable_id);
-        }
-
-        if (preg_match('/contract\s*#(\d+)/i', (string) $journal->comment, $matches)) {
-            return $this->contractCategoryKey((int) $matches[1]);
-        }
-
-        return null;
-    }
-
-    /**
-     * @return 'car'|'gold'|'category2'|null
-     */
-    private function contractCategoryKey(int $contractId): ?string
-    {
-        static $cache = [];
-
-        if (!array_key_exists($contractId, $cache)) {
-            $contract = Contract::query()->with('category')->find($contractId);
-            if (!$contract) {
-                $cache[$contractId] = null;
-            } elseif ((int) $contract->category_id === 2) {
-                $cache[$contractId] = 'category2';
-            } elseif (in_array($contract->category?->name, ['car', 'car-purchase'], true)) {
-                $cache[$contractId] = 'car';
-            } elseif ($contract->category?->name === 'gold') {
-                $cache[$contractId] = 'gold';
-            } else {
-                $cache[$contractId] = null;
-            }
-        }
-
-        return $cache[$contractId];
     }
 
     /**
