@@ -3,6 +3,7 @@
 namespace App\Exports\Reports;
 
 use App\Models\ChartOfAccount;
+use App\Models\Client;
 use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
@@ -29,7 +30,7 @@ class V03Export
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
-        // D16: INT(((highest client total provided - that client total reserve) / 1000) * risk_weight)
+        // D16: client with highest loan debt on report end date (all contracts summed)
         $sheet1->setCellValue('D16', $this->computeD16Value($from, $to));
 
         // ---------------------------
@@ -282,46 +283,19 @@ class V03Export
     }
 
     /**
-     * D16 formula: client with highest total provided → INT(((provided - reserve) / 1000) * risk_weight).
-     * Uses PROVIDE_CONTRACT_AMOUNT journals in date range; status = initial; reserve = amount * classification.reserve_percent/100.
+     * D16: client with highest outstanding loan debt on the report end date (contracts summed via partner balances).
+     * INT(((debt - reserve) / 1000) * risk_weight); classification/reserve % as of report end date.
      */
     private function computeD16Value(string $from, string $to): int
     {
-        $start = Carbon::parse($from)->startOfDay();
-        $end = Carbon::parse($to)->endOfDay();
+        $asOfDate = Carbon::parse($to)->format('Y-m-d');
+        $byClient = $this->clientLoanDebtsAsOf($asOfDate);
 
-        $journals = DocumentJournal::with(['journalable.client.classification'])
-            ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-            ->whereBetween('date', [$start, $end])
-            ->get();
-
-        $byClient = [];
-        foreach ($journals as $j) {
-            $contract = $j->journalable;
-            if (!$contract || $contract->status !== 'initial') {
-                continue;
-            }
-            $clientId = $contract->client_id;
-            if (!$clientId) {
-                continue;
-            }
-            $classification = optional($contract->client)->classification;
-            $reservePercent = $classification ? (float)($classification->reserve_percent ?? 0) : 0;
-            $riskWeight = $classification ? (float)($classification->risk_weight ?? 0) : 0;
-
-            if (!isset($byClient[$clientId])) {
-                $byClient[$clientId] = ['provided' => 0, 'reserve' => 0, 'risk_weight' => $riskWeight];
-            }
-            $amount = (float) $j->amount_amd;
-            $byClient[$clientId]['provided'] += $amount;
-            $byClient[$clientId]['reserve'] += $amount * $reservePercent / 100;
-        }
-
-        $maxProvided = 0;
+        $maxDebt = 0;
         $best = null;
         foreach ($byClient as $data) {
-            if ($data['provided'] > $maxProvided) {
-                $maxProvided = $data['provided'];
+            if ($data['debt'] > $maxDebt) {
+                $maxDebt = $data['debt'];
                 $best = $data;
             }
         }
@@ -330,10 +304,85 @@ class V03Export
             return 0;
         }
 
-        $provided = $best['provided'];
+        $debt = $best['debt'];
         $reserve = $best['reserve'];
-        $riskWeight = $best['risk_weight'] / 100; // e.g. 75 → 0.75
+        $riskWeight = $best['risk_weight'] / 100;
 
-        return (int) round((($provided - $reserve) / 1000) * $riskWeight);
+        return (int) round((($debt - $reserve) / 1000) * $riskWeight);
+    }
+
+    /**
+     * Per-client loan debt on 16200 / 16200NV / 16201NI (debit − credit), same basis as Sheet3.
+     *
+     * @return array<int, array{debt: float, reserve: float, risk_weight: float}>
+     */
+    private function clientLoanDebtsAsOf(string $asOfDate): array
+    {
+        $loanPortionIds = array_values(array_filter([
+            ChartOfAccount::idByCode('16200'),
+            ChartOfAccount::idByCode('16200NV'),
+            ChartOfAccount::idByCode('16201NI'),
+        ]));
+
+        if ($loanPortionIds === []) {
+            return [];
+        }
+
+        $debit = DB::table('documents_journal')
+            ->whereNull('deleted_at')
+            ->whereNotNull('debit_partner_id')
+            ->whereIn('debit_account_id', $loanPortionIds)
+            ->whereDate('date', '<=', $asOfDate)
+            ->selectRaw('debit_partner_id as partner_id, SUM(amount_amd) as amount')
+            ->groupBy('debit_partner_id');
+
+        $credit = DB::table('documents_journal')
+            ->whereNull('deleted_at')
+            ->whereNotNull('credit_partner_id')
+            ->whereIn('credit_account_id', $loanPortionIds)
+            ->whereDate('date', '<=', $asOfDate)
+            ->selectRaw('credit_partner_id as partner_id, SUM(-amount_amd) as amount')
+            ->groupBy('credit_partner_id');
+
+        $partnerBalances = DB::query()
+            ->fromSub($debit->unionAll($credit), 'x')
+            ->selectRaw('partner_id, SUM(amount) as balance')
+            ->groupBy('partner_id')
+            ->having('balance', '>', 0)
+            ->get();
+
+        $byClient = [];
+        foreach ($partnerBalances as $partnerData) {
+            $clientId = (int) $partnerData->partner_id;
+            if (!$clientId) {
+                continue;
+            }
+
+            $classification = ClassificationHistory::where('client_id', $clientId)
+                ->whereDate('date', '<=', $asOfDate)
+                ->orderBy('date', 'desc')
+                ->first();
+
+            if (!$classification) {
+                $classification = Client::find($clientId)?->classification;
+            }
+
+            if (!$classification) {
+                continue;
+            }
+
+            $balance = (float) $partnerData->balance;
+            $reservePercent = (float) ($classification->reserve_percent ?? 0);
+            $riskWeight = (float) ($classification->risk_weight ?? 0);
+
+            if (!isset($byClient[$clientId])) {
+                $byClient[$clientId] = ['debt' => 0.0, 'reserve' => 0.0, 'risk_weight' => $riskWeight];
+            }
+
+            $byClient[$clientId]['debt'] += $balance;
+            $byClient[$clientId]['reserve'] += $balance * $reservePercent / 100;
+        }
+
+        return $byClient;
     }
 }
