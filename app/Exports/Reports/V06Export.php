@@ -69,9 +69,19 @@ class V06Export
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
         $acc16200   = ChartOfAccount::idByCode('16200');
 
+        // Use classification as of report end date (not clients.classification_id today).
+        $clientClassAsOf = $this->sheet1ClientClassificationsAsOf($date);
+
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
-            if (!$contract || !$contract->client || !$contract->client->classification) continue;
+            if (!$contract || !$contract->client) {
+                continue;
+            }
+
+            $classification = $clientClassAsOf[$contract->client_id] ?? null;
+            if (!$classification) {
+                continue;
+            }
             // Skip contracts that were already closed before the report date.
             // A contract closed after $date was still active on the report snapshot.
             if ($contract->closed_at && Carbon::parse($contract->closed_at)->lt($date)) continue;
@@ -92,8 +102,10 @@ class V06Export
 
             $col = $this->getColumnByDays($days);
 
-            $name = $contract->client->classification->name;
-            if (!isset($amountsByClassification[$name])) continue;
+            $name = $classification->name;
+            if (!isset($amountsByClassification[$name])) {
+                continue;
+            }
 
             $classificationCounts[$name]++;
             $net16200NVCredit = DocumentJournal::where(function ($query) use ($contract, $doc) {
@@ -188,7 +200,7 @@ class V06Export
                 ->sum('amount_amd');
 
             $weightedByClassification[$name] += $interest;
-            $reserve_percent = $contract->client->classification->reserve_percent ?? 0;
+            $reserve_percent = $classification->reserve_percent ?? 0;
             $reserveByClassification[$name] += $amount * $reserve_percent / 100;
         }
 
@@ -433,6 +445,52 @@ class V06Export
         return $savePath;
     }
 
+
+    /**
+     * Sheet1 rows 125–130: effective class per client on $snapshotDate (report `to` date).
+     * Same effective-date rule as CorrectAllClientReservesJob / Sheet2 — not clients.classification_id.
+     *
+     * @return array<int, object{name: string, reserve_percent: float}> client_id => snapshot class
+     */
+    private function sheet1ClientClassificationsAsOf(string $snapshotDate): array
+    {
+        $maxDates = DB::table('classification_histories')
+            ->select('client_id', DB::raw('MAX(`date`) as max_date'))
+            ->whereDate('date', '<=', $snapshotDate)
+            ->whereNull('deleted_at')
+            ->groupBy('client_id');
+
+        $latestRowIds = DB::table('classification_histories as ch')
+            ->joinSub($maxDates, 'md', function ($join) {
+                $join->on('ch.client_id', '=', 'md.client_id')
+                    ->on('ch.date', '=', 'md.max_date');
+            })
+            ->whereNull('ch.deleted_at')
+            ->groupBy('ch.client_id')
+            ->select('ch.client_id', DB::raw('MAX(ch.id) as latest_id'));
+
+        $rows = DB::table('classification_histories as ch')
+            ->joinSub($latestRowIds, 'lr', function ($join) {
+                $join->on('ch.id', '=', 'lr.latest_id');
+            })
+            ->join('clients_classification as cc', 'cc.id', '=', 'ch.classification_id')
+            ->select([
+                'ch.client_id',
+                'cc.name as classification_name',
+                DB::raw('COALESCE(ch.reserve_percent, cc.reserve_percent) as reserve_percent'),
+            ])
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(int) $row->client_id] = (object) [
+                'name' => (string) $row->classification_name,
+                'reserve_percent' => (float) $row->reserve_percent,
+            ];
+        }
+
+        return $out;
+    }
 
     /**
      * Sheet2 column B: map client_id => effective classification_id (3, 4, or 5) on $snapshotDate.
