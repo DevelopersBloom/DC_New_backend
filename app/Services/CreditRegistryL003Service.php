@@ -15,6 +15,7 @@ use RuntimeException;
  */
 class CreditRegistryL003Service
 {
+    use CreditRegistryCodeTrait;
     private const NS = 'urn:cba-am:lnreg3';
     private const ORGANISATION_CODE = '66100';
     private const ORGANISATION_BRANCH_CODE = '00001';
@@ -37,8 +38,7 @@ class CreditRegistryL003Service
         $root->appendChild($this->createReportHeader($dom));
 
         // 2. CreditCode
-        $creditCode = $dom->createElement('CreditCode');
-        $creditCode->appendChild($dom->createTextNode($contract->num ?? (string) $contract->id));
+        $creditCode = $dom->createElement('CreditCode', $this->buildCreditCode($contract));
         $root->appendChild($creditCode);
 
         // 3. DeleteReason (max length 512 per XSD)

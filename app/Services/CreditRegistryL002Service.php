@@ -13,6 +13,7 @@ use RuntimeException;
 
 class CreditRegistryL002Service
 {
+    use CreditRegistryCodeTrait;
     private const NS = 'urn:cba-am:lnreg3';
 
     private const MODIFIED_DATA_ALLOWED_FIELDS = [
@@ -197,7 +198,7 @@ class CreditRegistryL002Service
 
     private function createCreditCode(DOMDocument $dom, Contract $contract): DOMElement
     {
-        return $dom->createElement('CreditCode', $contract->num ?? $contract->id);
+        return $dom->createElement('CreditCode', $this->buildCreditCode($contract));
     }
 
     private function createModificationDateTime(DOMDocument $dom): DOMElement
