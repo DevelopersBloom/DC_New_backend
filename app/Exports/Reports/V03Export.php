@@ -30,7 +30,7 @@ class V03Export
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
-        // D16: client with highest loan debt on report end date (all contracts summed)
+        // D16: biggest gross loan balance on report end date (× risk weight, no reserve deduction)
         $sheet1->setCellValue('D16', $this->computeD16Value($from, $to));
 
         // ---------------------------
@@ -283,8 +283,8 @@ class V03Export
     }
 
     /**
-     * D16: client with highest outstanding loan debt on the report end date (contracts summed via partner balances).
-     * INT(((debt - reserve) / 1000) * risk_weight); classification/reserve % as of report end date.
+     * D16: client with highest gross loan debt on report end date (contracts summed via partner balances).
+     * INT((debt / 1000) * risk_weight); no reserve subtracted from debt.
      */
     private function computeD16Value(string $from, string $to): int
     {
@@ -304,17 +304,15 @@ class V03Export
             return 0;
         }
 
-        $debt = $best['debt'];
-        $reserve = $best['reserve'];
         $riskWeight = $best['risk_weight'] / 100;
 
-        return (int) round((($debt - $reserve) / 1000) * $riskWeight);
+        return (int) round(($best['debt'] / 1000) * $riskWeight);
     }
 
     /**
-     * Per-client loan debt on 16200 / 16200NV / 16201NI (debit − credit), same basis as Sheet3.
+     * Per-client gross loan debt on 16200 / 16200NV / 16201NI (debit − credit), same basis as Sheet3.
      *
-     * @return array<int, array{debt: float, reserve: float, risk_weight: float}>
+     * @return array<int, array{debt: float, risk_weight: float}>
      */
     private function clientLoanDebtsAsOf(string $asOfDate): array
     {
@@ -372,15 +370,13 @@ class V03Export
             }
 
             $balance = (float) $partnerData->balance;
-            $reservePercent = (float) ($classification->reserve_percent ?? 0);
             $riskWeight = (float) ($classification->risk_weight ?? 0);
 
             if (!isset($byClient[$clientId])) {
-                $byClient[$clientId] = ['debt' => 0.0, 'reserve' => 0.0, 'risk_weight' => $riskWeight];
+                $byClient[$clientId] = ['debt' => 0.0, 'risk_weight' => $riskWeight];
             }
 
             $byClient[$clientId]['debt'] += $balance;
-            $byClient[$clientId]['reserve'] += $balance * $reservePercent / 100;
         }
 
         return $byClient;
