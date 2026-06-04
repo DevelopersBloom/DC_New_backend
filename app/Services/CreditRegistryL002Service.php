@@ -82,11 +82,7 @@ class CreditRegistryL002Service
         $root->appendChild($this->createCreditCode($dom, $contract));
         $root->appendChild($this->createModificationDateTime($dom));
 
-        $dataToModify = $this->createDataToModifyFromMods($dom, $mods,$contract);
-
-        if ($dataToModify) {
-            $root->appendChild($dataToModify);
-        }
+        $root->appendChild($this->createDataToModifyFromMods($dom, $mods, $contract));
 
         return $dom->saveXML();
     }
@@ -94,6 +90,13 @@ class CreditRegistryL002Service
     private function createDataToModifyFromMods(DOMDocument $dom, $mods, Contract $contract): ?DOMElement
     {
         $dataToModify = $dom->createElement('DataToModify');
+
+        // CBA ER0025: Collaterals must always be present in DataToModify
+        $collaterals = $dom->createElement('Collaterals');
+        $collaterals->appendChild(
+            $dom->createElement('Collateral', (string)(int)($contract->security_type ?? 0))
+        );
+        $dataToModify->appendChild($collaterals);
 
         foreach ($mods as $mod) {
 
@@ -141,7 +144,7 @@ class CreditRegistryL002Service
             $dataToModify->appendChild($modifiedData);
         }
 
-        return $dataToModify->hasChildNodes() ? $dataToModify : null;
+        return $dataToModify;
     }
     /**
      * Universal ctModificator builder
