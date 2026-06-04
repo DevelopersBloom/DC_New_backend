@@ -224,6 +224,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/credit-registry/risk-modifications', [CreditRegistryController::class, 'downloadUnsentRiskModifications'])->middleware('can:download_contract_file');
         Route::get('/credit-registry/test', [CreditRegistryController::class, 'testConnection']);
         Route::post('/{id}/credit-registry/l001/send', [CreditRegistryController::class, 'sendL001']);
+        Route::post('/{id}/credit-registry/l002/send', [CreditRegistryController::class, 'sendL002']);
+        Route::post('/{id}/credit-registry/l003/send', [CreditRegistryController::class, 'sendL003']);
         Route::post('/{id}/credit-registry/l005/send', [CreditRegistryController::class, 'sendL005']);
         Route::post('/{id}/credit-registry/l006/send', [CreditRegistryController::class, 'sendL006']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
