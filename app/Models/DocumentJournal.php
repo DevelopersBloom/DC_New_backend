@@ -42,8 +42,6 @@ class DocumentJournal extends Model
     const LOSS_RESERVE_EFFECTIVE = 'Վարկերի դուրս գրում-արդյունավետ արժեքով';
     const LOSS_RESERVE = 'Վարկի դուրս գրում';
     const OFF_BALANCE_INCOMING  = 'Արտաբալան Մուտքային';
-    /** Loss-classification reserve transfer to 86000 (DB spelling differs from reminder orders). */
-    const OFF_BALANCE_INCOMING_LOSS = 'Արտաբալանս մուտքային';
     const OFF_BALANCE_OUTGOING  = 'Արտաբալանսային Ելքային';
     const RECOVERY_PRINCIPAL    = 'Հիմնական գումարի վերականգնում';
     const RECOVERY_INTEREST     = 'Տոկոսի վերականգնում';

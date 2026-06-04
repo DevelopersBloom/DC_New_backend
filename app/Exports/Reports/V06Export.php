@@ -441,11 +441,8 @@ class V06Export
         $sheet2->setCellValue("H91", 0);
         $sheet2->setCellValue("H87", ($balance86000 + $balance860001) / 1000);
 
-        // Column J: 86000 debits, off-balance incoming types (reminder + loss-reserve spellings).
-        $offBalanceIncomingTypes = [
-            DocumentJournal::OFF_BALANCE_INCOMING,
-            DocumentJournal::OFF_BALANCE_INCOMING_LOSS,
-        ];
+        // Column J: 86000 debits, off-balance incoming document types (incl. legacy spellings in DB).
+        $offBalanceIncomingTypes = $this->sheet2OffBalanceIncomingDocumentTypes();
         $debitCar860 = $this->sumSheet286000TurnoverByCategory(
             'car',
             'debit_account_id',
@@ -1118,6 +1115,21 @@ class V06Export
             // Opening balance at period start must exclude same-day movements.
             ->whereDate('date', '<', $dateFrom)
             ->sum('amount_amd');
+    }
+
+    /**
+     * Document types treated as off-balance incoming for Sheet2 column J.
+     * Includes canonical OFF_BALANCE_INCOMING and legacy rows (e.g. loss reserve postings).
+     *
+     * @return array<string>
+     */
+    private function sheet2OffBalanceIncomingDocumentTypes(): array
+    {
+        return array_values(array_unique([
+            DocumentJournal::OFF_BALANCE_INCOMING,
+            'Արտաբալանս մուտքային',
+            'Արտաբալանս Մուտքային',
+        ]));
     }
 
     /**
