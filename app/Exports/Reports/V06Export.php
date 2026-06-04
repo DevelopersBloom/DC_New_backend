@@ -441,14 +441,18 @@ class V06Export
         $sheet2->setCellValue("H91", 0);
         $sheet2->setCellValue("H87", ($balance86000 + $balance860001) / 1000);
 
-        // Column J: 86000 debits, document_type OFF_BALANCE_INCOMING, by car (89) / gold (91) / category2 (92).
+        // Column J: 86000 debits, off-balance incoming types (reminder + loss-reserve spellings).
+        $offBalanceIncomingTypes = [
+            DocumentJournal::OFF_BALANCE_INCOMING,
+            DocumentJournal::OFF_BALANCE_INCOMING_LOSS,
+        ];
         $debitCar860 = $this->sumSheet286000TurnoverByCategory(
             'car',
             'debit_account_id',
             $dateFrom,
             $date,
             [$acc86000],
-            [DocumentJournal::OFF_BALANCE_INCOMING]
+            $offBalanceIncomingTypes
         );
         $debitGold860 = $this->sumSheet286000TurnoverByCategory(
             'gold',
@@ -456,7 +460,7 @@ class V06Export
             $dateFrom,
             $date,
             [$acc86000],
-            [DocumentJournal::OFF_BALANCE_INCOMING]
+            $offBalanceIncomingTypes
         );
         $debitCategory2860 = $this->sumSheet286000TurnoverByCategory(
             'category2',
@@ -464,7 +468,7 @@ class V06Export
             $dateFrom,
             $date,
             [$acc86000],
-            [DocumentJournal::OFF_BALANCE_INCOMING]
+            $offBalanceIncomingTypes
         );
 
         // Column P: 86000+86001 debits for loss penalty / nominal / effective interest document types.
