@@ -265,10 +265,6 @@ class CreditRegistryL001Service
         }
         $ld->appendChild($dom->createElement('LoanUseRegion', $reg));
 
-        // 18. SecurityType — integer (0=unsecured, 1=real estate, 2=vehicle, etc.)
-        $secType = $contract->security_type ?? 4;
-        $ld->appendChild($dom->createElement('SecurityType', (string)(int)$secType));
-
         return $ld;
     }
 
