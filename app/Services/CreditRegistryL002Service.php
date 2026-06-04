@@ -49,6 +49,7 @@ class CreditRegistryL002Service
         'RevisedDays',
         'RevisionDate',
         'Risk',
+        'SecurityType',
         'WithdrawalAmount',
     ];
 

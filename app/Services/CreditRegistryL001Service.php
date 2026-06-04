@@ -244,14 +244,14 @@ class CreditRegistryL001Service
         }
         $ld->appendChild($dom->createElement('LoanUseField', $luf));
 
-        // 15a. LoanUsePurpose — required by CBA (ER0026)
-        $lup = trim((string) ($contract->loan_use_purpose ?? ''));
-        if ($lup === '') {
+        // 15a. LoanUsePurpose — stUsePurpose: Int32, required by CBA (ER0026)
+        $lup = $contract->loan_use_purpose;
+        if ($lup === null || $lup === '') {
             throw new \InvalidArgumentException(
-                'LoanUsePurpose is required. Set loan_use_purpose on the contract.'
+                'LoanUsePurpose is required. Set loan_use_purpose (integer) on the contract.'
             );
         }
-        $ld->appendChild($dom->createElement('LoanUsePurpose', $lup));
+        $ld->appendChild($dom->createElement('LoanUsePurpose', (string)(int)$lup));
 
         // 16. LoanUseCountry — stCountry: [A-Z]{3}  ISO 3166
         $ld->appendChild($dom->createElement('LoanUseCountry', 'ARM'));
@@ -264,6 +264,10 @@ class CreditRegistryL001Service
             );
         }
         $ld->appendChild($dom->createElement('LoanUseRegion', $reg));
+
+        // 18. SecurityType — integer (0=unsecured, 1=real estate, 2=vehicle, etc.)
+        $secType = $contract->security_type ?? 4;
+        $ld->appendChild($dom->createElement('SecurityType', (string)(int)$secType));
 
         return $ld;
     }
