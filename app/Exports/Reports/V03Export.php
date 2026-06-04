@@ -4,6 +4,7 @@ namespace App\Exports\Reports;
 
 use App\Models\ChartOfAccount;
 use App\Models\Client;
+use App\Models\ClientClassification;
 use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
 use Carbon\Carbon;
@@ -283,8 +284,7 @@ class V03Export
     }
 
     /**
-     * D16: pick client with the largest gross 16200NV loan balance on report end date (never debt − reserve).
-     * For that client only: round(((debt − reserve) / 1000) × (risk_weight / 100)).
+     * D16: client with largest 16200NV partner balance on report end date; reserve from 16605PC/16605PS partner balance.
      */
     private function computeD16Value(string $from, string $to): int
     {
@@ -312,11 +312,54 @@ class V03Export
             return 0;
         }
 
-        $reservePercent = (float) ($classification->reserve_percent ?? 0);
         $riskWeight = (float) ($classification->risk_weight ?? 0) / 100;
-        $reserve = $debt * $reservePercent / 100;
+        $reserveAccountId = $this->reserveAccountIdForClassification($classification);
+        $reserve = $reserveAccountId
+            ? $this->clientReserveBalanceAsOf($clientId, $reserveAccountId, $asOfDate)
+            : 0.0;
 
         return (int) round((($debt - $reserve) / 1000) * $riskWeight);
+    }
+
+    /**
+     * Standard → 16605PC; all other classes → 16605PS (same as reserve posting elsewhere).
+     */
+    private function reserveAccountIdForClassification(
+        ClassificationHistory|ClientClassification $classification
+    ): ?int {
+        $name = $classification instanceof ClassificationHistory
+            ? ($classification->classification?->name
+                ?? ClientClassification::find($classification->classification_id)?->name)
+            : $classification->name;
+
+        $code = $name === 'standard' ? '16605PC' : '16605PS';
+
+        return ChartOfAccount::idByCode($code);
+    }
+
+    /**
+     * Partner reserve balance on 16605PC / 16605PS (debit − credit), same as getClientReserveBalance elsewhere.
+     */
+    private function clientReserveBalanceAsOf(int $clientId, int $accountId, string $asOfDate): float
+    {
+        $debit = (float) DB::table('documents_journal')
+            ->whereNull('deleted_at')
+            ->where('debit_partner_id', $clientId)
+            ->where('debit_account_id', $accountId)
+            ->whereDate('date', '<=', $asOfDate)
+            ->sum('amount_amd');
+
+        $credit = (float) DB::table('documents_journal')
+            ->whereNull('deleted_at')
+            ->where('credit_partner_id', $clientId)
+            ->where('credit_account_id', $accountId)
+            ->whereDate('date', '<=', $asOfDate)
+            ->sum('amount_amd');
+
+        $balance = $debit - $credit;
+
+        // Reserve is posted as partner credit; use credit balance as positive reserve amount.
+        return $balance < 0 ? -$balance : 0.0;
     }
 
     /**
