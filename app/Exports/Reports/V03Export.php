@@ -30,7 +30,7 @@ class V03Export
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
-        // D16: biggest gross loan balance on report end date (× risk weight, no reserve deduction)
+        // D16: client with largest gross loan on report end date, then risk formula on that loan
         $sheet1->setCellValue('D16', $this->computeD16Value($from, $to));
 
         // ---------------------------
@@ -283,48 +283,57 @@ class V03Export
     }
 
     /**
-     * D16: client with highest gross loan debt on report end date (contracts summed via partner balances).
-     * INT((debt / 1000) * risk_weight); no reserve subtracted from debt.
+     * D16: pick client with the largest gross 16200NV loan balance on report end date (never debt − reserve).
+     * For that client only: round(((debt − reserve) / 1000) × (risk_weight / 100)).
      */
     private function computeD16Value(string $from, string $to): int
     {
         $asOfDate = Carbon::parse($to)->format('Y-m-d');
-        $byClient = $this->clientLoanDebtsAsOf($asOfDate);
+        $debtsByClient = $this->clientLoanDebtsAsOf($asOfDate);
 
-        $maxDebt = 0;
-        $best = null;
-        foreach ($byClient as $data) {
-            if ($data['debt'] > $maxDebt) {
-                $maxDebt = $data['debt'];
-                $best = $data;
-            }
-        }
-
-        if (!$best) {
+        if ($debtsByClient === []) {
             return 0;
         }
 
-        $riskWeight = $best['risk_weight'] / 100;
+        arsort($debtsByClient, SORT_NUMERIC);
+        $clientId = (int) array_key_first($debtsByClient);
+        $debt = $debtsByClient[$clientId];
 
-        return (int) round(($best['debt'] / 1000) * $riskWeight);
+        $classification = ClassificationHistory::where('client_id', $clientId)
+            ->whereDate('date', '<=', $asOfDate)
+            ->orderBy('date', 'desc')
+            ->first();
+
+        if (!$classification) {
+            $classification = Client::find($clientId)?->classification;
+        }
+
+        if (!$classification) {
+            return 0;
+        }
+
+        $reservePercent = (float) ($classification->reserve_percent ?? 0);
+        $riskWeight = (float) ($classification->risk_weight ?? 0) / 100;
+        $reserve = $debt * $reservePercent / 100;
+
+        return (int) round((($debt - $reserve) / 1000) * $riskWeight);
     }
 
     /**
-     * Per-client gross loan debt on 16200 / 16200NV / 16201NI (debit − credit), same basis as Sheet3.
+     * Gross per-client loan balance on 16200NV only as of date (debit − credit).
+     * Classification is intentionally excluded here so selection uses loan size only.
      *
-     * @return array<int, array{debt: float, risk_weight: float}>
+     * @return array<int, float> client_id => gross debt
      */
     private function clientLoanDebtsAsOf(string $asOfDate): array
     {
-        $loanPortionIds = array_values(array_filter([
-            ChartOfAccount::idByCode('16200'),
-            ChartOfAccount::idByCode('16200NV'),
-            ChartOfAccount::idByCode('16201NI'),
-        ]));
+        $loanAccountId = ChartOfAccount::idByCode('16200NV');
 
-        if ($loanPortionIds === []) {
+        if (!$loanAccountId) {
             return [];
         }
+
+        $loanPortionIds = [$loanAccountId];
 
         $debit = DB::table('documents_journal')
             ->whereNull('deleted_at')
@@ -342,43 +351,21 @@ class V03Export
             ->selectRaw('credit_partner_id as partner_id, SUM(-amount_amd) as amount')
             ->groupBy('credit_partner_id');
 
-        $partnerBalances = DB::query()
-            ->fromSub($debit->unionAll($credit), 'x')
-            ->selectRaw('partner_id, SUM(amount) as balance')
-            ->groupBy('partner_id')
-            ->having('balance', '>', 0)
-            ->get();
-
-        $byClient = [];
-        foreach ($partnerBalances as $partnerData) {
-            $clientId = (int) $partnerData->partner_id;
-            if (!$clientId) {
-                continue;
+        $debtsByClient = [];
+        foreach (
+            DB::query()
+                ->fromSub($debit->unionAll($credit), 'x')
+                ->selectRaw('partner_id, SUM(amount) as balance')
+                ->groupBy('partner_id')
+                ->having('balance', '>', 0)
+                ->get() as $row
+        ) {
+            $clientId = (int) $row->partner_id;
+            if ($clientId) {
+                $debtsByClient[$clientId] = (float) $row->balance;
             }
-
-            $classification = ClassificationHistory::where('client_id', $clientId)
-                ->whereDate('date', '<=', $asOfDate)
-                ->orderBy('date', 'desc')
-                ->first();
-
-            if (!$classification) {
-                $classification = Client::find($clientId)?->classification;
-            }
-
-            if (!$classification) {
-                continue;
-            }
-
-            $balance = (float) $partnerData->balance;
-            $riskWeight = (float) ($classification->risk_weight ?? 0);
-
-            if (!isset($byClient[$clientId])) {
-                $byClient[$clientId] = ['debt' => 0.0, 'risk_weight' => $riskWeight];
-            }
-
-            $byClient[$clientId]['debt'] += $balance;
         }
 
-        return $byClient;
+        return $debtsByClient;
     }
 }
