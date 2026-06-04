@@ -244,6 +244,15 @@ class CreditRegistryL001Service
         }
         $ld->appendChild($dom->createElement('LoanUseField', $luf));
 
+        // 15a. LoanUsePurpose — required by CBA (ER0026)
+        $lup = trim((string) ($contract->loan_use_purpose ?? ''));
+        if ($lup === '') {
+            throw new \InvalidArgumentException(
+                'LoanUsePurpose is required. Set loan_use_purpose on the contract.'
+            );
+        }
+        $ld->appendChild($dom->createElement('LoanUsePurpose', $lup));
+
         // 16. LoanUseCountry — stCountry: [A-Z]{3}  ISO 3166
         $ld->appendChild($dom->createElement('LoanUseCountry', 'ARM'));
 

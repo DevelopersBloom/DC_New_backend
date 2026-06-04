@@ -118,7 +118,8 @@ class Contract extends Model
         'contract_kind',
         'loan_type',
         'interest_rate_type',
-        'security_type'
+        'security_type',
+        'loan_use_purpose',
     ];
 
     protected $casts = [
