@@ -441,55 +441,87 @@ class V06Export
         $sheet2->setCellValue("H91", 0);
         $sheet2->setCellValue("H87", ($balance86000 + $balance860001) / 1000);
 
-        // Columns J/L: 86000+86001 turnover split by car (89), gold (91), category2 (92); row 87 = sum rows 88–92.
+        // Column J: 86000 debits, document_type OFF_BALANCE_INCOMING, by car (89) / gold (91) / category2 (92).
         $debitCar860 = $this->sumSheet286000TurnoverByCategory(
             'car',
             'debit_account_id',
             $dateFrom,
             $date,
-            $acc86000,
-            $acc860001
+            [$acc86000],
+            [DocumentJournal::OFF_BALANCE_INCOMING]
         );
         $debitGold860 = $this->sumSheet286000TurnoverByCategory(
             'gold',
             'debit_account_id',
             $dateFrom,
             $date,
-            $acc86000,
-            $acc860001
+            [$acc86000],
+            [DocumentJournal::OFF_BALANCE_INCOMING]
         );
         $debitCategory2860 = $this->sumSheet286000TurnoverByCategory(
             'category2',
             'debit_account_id',
             $dateFrom,
             $date,
-            $acc86000,
-            $acc860001
+            [$acc86000],
+            [DocumentJournal::OFF_BALANCE_INCOMING]
         );
 
+        // Column P: 86000+86001 debits for loss penalty / nominal / effective interest document types.
+        $lossDocTypes = [
+            DocumentJournal::LOSS_PENALTY,
+            DocumentJournal::LOSS_INTEREST_NOMINAL,
+            DocumentJournal::LOSS_INTEREST_EFFECTIVE,
+        ];
+        $lossCar860 = $this->sumSheet286000TurnoverByCategory(
+            'car',
+            'debit_account_id',
+            $dateFrom,
+            $date,
+            array_values(array_filter([$acc86000, $acc860001])),
+            $lossDocTypes
+        );
+        $lossGold860 = $this->sumSheet286000TurnoverByCategory(
+            'gold',
+            'debit_account_id',
+            $dateFrom,
+            $date,
+            array_values(array_filter([$acc86000, $acc860001])),
+            $lossDocTypes
+        );
+        $lossCategory2860 = $this->sumSheet286000TurnoverByCategory(
+            'category2',
+            'debit_account_id',
+            $dateFrom,
+            $date,
+            array_values(array_filter([$acc86000, $acc860001])),
+            $lossDocTypes
+        );
+
+        // Column L: 86000+86001 credits in period (all document types), same category split.
         $creditCar860 = $this->sumSheet286000TurnoverByCategory(
             'car',
             'credit_account_id',
             $dateFrom,
             $date,
-            $acc86000,
-            $acc860001
+            array_values(array_filter([$acc86000, $acc860001])),
+            null
         );
         $creditGold860 = $this->sumSheet286000TurnoverByCategory(
             'gold',
             'credit_account_id',
             $dateFrom,
             $date,
-            $acc86000,
-            $acc860001
+            array_values(array_filter([$acc86000, $acc860001])),
+            null
         );
         $creditCategory2860 = $this->sumSheet286000TurnoverByCategory(
             'category2',
             'credit_account_id',
             $dateFrom,
             $date,
-            $acc86000,
-            $acc860001
+            array_values(array_filter([$acc86000, $acc860001])),
+            null
         );
 
         $sheet2->setCellValue("J{$rowCar}", $debitCar860 / 1000);
@@ -502,7 +534,16 @@ class V06Export
         $sheet2->setCellValue("L{$rowCategory2}", $creditCategory2860 / 1000);
         $sheet2->setCellValue('L87', ($creditCar860 + $creditGold860 + $creditCategory2860) / 1000);
 
-        foreach (['J87', "J{$rowCar}", "J{$rowGold}", "J{$rowCategory2}", 'L87', "L{$rowCar}", "L{$rowGold}", "L{$rowCategory2}"] as $cell) {
+        $sheet2->setCellValue("P{$rowCar}", $lossCar860 / 1000);
+        $sheet2->setCellValue("P{$rowGold}", $lossGold860 / 1000);
+        $sheet2->setCellValue("P{$rowCategory2}", $lossCategory2860 / 1000);
+        $sheet2->setCellValue('P87', ($lossCar860 + $lossGold860 + $lossCategory2860) / 1000);
+
+        foreach ([
+            'J87', "J{$rowCar}", "J{$rowGold}", "J{$rowCategory2}",
+            'L87', "L{$rowCar}", "L{$rowGold}", "L{$rowCategory2}",
+            'P87', "P{$rowCar}", "P{$rowGold}", "P{$rowCategory2}",
+        ] as $cell) {
             $sheet2->getStyle($cell)->getNumberFormat()->setFormatCode('#,##0');
         }
 
@@ -1076,31 +1117,40 @@ class V06Export
     }
 
     /**
-     * Sheet2 columns J/L: sum 86000+86001 debits or credits in period for car / gold / category2.
+     * Sheet2 columns J/L/P: sum debits or credits on given 86000-family accounts in period, by car / gold / category2.
+     * Optional $documentTypes limits rows (e.g. OFF_BALANCE_INCOMING for J, loss accruals for P).
      * Category from contract_id, journalable link, comment ("contract #N"), or debit/credit partner.
+     *
+     * @param  array<int|null>  $accountIds
+     * @param  array<string>|null  $documentTypes
      */
     private function sumSheet286000TurnoverByCategory(
         string $categoryName,
         string $amountColumn,
         string $dateFrom,
         string $dateTo,
-        ?int $acc86000,
-        ?int $acc86001
+        array $accountIds,
+        ?array $documentTypes = null
     ): float {
         if (!in_array($amountColumn, ['debit_account_id', 'credit_account_id'], true)) {
             return 0.0;
         }
 
-        $accountIds = array_values(array_filter([$acc86000, $acc86001]));
+        $accountIds = array_values(array_filter($accountIds));
         if ($accountIds === []) {
             return 0.0;
         }
 
         $sum = 0.0;
-        $rows = DocumentJournal::query()
+        $query = DocumentJournal::query()
             ->whereBetween('date', [$dateFrom, $dateTo])
-            ->whereIn($amountColumn, $accountIds)
-            ->get();
+            ->whereIn($amountColumn, $accountIds);
+
+        if ($documentTypes !== null && $documentTypes !== []) {
+            $query->whereIn('document_type', $documentTypes);
+        }
+
+        $rows = $query->get();
 
         foreach ($rows as $row) {
             if ($this->sheet2JournalCategoryName($row) !== $categoryName) {

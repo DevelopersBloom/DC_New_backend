@@ -48,6 +48,7 @@ class DocumentJournal extends Model
     const LOSS_WRITEOFF_NET_TRANSFER = 'Վարկի դուրս գրում - ընդհանուր գումարի տեղաշարժ';
     const LOSS_INTEREST_EFFECTIVE    = 'Կորստի արդյունավետ տոկոս';
     const LOSS_INTEREST_NOMINAL      = 'Կորստի անվանական տոկոս';
+    const LOSS_PENALTY               = 'Կորստի տուգանք';
     protected $fillable = [
         'date',
         'operation_number',
