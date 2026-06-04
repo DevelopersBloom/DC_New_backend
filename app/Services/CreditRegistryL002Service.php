@@ -52,7 +52,7 @@ class CreditRegistryL002Service
     ];
 
     private const ORGANISATION_CODE = '66100';
-    private const ORGANISATION_BRANCH_CODE = '0001';
+    private const ORGANISATION_BRANCH_CODE = '00001';
     private const ORGANIZATION_STATUS = 1;
 
     public function generateL002Xml(int $contractId): string
@@ -187,7 +187,7 @@ class CreditRegistryL002Service
         $now = Carbon::now();
 
         $sendDateTime = $dom->createElement('SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
 
         $header->appendChild($sendDateTime);
@@ -205,7 +205,7 @@ class CreditRegistryL002Service
         $now = Carbon::now();
 
         $el = $dom->createElement('ModificationDateTime');
-        $el->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $el->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $el->appendChild($dom->createElement('Time', $now->format('H:i:s')));
 
         return $el;
