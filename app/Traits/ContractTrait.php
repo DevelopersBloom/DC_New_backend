@@ -547,7 +547,8 @@ trait ContractTrait
             $balance = (float) ($payment->remaining + $payment->principal_payment);
 
             if ($toDate->lte($currentDate)) {
-                $interestAmount += (float) $payment->interest_payment;
+                $alreadyPaidInterest = (float) $payment->entries()->sum('interest_amount');
+                $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
             } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
 

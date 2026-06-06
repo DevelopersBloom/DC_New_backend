@@ -11,6 +11,7 @@ use App\Models\DocumentJournal;
 use App\Models\Modification;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\PaymentEntry;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Models\User;
@@ -19,6 +20,7 @@ use App\Traits\CorrectReserveTrait;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class PaymentService
 {
@@ -227,55 +229,73 @@ class PaymentService
         $history = [];
         $earlyHandled = false;
 
+        // Capture balance before any contract mutations
+        $balanceBefore = (float) $contract->provided_amount;
+
         if ($contract->payment_type == 'amortized') {
             $principalPayment = $payment->principal_payment;
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
 
-            $earlySplit = $amount + 10 >=$payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date) : null;
+            $earlySplit = $amount + 10 >= $payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date) : null;
             if ($earlySplit !== null) {
-                $paidInterest = $earlySplit['paid_interest'];
-                $paidPrincipal = $earlySplit['paid_principal'];
+                $paidInterest     = $earlySplit['paid_interest'];
+                $paidPrincipal    = $earlySplit['paid_principal'];
                 $principalForLine = $earlySplit['principal_for_line'];
-                $remainingAmount = $earlySplit['remaining_cash'];
+                $remainingAmount  = $earlySplit['remaining_cash'];
 
-                $contract->left = max(0, $contract->left - $principalForLine);
+                $contract->left           = max(0, $contract->left - $principalForLine);
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
-                $payment->remaining = max(0, (float) ($payment->remaining - $remainingAmount));
-                $cashAppliedToLine = $paidInterest + $principalForLine;
-                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment,$date);
-                $earlyHandled = true;
+                $payment->remaining        = max(0, (float) ($payment->remaining - $remainingAmount));
+
+                $this->completePayment(
+                    $payment, $payer, $cash, $contract->id, $deal_id,
+                    $paidPrincipal, $paidInterest,
+                    $date, $balanceBefore, (float) $contract->provided_amount
+                );
+                $earlyHandled  = true;
                 $paidPrincipal = $principalForLine;
             } else {
                 $remainingInterestPlan = $payment->interest_payment;
                 if ($remainingInterestAmount > 0) {
-                    $paidInterest = min($remainingInterestAmount, $remainingInterestPlan,$amount);
+                    $paidInterest            = min($remainingInterestAmount, $remainingInterestPlan, $amount);
                     $remainingInterestAmount -= $paidInterest;
-                    $remainingAmount -= $paidInterest;
-                    $payment->interest_payment -= $paidInterest;
+                    $remainingAmount         -= $paidInterest;
                 }
 
                 if ($payment->to_date <= ($date ?? now()->format('Y-m-d'))) {
-                    $paidPrincipal = min($remainingAmount, $payment->principal_payment ?? 0);
+                    $paidPrincipal   = min($remainingAmount, $payment->principal_payment ?? 0);
                     $remainingAmount -= $paidPrincipal;
 
-                    $contract->left = max(0, $contract->left - $paidPrincipal);
+                    $contract->left            = max(0, $contract->left - $paidPrincipal);
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-                    $payment->principal_payment -= $paidPrincipal;
                 }
             }
         } else {
-            $paidInterest = min($remainingAmount, $payment->amount);
-            $remainingAmount -= $paidInterest;
-            $paidPrincipal = 0;
+            $alreadyPaidClassic = (float) $payment->entries()->sum('amount');
+            $remainingDue       = max(0, (float) $payment->amount - $alreadyPaidClassic);
+            $paidInterest       = min($remainingAmount, $remainingDue);
+            $remainingAmount   -= $paidInterest;
+            $paidPrincipal      = 0;
         }
 
         if (!$earlyHandled) {
-            $totalRequiredForThisLine = $payment->amount;
+            $balanceAfter    = (float) $contract->provided_amount;
+            $alreadyPaid     = (float) $payment->entries()->sum('amount');
+            $totalRequiredForThisLine = max(0, (float) $payment->amount - $alreadyPaid);
+
             if ($amount >= $totalRequiredForThisLine) {
-                $this->completePayment($payment, $payer, $cash, $contract->id, $deal_id, $principalPayment, $interestPayment,$date);
+                $this->completePayment(
+                    $payment, $payer, $cash, $contract->id, $deal_id,
+                    $paidPrincipal, $paidInterest,
+                    $date, $balanceBefore, $balanceAfter
+                );
             } else {
-                $this->partiallyCompletePayment($payment, $amount, $deal_id, [], $principalPayment, $interestPayment);
+                $this->partiallyCompletePayment(
+                    $payment, $amount, $deal_id, [],
+                    $paidPrincipal, $paidInterest,
+                    $date, $balanceBefore, $balanceAfter
+                );
             }
         }
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
@@ -426,90 +446,115 @@ class PaymentService
             'remaining_cash' => (float) $remainingCash,
         ];
     }
-    private function completePayment($payment, $payer, $cash, $contract_id, $deal_id = null,$principal_payment = null,$interest_payment = null,$date = null): void
-    {
+    private function completePayment(
+        $payment, $payer, $cash, $contract_id,
+        $deal_id = null, $principal_payment = null, $interest_payment = null,
+        $date = null, float $balanceBefore = 0, float $balanceAfter = 0
+    ): void {
         $oldAmount = $payment['amount'];
-        $oldPaid = $payment['paid'];
-        $oldDate = $payment['date'];
-        $payment->paid += $payment['amount'] + $payment['penalty'];
-        //$payment->paid_date = Carbon::now()->format('Y.m.d');
+        $oldDate   = $payment['date'];
+
         if ($payment->last_payment == 0) {
             $payment->date = $date ?? Carbon::now()->format('Y.m.d');
         }
-        $payment->penalty = $payment['penalty'];
-        $payment->cash = $cash;
-        $payment->amount = 0;
-        $payment->interest_payment = 0;
-        $payment->principal_payment = 0;
-//        $payment->remaining  -= $principal_payment;
-        $payment->status = $payment->mother - $payment->amount == 0 ? 'completed' : 'initial';
-        $payment->principal_payment = 0;
-        $payment->interest_payment = 0;
-//        $payment->remaining = 0;
+        $payment->cash   = $cash;
+        $payment->status = 'completed';
+
         if ($payer) {
             $payment->another_payer = true;
-            $payment->name = $payer['name'];
+            $payment->name    = $payer['name'];
             $payment->surname = $payer['surname'];
-            $payment->phone = $payer['phone'];
+            $payment->phone   = $payer['phone'];
         }
 
         $payment->save();
+
+        PaymentEntry::create([
+            'payment_id'       => $payment->id,
+            'contract_id'      => $contract_id,
+            'deal_id'          => $deal_id,
+            'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+            'user_id'          => auth()->id() ?? 1,
+            'reference'        => Str::uuid(),
+            'amount'           => $oldAmount,
+            'principal_amount' => $principal_payment ?? 0,
+            'interest_amount'  => $interest_payment  ?? 0,
+            'penalty_amount'   => $payment['penalty'] ?? 0,
+            'balance_before'   => $balanceBefore,
+            'balance_after'    => $balanceAfter,
+            'document_type'    => 'regular_payment',
+            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+            'cash'             => $cash ?? false,
+        ]);
+
         $history['payment_changes'][] = [
-            'payment_id' => $payment->id,
-            'old_amount' => $oldAmount,
-            'new_amount' => $payment->amount,
-            'old_paid' => $oldPaid,
-            'new_paid' => $payment->paid,
-            'old_date' => $oldDate,
-            'old_mother' => $payment->mother,
+            'payment_id'    => $payment->id,
+            'old_amount'    => $oldAmount,
+            'old_date'      => $oldDate,
+            'old_mother'    => $payment->mother,
             'old_principal' => $principal_payment,
-            'old_interest' => $interest_payment,
-            'updated_at' => now()->toDateTimeString()
+            'old_interest'  => $interest_payment,
+            'updated_at'    => now()->toDateTimeString(),
         ];
 
         DealAction::create([
-            'deal_id' => $deal_id,
-            'actionable_id' => $payment->id,
+            'deal_id'         => $deal_id,
+            'actionable_id'   => $payment->id,
             'actionable_type' => Payment::class,
-            'amount' => $oldAmount,
-            'type' => 'regular',
-            'description' => 'Regular payment',
-            'date' => $date ?? Carbon::now()->format('Y-m-d'),
-            'history' => $history
+            'amount'          => $oldAmount,
+            'type'            => 'regular',
+            'description'     => 'Regular payment',
+            'date'            => $date ?? Carbon::now()->format('Y-m-d'),
+            'history'         => $history,
         ]);
     }
 
-    private function partiallyCompletePayment($payment, $paid, $deal_id = null, $history = [],$principal_payment = null,$interest_payment = null,$date = null): void
-    {
-        $oldPaid = $payment->paid;
+    private function partiallyCompletePayment(
+        $payment, $paid, $deal_id = null, $history = [],
+        float $principalPaid = 0, float $interestPaid = 0,
+        $date = null, float $balanceBefore = 0, float $balanceAfter = 0
+    ): void {
         $oldAmount = $payment->amount;
-        $oldDate = $payment->date;
-        $payment->amount -= $paid;
-        $payment->paid += $paid;
-        if ($payment->last_payment && $payment->amount == 0) {
-            $payment->mother -= $payment->paid;
-        }
+        $oldDate   = $payment->date;
+
         $payment->save();
+
+        PaymentEntry::create([
+            'payment_id'       => $payment->id,
+            'contract_id'      => $payment->contract_id,
+            'deal_id'          => $deal_id,
+            'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+            'user_id'          => auth()->id() ?? 1,
+            'reference'        => Str::uuid(),
+            'amount'           => $paid,
+            'principal_amount' => $principalPaid,
+            'interest_amount'  => $interestPaid,
+            'penalty_amount'   => 0,
+            'balance_before'   => $balanceBefore,
+            'balance_after'    => $balanceAfter,
+            'document_type'    => 'partial_payment',
+            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+            'cash'             => false,
+        ]);
+
         $history['payment_changes'][] = [
-            'payment_id' => $payment->id,
-            'old_amount' => $oldAmount,
-            'new_amount' => $payment->amount,
-            'old_paid' => $oldPaid,
-            'new_paid' => $payment->paid,
-            'old_date' => $oldDate,
-            'old_principal' => $principal_payment,
-            'old_interest' => $interest_payment,
-            'updated_at' => now()->toDateTimeString()
+            'payment_id'    => $payment->id,
+            'old_amount'    => $oldAmount,
+            'old_date'      => $oldDate,
+            'old_principal' => $principalPaid,
+            'old_interest'  => $interestPaid,
+            'updated_at'    => now()->toDateTimeString(),
         ];
+
         DealAction::create([
-            'deal_id' => $deal_id,
-            'actionable_id' => $payment->id,
+            'deal_id'         => $deal_id,
+            'actionable_id'   => $payment->id,
             'actionable_type' => Payment::class,
-            'amount' => $paid,
-            'type' => 'regular',
-            'description' => 'Regular payment',
-            'date' => $date ?? Carbon::now()->format('Y-m-d'),
-            'history' => $history
+            'amount'          => $paid,
+            'type'            => 'regular',
+            'description'     => 'Regular payment',
+            'date'            => $date ?? Carbon::now()->format('Y-m-d'),
+            'history'         => $history,
         ]);
     }
 
@@ -521,41 +566,53 @@ class PaymentService
             ->first();
         $decrease = null;
         $oldAmount = null;
-        $oldDate = null;
-        $oldPaid = null;
-        if ($nextPayment  && $contract->payment_type == 'classic') {
-            $decrease = $amount % 1000;
-            $amount -= $decrease;
-            $oldAmount = $nextPayment->amount;
-            $oldDate = $nextPayment->date;
-            $oldPaid = $nextPayment->paid;
-            $oldInterest = $nextPayment->interest_payment;
+        $oldDate   = null;
+        if ($nextPayment && $contract->payment_type == 'classic') {
+            $decrease     = $amount % 1000;
+            $amount      -= $decrease;
+            $oldAmount    = $nextPayment->amount;
+            $oldDate      = $nextPayment->date;
+            $oldInterest  = $nextPayment->interest_payment;
             $oldPrincipal = $nextPayment->principal_payment;
         }
         if ($nextPayment && $decrease > 0) {
+            $balanceBefore = (float) $contract->provided_amount;
             $nextPayment->amount -= $decrease;
-            $nextPayment->paid += $decrease;
             $nextPayment->save();
+
+            PaymentEntry::create([
+                'payment_id'    => $nextPayment->id,
+                'contract_id'   => $contract->id,
+                'deal_id'       => $deal_id,
+                'pawnshop_id'   => auth()->user()->pawnshop_id ?? 1,
+                'user_id'       => auth()->id() ?? 1,
+                'reference'     => Str::uuid(),
+                'amount'        => $decrease,
+                'balance_before'=> $balanceBefore,
+                'balance_after' => $balanceBefore,
+                'document_type' => 'regular_payment',
+                'date'          => $date ?? Carbon::now()->format('Y-m-d'),
+                'cash'          => false,
+            ]);
+
             $history['payment_changes'][] = [
-                'payment_id' => $nextPayment->id,
-                'old_amount' => $oldAmount,
-                'new_amount' => $nextPayment->amount,
-                'old_paid' => $oldPaid,
-                'new_paid' => $nextPayment->paid,
-                'old_date' => $oldDate,
-                'old_interest' => $oldInterest,
+                'payment_id'    => $nextPayment->id,
+                'old_amount'    => $oldAmount,
+                'new_amount'    => $nextPayment->amount,
+                'old_date'      => $oldDate,
+                'old_interest'  => $oldInterest,
                 'old_principal' => $oldPrincipal,
-                'updated_at' => now()->toDateTimeString()
+                'updated_at'    => now()->toDateTimeString(),
             ];
             DealAction::create([
-                'deal_id' => $deal_id,
-                'actionable_id' => $nextPayment->id,
+                'deal_id'         => $deal_id,
+                'actionable_id'   => $nextPayment->id,
                 'actionable_type' => Payment::class,
-                'amount' => $decrease,
-                'type' => 'regular',
-                'description' => 'Regular payment',
-                'date' => $date ?? Carbon::now()->format('Y-m-d'),
-                'history' => $history
+                'amount'          => $decrease,
+                'type'            => 'regular',
+                'description'     => 'Regular payment',
+                'date'            => $date ?? Carbon::now()->format('Y-m-d'),
+                'history'         => $history,
             ]);
             //$contract->collected += $decrease;
 

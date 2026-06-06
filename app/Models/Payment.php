@@ -66,4 +66,9 @@ class Payment extends Model
     public function discount(){
         return $this->hasOne(Discount::class);
     }
+
+    public function entries()
+    {
+        return $this->hasMany(PaymentEntry::class);
+    }
 }
