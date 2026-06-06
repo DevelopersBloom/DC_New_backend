@@ -248,23 +248,33 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->remaining        = max(0, (float) ($payment->remaining - $remainingAmount));
 
+                $alreadyPaidEarly = (float) $payment->entries()->sum('amount');
+                $earlyAmountPaid  = max(0, (float) $payment->amount - $alreadyPaidEarly);
                 $this->completePayment(
                     $payment, $payer, $cash, $contract->id, $deal_id,
                     $paidPrincipal, $paidInterest,
-                    $date, $balanceBefore, (float) $contract->provided_amount
+                    $date, $balanceBefore, (float) $contract->provided_amount,
+                    $earlyAmountPaid
                 );
                 $earlyHandled  = true;
                 $paidPrincipal = $principalForLine;
             } else {
-                $remainingInterestPlan = $payment->interest_payment;
-                if ($remainingInterestAmount > 0) {
+                // Remaining interest = scheduled - already paid via entries
+                $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
+                $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
+
+                if ($remainingInterestAmount > 0 && $remainingInterestPlan > 0) {
                     $paidInterest            = min($remainingInterestAmount, $remainingInterestPlan, $amount);
                     $remainingInterestAmount -= $paidInterest;
                     $remainingAmount         -= $paidInterest;
                 }
 
                 if ($payment->to_date <= ($date ?? now()->format('Y-m-d'))) {
-                    $paidPrincipal   = min($remainingAmount, $payment->principal_payment ?? 0);
+                    // Remaining principal = scheduled - already paid via entries
+                    $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
+                    $remainingPrincipal   = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
+
+                    $paidPrincipal   = min($remainingAmount, $remainingPrincipal);
                     $remainingAmount -= $paidPrincipal;
 
                     $contract->left            = max(0, $contract->left - $paidPrincipal);
@@ -288,7 +298,8 @@ class PaymentService
                 $this->completePayment(
                     $payment, $payer, $cash, $contract->id, $deal_id,
                     $paidPrincipal, $paidInterest,
-                    $date, $balanceBefore, $balanceAfter
+                    $date, $balanceBefore, $balanceAfter,
+                    $totalRequiredForThisLine  // actual amount covering this installment
                 );
             } else {
                 $this->partiallyCompletePayment(
@@ -449,9 +460,11 @@ class PaymentService
     private function completePayment(
         $payment, $payer, $cash, $contract_id,
         $deal_id = null, $principal_payment = null, $interest_payment = null,
-        $date = null, float $balanceBefore = 0, float $balanceAfter = 0
+        $date = null, float $balanceBefore = 0, float $balanceAfter = 0,
+        float $amountPaid = 0
     ): void {
-        $oldAmount = $payment['amount'];
+        // actual amount paid = remaining after previous partial payments
+        $oldAmount = $amountPaid > 0 ? $amountPaid : (float) $payment['amount'];
         $oldDate   = $payment['date'];
 
         if ($payment->last_payment == 0) {
