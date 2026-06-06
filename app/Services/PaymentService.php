@@ -290,18 +290,28 @@ class PaymentService
         }
 
         if (!$earlyHandled) {
-            $balanceAfter    = (float) $contract->provided_amount;
-            $alreadyPaid     = (float) $payment->entries()->sum('amount');
+            $alreadyPaid              = (float) $payment->entries()->sum('amount');
             $totalRequiredForThisLine = max(0, (float) $payment->amount - $alreadyPaid);
 
             if ($amount >= $totalRequiredForThisLine) {
+                // Ensure interest + principal = amountPaid (no unaccounted remainder)
+                if ($paidPrincipal == 0 && $totalRequiredForThisLine > $paidInterest) {
+                    $paidPrincipal = $totalRequiredForThisLine - $paidInterest;
+                    $contract->left            = max(0, $contract->left - $paidPrincipal);
+                    $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+                }
+
+                $balanceAfter = (float) $contract->provided_amount;
+
                 $this->completePayment(
                     $payment, $payer, $cash, $contract->id, $deal_id,
                     $paidPrincipal, $paidInterest,
                     $date, $balanceBefore, $balanceAfter,
-                    $totalRequiredForThisLine  // actual amount covering this installment
+                    $totalRequiredForThisLine
                 );
             } else {
+                $balanceAfter = (float) $contract->provided_amount;
+
                 $this->partiallyCompletePayment(
                     $payment, $amount, $deal_id, [],
                     $paidPrincipal, $paidInterest,
