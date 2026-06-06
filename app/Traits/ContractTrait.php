@@ -74,6 +74,51 @@ trait ContractTrait
             Order::MOTHER_PAYMENT
         );
     }
+
+    /**
+     * Bank-only delta disbursement orders/histories/deals for loan re-provide.
+     */
+    private function createReprovideOrderAndHistory(
+        $contract,
+        float $deltaAmount,
+        $client_id,
+        $client_name,
+        $category_id,
+        $date = null,
+        $pawnshop_id = null
+    ): int {
+        $cash = false;
+        $lastNumber = $this->getLastOrderNumber();
+        $deal_id = 0;
+
+        $lump_rate = $contract->lump_rate;
+        $lump_amount_original = $deltaAmount * ($lump_rate / 100);
+        $lump_amount = floor($lump_amount_original / 10) * 10;
+
+        if ($lump_amount > 0) {
+            $numInOneTime = $this->formatOrderNumber(++$lastNumber, 'in', $cash);
+            $this->createOrderHistoryEntry(
+                $contract, $client_id, $client_name,
+                'in', 'one_time_payment',
+                $lump_amount, $cash,
+                Contract::LUMP_PAYMENT,
+                $numInOneTime, $pawnshop_id, $date,
+                Order::ONE_TIME_PAYMENT_FILTER
+            );
+        }
+
+        $numOutMother = $this->formatOrderNumber(++$lastNumber, 'out', $cash);
+
+        return $this->createOrderHistoryEntry(
+            $contract, $client_id, $client_name,
+            'out', 'mother_payment',
+            $deltaAmount, $cash,
+            Contract::MOTHER_AMOUNT_PAYMENT,
+            $numOutMother, $pawnshop_id, $date,
+            Order::MOTHER_PAYMENT
+        );
+    }
+
     private function getLastOrderNumber(): int
     {
         $last = Order::orderByDesc('id')->value('num');

@@ -492,25 +492,25 @@ class   ContractService
         return "{$prefix}-{$year}-{$newNumber}";
     }
 
-    public function createPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null,$months = null)
+    public function createPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, $months = null, int $startPgiId = 1)
     {
         if ($contract->payment_type === 'classic') {
-             $this->createClassicPayment($contract, $import_date, $import_pawnshop_id);
+             $this->createClassicPayment($contract, $import_date, $import_pawnshop_id, $startPgiId);
         }
 
         if ($contract->payment_type === 'amortized') {
-             $this->createAnnuityPayment($contract, $import_date, $import_pawnshop_id,$months);
+             $this->createAnnuityPayment($contract, $import_date, $import_pawnshop_id, $months, $startPgiId);
         }
     }
 
-    public function createClassicPayment(Contract $contract,$import_date = null,$import_pawnshop_id = null)
+    public function createClassicPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, int $startPgiId = 1)
     {
         $schedule = [];
         $fromDate = $import_date ? Carbon::parse($import_date)->setTimezone('Asia/Yerevan') : Carbon::parse($contract->date)->setTimezone('Asia/Yerevan');
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $toDate = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
         $currentDate = $fromDate;
-        $pgi_id = 1;
+        $pgi_id = $startPgiId;
         while ($currentDate->lt($toDate))
          {
             $payment = [
@@ -621,7 +621,7 @@ class   ContractService
         return $pmt - $ipmt;
     }
 
-    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, $months = null)
+    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, $months = null, int $startPgiId = 1)
     {
         $loanAmount = (float) $contract->provided_amount;
 
@@ -641,7 +641,7 @@ class   ContractService
 
         $monthlyPayment = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
-        $pgi_id      = 1;
+        $pgi_id      = $startPgiId;
 
         $currentDate = $import_date
             ? \Carbon\Carbon::parse($import_date)
@@ -800,6 +800,43 @@ class   ContractService
         );
 
         return $months;
+    }
+
+    /**
+     * Rebuild future regular payments from $startDate; keep completed regular rows.
+     */
+    public function rebuildScheduleFromDate(Contract $contract, string $startDate): int
+    {
+        $start = Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
+        $deadline = Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
+
+        if ($start->gt($deadline)) {
+            throw new \InvalidArgumentException('Re-provide date cannot be after contract deadline.');
+        }
+
+        $deletedCount = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->count();
+
+        Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->delete();
+
+        $maxPgiId = (int) Payment::where('contract_id', $contract->id)->max('PGI_ID');
+        $startPgiId = $maxPgiId + 1;
+
+        if ($contract->payment_type === 'amortized') {
+            $remainingMonths = $deletedCount > 0
+                ? $deletedCount
+                : max(1, ($deadline->year - $start->year) * 12 + ($deadline->month - $start->month));
+            $this->createAnnuityPayment($contract, $startDate, $contract->pawnshop_id, $remainingMonths, $startPgiId);
+        } else {
+            $this->createClassicPayment($contract, $startDate, $contract->pawnshop_id, $startPgiId);
+        }
+
+        return $deletedCount;
     }
 
 }

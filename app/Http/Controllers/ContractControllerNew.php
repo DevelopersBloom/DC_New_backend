@@ -15,10 +15,14 @@ use App\Models\ClientClassification;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\Deal;
+use App\Models\DealAction;
 use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
+use App\Models\IdempotencyKey;
+use App\Models\Modification;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
@@ -800,6 +804,600 @@ class ContractControllerNew extends Controller
                 'message' => 'Error processing payment',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function reprovideContractAmount(Request $request): JsonResponse
+    {
+        $validatedData = $request->validate([
+            'contract_id'     => 'required|integer|exists:contracts,id',
+            'amount'          => 'nullable|numeric|min:0.01',
+            'reprovide_date'  => 'required|date',
+        ]);
+
+        $contract = Contract::findOrFail($validatedData['contract_id']);
+        $client = $contract->client;
+        $client->loadMissing('classification');
+
+        if (!$contract->provided_at) {
+            return response()->json(['message' => 'Initial disbursement has not occurred yet.'], 422);
+        }
+
+        if ($contract->status === Contract::STATUS_EXECUTED) {
+            return response()->json(['message' => 'Cannot re-provide on an executed contract.'], 422);
+        }
+
+        if ($contract->contract_amount === null) {
+            return response()->json(['message' => 'Contract amount ceiling is not defined.'], 422);
+        }
+
+        $providedAmount = (float) $contract->provided_amount;
+        $contractAmount = (float) $contract->contract_amount;
+
+        if ($providedAmount >= $contractAmount) {
+            return response()->json(['message' => 'Provided amount already equals contract amount.'], 422);
+        }
+
+        $statusAllowed = $contract->status === Contract::STATUS_INITIAL
+            || ($contract->status === Contract::STATUS_COMPLETED && $providedAmount < $contractAmount);
+
+        if (!$statusAllowed) {
+            return response()->json(['message' => 'Contract status does not allow re-provide.'], 422);
+        }
+
+        $maxReprovide = $contractAmount - $providedAmount;
+        $delta = isset($validatedData['amount'])
+            ? (float) $validatedData['amount']
+            : $maxReprovide;
+
+        if ($delta <= 0 || $delta > $maxReprovide + 0.001) {
+            return response()->json([
+                'message' => "Re-provide amount must be between 0 and {$maxReprovide}.",
+            ], 422);
+        }
+
+        $reprovideDate = Carbon::parse($validatedData['reprovide_date'], 'Asia/Yerevan')->format('Y-m-d');
+        $contractStart = Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
+        $deadline = Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
+        $today = Carbon::now('Asia/Yerevan')->startOfDay();
+        $maxDate = $deadline->lt($today) ? $deadline : $today;
+
+        $lastCompletedDate = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', Contract::STATUS_COMPLETED)
+            ->max('date');
+
+        $minDate = $contractStart;
+        if ($lastCompletedDate) {
+            $lastCompleted = Carbon::parse($lastCompletedDate, 'Asia/Yerevan')->startOfDay();
+            if ($lastCompleted->gt($minDate)) {
+                $minDate = $lastCompleted;
+            }
+        }
+
+        $reprovideCarbon = Carbon::parse($reprovideDate, 'Asia/Yerevan')->startOfDay();
+        if ($reprovideCarbon->lt($minDate) || $reprovideCarbon->gt($maxDate)) {
+            return response()->json([
+                'message' => 'Re-provide date is outside the allowed range.',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
+            $oldProvidedAmount = $providedAmount;
+            $category_id = $contract->category_id;
+
+            $deal_id = $this->createReprovideOrderAndHistory(
+                $contract,
+                $delta,
+                $client->id,
+                $client_name,
+                $category_id,
+                $reprovideDate
+            );
+
+            $contract->historyContext = [
+                'deal_id'     => $deal_id,
+                'date'        => $reprovideDate,
+                'pawnshop_id' => auth()->user()->pawnshop_id ?? 1,
+            ];
+            $contract->provided_amount = $providedAmount + $delta;
+            $contract->mother = (float) $contract->mother + $delta;
+            $contract->left = (float) $contract->left + $delta;
+
+            if ($contract->status === Contract::STATUS_COMPLETED) {
+                $contract->status = Contract::STATUS_INITIAL;
+                $contract->closed_at = null;
+            }
+
+            $contract->save();
+
+            $journalDoc = $this->postReprovideDisbursementJournal(
+                $contract,
+                $client,
+                $delta,
+                $reprovideDate,
+                $deal_id
+            );
+
+            $this->postReprovideReserveJournal($contract, $client, $journalDoc, $delta, $reprovideDate);
+
+            if ($client->classification && $client->classification->name === 'loss') {
+                $this->processLossClientDisbursement($contract, $client, $journalDoc, $reprovideDate);
+            }
+
+            $this->contractService->rebuildScheduleFromDate($contract->fresh(), $reprovideDate);
+
+            Modification::create([
+                'subject_type'      => Contract::class,
+                'subject_id'        => $contract->id,
+                'modification_type' => 'Modificator',
+                'field_code'        => 'PrincipalAmount',
+                'element_code'      => 'Amount',
+                'old_value'         => (string) $oldProvidedAmount,
+                'new_value'         => (string) ($oldProvidedAmount + $delta),
+                'effective_date'    => $reprovideDate,
+            ]);
+
+            DealAction::create([
+                'deal_id'         => $deal_id,
+                'actionable_id'   => $contract->id,
+                'actionable_type' => Contract::class,
+                'amount'          => $delta,
+                'type'            => 'reprovide',
+                'description'     => 'Reprovide contract amount',
+                'date'            => $reprovideDate,
+            ]);
+
+            $this->activityService->log(
+                'reprovide_contract_amount',
+                "Re-provide: {$delta} AMD for contract #{$contract->id} (deal #{$deal_id})",
+                Contract::class,
+                $contract->id
+            );
+
+            DB::commit();
+
+            $successPayload = [
+                'message'     => 'Contract amount re-provided successfully',
+                'contract_id' => $contract->id,
+                'delta'       => $delta,
+            ];
+
+            $idempotencyKey = $request->header('Idempotency-Key');
+            if ($idempotencyKey) {
+                IdempotencyKey::where('key', $idempotencyKey)->update([
+                    'status_code' => 200,
+                    'response'    => json_encode($successPayload),
+                    'locked_at'   => null,
+                ]);
+            }
+
+            return response()->json($successPayload, 200);
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error processing re-provide',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function getContractAccountNet(int $contractId, int $accountId): float
+    {
+        $debits = (float) DocumentJournal::where('contract_id', $contractId)
+            ->where('debit_account_id', $accountId)
+            ->sum('amount_amd');
+        $credits = (float) DocumentJournal::where('contract_id', $contractId)
+            ->where('credit_account_id', $accountId)
+            ->sum('amount_amd');
+
+        if ($debits == 0.0 && $credits == 0.0) {
+            $debits = (float) DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contractId)
+                ->where('debit_account_id', $accountId)
+                ->sum('amount_amd');
+            $provideJournalIds = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contractId)
+                ->pluck('id');
+            if ($provideJournalIds->isNotEmpty()) {
+                $credits = (float) DocumentJournal::whereIn('journalable_id', $provideJournalIds)
+                    ->where('journalable_type', DocumentJournal::class)
+                    ->where('credit_account_id', $accountId)
+                    ->sum('amount_amd');
+            }
+        }
+
+        return $debits - $credits;
+    }
+
+    private function postReprovideDisbursementJournal(
+        Contract $contract,
+        Client $client,
+        float $amount,
+        string $date,
+        int $deal_id
+    ): DocumentJournal {
+        $ruleContractAmount = PostingRule::where('business_event_filter', 'provide_contract_amount')
+            ->firstOrFail();
+
+        $nextDocNum = Transaction::getNextDocumentNumber();
+        $document_type = DocumentJournal::PROVIDE_CONTRACT_AMOUNT;
+        $clientId = $contract->client_id;
+
+        $journalDoc = DocumentJournal::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $document_type,
+            'amount_amd'         => $amount,
+            'debit_partner_id'   => $ruleContractAmount->resolveDebitPartnerId($contract) ?? $clientId,
+            'credit_partner_id'  => $ruleContractAmount->resolveCreditPartnerId($contract) ?? null,
+            'comment'            => 'contract_reprovide',
+            'debit_account_id'   => $ruleContractAmount->debit_account_id,
+            'credit_account_id'  => $ruleContractAmount->credit_account_id,
+            'user_id'            => auth()->id(),
+            'journalable_type'   => Contract::class,
+            'journalable_id'     => $contract->id,
+            'deal_id'            => $deal_id,
+            'contract_id'        => $contract->id,
+        ]);
+
+        Transaction::create([
+            'date'                 => $date,
+            'document_number'      => $nextDocNum,
+            'document_type'        => $document_type,
+            'debit_account_id'     => $ruleContractAmount->debit_account_id,
+            'debit_partner_id'     => $ruleContractAmount->resolveDebitPartnerId($contract) ?? $clientId,
+            'debit_currency_id'    => 1,
+            'credit_account_id'    => $ruleContractAmount->credit_account_id,
+            'credit_partner_id'    => $ruleContractAmount->resolveCreditPartnerId($contract) ?? null,
+            'credit_currency_id'   => 1,
+            'amount_amd'           => $amount,
+            'comment'              => 'contract_reprovide',
+            'user_id'              => auth()->id(),
+            'is_system'            => false,
+            'disbursement_date'    => $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $journalDoc->id,
+            'contract_id'          => $contract->id,
+        ]);
+
+        return $journalDoc;
+    }
+
+    private function postReprovideReserveJournal(
+        Contract $contract,
+        Client $client,
+        DocumentJournal $journalDoc,
+        float $delta,
+        string $date
+    ): void {
+        if (!$client->classification) {
+            return;
+        }
+
+        $reservePercent = $client->classification->reserve_percent;
+        $reserveAmount = $reservePercent / 100 * $delta;
+
+        if ($reserveAmount <= 0) {
+            return;
+        }
+
+        $nextDocNum = Transaction::getNextDocumentNumber();
+        $clientId = $contract->client_id;
+
+        $reserveDocumentType = $client->classification->name === 'standard'
+            ? DocumentJournal::RESERVE_GENERAL_AMOUNT
+            : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+
+        $ruleFilter = $client->classification->name === 'standard'
+            ? 'reserve_general_amount'
+            : 'reserve_special_amount';
+
+        $ruleReserve = PostingRule::where('business_event_filter', $ruleFilter)->firstOrFail();
+
+        $reserveJournal = DocumentJournal::create([
+            'date'               => $date,
+            'document_number'    => $nextDocNum,
+            'document_type'      => $reserveDocumentType,
+            'amount_amd'         => $reserveAmount,
+            'debit_partner_id'   => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
+            'credit_partner_id'  => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+            'comment'            => "Reserve for contract #{$contract->id} on re-provide",
+            'debit_account_id'   => $ruleReserve->debit_account_id,
+            'credit_account_id'  => $ruleReserve->credit_account_id,
+            'user_id'            => auth()->id(),
+            'journalable_type'   => DocumentJournal::class,
+            'journalable_id'     => $journalDoc->id,
+            'contract_id'        => $contract->id,
+        ]);
+
+        Transaction::create([
+            'date'                 => $date,
+            'document_number'      => $nextDocNum,
+            'document_type'        => $reserveDocumentType,
+            'debit_account_id'     => $ruleReserve->debit_account_id,
+            'debit_partner_id'     => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
+            'debit_currency_id'    => 1,
+            'credit_account_id'    => $ruleReserve->credit_account_id,
+            'credit_currency_id'   => 1,
+            'credit_partner_id'    => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+            'amount_amd'           => $reserveAmount,
+            'comment'              => "Reserve for contract #{$contract->id} on re-provide",
+            'user_id'              => auth()->id(),
+            'is_system'            => true,
+            'disbursement_date'    => $date,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id'   => $reserveJournal->id,
+            'contract_id'          => $contract->id,
+        ]);
+    }
+
+    private function processLossClientDisbursement(
+        Contract $contract,
+        Client $client,
+        DocumentJournal $journalDoc,
+        string $date
+    ): void {
+        $clientId = $contract->client_id;
+
+        $acc16200NV = ChartOfAccount::idByCode('16200NV');
+        $acc16200   = ChartOfAccount::idByCode('16200');
+        $acc16201NI = ChartOfAccount::idByCode('16201NI');
+        $acc16605PS = ChartOfAccount::idByCode('16605PS');
+
+        $net16200NV = $this->getContractAccountNet($contract->id, $acc16200NV);
+        $net16200   = $this->getContractAccountNet($contract->id, $acc16200);
+        $net16201NI = $this->getContractAccountNet($contract->id, $acc16201NI);
+
+        $totalNet = round($net16200 + $net16200NV + $net16201NI, 2);
+        $currentPS = $this->getClientReserveBalance($clientId, $acc16605PS);
+        $diff = round($totalNet + $currentPS, 2);
+
+        if (abs($diff) >= 0.01) {
+            $ruleStep1 = PostingRule::where('business_event_filter', 'loss_writeoff_net_transfer')->firstOrFail();
+            $nextDocNum = Transaction::getNextDocumentNumber();
+            $debitAcc  = $diff > 0 ? $ruleStep1->debit_account_id : $acc16605PS;
+            $creditAcc = $diff > 0 ? $acc16605PS : $ruleStep1->debit_account_id;
+            $step1Doc = DocumentJournal::create([
+                'date'              => $date,
+                'document_number'   => $nextDocNum,
+                'document_type'     => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
+                'amount_amd'        => abs($diff),
+                'debit_partner_id'  => $ruleStep1->resolveDebitPartnerId($contract) ?? $clientId,
+                'credit_partner_id' => $ruleStep1->resolveCreditPartnerId($contract) ?? $clientId,
+                'comment'           => "Loss write-off net balance transfer for contract #{$contract->id} (re-provide)",
+                'debit_account_id'  => $debitAcc,
+                'credit_account_id' => $creditAcc,
+                'user_id'           => auth()->id(),
+                'journalable_type'  => DocumentJournal::class,
+                'journalable_id'    => $journalDoc->id,
+                'contract_id'       => $contract->id,
+            ]);
+            Transaction::create([
+                'date'                 => $date,
+                'document_number'      => $nextDocNum,
+                'document_type'        => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
+                'debit_account_id'     => $debitAcc,
+                'debit_partner_id'     => $ruleStep1->resolveDebitPartnerId($contract) ?? $clientId,
+                'debit_currency_id'    => 1,
+                'credit_account_id'    => $creditAcc,
+                'credit_currency_id'   => 1,
+                'credit_partner_id'    => $ruleStep1->resolveCreditPartnerId($contract) ?? $clientId,
+                'amount_amd'           => abs($diff),
+                'comment'              => "Loss write-off net balance transfer for contract #{$contract->id} (re-provide)",
+                'user_id'              => auth()->id(),
+                'is_system'            => true,
+                'disbursement_date'    => $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $step1Doc->id,
+                'contract_id'          => $contract->id,
+            ]);
+        }
+
+        if (abs($net16200) >= 0.01) {
+            $nextDocNum = Transaction::getNextDocumentNumber();
+            $dAcc16200  = $net16200 > 0 ? $acc16605PS : $acc16200;
+            $cAcc16200  = $net16200 > 0 ? $acc16200   : $acc16605PS;
+            $lossEff16200Doc = DocumentJournal::create([
+                'date'              => $date,
+                'document_number'   => $nextDocNum,
+                'document_type'     => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                'amount_amd'        => abs($net16200),
+                'debit_partner_id'  => $clientId,
+                'credit_partner_id' => $clientId,
+                'comment'           => "Write-off 16200 for contract #{$contract->id} - loss client re-provide",
+                'debit_account_id'  => $dAcc16200,
+                'credit_account_id' => $cAcc16200,
+                'user_id'           => auth()->id(),
+                'journalable_type'  => DocumentJournal::class,
+                'journalable_id'    => $journalDoc->id,
+                'contract_id'       => $contract->id,
+            ]);
+            Transaction::create([
+                'date'                 => $date,
+                'document_number'      => $nextDocNum,
+                'document_type'        => DocumentJournal::LOSS_RESERVE_EFFECTIVE,
+                'debit_account_id'     => $dAcc16200,
+                'debit_partner_id'     => $clientId,
+                'debit_currency_id'    => 1,
+                'credit_account_id'    => $cAcc16200,
+                'credit_currency_id'   => 1,
+                'credit_partner_id'    => $clientId,
+                'amount_amd'           => abs($net16200),
+                'comment'              => "Write-off 16200 for contract #{$contract->id} - loss client re-provide",
+                'user_id'              => auth()->id(),
+                'is_system'            => true,
+                'disbursement_date'    => $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $lossEff16200Doc->id,
+                'contract_id'          => $contract->id,
+            ]);
+        }
+
+        if (abs($net16200NV) >= 0.01) {
+            $nextDocNum = Transaction::getNextDocumentNumber();
+            $dAcc16200NV = $net16200NV > 0 ? $acc16605PS : $acc16200NV;
+            $cAcc16200NV = $net16200NV > 0 ? $acc16200NV : $acc16605PS;
+            $lossNVDoc = DocumentJournal::create([
+                'date'              => $date,
+                'document_number'   => $nextDocNum,
+                'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                'amount_amd'        => abs($net16200NV),
+                'debit_partner_id'  => $clientId,
+                'credit_partner_id' => $clientId,
+                'comment'           => "Write-off 16200NV for contract #{$contract->id} - loss client re-provide",
+                'debit_account_id'  => $dAcc16200NV,
+                'credit_account_id' => $cAcc16200NV,
+                'user_id'           => auth()->id(),
+                'journalable_type'  => DocumentJournal::class,
+                'journalable_id'    => $journalDoc->id,
+                'contract_id'       => $contract->id,
+            ]);
+            Transaction::create([
+                'date'                 => $date,
+                'document_number'      => $nextDocNum,
+                'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                'debit_account_id'     => $dAcc16200NV,
+                'debit_partner_id'     => $clientId,
+                'debit_currency_id'    => 1,
+                'credit_account_id'    => $cAcc16200NV,
+                'credit_currency_id'   => 1,
+                'credit_partner_id'    => $clientId,
+                'amount_amd'           => abs($net16200NV),
+                'comment'              => "Write-off 16200NV for contract #{$contract->id} - loss client re-provide",
+                'user_id'              => auth()->id(),
+                'is_system'            => true,
+                'disbursement_date'    => $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $lossNVDoc->id,
+                'contract_id'          => $contract->id,
+            ]);
+        }
+
+        $amount86000 = $net16200 + $net16200NV;
+        if (abs($amount86000) >= 0.01) {
+            $rule86000 = PostingRule::where('business_event_filter', 'loss_writeoff_principal')->firstOrFail();
+            $nextDocNum = Transaction::getNextDocumentNumber();
+            $dAcc86000 = $amount86000 > 0 ? $rule86000->debit_account_id : $rule86000->credit_account_id;
+            $cAcc86000 = $amount86000 > 0 ? $rule86000->credit_account_id : $rule86000->debit_account_id;
+            $loss86000Doc = DocumentJournal::create([
+                'date'              => $date,
+                'document_number'   => $nextDocNum,
+                'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                'amount_amd'        => abs($amount86000),
+                'debit_partner_id'  => $rule86000->resolveDebitPartnerId($contract) ?? $clientId,
+                'credit_partner_id' => $rule86000->resolveCreditPartnerId($contract) ?? $clientId,
+                'comment'           => "Loss write-off expense 86000 for contract #{$contract->id} - loss client re-provide",
+                'debit_account_id'  => $dAcc86000,
+                'credit_account_id' => $cAcc86000,
+                'user_id'           => auth()->id(),
+                'journalable_type'  => DocumentJournal::class,
+                'journalable_id'    => $journalDoc->id,
+                'contract_id'       => $contract->id,
+            ]);
+            Transaction::create([
+                'date'                 => $date,
+                'document_number'      => $nextDocNum,
+                'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
+                'debit_account_id'     => $dAcc86000,
+                'debit_partner_id'     => $rule86000->resolveDebitPartnerId($contract) ?? $clientId,
+                'debit_currency_id'    => 1,
+                'credit_account_id'    => $cAcc86000,
+                'credit_currency_id'   => 1,
+                'credit_partner_id'    => $rule86000->resolveCreditPartnerId($contract) ?? $clientId,
+                'amount_amd'           => abs($amount86000),
+                'comment'              => "Loss write-off expense 86000 for contract #{$contract->id} - loss client re-provide",
+                'user_id'              => auth()->id(),
+                'is_system'            => true,
+                'disbursement_date'    => $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $loss86000Doc->id,
+                'contract_id'          => $contract->id,
+            ]);
+        }
+
+        if (abs($net16201NI) >= 0.01) {
+            $nextDocNum = Transaction::getNextDocumentNumber();
+            $dAcc16201NI = $net16201NI > 0 ? $acc16605PS : $acc16201NI;
+            $cAcc16201NI = $net16201NI > 0 ? $acc16201NI : $acc16605PS;
+            $lossNIDoc = DocumentJournal::create([
+                'date'              => $date,
+                'document_number'   => $nextDocNum,
+                'document_type'     => DocumentJournal::LOSS_RESERVE,
+                'amount_amd'        => abs($net16201NI),
+                'debit_partner_id'  => $clientId,
+                'credit_partner_id' => $clientId,
+                'comment'           => "Write-off 16201NI for contract #{$contract->id} - loss client re-provide",
+                'debit_account_id'  => $dAcc16201NI,
+                'credit_account_id' => $cAcc16201NI,
+                'user_id'           => auth()->id(),
+                'journalable_type'  => DocumentJournal::class,
+                'journalable_id'    => $journalDoc->id,
+                'contract_id'       => $contract->id,
+            ]);
+            Transaction::create([
+                'date'                 => $date,
+                'document_number'      => $nextDocNum,
+                'document_type'        => DocumentJournal::LOSS_RESERVE,
+                'debit_account_id'     => $dAcc16201NI,
+                'debit_partner_id'     => $clientId,
+                'debit_currency_id'    => 1,
+                'credit_account_id'    => $cAcc16201NI,
+                'credit_currency_id'   => 1,
+                'credit_partner_id'    => $clientId,
+                'amount_amd'           => abs($net16201NI),
+                'comment'              => "Write-off 16201NI for contract #{$contract->id} - loss client re-provide",
+                'user_id'              => auth()->id(),
+                'is_system'            => true,
+                'disbursement_date'    => $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $lossNIDoc->id,
+                'contract_id'          => $contract->id,
+            ]);
+
+            $rule86001 = PostingRule::where('business_event_filter', 'loss_writeoff_interest')->firstOrFail();
+            $nextDocNum = Transaction::getNextDocumentNumber();
+            $dAcc86001 = $net16201NI > 0 ? $rule86001->debit_account_id : $rule86001->credit_account_id;
+            $cAcc86001 = $net16201NI > 0 ? $rule86001->credit_account_id : $rule86001->debit_account_id;
+            $loss86001Doc = DocumentJournal::create([
+                'date'              => $date,
+                'document_number'   => $nextDocNum,
+                'document_type'     => DocumentJournal::LOSS_RESERVE,
+                'amount_amd'        => abs($net16201NI),
+                'debit_partner_id'  => $rule86001->resolveDebitPartnerId($contract) ?? $clientId,
+                'credit_partner_id' => $rule86001->resolveCreditPartnerId($contract) ?? $clientId,
+                'comment'           => "Loss write-off expense 86001 for contract #{$contract->id} - loss client re-provide",
+                'debit_account_id'  => $dAcc86001,
+                'credit_account_id' => $cAcc86001,
+                'user_id'           => auth()->id(),
+                'journalable_type'  => DocumentJournal::class,
+                'journalable_id'    => $journalDoc->id,
+                'contract_id'       => $contract->id,
+            ]);
+            Transaction::create([
+                'date'                 => $date,
+                'document_number'      => $nextDocNum,
+                'document_type'        => DocumentJournal::LOSS_RESERVE,
+                'debit_account_id'     => $dAcc86001,
+                'debit_partner_id'     => $rule86001->resolveDebitPartnerId($contract) ?? $clientId,
+                'debit_currency_id'    => 1,
+                'credit_account_id'    => $cAcc86001,
+                'credit_currency_id'   => 1,
+                'credit_partner_id'    => $rule86001->resolveCreditPartnerId($contract) ?? $clientId,
+                'amount_amd'           => abs($net16201NI),
+                'comment'              => "Loss write-off expense 86001 for contract #{$contract->id} - loss client re-provide",
+                'user_id'              => auth()->id(),
+                'is_system'            => true,
+                'disbursement_date'    => $date,
+                'transactionable_type' => DocumentJournal::class,
+                'transactionable_id'   => $loss86001Doc->id,
+                'contract_id'          => $contract->id,
+            ]);
         }
     }
 

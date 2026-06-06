@@ -110,6 +110,7 @@ return [
             'execute_contract_item',
             'view_contract_history_details',
             'pay_contract_amount',
+            'reprovide_contract_amount',
             'request_contract_discount',
             'update_contract_number',
 
@@ -169,7 +170,7 @@ return [
             'view_contracts', 'view_contract', 'create_contract', 'calculate_contract_interest',
             'confirm_calculated_interest', 'make_contract_payment', 'make_full_contract_payment',
             'make_partial_contract_payment', 'execute_contract_item', 'view_contract_history_details',
-            'pay_contract_amount', 'request_contract_discount', 'view_notes', 'create_note',
+            'pay_contract_amount', 'reprovide_contract_amount', 'request_contract_discount', 'view_notes', 'create_note',
             'view_cashbox_summary', 'download_order',
         ],
     ],

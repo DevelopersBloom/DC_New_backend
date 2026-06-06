@@ -255,6 +255,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::match('put', '/payments/bulk-update', [PaymentControllerNew::class, 'bulkUpdate']);
         Route::get('/history-detail/{id}',[ContractControllerNew::class,'getHistoryDetails'])->middleware('can:view_contract_history_details');
         Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount'])->middleware('can:pay_contract_amount');
+        Route::post('/reprovide-amount', [ContractControllerNew::class, 'reprovideContractAmount'])
+            ->middleware(['can:reprovide_contract_amount', 'idempotent:contracts.reprovide-amount']);
         Route::post('/regenerate-schedule', [ContractControllerNew::class, 'regenerateSchedule']);
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount'])->middleware('can:request_contract_discount');
         Route::put('/update-number/{id}',[ContractControllerNew::class,'updateContractNumber'])->middleware('can:update_contract_number');
