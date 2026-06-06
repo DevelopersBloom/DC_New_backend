@@ -590,8 +590,6 @@ class PaymentService
         }
         if ($nextPayment && $decrease > 0) {
             $balanceBefore = (float) $contract->provided_amount;
-            $nextPayment->amount -= $decrease;
-            $nextPayment->save();
 
             PaymentEntry::create([
                 'payment_id'    => $nextPayment->id,
