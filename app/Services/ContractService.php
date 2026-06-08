@@ -757,8 +757,6 @@ class   ContractService
 
             $pgi_id++;
         }
-
-        dd($rows);
         return $rows;
     }
 
