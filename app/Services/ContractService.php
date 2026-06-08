@@ -709,7 +709,7 @@ class   ContractService
 
             $daysPrev     = $i == 1 ? $prevRawDate : $prevPayDate;
             $daysInPeriod = $paymentDate->diffInDays($daysPrev);
-    if ($i == 12) {
+    if ($i == 1) {
         dd($paymentDate,$months,$prevPayDate);
 
     }
