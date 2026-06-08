@@ -890,12 +890,11 @@ class   ContractService
 
         $schedule = [];
 
-        foreach ($newRows as $index) {
+        foreach ($newRows as $index => $payment) {
 //            if (!isset($existingPayments[$index])) {
 //                dd($index, $newRows);
 //            }
-            dd($index);
-            $row = $newRows[$index];
+            dd($index,$payment);
             $payment = $existingPayments[$index];
             dd($payment, $row);
             // Already paid amounts from payment_entries (append-only log)
