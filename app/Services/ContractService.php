@@ -892,7 +892,24 @@ class   ContractService
 
         foreach ($newRows as $index => $row) {
             if (!isset($existingPayments[$index])) {
-                dd($index, $newRows);
+               Payment::create([
+                   'contract_id'                => $contract->id,
+                   'date'                       => $row['date'],
+                   'to_date'                    => $row['to_date'],
+                   'from_date'                  => $row['from_date'],
+                   'days'                       => $row['days'],
+                   'amount'                     => $row['amount'],
+                   'original_amount'            => $row['original_amount'],
+                   'principal_payment'          => $row['principal_payment'],
+                   'original_principal_payment' => $row['original_principal_payment'],
+                   'interest_payment'           => $row['interest_payment'],
+                   'original_interest_payment'  => $row['original_interest_payment'],
+                   'service_fee_payment'        => $row['service_fee_payment'],
+                   'remaining'                  => $row['remaining'],
+                   'kasko_amount'               => $row['kasko_amount'],
+                   'pawnshop_id'                => $row['pawnshop_id'],
+                   'PGI_ID'                     => $row['PGI_ID'],
+                   ]);
             }
             $payment = $existingPayments[$index];
             // Already paid amounts from payment_entries (append-only log)
