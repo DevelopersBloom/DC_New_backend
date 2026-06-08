@@ -893,9 +893,8 @@ class   ContractService
         foreach ($newRows as $index => $row) {
 
             if (!isset($existingPayments[$index])) {
-                dd($row,$row['date']);
                Payment::create([
-                   'contract_id'                => $contract->id,
+                   'contract_id'                => $row['contract_id'],
                    'date'                       => $row['date'],
                    'to_date'                    => $row['to_date'],
                    'from_date'                  => $row['from_date'],
