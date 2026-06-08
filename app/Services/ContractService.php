@@ -709,7 +709,7 @@ class   ContractService
 
             $daysPrev     = $i == 1 ? $prevRawDate : $prevPayDate;
             $daysInPeriod = $paymentDate->diffInDays($daysPrev);
-
+    dd($paymentDate,$months,$prevPayDate);
             $interestMonthlyRate = ($contract->interest_rate / 100) * $daysInPeriod;
             $allMonthlyRate      = $interestMonthlyRate + $feeMonthlyRate;
 
