@@ -892,6 +892,7 @@ class   ContractService
         $schedule  = [];
         $pawnshopId = $contract->pawnshop_id ?? (auth()->user()->pawnshop_id ?? 1);
 
+        dd($newRows);
         foreach ($newRows as $index => $row) {
             // PGI_ID starts from 1 for the new schedule
             $pgiId   = $index + 1;
