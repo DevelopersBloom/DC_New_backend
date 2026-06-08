@@ -928,7 +928,6 @@ class ContractControllerNew extends Controller
             }
 
             $this->contractService->rebuildScheduleFromDate($contract->fresh(), $reprovideDate);
-dd(3);
             Modification::create([
                 'subject_type'      => Contract::class,
                 'subject_id'        => $contract->id,

@@ -911,35 +911,36 @@ class   ContractService
                    'pawnshop_id'                => $row['pawnshop_id'],
                    'PGI_ID'                     => $row['PGI_ID'],
                    ]);
+            } else {
+                $payment = $existingPayments[$index];
+                // Already paid amounts from payment_entries (append-only log)
+                $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
+                $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
+
+                $payment->update([
+                    'date'                       => $row['date'],
+                    'to_date'                    => $row['to_date'],
+                    'from_date'                  => $row['from_date'],
+                    'days'                       => $row['days'],
+                    'original_amount'            => $row['amount'],
+                    'amount'                     => $row['amount'],
+                    'original_interest_payment'  => $row['interest_payment'],
+                    'interest_payment'           => $row['interest_payment'],
+                    'original_principal_payment' => $row['principal_payment'],
+                    'principal_payment'          => $row['principal_payment'],
+                    'service_fee_payment'        => $row['service_fee_payment'],
+                    'remaining'                  => $row['remaining'],
+                    'PGI_ID'                     => $row['PGI_ID'],
+                ]);
+
+                $schedule[] = [
+                    'date'      => $row['date'],
+                    'payment'   => round($row['amount'], 3),
+                    'principal' => round($row['principal_payment'], 3),
+                    'interest'  => round($row['interest_payment'], 3),
+                    'balance'   => round($row['remaining'], 3),
+                ];
             }
-            $payment = $existingPayments[$index];
-            // Already paid amounts from payment_entries (append-only log)
-            $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
-            $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
-
-            $payment->update([
-                'date'                       => $row['date'],
-                'to_date'                    => $row['to_date'],
-                'from_date'                  => $row['from_date'],
-                'days'                       => $row['days'],
-                'original_amount'            => $row['amount'],
-                'amount'                     => $row['amount'],
-                'original_interest_payment'  => $row['interest_payment'],
-                'interest_payment'           => $row['interest_payment'],
-                'original_principal_payment' => $row['principal_payment'],
-                'principal_payment'          => $row['principal_payment'],
-                'service_fee_payment'        => $row['service_fee_payment'],
-                'remaining'                  => $row['remaining'],
-                'PGI_ID'                     => $row['PGI_ID'],
-            ]);
-
-            $schedule[] = [
-                'date'      => $row['date'],
-                'payment'   => round($row['amount'], 3),
-                'principal' => round($row['principal_payment'], 3),
-                'interest'  => round($row['interest_payment'], 3),
-                'balance'   => round($row['remaining'], 3),
-            ];
         }
 
         $contract->payment_schedule = $schedule;
