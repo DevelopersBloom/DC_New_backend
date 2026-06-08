@@ -683,7 +683,7 @@ class   ContractService
             : \Carbon\Carbon::parse($contract->date);
 
         // Always calculate months from start date to deadline
-        $deadline = \Carbon\Carbon::parse($contract->deadline);
+        $deadline = \Carbon\Carbon::parse($contract->deadline_days);
         $months   = max(1,
             ($deadline->year - $currentDate->year) * 12
             + ($deadline->month - $currentDate->month)
