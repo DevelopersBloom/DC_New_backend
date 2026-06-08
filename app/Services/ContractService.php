@@ -896,12 +896,14 @@ class   ContractService
             // PGI_ID starts from 1 for the new schedule
             $pgiId   = $index + 1;
             $existing = $existingPayments->get($index);
-            dd($pgiId);
             if ($existing) {
                 // Already paid from payment_entries (append-only log)
                 $alreadyPaidInterest  = (float) ($existing->original_interest_payment - $existing->interest_payment);
                 $alreadyPaidPrincipal = (float) ($existing->original_principal_payment - $existing->principal_payment);
 
+                if ($row['amount'] == 0) {
+                    dd($row);
+                }
                 $existing->update([
                     'PGI_ID'                     => $pgiId,
                     'date'                       => $row['date'],
