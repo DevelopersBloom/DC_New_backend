@@ -684,11 +684,12 @@ class   ContractService
 
         // Always calculate months from start date to deadline
         $deadline = \Carbon\Carbon::parse($contract->deadline_days);
+        dd($deadline);
+
         $months   = max(1,
             ($deadline->year - $currentDate->year) * 12
             + ($deadline->month - $currentDate->month)
         );
-dd($months,$deadline);
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
