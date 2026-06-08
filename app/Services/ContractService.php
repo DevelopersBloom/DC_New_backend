@@ -684,7 +684,6 @@ class   ContractService
 
         // Use deadline_days as number of months (same as initial payment creation)
         $months = max(1, (int) $contract->deadline_days);
-dd($months);
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
@@ -890,33 +889,56 @@ dd($months);
             $newRows = $this->buildClassicSchedule($contract, $startDate, $contract->pawnshop_id);
         }
 
-        $schedule = [];
+        $schedule  = [];
+        $pawnshopId = $contract->pawnshop_id ?? (auth()->user()->pawnshop_id ?? 1);
 
-        foreach ($existingPayments as $index => $payment) {
-            if (!isset($newRows[$index])) {
-                break;
+        foreach ($newRows as $index => $row) {
+            // PGI_ID starts from 1 for the new schedule
+            $pgiId   = $index + 1;
+            $existing = $existingPayments->get($index);
+
+            if ($existing) {
+                // Already paid from payment_entries (append-only log)
+                $alreadyPaidInterest  = (float) ($existing->original_interest_payment - $existing->interest_payment);
+                $alreadyPaidPrincipal = (float) ($existing->original_principal_payment - $existing->principal_payment);
+
+                $existing->update([
+                    'PGI_ID'                     => $pgiId,
+                    'date'                       => $row['date'],
+                    'to_date'                    => $row['to_date'],
+                    'from_date'                  => $row['from_date'],
+                    'days'                       => $row['days'],
+                    'original_amount'            => $row['amount'],
+                    'amount'                     => $row['amount'],
+                    'original_interest_payment'  => $row['interest_payment'],
+                    'interest_payment'           => max(0, round($alreadyPaidInterest,  10)),
+                    'original_principal_payment' => $row['principal_payment'],
+                    'principal_payment'          => max(0, round( $alreadyPaidPrincipal, 10)),
+                    'service_fee_payment'        => $row['service_fee_payment'],
+                    'remaining'                  => $row['remaining'],
+                ]);
+            } else {
+                // No existing payment for this slot — create a new one
+                Payment::create([
+                    'contract_id'                => $contract->id,
+                    'type'                       => 'regular',
+                    'status'                     => 'initial',
+                    'PGI_ID'                     => $pgiId,
+                    'pawnshop_id'                => $pawnshopId,
+                    'date'                       => $row['date'],
+                    'to_date'                    => $row['to_date'],
+                    'from_date'                  => $row['from_date'],
+                    'days'                       => $row['days'],
+                    'amount'                     => $row['amount'],
+                    'original_amount'            => $row['amount'],
+                    'interest_payment'           => $row['interest_payment'],
+                    'original_interest_payment'  => $row['interest_payment'],
+                    'principal_payment'          => $row['principal_payment'],
+                    'original_principal_payment' => $row['principal_payment'],
+                    'service_fee_payment'        => $row['service_fee_payment'],
+                    'remaining'                  => $row['remaining'],
+                ]);
             }
-
-            $row = $newRows[$index];
-
-            // Already paid amounts from payment_entries (append-only log)
-            $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
-            $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
-
-            $payment->update([
-                'date'                       => $row['date'],
-                'to_date'                    => $row['to_date'],
-                'from_date'                  => $row['from_date'],
-                'days'                       => $row['days'],
-                'original_amount'            => $row['amount'],
-                'amount'                     => $row['amount'],
-                'original_interest_payment'  => $row['interest_payment'],
-                'interest_payment'           => max(0, round($alreadyPaidInterest, 10)),
-                'original_principal_payment' => $row['principal_payment'],
-                'principal_payment'          => max(0, round( $alreadyPaidPrincipal, 10)),
-                'service_fee_payment'        => $row['service_fee_payment'],
-                'remaining'                  => $row['remaining'],
-            ]);
 
             $schedule[] = [
                 'date'      => $row['date'],
