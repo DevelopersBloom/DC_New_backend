@@ -684,7 +684,7 @@ class   ContractService
 
         // Use deadline_days as number of months (same as initial payment creation)
         $months = max(1, (int) $contract->deadline_days);
-
+dd($months);
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
