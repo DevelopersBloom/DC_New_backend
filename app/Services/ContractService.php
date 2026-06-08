@@ -678,10 +678,17 @@ class   ContractService
     {
         $loanAmount = (float) $contract->provided_amount;
 
-        if (!$months) {
-            $months = (int) $contract->deadline_days;
-        }
+        $currentDate = $import_date
+            ? \Carbon\Carbon::parse($import_date)
+            : \Carbon\Carbon::parse($contract->date);
 
+        // Always calculate months from start date to deadline
+        $deadline = \Carbon\Carbon::parse($contract->deadline);
+        $months   = max(1,
+            ($deadline->year - $currentDate->year) * 12
+            + ($deadline->month - $currentDate->month)
+        );
+dd($months);
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
@@ -693,10 +700,6 @@ class   ContractService
 
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $pgi_id      = $startPgiId;
-
-        $currentDate = $import_date
-            ? \Carbon\Carbon::parse($import_date)
-            : \Carbon\Carbon::parse($contract->date);
 
         $rows = [];
 
@@ -884,11 +887,8 @@ class   ContractService
         $count = $existingPayments->count();
 
         if ($contract->payment_type === 'amortized') {
-            $months = $count > 0
-                ? $count
-                : max(1, ($deadline->year - $start->year) * 12 + ($deadline->month - $start->month));
-
-            $newRows = $this->buildAnnuitySchedule($contract, $startDate, $contract->pawnshop_id, $months, 1);
+            // months is calculated inside buildAnnuitySchedule from startDate → deadline
+            $newRows = $this->buildAnnuitySchedule($contract, $startDate, $contract->pawnshop_id, null, 1);
         } else {
             // Classic — build schedule data (use existing helper if available)
             $newRows = $this->buildClassicSchedule($contract, $startDate, $contract->pawnshop_id);
@@ -903,9 +903,10 @@ class   ContractService
 
             $row = $newRows[$index];
 
-            // How much is already paid on this installment (from payment_entries)
-            $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
-            $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
+            // Already paid amounts from payment_entries (append-only log)
+            $alreadyPaidAmount    = (float) $payment->entries()->sum('amount');
+            $alreadyPaidInterest  = (float) $payment->entries()->sum('interest_amount');
+            $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
 
             $payment->update([
                 'date'                       => $row['date'],
@@ -913,11 +914,11 @@ class   ContractService
                 'from_date'                  => $row['from_date'],
                 'days'                       => $row['days'],
                 'original_amount'            => $row['amount'],
-                'amount'                     => $row['amount'],
+                'amount'                     => max(0, round($row['amount']           - $alreadyPaidAmount, 10)),
                 'original_interest_payment'  => $row['interest_payment'],
                 'interest_payment'           => max(0, round($row['interest_payment'] - $alreadyPaidInterest, 10)),
                 'original_principal_payment' => $row['principal_payment'],
-                'principal_payment'          => max(0, round($row['principal_payment'] - $alreadyPaidPrincipal, 10)),
+                'principal_payment'          => max(0, round($row['principal_payment']- $alreadyPaidPrincipal, 10)),
                 'service_fee_payment'        => $row['service_fee_payment'],
                 'remaining'                  => $row['remaining'],
             ]);
