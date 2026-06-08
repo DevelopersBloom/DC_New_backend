@@ -688,7 +688,7 @@ class   ContractService
             ($deadline->year - $currentDate->year) * 12
             + ($deadline->month - $currentDate->month)
         );
-dd($months);
+dd($months,$deadline);
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
