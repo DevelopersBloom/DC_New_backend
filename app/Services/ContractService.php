@@ -909,9 +909,9 @@ class   ContractService
                 'original_amount'            => $row['amount'],
                 'amount'                     => $row['amount'],
                 'original_interest_payment'  => $row['interest_payment'],
-                'interest_payment'           => max(0, round($alreadyPaidInterest, 10)),
+                'interest_payment'           => $row['interest_payment'],
                 'original_principal_payment' => $row['principal_payment'],
-                'principal_payment'          => max(0, round( $alreadyPaidPrincipal, 10)),
+                'principal_payment'          => $row['principal_payment'],
                 'service_fee_payment'        => $row['service_fee_payment'],
                 'remaining'                  => $row['remaining'],
             ]);
