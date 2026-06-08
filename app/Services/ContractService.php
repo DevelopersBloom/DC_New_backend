@@ -891,7 +891,9 @@ class   ContractService
         $schedule = [];
 
         foreach ($newRows as $index => $row) {
+
             if (!isset($existingPayments[$index])) {
+                dd(3);
                Payment::create([
                    'contract_id'                => $contract->id,
                    'date'                       => $row['date'],
