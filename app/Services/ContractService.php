@@ -895,7 +895,7 @@ class   ContractService
             if (!isset($newRows[$index])) {
                 dd($index, $newRows);
             }
-
+dd($existingPayments,$newRows);
             $row = $newRows[$index];
             // Already paid amounts from payment_entries (append-only log)
             $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
