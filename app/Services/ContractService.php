@@ -503,6 +503,55 @@ class   ContractService
         }
     }
 
+    protected function buildClassicSchedule(Contract $contract, $import_date = null, $import_pawnshop_id = null, int $startPgiId = 1): array
+    {
+        $fromDate    = $import_date ? Carbon::parse($import_date)->setTimezone('Asia/Yerevan') : Carbon::parse($contract->date)->setTimezone('Asia/Yerevan');
+        $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
+        $toDate      = Carbon::parse($contract->deadline)->setTimezone('Asia/Yerevan');
+        $currentDate = $fromDate;
+        $pgi_id      = $startPgiId;
+        $rows        = [];
+
+        while ($currentDate->lt($toDate)) {
+            $nextPaymentDate = (clone $currentDate)->addMonths();
+            $rawPaymentDate  = $nextPaymentDate->lt($toDate) ? $nextPaymentDate : $toDate;
+            $paymentDate     = $this->getNextWorkingDay(clone $rawPaymentDate);
+            $diffDays        = $paymentDate->diffInDays($currentDate);
+
+            $isLastPayment = $paymentDate->eq($toDate);
+            if ($isLastPayment) {
+                $diffDays++;
+            }
+
+            $kaskoAmount = 0;
+            if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastPayment) {
+                $kaskoAmount = $contract->kasko_amount;
+            }
+
+            $amount = $this->calcAmount($contract->provided_amount, $diffDays, $contract->interest_rate / 100);
+
+            $rows[] = [
+                'contract_id'  => $contract->id,
+                'from_date'    => $currentDate->format('d.m.Y'),
+                'date'         => $paymentDate->format('Y-m-d'),
+                'to_date'      => $paymentDate->format('Y-m-d'),
+                'days'         => $diffDays,
+                'amount'       => $amount,
+                'original_amount' => $amount,
+                'mother'       => $isLastPayment ? $contract->provided_amount : 0,
+                'last_payment' => $isLastPayment ? true : null,
+                'kasko_amount' => $kaskoAmount,
+                'pawnshop_id'  => $pawnshop_id,
+                'PGI_ID'       => $pgi_id,
+            ];
+
+            $pgi_id++;
+            $currentDate = $nextPaymentDate;
+        }
+
+        return $rows;
+    }
+
     public function createClassicPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, int $startPgiId = 1)
     {
         $schedule = [];
@@ -621,7 +670,11 @@ class   ContractService
         return $pmt - $ipmt;
     }
 
-    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, $months = null, int $startPgiId = 1)
+    /**
+     * Build annuity schedule rows as an array (without persisting).
+     * Each element contains all fields needed to create or update a Payment row.
+     */
+    protected function buildAnnuitySchedule(Contract $contract, $import_date = null, $import_pawnshop_id = null, $months = null, int $startPgiId = 1): array
     {
         $loanAmount = (float) $contract->provided_amount;
 
@@ -629,8 +682,6 @@ class   ContractService
             $months = (int) $contract->deadline_days;
         }
 
-//        $feeAnnualPercent = (float) $contract->fee_annual_rate;
-//        $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
@@ -638,8 +689,8 @@ class   ContractService
         $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
 
         $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
-
         $monthlyPayment = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
+
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $pgi_id      = $startPgiId;
 
@@ -647,7 +698,7 @@ class   ContractService
             ? \Carbon\Carbon::parse($import_date)
             : \Carbon\Carbon::parse($contract->date);
 
-        $schedule = [];
+        $rows = [];
 
         for ($i = 1; $i <= $months; $i++) {
             $isLastMonth = ($i === $months);
@@ -658,29 +709,23 @@ class   ContractService
             $prevPayDate    = $this->getNextWorkingDay(clone $prevRawDate);
             $paymentDate    = $this->getNextWorkingDay(clone $rawPaymentDate);
 
-            $daysPrev = $i == 1 ? $prevRawDate : $prevPayDate;
-//            $daysInPeriod   = $paymentDate->diffInDays($prevRawDate);
-            $daysInPeriod   = $paymentDate->diffInDays($daysPrev);
+            $daysPrev     = $i == 1 ? $prevRawDate : $prevPayDate;
+            $daysInPeriod = $paymentDate->diffInDays($daysPrev);
 
             $interestMonthlyRate = ($contract->interest_rate / 100) * $daysInPeriod;
+            $allMonthlyRate      = $interestMonthlyRate + $feeMonthlyRate;
 
-            $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
+            $endingBalance   = -$this->excelFv($allMonthlyRate, $i, -$monthlyPayment, $loanAmount);
+            $interestPayment = $this->calcAmount($loanAmount, $daysInPeriod, $contract->interest_rate / 100);
 
-//            $monthlyPayment   = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
-
-            $endingBalance    = -$this->excelFv($allMonthlyRate, $i, -$monthlyPayment, $loanAmount);
-//            $principalPayment = -$this->excelPpmt($allMonthlyRate, $i, $months, $loanAmount);
-
-//            $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
-            $interestPayment = $this->calcAmount($loanAmount,$daysInPeriod,$contract->interest_rate/100);
             $servicePayment = 0;
             if ($feeAnnualPercent) {
                 $feeDailyPercent = $feeAnnualPercent / 365;
-                $servicePayment = $this->calcAmount($loanAmount,$daysInPeriod,$feeDailyPercent/100);
+                $servicePayment  = $this->calcAmount($loanAmount, $daysInPeriod, $feeDailyPercent / 100);
             }
             $principalPayment = $monthlyPayment - $interestPayment - $servicePayment;
             $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate, $i, $months, $loanAmount);
-            $loanAmount -= $principalPayment;
+            $loanAmount      -= $principalPayment;
 
             $kaskoAmount = 0;
             if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastMonth) {
@@ -688,40 +733,54 @@ class   ContractService
             }
 
             if ($isLastMonth) {
-                $monthlyPayment += $loanAmount;
+                $monthlyPayment   += $loanAmount;
                 $principalPayment += $loanAmount;
-                $loanAmount = 0;
+                $loanAmount        = 0;
             }
-            Payment::create([
-                'contract_id'         => $contract->id,
-                'date'                => $paymentDate->format('Y-m-d'),
-                'to_date'             => $paymentDate->format('Y-m-d'),
-                'from_date'           =>  $i == 1 ? $prevRawDate->format('Y-m-d') : $prevPayDate->format('Y-m-d'),
-                'days'                => $daysInPeriod,
-                'amount'              => round($monthlyPayment, 10),
-                'original_amount'     => round($monthlyPayment, 10),
-                'principal_payment'   => round($principalPayment, 10),
+
+            $rows[] = [
+                'contract_id'                => $contract->id,
+                'date'                       => $paymentDate->format('Y-m-d'),
+                'to_date'                    => $paymentDate->format('Y-m-d'),
+                'from_date'                  => $i == 1 ? $prevRawDate->format('Y-m-d') : $prevPayDate->format('Y-m-d'),
+                'days'                       => $daysInPeriod,
+                'amount'                     => round($monthlyPayment, 10),
+                'original_amount'            => round($monthlyPayment, 10),
+                'principal_payment'          => round($principalPayment, 10),
                 'original_principal_payment' => round($principalPayment, 10),
-                'interest_payment'    => round($interestPayment, 10),
-                'original_interest_payment' => $interestPayment,
-                'service_fee_payment' => round($monthlyFeeAmount, 10),
-//                'remaining'           => round(max($endingBalance, 0), 10),
-                'remaining'           => round($loanAmount,10),
-                'kasko_amount'        => $kaskoAmount,
-                'pawnshop_id'         => $pawnshop_id,
-                'PGI_ID'              => $pgi_id,
-            ]);
+                'interest_payment'           => round($interestPayment, 10),
+                'original_interest_payment'  => round($interestPayment, 10),
+                'service_fee_payment'        => round($monthlyFeeAmount, 10),
+                'remaining'                  => round($loanAmount, 10),
+                'kasko_amount'               => $kaskoAmount,
+                'pawnshop_id'                => $pawnshop_id,
+                'PGI_ID'                     => $pgi_id,
+            ];
 
             $pgi_id++;
+        }
+
+        return $rows;
+    }
+
+    protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, $months = null, int $startPgiId = 1)
+    {
+        $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
+        $rows        = $this->buildAnnuitySchedule($contract, $import_date, $pawnshop_id, $months, $startPgiId);
+
+        $schedule = [];
+
+        foreach ($rows as $row) {
+            Payment::create($row);
 
             $schedule[] = [
-                'date'         => $paymentDate->format('Y-m-d'),
-                'payment'      => round($monthlyPayment, 3),
-                'monthly_fee'  => round($monthlyFeeAmount, 3),
-                'total'        => round($monthlyPayment + $monthlyFeeAmount, 3),
-                'principal'    => round($principalPayment, 3),
-                'interest'     => round($interestPayment, 3),
-                'balance'      => round(max($endingBalance, 0), 3),
+                'date'        => $row['date'],
+                'payment'     => round($row['amount'], 3),
+                'monthly_fee' => round($row['service_fee_payment'], 3),
+                'total'       => round($row['amount'] + $row['service_fee_payment'], 3),
+                'principal'   => round($row['principal_payment'], 3),
+                'interest'    => round($row['interest_payment'], 3),
+                'balance'     => round($row['remaining'], 3),
             ];
         }
 
@@ -807,36 +866,75 @@ class   ContractService
      */
     public function rebuildScheduleFromDate(Contract $contract, string $startDate): int
     {
-        $start = Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
+        $start    = Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
         $deadline = Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
 
         if ($start->gt($deadline)) {
             throw new \InvalidArgumentException('Re-provide date cannot be after contract deadline.');
         }
 
-        $deletedCount = Payment::where('contract_id', $contract->id)
+        // Get existing initial payments ordered by date (do NOT delete them)
+        $existingPayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
             ->where('status', 'initial')
-            ->count();
+            ->orderBy('date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
 
-        Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')
-            ->where('status', 'initial')
-            ->delete();
-
-        $maxPgiId = (int) Payment::where('contract_id', $contract->id)->max('PGI_ID');
-        $startPgiId = $maxPgiId + 1;
+        $count = $existingPayments->count();
 
         if ($contract->payment_type === 'amortized') {
-            $remainingMonths = $deletedCount > 0
-                ? $deletedCount
+            $months = $count > 0
+                ? $count
                 : max(1, ($deadline->year - $start->year) * 12 + ($deadline->month - $start->month));
-            $this->createAnnuityPayment($contract, $startDate, $contract->pawnshop_id, $remainingMonths, $startPgiId);
+
+            $newRows = $this->buildAnnuitySchedule($contract, $startDate, $contract->pawnshop_id, $months, 1);
         } else {
-            $this->createClassicPayment($contract, $startDate, $contract->pawnshop_id, $startPgiId);
+            // Classic — build schedule data (use existing helper if available)
+            $newRows = $this->buildClassicSchedule($contract, $startDate, $contract->pawnshop_id);
         }
 
-        return $deletedCount;
+        $schedule = [];
+
+        foreach ($existingPayments as $index => $payment) {
+            if (!isset($newRows[$index])) {
+                break;
+            }
+
+            $row = $newRows[$index];
+
+            // How much is already paid on this installment (from payment_entries)
+            $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
+            $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
+
+            $payment->update([
+                'date'                       => $row['date'],
+                'to_date'                    => $row['to_date'],
+                'from_date'                  => $row['from_date'],
+                'days'                       => $row['days'],
+                'original_amount'            => $row['amount'],
+                'amount'                     => $row['amount'],
+                'original_interest_payment'  => $row['interest_payment'],
+                'interest_payment'           => max(0, round($row['interest_payment'] - $alreadyPaidInterest, 10)),
+                'original_principal_payment' => $row['principal_payment'],
+                'principal_payment'          => max(0, round($row['principal_payment'] - $alreadyPaidPrincipal, 10)),
+                'service_fee_payment'        => $row['service_fee_payment'],
+                'remaining'                  => $row['remaining'],
+            ]);
+
+            $schedule[] = [
+                'date'      => $row['date'],
+                'payment'   => round($row['amount'], 3),
+                'principal' => round($row['principal_payment'], 3),
+                'interest'  => round($row['interest_payment'], 3),
+                'balance'   => round($row['remaining'], 3),
+            ];
+        }
+
+        $contract->payment_schedule = $schedule;
+        $contract->save();
+
+        return $count;
     }
 
 }
