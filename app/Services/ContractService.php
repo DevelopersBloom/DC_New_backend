@@ -894,7 +894,7 @@ class   ContractService
 
         foreach ($newRows as $index => $row) {
             // PGI_ID starts from 1 for the new schedule
-            $pgiId   = $index + 1;
+            $pgiId   = $index + 2;
             $existing = $existingPayments->get($index);
             dd($existing);
             if ($existing) {
