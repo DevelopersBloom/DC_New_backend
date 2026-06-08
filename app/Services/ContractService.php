@@ -891,11 +891,11 @@ class   ContractService
         $schedule = [];
 
         foreach ($newRows as $index => $row) {
-//            if (!isset($existingPayments[$index])) {
-//                dd($index, $newRows);
-//            }
+            dd($existingPayments[$index]);
+            if (!isset($existingPayments[$index])) {
+                dd($index, $newRows);
+            }
             $payment = $existingPayments[$index];
-            dd($payment,$row,$index);
             // Already paid amounts from payment_entries (append-only log)
             $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
             $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
@@ -913,6 +913,7 @@ class   ContractService
                 'principal_payment'          => $row['principal_payment'],
                 'service_fee_payment'        => $row['service_fee_payment'],
                 'remaining'                  => $row['remaining'],
+                'PGI_ID'                     => $row['PGI_ID'],
             ]);
 
             $schedule[] = [
