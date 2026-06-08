@@ -902,9 +902,8 @@ class   ContractService
             $row = $newRows[$index];
 
             // Already paid amounts from payment_entries (append-only log)
-            $alreadyPaidAmount    = (float) $payment->entries()->sum('amount');
-            $alreadyPaidInterest  = (float) $payment->entries()->sum('interest_amount');
-            $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
+            $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
+            $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
 
             $payment->update([
                 'date'                       => $row['date'],
@@ -912,11 +911,11 @@ class   ContractService
                 'from_date'                  => $row['from_date'],
                 'days'                       => $row['days'],
                 'original_amount'            => $row['amount'],
-                'amount'                     => max(0, round($row['amount']           - $alreadyPaidAmount, 10)),
+                'amount'                     => $row['amount'],
                 'original_interest_payment'  => $row['interest_payment'],
-                'interest_payment'           => max(0, round($row['interest_payment'] - $alreadyPaidInterest, 10)),
+                'interest_payment'           => max(0, round($alreadyPaidInterest, 10)),
                 'original_principal_payment' => $row['principal_payment'],
-                'principal_payment'          => max(0, round($row['principal_payment']- $alreadyPaidPrincipal, 10)),
+                'principal_payment'          => max(0, round( $alreadyPaidPrincipal, 10)),
                 'service_fee_payment'        => $row['service_fee_payment'],
                 'remaining'                  => $row['remaining'],
             ]);
