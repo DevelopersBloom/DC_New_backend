@@ -894,6 +894,7 @@ class   ContractService
             if (!isset($existingPayments[$index])) {
                 dd($index, $newRows);
             }
+            dd($index);
             $row = $newRows[$index];
             $payment = $existingPayments[$index];
             dd($payment, $row);
