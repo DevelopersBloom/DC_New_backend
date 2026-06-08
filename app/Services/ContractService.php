@@ -896,6 +896,7 @@ class   ContractService
             // PGI_ID starts from 1 for the new schedule
             $pgiId   = $index + 1;
             $existing = $existingPayments->get($index);
+            dd($newRows,$row,$pgiId,$existing);
             if ($existing) {
                 // Already paid from payment_entries (append-only log)
                 $alreadyPaidInterest  = (float) ($existing->original_interest_payment - $existing->interest_payment);
