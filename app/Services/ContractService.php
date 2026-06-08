@@ -890,13 +890,12 @@ class   ContractService
 
         $schedule = [];
 
-        foreach ($newRows as $index => $payment) {
+        foreach ($newRows as $index => $row) {
 //            if (!isset($existingPayments[$index])) {
 //                dd($index, $newRows);
 //            }
-            dd($index,$payment);
             $payment = $existingPayments[$index];
-            dd($payment, $row);
+            dd($payment,$row,$index);
             // Already paid amounts from payment_entries (append-only log)
             $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
             $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
