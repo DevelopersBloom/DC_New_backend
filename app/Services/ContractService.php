@@ -897,7 +897,7 @@ class   ContractService
             }
 
             $row = $newRows[$index];
-dd($row);
+dd($newRows,$row);
             // Already paid amounts from payment_entries (append-only log)
             $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
             $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
