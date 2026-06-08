@@ -891,9 +891,9 @@ class   ContractService
         $schedule = [];
 
         foreach ($newRows as $index) {
-            if (!isset($existingPayments[$index])) {
-                dd($index, $newRows);
-            }
+//            if (!isset($existingPayments[$index])) {
+//                dd($index, $newRows);
+//            }
             dd($index);
             $row = $newRows[$index];
             $payment = $existingPayments[$index];
