@@ -684,12 +684,11 @@ class   ContractService
 
         // Always calculate months from start date to deadline
         $deadline = $contract->deadline_days;
-        dd($deadline);
-
-        $months   = max(1,
-            ($deadline->year - $currentDate->year) * 12
-            + ($deadline->month - $currentDate->month)
-        );
+//
+//        $months   = max(1,
+//            ($deadline->year - $currentDate->year) * 12
+//            + ($deadline->month - $currentDate->month)
+//        );
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
