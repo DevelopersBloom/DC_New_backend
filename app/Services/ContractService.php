@@ -862,7 +862,7 @@ class   ContractService
     /**
      * Rebuild future regular payments from $startDate; keep completed regular rows.
      */
-    public function rebuildScheduleFromDate(Contract $contract, string $startDate, ?int $dealId = null): int
+    public function rebuildScheduleFromDate(Contract $contract, string $startDate, ?int $dealId = null, float $overpaidInterest = 0.0): int
     {
         $start    = \Illuminate\Support\Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
         $deadline = \Illuminate\Support\Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
@@ -893,9 +893,7 @@ class   ContractService
         $paymentChanges  = [];
         $newPayments     = [];
 
-        $overpaid = max(0.0, $this->contractCalculationService
-            ->calculatePaidVsAccruedInterestDifference($contract, $start));
-        $remainingOverpaid = $overpaid;
+        $remainingOverpaid = max(0.0, $overpaidInterest);
 
         foreach ($newRows as $index => $row) {
             if ($remainingOverpaid > 0) {
