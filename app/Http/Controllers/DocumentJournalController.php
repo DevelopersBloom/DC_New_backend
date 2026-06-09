@@ -7,6 +7,7 @@ use App\Http\Resources\DocumentJournalResource;
 use App\Models\Client;
 use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
+use App\Models\ReminderOrder;
 use App\Services\ActivityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,13 +38,44 @@ class DocumentJournalController
 
         $requestType  = $request->query('document_type');
         $documentType = $typeMap[$requestType] ?? $requestType;
+        $documentTypes = $request->query('document_types', []);
+        if (is_string($documentTypes)) {
+            $documentTypes = array_filter(array_map('trim', explode(',', $documentTypes)));
+        }
+        if (!is_array($documentTypes)) {
+            $documentTypes = [];
+        }
+        $documentTypes = array_values(array_filter(array_map(
+            fn ($t) => $typeMap[$t] ?? $t,
+            $documentTypes
+        )));
+
+        $sortKey = (string) $request->query('sort_by', 'id');
+        $sortDir = strtolower((string) $request->query('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $sortMap = [
+            'date'              => 'date',
+            'document_number'   => 'document_number',
+            'document_type'     => 'document_type',
+            'amount_amd'        => 'amount_amd',
+            'disbursement_date' => 'created_at',
+            'debit_partner_name'=> 'debit_partner_id',
+        ];
+        $sortColumn = $sortMap[$sortKey] ?? 'id';
 
         $query = DocumentJournal::with([
             'currency:id,code',
             'debitPartner:id,type,name,surname,company_name,social_card_number,tax_number',
+            'creditPartner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])
-            ->when($documentType, fn($q) => $q->where('document_type','LIKE', '%' . $documentType . '%'))
+            ->when(!empty($documentTypes), function ($q) use ($documentTypes) {
+                $q->where(function ($q2) use ($documentTypes) {
+                    foreach ($documentTypes as $type) {
+                        $q2->orWhere('document_type', 'LIKE', '%' . $type . '%');
+                    }
+                });
+            })
+            ->when(empty($documentTypes) && $documentType, fn($q) => $q->where('document_type','LIKE', '%' . $documentType . '%'))
             ->when($documentNumber, fn($q) => $q->where('document_number', 'LIKE', $documentNumber . '%'))
             ->when($from && $to,  fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
@@ -68,10 +100,12 @@ class DocumentJournalController
                        ->orWhereIn('credit_partner_id', $nameIds);
                 });
             })
+            ->orderBy($sortColumn, $sortDir)
             ->orderByDesc('id');
 
         $perPage = (int) $request->query('per_page', 20);
         $perPage = $perPage > 0 ? min($perPage, 100) : 20;
+        $amountSum = (float) (clone $query)->sum('amount_amd');
         $page = $query->paginate($perPage);
 
         $page->getCollection()->transform(function (DocumentJournal $j) {
@@ -112,6 +146,7 @@ class DocumentJournalController
                 'credit_account_id'    => $j->credit_account_id,
                 'debit_account_code'  => $j->debitAccount?->code,
                 'credit_account_code' => $j->creditAccount?->code,
+                'debit_partner_id'    => $j->debit_partner_id,
                 'debit_partner_code'  => $partnerCode,
                 'debit_partner_name'  => $partnerName,
                 'credit_partner_code'  => $creditPartnerCode,
@@ -124,7 +159,10 @@ class DocumentJournalController
             ];
         });
 
-        return response()->json($page);
+        $pagePayload = $page->toArray();
+        $pagePayload['amount_sum'] = $amountSum;
+
+        return response()->json($pagePayload);
     }
     public function show($id): JsonResponse
     {
@@ -360,15 +398,18 @@ class DocumentJournalController
         try {
             $journal->loadMissing(['journalable', 'transactions', 'journals']);
 
+            $source = $journal->journalable;
+
             if ($journal->document_type === DocumentJournal::LOAN_NDM_TYPE) {
                 $journal->transactions()->delete();
                 $journal->journals()->delete();
 
-
-                $source = $journal->journalable;
-                if ($source instanceof \App\Models\LoanNdm) {
+                if ($source instanceof LoanNdm) {
                     $source->delete();
                 }
+            } elseif ($source instanceof ReminderOrder) {
+                $journal->transactions()->delete();
+                $source->delete();
             }
 
             $journal->delete();
