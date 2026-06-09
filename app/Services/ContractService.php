@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\Contract;
+use App\Models\DealAction;
 use App\Models\Item;
 use App\Models\ItemRealEstate;
 use App\Models\Payment;
@@ -861,7 +862,7 @@ class   ContractService
     /**
      * Rebuild future regular payments from $startDate; keep completed regular rows.
      */
-    public function rebuildScheduleFromDate(Contract $contract, string $startDate): int
+    public function rebuildScheduleFromDate(Contract $contract, string $startDate, ?int $dealId = null): int
     {
         $start    = Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
         $deadline = Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
@@ -888,12 +889,14 @@ class   ContractService
             $newRows = $this->buildClassicSchedule($contract, $startDate, $contract->pawnshop_id);
         }
 
-        $schedule = [];
+        $schedule        = [];
+        $paymentChanges  = [];
+        $newPayments     = [];
 
         foreach ($newRows as $index => $row) {
 
             if (!isset($existingPayments[$index])) {
-               Payment::create([
+               $newPayment = Payment::create([
                    'contract_id'                => $row['contract_id'],
                    'date'                       => $row['date'],
                    'to_date'                    => $row['to_date'],
@@ -910,12 +913,41 @@ class   ContractService
                    'kasko_amount'               => $row['kasko_amount'],
                    'pawnshop_id'                => $row['pawnshop_id'],
                    'PGI_ID'                     => $row['PGI_ID'],
-                   ]);
+               ]);
+
+               if ($dealId) {
+                   $newPayments[] = [
+                       'payment_id'        => $newPayment->id,
+                       'date'              => $row['date'],
+                       'amount'            => $row['amount'],
+                       'principal_payment' => $row['principal_payment'],
+                       'interest_payment'  => $row['interest_payment'],
+                       'remaining'         => $row['remaining'],
+                       'created_at'        => now()->toDateTimeString(),
+                   ];
+               }
             } else {
                 $payment = $existingPayments[$index];
                 // Already paid amounts from payment_entries (append-only log)
                 $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
                 $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
+
+                if ($dealId) {
+                    $paymentChanges[] = [
+                        'payment_id'            => $payment->id,
+                        'old_amount'            => $payment->amount,
+                        'new_amount'            => $row['amount'],
+                        'old_date'              => $payment->date,
+                        'new_date'              => $row['date'],
+                        'old_principal_payment' => $payment->principal_payment,
+                        'new_principal_payment' => $row['principal_payment'],
+                        'old_interest_payment'  => $payment->interest_payment,
+                        'new_interest_payment'  => $row['interest_payment'],
+                        'old_remaining'         => $payment->remaining,
+                        'new_remaining'         => $row['remaining'],
+                        'updated_at'            => now()->toDateTimeString(),
+                    ];
+                }
 
                 $payment->update([
                     'date'                       => $row['date'],
@@ -945,6 +977,32 @@ class   ContractService
 
         $contract->payment_schedule = $schedule;
         $contract->save();
+
+        if ($dealId && !empty($paymentChanges)) {
+            DealAction::create([
+                'deal_id'         => $dealId,
+                'actionable_id'   => $contract->id,
+                'actionable_type' => Contract::class,
+                'amount'          => 0,
+                'type'            => 'payment_change',
+                'description'     => 'Schedule rebuild - payments updated',
+                'date'            => $startDate,
+                'history'         => ['payment_changes' => $paymentChanges],
+            ]);
+        }
+
+        if ($dealId && !empty($newPayments)) {
+            DealAction::create([
+                'deal_id'         => $dealId,
+                'actionable_id'   => $contract->id,
+                'actionable_type' => Contract::class,
+                'amount'          => 0,
+                'type'            => 'new_paid',
+                'description'     => 'Schedule rebuild - new payments created',
+                'date'            => $startDate,
+                'history'         => ['new_payments' => $newPayments],
+            ]);
+        }
 
         return $count;
     }

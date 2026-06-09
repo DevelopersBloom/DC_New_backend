@@ -927,7 +927,7 @@ class ContractControllerNew extends Controller
                 $this->processLossClientDisbursement($contract, $client, $journalDoc, $reprovideDate);
             }
 
-            $this->contractService->rebuildScheduleFromDate($contract->fresh(), $reprovideDate);
+            $this->contractService->rebuildScheduleFromDate($contract->fresh(), $reprovideDate, $deal_id);
             Modification::create([
                 'subject_type'      => Contract::class,
                 'subject_id'        => $contract->id,
