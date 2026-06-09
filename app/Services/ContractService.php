@@ -896,6 +896,7 @@ class   ContractService
         $remainingOverpaid = max(0.0, $overpaidInterest);
 
         foreach ($newRows as $index => $row) {
+            $applyToInterest = 0.0;
             if ($remainingOverpaid > 0) {
                 $applyToInterest      = min($remainingOverpaid, (float) $row['interest_payment']);
                 $remainingOverpaid   -= $applyToInterest;
