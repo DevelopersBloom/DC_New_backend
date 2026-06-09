@@ -16,13 +16,6 @@ use Illuminate\Support\Facades\DB;
 
 class   ContractService
 {
-    protected ContractCalculationService $contractCalculationService;
-
-    public function __construct(ContractCalculationService $contractCalculationService)
-    {
-        $this->contractCalculationService = $contractCalculationService;
-    }
-
     public function getContracts($filters)
     {
         $query = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)

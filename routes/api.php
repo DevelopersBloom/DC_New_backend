@@ -229,7 +229,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/', [ContractControllerNew::class, 'get'])->middleware('can:view_contracts');
         Route::post('/', [ContractControllerNew::class, 'store'])->middleware('can:create_contract');
         Route::get('/calculate-interest', [ContractControllerNew::class, 'calculateContractInterest'])->middleware('can:calculate_contract_interest');
-        Route::get('/interest-balance', [ContractControllerNew::class, 'getInterestBalance'])->middleware('can:calculate_contract_interest');
+//        Route::get('/interest-balance', [ContractControllerNew::class, 'getInterestBalance'])->middleware('can:calculate_contract_interest');
         Route::get('/calc-export', [ContractControllerNew::class, 'exportContractsCalc'])->middleware('can:export_contracts');
         Route::post('/confirm-interest', [ContractControllerNew::class, 'confirmCalculatedInterest'])->middleware('can:confirm_calculated_interest');
         Route::get('/download/{id}', [FileController::class, 'downloadContract'])->middleware('can:download_contract_file');
