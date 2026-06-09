@@ -150,7 +150,6 @@ class ContractCalculationService
         );
 
         $paid = $this->calculatePaidInterestsToDate($contract, $calcDay);
-dd($accrued, $paid);
         return round($paid['nominal'] - $accrued, 2);
     }
 
