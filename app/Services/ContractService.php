@@ -894,6 +894,7 @@ class   ContractService
         $newPayments     = [];
 
         $remainingOverpaid = max(0.0, $overpaidInterest);
+        dd($remainingOverpaid);
 
         foreach ($newRows as $index => $row) {
             $applyToInterest = 0.0;
