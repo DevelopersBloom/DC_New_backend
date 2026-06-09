@@ -143,15 +143,9 @@ class ContractCalculationService
     {
         $calcDay = $date->copy()->setTimezone('Asia/Yerevan')->startOfDay();
 
-        $accrued = $this->calculateAccruedByProvidedAmountHistory(
-            $contract,
-            $calcDay,
-            (float)($contract->interest_rate ?? 0)
-        );
-
-        $paid = $this->calculatePaidInterestsToDate($contract, $calcDay);
-
-        dd($paid, $accrued);
+        $accrued = $this->calculateCurrentPayment($contract, $calcDay)['interest_amount'];
+        $paid    = $this->calculatePaidInterestsToDate($contract, $calcDay);
+dd($accrued,$paid);
         return round($paid['nominal'] - $accrued, 2);
     }
 
@@ -165,9 +159,9 @@ class ContractCalculationService
             return 0.0;
         }
 
-        $startDate = $contract->date
-            ? Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay()
-            : $calcDay->copy();
+        $startDate = $contract->provided_at
+            ? Carbon::parse($contract->provided_at, 'Asia/Yerevan')->startOfDay()
+            : Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
 
         if ($startDate->greaterThan($calcDay)) {
             return 0.0;
