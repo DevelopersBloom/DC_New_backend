@@ -871,8 +871,8 @@ class   ContractService
      */
     public function rebuildScheduleFromDate(Contract $contract, string $startDate, ?int $dealId = null): int
     {
-        $start    = Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
-        $deadline = Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
+        $start    = \Illuminate\Support\Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
+        $deadline = \Illuminate\Support\Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
 
         if ($start->gt($deadline)) {
             throw new \InvalidArgumentException('Re-provide date cannot be after contract deadline.');
