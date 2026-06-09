@@ -1536,6 +1536,24 @@ class ContractControllerNew extends Controller
         ]);
     }
 
+    public function getInterestBalance(Request $request): JsonResponse
+    {
+        $request->validate([
+            'contract_id' => 'required|integer|exists:contracts,id',
+            'date'        => 'required|date',
+        ]);
+
+        $contract = Contract::findOrFail($request->contract_id);
+        $date     = Carbon::parse($request->date, 'Asia/Yerevan')->startOfDay();
+
+        $difference = $this->contractCalculationService
+            ->calculatePaidVsAccruedInterestDifference($contract, $date);
+
+        return response()->json([
+            'interest_balance' => $difference,
+        ]);
+    }
+
     public function confirmCalculatedInterest(Request $request)
     {
         $request->validate([
