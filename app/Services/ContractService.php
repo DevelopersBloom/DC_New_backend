@@ -939,6 +939,7 @@ class   ContractService
                         'new_amount'            => $row['amount'],
                         'old_date'              => $payment->date,
                         'new_date'              => $row['date'],
+                        'old_paid'              => $payment->paid,
                         'old_principal_payment' => $payment->principal_payment,
                         'new_principal_payment' => $row['principal_payment'],
                         'old_interest_payment'  => $payment->interest_payment,
@@ -963,6 +964,7 @@ class   ContractService
                     'service_fee_payment'        => $row['service_fee_payment'],
                     'remaining'                  => $row['remaining'],
                     'PGI_ID'                     => $row['PGI_ID'],
+                    'paid'                       => null,
                 ]);
 
                 $schedule[] = [
