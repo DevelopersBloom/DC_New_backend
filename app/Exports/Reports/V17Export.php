@@ -393,6 +393,7 @@ class V17Export
 
         $loanDocs = DocumentJournal::with(['parentDoc.journalable'])
             ->where('document_type', DocumentJournal::LOAN_ATTRACTION)
+            ->whereBetween('date', [$start, $end])
             ->get();
 
         $contractDocs = DocumentJournal::with(['journalable'])
