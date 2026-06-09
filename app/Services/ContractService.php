@@ -16,6 +16,13 @@ use Illuminate\Support\Facades\DB;
 
 class   ContractService
 {
+    protected ContractCalculationService $contractCalculationService;
+
+    public function __construct(ContractCalculationService $contractCalculationService)
+    {
+        $this->contractCalculationService = $contractCalculationService;
+    }
+
     public function getContracts($filters)
     {
         $query = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
@@ -893,7 +900,17 @@ class   ContractService
         $paymentChanges  = [];
         $newPayments     = [];
 
+        $overpaid = max(0.0, $this->contractCalculationService
+            ->calculatePaidVsAccruedInterestDifference($contract, $start));
+        $remainingOverpaid = $overpaid;
+
         foreach ($newRows as $index => $row) {
+            if ($remainingOverpaid > 0) {
+                $applyToInterest      = min($remainingOverpaid, (float) $row['interest_payment']);
+                $remainingOverpaid   -= $applyToInterest;
+                $row['interest_payment'] -= $applyToInterest;
+                $row['amount']           -= $applyToInterest;
+            }
 
             if (!isset($existingPayments[$index])) {
                $newPayment = Payment::create([
@@ -913,6 +930,7 @@ class   ContractService
                    'kasko_amount'               => $row['kasko_amount'],
                    'pawnshop_id'                => $row['pawnshop_id'],
                    'PGI_ID'                     => $row['PGI_ID'],
+                   'paid'                       => $applyToInterest > 0 ? $applyToInterest : null,
                ]);
 
                if ($dealId) {
@@ -964,7 +982,7 @@ class   ContractService
                     'service_fee_payment'        => $row['service_fee_payment'],
                     'remaining'                  => $row['remaining'],
                     'PGI_ID'                     => $row['PGI_ID'],
-                    'paid'                       => null,
+                    'paid'                       => $applyToInterest > 0 ? $applyToInterest : null,
                 ]);
 
                 $schedule[] = [
