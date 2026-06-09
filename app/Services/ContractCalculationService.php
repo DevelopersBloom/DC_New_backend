@@ -146,7 +146,7 @@ class ContractCalculationService
         $accrued = $this->calculateAccruedByProvidedAmountHistory(
             $contract,
             $calcDay,
-            (float)($contract->interest_rate ?? 0)
+            $contract->interest_rate
         );
 
         $paid = $this->calculatePaidInterestsToDate($contract, $calcDay);
