@@ -936,7 +936,7 @@ class   ContractService
                 $row['interest_payment'] -= $applyToInterest;
                 $row['amount']           -= $applyToInterest;
             }
-
+dd($interestAmount);
             // Add outstanding debt (≤ 20,000 AMD) to the first month's interest
             if ($index === 0 && $interestAmount > 0) {
                 $row['interest_payment']          += $interestAmount;
