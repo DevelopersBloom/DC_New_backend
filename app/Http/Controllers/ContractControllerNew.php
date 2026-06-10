@@ -813,6 +813,7 @@ class ContractControllerNew extends Controller
             'contract_id'     => 'required|integer|exists:contracts,id',
             'amount'          => 'nullable|numeric|min:0.01',
             'reprovide_date'  => 'required|date',
+            'months'          => 'nullable|integer|min:1|max:360',
         ]);
 
         $contract = Contract::findOrFail($validatedData['contract_id']);
@@ -909,6 +910,14 @@ class ContractControllerNew extends Controller
             if ($contract->status === Contract::STATUS_COMPLETED) {
                 $contract->status = Contract::STATUS_INITIAL;
                 $contract->closed_at = null;
+            }
+
+            if (!empty($validatedData['months'])) {
+                $newMonths = (int) $validatedData['months'];
+                $contract->deadline_days = (string) $newMonths;
+                $contract->deadline = Carbon::parse($reprovideDate, 'Asia/Yerevan')
+                    ->addMonths($newMonths)
+                    ->format('Y-m-d');
             }
 
             $contract->save();
