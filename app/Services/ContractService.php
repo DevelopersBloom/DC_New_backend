@@ -862,7 +862,7 @@ class   ContractService
     /**
      * Rebuild future regular payments from $startDate; keep completed regular rows.
      */
-    public function rebuildScheduleFromDate(Contract $contract, string $startDate, ?int $dealId = null, float $overpaidInterest = 0.0, float $outstandingDebt = 0.0): int
+    public function rebuildScheduleFromDate(Contract $contract, string $startDate, ?int $dealId = null, float $overpaidInterest = 0.0, float $interestAmount = 0.0): int
     {
         $start    = \Illuminate\Support\Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
         $deadline = \Illuminate\Support\Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
@@ -938,11 +938,11 @@ class   ContractService
             }
 
             // Add outstanding debt (≤ 20,000 AMD) to the first month's interest
-            if ($index === 0 && $outstandingDebt > 0) {
-                $row['interest_payment']          += $outstandingDebt;
-                $row['original_interest_payment'] += $outstandingDebt;
-                $row['amount']                    += $outstandingDebt;
-                $row['original_amount']           += $outstandingDebt;
+            if ($index === 0 && $interestAmount > 0) {
+                $row['interest_payment']          += $interestAmount;
+                $row['original_interest_payment'] += $interestAmount;
+                $row['amount']                    += $interestAmount;
+                $row['original_amount']           += $interestAmount;
             }
 
             $newPayment = Payment::create([
