@@ -882,13 +882,11 @@ class ContractControllerNew extends Controller
                 'message' => 'Re-provide date is outside the allowed range.',
             ], 422);
         }
-
         // Outstanding interest check (must pass before touching the DB)
         $overpaidBeforeReprovide = $this->contractCalculationService
             ->calculatePaidVsAccruedInterestDifference($contract, Carbon::parse($reprovideDate, 'Asia/Yerevan'));
         $outstandingDebt = max(0.0, -$overpaidBeforeReprovide);
-
-        dd($outstandingDebt,$overpaidBeforeReprovide);
+dd($outstandingDebt,$overpaidBeforeReprovide);
         if ($outstandingDebt > 20000) {
             return response()->json([
                 'message' => 'Outstanding interest (' . number_format($outstandingDebt, 2) . ' AMD) exceeds the 20,000 AMD limit for re-provide.',
