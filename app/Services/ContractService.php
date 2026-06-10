@@ -893,99 +893,89 @@ class   ContractService
         $paymentChanges  = [];
         $newPayments     = [];
 
-        $remainingOverpaid = max(0.0, $overpaidInterest);
-        dd($remainingOverpaid);
-
-        foreach ($newRows as $index => $row) {
-            $applyToInterest = 0.0;
-            if ($remainingOverpaid > 0) {
-                $applyToInterest      = min($remainingOverpaid, (float) $row['interest_payment']);
-                $remainingOverpaid   -= $applyToInterest;
-                $row['interest_payment'] -= $applyToInterest;
-                $row['amount']           -= $applyToInterest;
-            }
-
-            if (!isset($existingPayments[$index])) {
-               $newPayment = Payment::create([
-                   'contract_id'                => $row['contract_id'],
-                   'date'                       => $row['date'],
-                   'to_date'                    => $row['to_date'],
-                   'from_date'                  => $row['from_date'],
-                   'days'                       => $row['days'],
-                   'amount'                     => $row['amount'],
-                   'original_amount'            => $row['original_amount'],
-                   'principal_payment'          => $row['principal_payment'],
-                   'original_principal_payment' => $row['original_principal_payment'],
-                   'interest_payment'           => $row['interest_payment'],
-                   'original_interest_payment'  => $row['original_interest_payment'],
-                   'service_fee_payment'        => $row['service_fee_payment'],
-                   'remaining'                  => $row['remaining'],
-                   'kasko_amount'               => $row['kasko_amount'],
-                   'pawnshop_id'                => $row['pawnshop_id'],
-                   'PGI_ID'                     => $row['PGI_ID'],
-                   'paid'                       => $applyToInterest > 0 ? $applyToInterest : null,
-               ]);
-
-               if ($dealId) {
-                   $newPayments[] = [
-                       'payment_id'        => $newPayment->id,
-                       'date'              => $row['date'],
-                       'amount'            => $row['amount'],
-                       'principal_payment' => $row['principal_payment'],
-                       'interest_payment'  => $row['interest_payment'],
-                       'remaining'         => $row['remaining'],
-                       'created_at'        => now()->toDateTimeString(),
-                   ];
-               }
-            } else {
-                $payment = $existingPayments[$index];
-                // Already paid amounts from payment_entries (append-only log)
-                $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
-                $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
-
-                if ($dealId) {
+        // Capture paymentChanges from old payments before soft-deleting.
+        // new_* values already reflect the rebuilt schedule (overpaid is applied below per row,
+        // so we log the raw new row values here — consistent with the original behaviour).
+        if ($dealId) {
+            foreach ($newRows as $index => $row) {
+                if (isset($existingPayments[$index])) {
+                    $old = $existingPayments[$index];
                     $paymentChanges[] = [
-                        'payment_id'            => $payment->id,
-                        'old_amount'            => $payment->amount,
+                        'payment_id'            => $old->id,
+                        'old_amount'            => $old->amount,
                         'new_amount'            => $row['amount'],
-                        'old_date'              => $payment->date,
+                        'old_date'              => $old->date,
                         'new_date'              => $row['date'],
-                        'old_paid'              => $payment->paid,
-                        'old_principal_payment' => $payment->principal_payment,
+                        'old_paid'              => $old->paid,
+                        'old_principal_payment' => $old->principal_payment,
                         'new_principal_payment' => $row['principal_payment'],
-                        'old_interest_payment'  => $payment->interest_payment,
+                        'old_interest_payment'  => $old->interest_payment,
                         'new_interest_payment'  => $row['interest_payment'],
-                        'old_remaining'         => $payment->remaining,
+                        'old_remaining'         => $old->remaining,
                         'new_remaining'         => $row['remaining'],
                         'updated_at'            => now()->toDateTimeString(),
                     ];
                 }
+            }
+        }
 
-                $payment->update([
-                    'date'                       => $row['date'],
-                    'to_date'                    => $row['to_date'],
-                    'from_date'                  => $row['from_date'],
-                    'days'                       => $row['days'],
-                    'original_amount'            => $row['amount'],
-                    'amount'                     => $row['amount'],
-                    'original_interest_payment'  => $row['interest_payment'],
-                    'interest_payment'           => $row['interest_payment'],
-                    'original_principal_payment' => $row['principal_payment'],
-                    'principal_payment'          => $row['principal_payment'],
-                    'service_fee_payment'        => $row['service_fee_payment'],
-                    'remaining'                  => $row['remaining'],
-                    'PGI_ID'                     => $row['PGI_ID'],
-                    'paid'                       => $applyToInterest > 0 ? $applyToInterest : null,
-                ]);
+        // Soft-delete all initial payments — schedule will be fully recreated below.
+        Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->delete();
 
-                $schedule[] = [
-                    'date'      => $row['date'],
-                    'payment'   => round($row['amount'], 3),
-                    'principal' => round($row['principal_payment'], 3),
-                    'interest'  => round($row['interest_payment'], 3),
-                    'balance'   => round($row['remaining'], 3),
+        $remainingOverpaid = max(0.0, $overpaidInterest);
+
+        foreach ($newRows as $index => $row) {
+            // Apply overpaid interest to earliest rows first
+            $applyToInterest = 0.0;
+            if ($remainingOverpaid > 0) {
+                $applyToInterest          = min($remainingOverpaid, (float) $row['interest_payment']);
+                $remainingOverpaid       -= $applyToInterest;
+                $row['interest_payment'] -= $applyToInterest;
+                $row['amount']           -= $applyToInterest;
+            }
+
+            $newPayment = Payment::create([
+                'contract_id'                => $row['contract_id'],
+                'date'                       => $row['date'],
+                'to_date'                    => $row['to_date'],
+                'from_date'                  => $row['from_date'],
+                'days'                       => $row['days'],
+                'amount'                     => $row['amount'],
+                'original_amount'            => $row['original_amount'],
+                'principal_payment'          => $row['principal_payment'],
+                'original_principal_payment' => $row['original_principal_payment'],
+                'interest_payment'           => $row['interest_payment'],
+                'original_interest_payment'  => $row['original_interest_payment'],
+                'service_fee_payment'        => $row['service_fee_payment'],
+                'remaining'                  => $row['remaining'],
+                'kasko_amount'               => $row['kasko_amount'],
+                'pawnshop_id'                => $row['pawnshop_id'],
+                'PGI_ID'                     => $row['PGI_ID'],
+                'paid'                       => $applyToInterest > 0 ? $applyToInterest : null,
+            ]);
+
+            if ($dealId) {
+                $newPayments[] = [
+                    'payment_id'        => $newPayment->id,
+                    'date'              => $row['date'],
+                    'amount'            => $row['amount'],
+                    'principal_payment' => $row['principal_payment'],
+                    'interest_payment'  => $row['interest_payment'],
+                    'remaining'         => $row['remaining'],
+                    'created_at'        => now()->toDateTimeString(),
                 ];
             }
+
+            $schedule[] = [
+                'date'      => $row['date'],
+                'payment'   => round($row['amount'], 3),
+                'principal' => round($row['principal_payment'], 3),
+                'interest'  => round($row['interest_payment'], 3),
+                'balance'   => round($row['remaining'], 3),
+            ];
         }
 
         $contract->payment_schedule = $schedule;
@@ -1019,5 +1009,163 @@ class   ContractService
 
         return $count;
     }
+
+//    public function rebuildScheduleFromDate1(Contract $contract, string $startDate, ?int $dealId = null, float $overpaidInterest = 0.0): int
+//    {
+//        $start    = \Illuminate\Support\Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
+//        $deadline = \Illuminate\Support\Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
+//
+//        if ($start->gt($deadline)) {
+//            throw new \InvalidArgumentException('Re-provide date cannot be after contract deadline.');
+//        }
+//
+//        // Get existing initial payments ordered by date (do NOT delete them)
+//        $existingPayments = Payment::where('contract_id', $contract->id)
+//            ->where('type', 'regular')
+//            ->where('status', 'initial')
+//            ->orderBy('date', 'asc')
+//            ->orderBy('id', 'asc')
+//            ->get();
+//
+//        $count = $existingPayments->count();
+//
+//        if ($contract->payment_type === 'amortized') {
+//            // months is calculated inside buildAnnuitySchedule from startDate → deadline
+//            $newRows = $this->buildAnnuitySchedule($contract, $startDate, $contract->pawnshop_id, null, 1);
+//        } else {
+//            // Classic — build schedule data (use existing helper if available)
+//            $newRows = $this->buildClassicSchedule($contract, $startDate, $contract->pawnshop_id);
+//        }
+//
+//        $schedule        = [];
+//        $paymentChanges  = [];
+//        $newPayments     = [];
+//
+//        $remainingOverpaid = max(0.0, $overpaidInterest);
+//        dd($remainingOverpaid);
+//
+//        foreach ($newRows as $index => $row) {
+//            $applyToInterest = 0.0;
+//            if ($remainingOverpaid > 0) {
+//                $applyToInterest      = min($remainingOverpaid, (float) $row['interest_payment']);
+//                $remainingOverpaid   -= $applyToInterest;
+//                $row['interest_payment'] -= $applyToInterest;
+//                $row['amount']           -= $applyToInterest;
+//            }
+//
+//            if (!isset($existingPayments[$index])) {
+//               $newPayment = Payment::create([
+//                   'contract_id'                => $row['contract_id'],
+//                   'date'                       => $row['date'],
+//                   'to_date'                    => $row['to_date'],
+//                   'from_date'                  => $row['from_date'],
+//                   'days'                       => $row['days'],
+//                   'amount'                     => $row['amount'],
+//                   'original_amount'            => $row['original_amount'],
+//                   'principal_payment'          => $row['principal_payment'],
+//                   'original_principal_payment' => $row['original_principal_payment'],
+//                   'interest_payment'           => $row['interest_payment'],
+//                   'original_interest_payment'  => $row['original_interest_payment'],
+//                   'service_fee_payment'        => $row['service_fee_payment'],
+//                   'remaining'                  => $row['remaining'],
+//                   'kasko_amount'               => $row['kasko_amount'],
+//                   'pawnshop_id'                => $row['pawnshop_id'],
+//                   'PGI_ID'                     => $row['PGI_ID'],
+//                   'paid'                       => $applyToInterest > 0 ? $applyToInterest : null,
+//               ]);
+//
+//               if ($dealId) {
+//                   $newPayments[] = [
+//                       'payment_id'        => $newPayment->id,
+//                       'date'              => $row['date'],
+//                       'amount'            => $row['amount'],
+//                       'principal_payment' => $row['principal_payment'],
+//                       'interest_payment'  => $row['interest_payment'],
+//                       'remaining'         => $row['remaining'],
+//                       'created_at'        => now()->toDateTimeString(),
+//                   ];
+//               }
+//            } else {
+//                $payment = $existingPayments[$index];
+//                // Already paid amounts from payment_entries (append-only log)
+//                $alreadyPaidInterest  = (float) ($payment->original_interest_payment - $payment->interest_payment);
+//                $alreadyPaidPrincipal = (float) ($payment->original_principal_payment - $payment->principal_payment);
+//
+//                if ($dealId) {
+//                    $paymentChanges[] = [
+//                        'payment_id'            => $payment->id,
+//                        'old_amount'            => $payment->amount,
+//                        'new_amount'            => $row['amount'],
+//                        'old_date'              => $payment->date,
+//                        'new_date'              => $row['date'],
+//                        'old_paid'              => $payment->paid,
+//                        'old_principal_payment' => $payment->principal_payment,
+//                        'new_principal_payment' => $row['principal_payment'],
+//                        'old_interest_payment'  => $payment->interest_payment,
+//                        'new_interest_payment'  => $row['interest_payment'],
+//                        'old_remaining'         => $payment->remaining,
+//                        'new_remaining'         => $row['remaining'],
+//                        'updated_at'            => now()->toDateTimeString(),
+//                    ];
+//                }
+//
+//                $payment->update([
+//                    'date'                       => $row['date'],
+//                    'to_date'                    => $row['to_date'],
+//                    'from_date'                  => $row['from_date'],
+//                    'days'                       => $row['days'],
+//                    'original_amount'            => $row['amount'],
+//                    'amount'                     => $row['amount'],
+//                    'original_interest_payment'  => $row['interest_payment'],
+//                    'interest_payment'           => $row['interest_payment'],
+//                    'original_principal_payment' => $row['principal_payment'],
+//                    'principal_payment'          => $row['principal_payment'],
+//                    'service_fee_payment'        => $row['service_fee_payment'],
+//                    'remaining'                  => $row['remaining'],
+//                    'PGI_ID'                     => $row['PGI_ID'],
+//                    'paid'                       => $applyToInterest > 0 ? $applyToInterest : null,
+//                ]);
+//
+//                $schedule[] = [
+//                    'date'      => $row['date'],
+//                    'payment'   => round($row['amount'], 3),
+//                    'principal' => round($row['principal_payment'], 3),
+//                    'interest'  => round($row['interest_payment'], 3),
+//                    'balance'   => round($row['remaining'], 3),
+//                ];
+//            }
+//        }
+//
+//        $contract->payment_schedule = $schedule;
+//        $contract->save();
+//
+//        if ($dealId && !empty($paymentChanges)) {
+//            DealAction::create([
+//                'deal_id'         => $dealId,
+//                'actionable_id'   => $contract->id,
+//                'actionable_type' => Contract::class,
+//                'amount'          => 0,
+//                'type'            => 'payment_change',
+//                'description'     => 'Schedule rebuild - payments updated',
+//                'date'            => $startDate,
+//                'history'         => ['payment_changes' => $paymentChanges],
+//            ]);
+//        }
+//
+//        if ($dealId && !empty($newPayments)) {
+//            DealAction::create([
+//                'deal_id'         => $dealId,
+//                'actionable_id'   => $contract->id,
+//                'actionable_type' => Contract::class,
+//                'amount'          => 0,
+//                'type'            => 'new_paid',
+//                'description'     => 'Schedule rebuild - new payments created',
+//                'date'            => $startDate,
+//                'history'         => ['new_payments' => $newPayments],
+//            ]);
+//        }
+//
+//        return $count;
+//    }
 
 }
