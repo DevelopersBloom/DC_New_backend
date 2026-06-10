@@ -885,11 +885,10 @@ class ContractControllerNew extends Controller
         // Outstanding interest check (must pass before touching the DB)
         $overpaidBeforeReprovide = $this->contractCalculationService
             ->calculatePaidVsAccruedInterestDifference($contract, Carbon::parse($reprovideDate, 'Asia/Yerevan'));
-        $outstandingDebt = max(0.0, -$overpaidBeforeReprovide);
-dd($outstandingDebt,$overpaidBeforeReprovide);
-        if ($outstandingDebt > 20000) {
+        dd($overpaidBeforeReprovide);
+        if ($overpaidBeforeReprovide < -20000) {
             return response()->json([
-                'message' => 'Outstanding interest (' . number_format($outstandingDebt, 2) . ' AMD) exceeds the 20,000 AMD limit for re-provide.',
+                'message' => 'Outstanding interest (' . number_format(-$overpaidBeforeReprovide, 2) . ' AMD) exceeds the 20,000 AMD limit for re-provide.',
             ], 422);
         }
 
@@ -962,7 +961,7 @@ dd($outstandingDebt,$overpaidBeforeReprovide);
             $freshContract = $contract->fresh();
             $overpaid = $this->contractCalculationService
                 ->calculatePaidVsAccruedInterestDifference($freshContract, Carbon::parse($reprovideDate));
-            $this->contractService->rebuildScheduleFromDate($freshContract, $reprovideDate, $deal_id, $overpaid, $outstandingDebt);
+            $this->contractService->rebuildScheduleFromDate($freshContract, $reprovideDate, $deal_id, $overpaid, max(0.0, -$overpaidBeforeReprovide));
             Modification::create([
                 'subject_type'      => Contract::class,
                 'subject_id'        => $contract->id,
