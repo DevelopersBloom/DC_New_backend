@@ -518,32 +518,63 @@ class PaymentService
             'phone'         => $payer['phone'] ?? null,
         ] : null;
 
-        PaymentEntry::create([
-            'payment_id'       => $payment->id,
-            'contract_id'      => $contract_id,
-            'deal_id'          => $deal_id,
-            'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
-            'user_id'          => auth()->id() ?? 1,
-            'reference'        => Str::uuid(),
-            'amount'           => $oldAmount,
-            'principal_amount' => $principal_payment ?? 0,
-            'interest_amount'  => $interest_payment  ?? 0,
-            'penalty_amount'   => $payment['penalty'] ?? 0,
-            'balance_before'   => $balanceBefore,
-            'balance_after'    => $balanceAfter,
-            'document_type'    => 'regular_payment',
-            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
-            'cash'             => $cash ?? false,
-            'meta_data'        => $meta,
-        ]);
+        $entryDate     = $date ?? Carbon::now()->format('Y-m-d');
+        $pawnshopId    = auth()->user()->pawnshop_id ?? 1;
+        $userId        = auth()->id() ?? 1;
+        $interestAmt   = (float) ($interest_payment  ?? 0);
+        $principalAmt  = (float) ($principal_payment ?? 0);
+
+        // --- Torgh (Interest) entry ---
+        if ($interestAmt > 0) {
+            PaymentEntry::create([
+                'payment_id'       => $payment->id,
+                'contract_id'      => $contract_id,
+                'deal_id'          => $deal_id,
+                'pawnshop_id'      => $pawnshopId,
+                'user_id'          => $userId,
+                'reference'        => Str::uuid(),
+                'amount'           => $interestAmt,
+                'principal_amount' => 0,
+                'interest_amount'  => $interestAmt,
+                'penalty_amount'   => 0,
+                'balance_before'   => $balanceBefore,
+                'balance_after'    => $balanceBefore,
+                'document_type'    => 'interest_payment',
+                'date'             => $entryDate,
+                'cash'             => $cash ?? false,
+                'meta_data'        => $meta,
+            ]);
+        }
+
+        // --- Mayr gumar (Principal) entry ---
+        if ($principalAmt > 0) {
+            PaymentEntry::create([
+                'payment_id'       => $payment->id,
+                'contract_id'      => $contract_id,
+                'deal_id'          => $deal_id,
+                'pawnshop_id'      => $pawnshopId,
+                'user_id'          => $userId,
+                'reference'        => Str::uuid(),
+                'amount'           => $principalAmt,
+                'principal_amount' => $principalAmt,
+                'interest_amount'  => 0,
+                'penalty_amount'   => 0,
+                'balance_before'   => $balanceBefore,
+                'balance_after'    => $balanceAfter,
+                'document_type'    => 'principal_payment',
+                'date'             => $entryDate,
+                'cash'             => $cash ?? false,
+                'meta_data'        => $meta,
+            ]);
+        }
 
         $history['payment_changes'][] = [
             'payment_id'    => $payment->id,
             'old_amount'    => $oldAmount,
             'old_date'      => $oldDate,
             'old_mother'    => $payment->mother,
-            'old_principal' => $principal_payment,
-            'old_interest'  => $interest_payment,
+            'old_principal' => $principalAmt,
+            'old_interest'  => $interestAmt,
             'updated_at'    => now()->toDateTimeString(),
         ];
 
@@ -554,7 +585,7 @@ class PaymentService
             'amount'          => $oldAmount,
             'type'            => 'regular',
             'description'     => 'Regular payment',
-            'date'            => $date ?? Carbon::now()->format('Y-m-d'),
+            'date'            => $entryDate,
             'history'         => $history,
         ]);
     }
@@ -564,26 +595,53 @@ class PaymentService
         float $principalPaid = 0, float $interestPaid = 0,
         $date = null, float $balanceBefore = 0, float $balanceAfter = 0
     ): void {
-        $oldAmount = $payment->amount;
-        $oldDate   = $payment->date;
+        $oldAmount  = $payment->amount;
+        $oldDate    = $payment->date;
+        $entryDate  = $date ?? Carbon::now()->format('Y-m-d');
+        $pawnshopId = auth()->user()->pawnshop_id ?? 1;
+        $userId     = auth()->id() ?? 1;
 
-        PaymentEntry::create([
-            'payment_id'       => $payment->id,
-            'contract_id'      => $payment->contract_id,
-            'deal_id'          => $deal_id,
-            'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
-            'user_id'          => auth()->id() ?? 1,
-            'reference'        => Str::uuid(),
-            'amount'           => $paid,
-            'principal_amount' => $principalPaid,
-            'interest_amount'  => $interestPaid,
-            'penalty_amount'   => 0,
-            'balance_before'   => $balanceBefore,
-            'balance_after'    => $balanceAfter,
-            'document_type'    => 'partial_payment',
-            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
-            'cash'             => false,
-        ]);
+        // --- Torgh (Interest) entry ---
+        if ($interestPaid > 0) {
+            PaymentEntry::create([
+                'payment_id'       => $payment->id,
+                'contract_id'      => $payment->contract_id,
+                'deal_id'          => $deal_id,
+                'pawnshop_id'      => $pawnshopId,
+                'user_id'          => $userId,
+                'reference'        => Str::uuid(),
+                'amount'           => $interestPaid,
+                'principal_amount' => 0,
+                'interest_amount'  => $interestPaid,
+                'penalty_amount'   => 0,
+                'balance_before'   => $balanceBefore,
+                'balance_after'    => $balanceBefore,
+                'document_type'    => 'interest_payment',
+                'date'             => $entryDate,
+                'cash'             => false,
+            ]);
+        }
+
+        // --- Mayr gumar (Principal) entry ---
+        if ($principalPaid > 0) {
+            PaymentEntry::create([
+                'payment_id'       => $payment->id,
+                'contract_id'      => $payment->contract_id,
+                'deal_id'          => $deal_id,
+                'pawnshop_id'      => $pawnshopId,
+                'user_id'          => $userId,
+                'reference'        => Str::uuid(),
+                'amount'           => $principalPaid,
+                'principal_amount' => $principalPaid,
+                'interest_amount'  => 0,
+                'penalty_amount'   => 0,
+                'balance_before'   => $balanceBefore,
+                'balance_after'    => $balanceAfter,
+                'document_type'    => 'principal_payment',
+                'date'             => $entryDate,
+                'cash'             => false,
+            ]);
+        }
 
         $history['payment_changes'][] = [
             'payment_id'    => $payment->id,
@@ -601,7 +659,7 @@ class PaymentService
             'amount'          => $paid,
             'type'            => 'regular',
             'description'     => 'Regular payment',
-            'date'            => $date ?? Carbon::now()->format('Y-m-d'),
+            'date'            => $entryDate,
             'history'         => $history,
         ]);
     }
@@ -894,7 +952,7 @@ class PaymentService
             'penalty_amount'   => 0,
             'balance_before'   => $balanceBefore,
             'balance_after'    => $balanceAfter,
-            'document_type'    => 'prepayment',
+            'document_type'    => 'partial_payment',
             'date'             => $date ?? Carbon::now()->format('Y-m-d'),
             'cash'             => $cash ?? false,
         ]);
