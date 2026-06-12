@@ -878,33 +878,66 @@ class PaymentService
         $this->handleAccountingForPartial($contract, $partialAmount, $date,$deal_id,$cash);
 
         $balanceAfter = (float) $contract->provided_amount;
+        $firstPaymentId = null;
 
-        $nextPayment = Payment::where('contract_id', $contract->id)
-            ->where('type', 'regular')
-            ->where('status', 'initial')
-            ->orderBy('date', 'asc')
-            ->orderBy('id', 'asc')
-            ->first();
+        if ($contract->payment_type === 'amortized' && !$is_recount && !empty($history['payment_changes'])) {
+            // One entry per affected payment row, balance cascades down
+            $runningBalance = $balanceBefore;
+            foreach ($history['payment_changes'] as $change) {
+                $reduction = (float) ($change['reduction'] ?? 0);
+                if ($reduction <= 0) continue;
+                $entryBalanceAfter = max(0, $runningBalance - $reduction);
+                if ($firstPaymentId === null) {
+                    $firstPaymentId = $change['payment_id'];
+                }
+                PaymentEntry::create([
+                    'payment_id'       => $change['payment_id'],
+                    'contract_id'      => $contract->id,
+                    'deal_id'          => $deal_id,
+                    'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                    'user_id'          => auth()->id() ?? 1,
+                    'reference'        => Str::uuid(),
+                    'amount'           => $reduction,
+                    'principal_amount' => $reduction,
+                    'interest_amount'  => 0,
+                    'penalty_amount'   => 0,
+                    'balance_before'   => $runningBalance,
+                    'balance_after'    => $entryBalanceAfter,
+                    'document_type'    => 'partial_payment',
+                    'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                    'cash'             => $cash ?? false,
+                ]);
+                $runningBalance = $entryBalanceAfter;
+            }
+        } else {
+            // is_recount or classic: single entry linked to next scheduled payment
+            $nextPayment = Payment::where('contract_id', $contract->id)
+                ->where('type', 'regular')
+                ->where('status', 'initial')
+                ->orderBy('date', 'asc')
+                ->orderBy('id', 'asc')
+                ->first();
+            $firstPaymentId = $nextPayment?->id;
+            PaymentEntry::create([
+                'payment_id'       => $firstPaymentId,
+                'contract_id'      => $contract->id,
+                'deal_id'          => $deal_id,
+                'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                'user_id'          => auth()->id() ?? 1,
+                'reference'        => Str::uuid(),
+                'amount'           => $partialAmount,
+                'principal_amount' => $partialAmount,
+                'interest_amount'  => 0,
+                'penalty_amount'   => 0,
+                'balance_before'   => $balanceBefore,
+                'balance_after'    => $balanceAfter,
+                'document_type'    => 'partial_payment',
+                'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                'cash'             => $cash ?? false,
+            ]);
+        }
 
-        PaymentEntry::create([
-            'payment_id'       => $nextPayment?->id,
-            'contract_id'      => $contract->id,
-            'deal_id'          => $deal_id,
-            'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
-            'user_id'          => auth()->id() ?? 1,
-            'reference'        => Str::uuid(),
-            'amount'           => $partialAmount,
-            'principal_amount' => $partialAmount,
-            'interest_amount'  => 0,
-            'penalty_amount'   => 0,
-            'balance_before'   => $balanceBefore,
-            'balance_after'    => $balanceAfter,
-            'document_type'    => 'partial_payment',
-            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
-            'cash'             => $cash ?? false,
-        ]);
-
-        return $nextPayment?->id;
+        return $firstPaymentId;
     }
 
     /**
