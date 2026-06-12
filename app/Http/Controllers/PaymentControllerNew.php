@@ -297,8 +297,9 @@ class PaymentControllerNew extends Controller
                     ->max('date');
 
                 if ($lastCalculatedDate && $lastCalculatedDate >= $date) {
-                    $to = max($lastCalculatedDate, now()->toDateString());
-                    RecalculateContractRangeJob::dispatch($contract->id, $date, $to);
+                    $from = Carbon::parse($date)->addDay()->toDateString();
+                    $to   = max($lastCalculatedDate, now()->toDateString());
+                    RecalculateContractRangeJob::dispatch($contract->id, $from, $to);
                 }
             }
 
