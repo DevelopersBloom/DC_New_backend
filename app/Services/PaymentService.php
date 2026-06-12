@@ -103,7 +103,6 @@ class PaymentService
                 }
             }
         }
-        dd($amount);
         if ($amount > 0) {
             $selectedTotalDue = $payments->sum(function ($p) {
                 return (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0);
