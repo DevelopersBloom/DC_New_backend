@@ -343,7 +343,6 @@ class PaymentService
                 );
             } else {
                 $balanceAfter = (float) $contract->provided_amount;
-dd($balanceAfter);
                 $this->partiallyCompletePayment(
                     $payment, $amount, $deal_id, [],
                     $paidPrincipal, $paidInterest,
