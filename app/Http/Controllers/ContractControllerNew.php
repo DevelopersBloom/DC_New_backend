@@ -127,7 +127,7 @@ class ContractControllerNew extends Controller
             'client',
             'seller',
             'guarantors',
-            'payments' => function ($query) { $query->orderBy('to_date', 'ASC'); },
+            'payments' => function ($query) { $query->with('entries')->orderBy('to_date', 'ASC'); },
             'history' => function ($query) {
                 $query->whereDoesntHave('order', function ($q) {
                     $q->where('filter', Order::REFUND_LUMP_FILTER);

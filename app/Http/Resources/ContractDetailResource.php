@@ -113,17 +113,24 @@ class ContractDetailResource extends JsonResource
             ] : null,
 
             'payments' => $this->payments->map(function ($payment) {
+                $entries        = $payment->relationLoaded('entries') ? $payment->entries : $payment->entries()->get();
+                $paidTotal      = (float) $entries->sum('amount');
+                $paidInterest   = (float) $entries->sum('interest_amount');
+                $paidPrincipal  = (float) $entries->sum('principal_amount');
+
                 return [
                     'id'      => $payment->id,
                     'amount'  => $payment->amount,
                     'original_amount' => $payment->original_amount,
-                    'paid'    => $payment->paid,
+                    'paid'    => $paidTotal,
                     'date'    => Carbon::parse($payment->date)->format('d-m-Y'),
                     'to_date'    => Carbon::parse($payment->to_date)->format('d-m-Y'),
-                    'principal_payment' => $payment->principal_payment,
+                    'principal_payment'          => $payment->principal_payment,
                     'original_principal_payment' => $payment->original_principal_payment,
-                    'interest_payment' => $payment->interest_payment,
-                    'original_interest_payment' => $payment->original_interest_payment,
+                    'interest_payment'           => $payment->interest_payment,
+                    'original_interest_payment'  => $payment->original_interest_payment,
+                    'interest_paid'              => $paidInterest,
+                    'principal_paid'             => $paidPrincipal,
                     'remaining' => $payment->remaining,
                     'status'  => $payment->status,
                     'type'    => $payment->type,

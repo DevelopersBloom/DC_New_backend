@@ -273,6 +273,7 @@ class PaymentService
 
             $earlySplit = $amount + 10 >= $payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date) : null;
             if ($earlySplit !== null) {
+                dd($amount);
                 $paidInterest     = $earlySplit['paid_interest'];
                 $paidPrincipal    = $earlySplit['paid_principal'];
                 $principalForLine = $earlySplit['principal_for_line'];
@@ -296,7 +297,7 @@ class PaymentService
                 // Remaining interest = scheduled - already paid via entries
                 $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
                 $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
-
+dd($remainingInterestPlan,$alreadyPaidInterest);
                 if ($remainingInterestAmount > 0 && $remainingInterestPlan > 0) {
                     $paidInterest            = min($remainingInterestAmount, $remainingInterestPlan, $amount);
                     $remainingInterestAmount -= $paidInterest;
