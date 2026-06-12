@@ -934,7 +934,6 @@ class PaymentService
             // will set the correct value (new_principal + new_interest) and persist everything
             // in a single pass, preventing a window where amount = old_interest + new_principal.
 //            $payment->principal_payment -= $reduction;
-            dd($reduction);
             $remainingPartial -= $reduction;
             $payment->save();
             $changes[] = $oldData;
