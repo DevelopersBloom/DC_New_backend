@@ -16,6 +16,7 @@ use App\Models\HistoryType;
 use App\Models\Modification;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\PaymentEntry;
 use App\Models\PostingRule;
 use App\Models\IdempotencyKey;
 use App\Models\Transaction;
@@ -130,6 +131,8 @@ class PaymentControllerNew extends Controller
                 ->firstOrFail();
 
             // ===== Payment Logic =====
+            $old = $this->calcPaidAmount($contract);
+
             $result = $this->paymentService->processPayments(
                 $contract,
                 $amount,
@@ -254,7 +257,6 @@ class PaymentControllerNew extends Controller
             }
 
             // ===== Modification =====
-            $old = $this->calcPaidAmount($contract);
             $new = $old + $amount;
 
             Modification::create([
@@ -795,6 +797,6 @@ class PaymentControllerNew extends Controller
 
     private function calcPaidAmount(Contract $contract)
     {
-        return $contract->payments()->sum('paid');
+        return PaymentEntry::where('contract_id', $contract->id)->sum('amount');
     }
 }

@@ -196,10 +196,28 @@ class PaymentService
     }
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false,$date = null)
     {
+        $balance = (float) (\App\Models\Contract::find($contractId)->provided_amount ?? 0);
+
         if ($amount < $penalty) {
             $discountAmount = $isDiscount ? $amount : 0;
             $paymentId = $this->createPayment($contractId, $amount, 'penalty', $payer, $cash, [], $deal_id, $date, false, $parent_id, $discountAmount);
-            //return 0;
+            PaymentEntry::create([
+                'payment_id'       => $paymentId,
+                'contract_id'      => $contractId,
+                'deal_id'          => $deal_id,
+                'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                'user_id'          => auth()->id() ?? 1,
+                'reference'        => Str::uuid(),
+                'amount'           => $amount,
+                'principal_amount' => 0,
+                'interest_amount'  => 0,
+                'penalty_amount'   => $amount,
+                'balance_before'   => $balance,
+                'balance_after'    => $balance,
+                'document_type'    => 'penalty_payment',
+                'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                'cash'             => $cash ?? false,
+            ]);
             return [
                 'penalty' => $amount,
                 'amount' => 0,
@@ -208,7 +226,23 @@ class PaymentService
         } else {
             $discountAmount = $isDiscount ? $penalty : 0;
             $paymentId = $this->createPayment($contractId, $penalty, 'penalty', $payer, $cash, [], $deal_id, $date, true, $parent_id, $discountAmount,$date);
-            //  return $amount - $penalty;
+            PaymentEntry::create([
+                'payment_id'       => $paymentId,
+                'contract_id'      => $contractId,
+                'deal_id'          => $deal_id,
+                'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                'user_id'          => auth()->id() ?? 1,
+                'reference'        => Str::uuid(),
+                'amount'           => $penalty,
+                'principal_amount' => 0,
+                'interest_amount'  => 0,
+                'penalty_amount'   => $penalty,
+                'balance_before'   => $balance,
+                'balance_after'    => $balance,
+                'document_type'    => 'penalty_payment',
+                'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                'cash'             => $cash ?? false,
+            ]);
             return [
                 'penalty' => $penalty,
                 'amount' => $amount - $penalty,
@@ -477,20 +511,15 @@ class PaymentService
         $oldAmount = $amountPaid > 0 ? $amountPaid : (float) $payment['amount'];
         $oldDate   = $payment['date'];
 
-        if ($payment->last_payment == 0) {
-            $payment->date = $date ?? Carbon::now()->format('Y.m.d');
-        }
-        $payment->cash   = $cash;
         $payment->status = 'completed';
-
-        if ($payer) {
-            $payment->another_payer = true;
-            $payment->name    = $payer['name'];
-            $payment->surname = $payer['surname'];
-            $payment->phone   = $payer['phone'];
-        }
-
         $payment->save();
+
+        $meta = $payer ? [
+            'another_payer' => true,
+            'name'          => $payer['name'] ?? null,
+            'surname'       => $payer['surname'] ?? null,
+            'phone'         => $payer['phone'] ?? null,
+        ] : null;
 
         PaymentEntry::create([
             'payment_id'       => $payment->id,
@@ -508,6 +537,7 @@ class PaymentService
             'document_type'    => 'regular_payment',
             'date'             => $date ?? Carbon::now()->format('Y-m-d'),
             'cash'             => $cash ?? false,
+            'meta_data'        => $meta,
         ]);
 
         $history['payment_changes'][] = [
@@ -539,8 +569,6 @@ class PaymentService
     ): void {
         $oldAmount = $payment->amount;
         $oldDate   = $payment->date;
-
-        $payment->save();
 
         PaymentEntry::create([
             'payment_id'       => $payment->id,
@@ -685,7 +713,6 @@ class PaymentService
         $payment = new Payment();
         $payment->contract_id = $contract_id;
         $payment->amount = $amount;
-        $payment->paid = $amount;
         $payment->type = $type;
         $payment->cash = $cash ?? true;
         $payment->is_completed = $is_completed;
@@ -724,6 +751,7 @@ class PaymentService
     public function payPartial($contract, $partialAmount, $payer, $cash, $deal_id = null, $date = null,$is_recount = false,$is_remaining_payment = false)
     {
         $now = $date ?? Carbon::now();
+        $balanceBefore = (float) $contract->provided_amount;
         $history = ['payment_changes' => []];
 
         $contract->historyContext = [
@@ -853,11 +881,28 @@ class PaymentService
         }
         $this->handleAccountingForPartial($contract, $partialAmount, $date,$deal_id,$cash);
 
-        if ($contract->payment_type == 'classic') {
-            return $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
-        }
+        $balanceAfter = (float) $contract->provided_amount;
+        $paymentId = $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
 
-        return null;
+        PaymentEntry::create([
+            'payment_id'       => $paymentId,
+            'contract_id'      => $contract->id,
+            'deal_id'          => $deal_id,
+            'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+            'user_id'          => auth()->id() ?? 1,
+            'reference'        => Str::uuid(),
+            'amount'           => $partialAmount,
+            'principal_amount' => $partialAmount,
+            'interest_amount'  => 0,
+            'penalty_amount'   => 0,
+            'balance_before'   => $balanceBefore,
+            'balance_after'    => $balanceAfter,
+            'document_type'    => 'prepayment',
+            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+            'cash'             => $cash ?? false,
+        ]);
+
+        return $paymentId;
     }
 
     /**
@@ -892,7 +937,6 @@ class PaymentService
             // amount is intentionally left unchanged here; recalculateAmortizedInterestFromSchedule
             // will set the correct value (new_principal + new_interest) and persist everything
             // in a single pass, preventing a window where amount = old_interest + new_principal.
-            $payment->paid += $reduction;
             $payment->principal_payment -= $reduction;
             $remainingPartial -= $reduction;
             $payment->save();
@@ -1170,6 +1214,24 @@ class PaymentService
         ];
 
         $payment = $this->createPayment($contract->id, $amount, 'full', $payer, $cash, $history, $deal_id,$date);
+
+        PaymentEntry::create([
+            'payment_id'       => $payment,
+            'contract_id'      => $contract->id,
+            'deal_id'          => $deal_id,
+            'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+            'user_id'          => auth()->id() ?? 1,
+            'reference'        => Str::uuid(),
+            'amount'           => $amount,
+            'principal_amount' => $providedAmount,
+            'interest_amount'  => $interestAmount,
+            'penalty_amount'   => 0,
+            'balance_before'   => $providedAmount,
+            'balance_after'    => 0,
+            'document_type'    => 'full_payment',
+            'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+            'cash'             => $cash ?? false,
+        ]);
 
         // estimated_amount does not become 0 on full payment, so record its 'out' event manually.
         ContractAmountHistory::create([
