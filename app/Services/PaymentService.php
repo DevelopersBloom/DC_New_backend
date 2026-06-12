@@ -273,7 +273,6 @@ class PaymentService
 
             $earlySplit = $amount + 10 >= $payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date) : null;
             if ($earlySplit !== null) {
-                dd($amount);
                 $paidInterest     = $earlySplit['paid_interest'];
                 $paidPrincipal    = $earlySplit['paid_principal'];
                 $principalForLine = $earlySplit['principal_for_line'];
@@ -934,7 +933,8 @@ class PaymentService
             // amount is intentionally left unchanged here; recalculateAmortizedInterestFromSchedule
             // will set the correct value (new_principal + new_interest) and persist everything
             // in a single pass, preventing a window where amount = old_interest + new_principal.
-            $payment->principal_payment -= $reduction;
+//            $payment->principal_payment -= $reduction;
+            dd($reduction);
             $remainingPartial -= $reduction;
             $payment->save();
             $changes[] = $oldData;
