@@ -297,13 +297,12 @@ class PaymentService
                 // Remaining interest = scheduled - already paid via entries
                 $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
                 $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
-dd($remainingInterestPlan,$alreadyPaidInterest);
                 if ($remainingInterestAmount > 0 && $remainingInterestPlan > 0) {
                     $paidInterest            = min($remainingInterestAmount, $remainingInterestPlan, $amount);
                     $remainingInterestAmount -= $paidInterest;
                     $remainingAmount         -= $paidInterest;
                 }
-
+dd($paidInterest,$remainingInterestAmount,$remainingAmount);
                 if ($payment->to_date <= ($date ?? now()->format('Y-m-d'))) {
                     // Remaining principal = scheduled - already paid via entries
                     $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
