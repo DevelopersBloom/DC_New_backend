@@ -878,10 +878,16 @@ class PaymentService
         $this->handleAccountingForPartial($contract, $partialAmount, $date,$deal_id,$cash);
 
         $balanceAfter = (float) $contract->provided_amount;
-        $paymentId = $this->createPayment($contract->id, $partialAmount, 'partial', $payer, $cash, $history, $deal_id, $date);
+
+        $nextPayment = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->orderBy('date', 'asc')
+            ->orderBy('id', 'asc')
+            ->first();
 
         PaymentEntry::create([
-            'payment_id'       => $paymentId,
+            'payment_id'       => $nextPayment?->id,
             'contract_id'      => $contract->id,
             'deal_id'          => $deal_id,
             'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
@@ -898,7 +904,7 @@ class PaymentService
             'cash'             => $cash ?? false,
         ]);
 
-        return $paymentId;
+        return $nextPayment?->id;
     }
 
     /**
