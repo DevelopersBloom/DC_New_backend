@@ -953,7 +953,10 @@ class PaymentService
                 break;
             }
 
-            $reduction = min($remainingPartial, (float) $payment->principal_payment);
+            // Subtract what was already paid toward this payment's principal via entries
+            $alreadyPaidPrincipal = (float) PaymentEntry::where('payment_id', $payment->id)->sum('principal_amount');
+            $effectiveRemaining   = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
+            $reduction = min($remainingPartial, $effectiveRemaining);
             if ($reduction <= 0) {
                 continue;
             }
