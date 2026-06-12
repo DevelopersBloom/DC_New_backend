@@ -302,7 +302,6 @@ class PaymentService
                     $remainingInterestAmount -= $paidInterest;
                     $remainingAmount         -= $paidInterest;
                 }
-dd($paidInterest,$remainingInterestAmount,$remainingAmount);
                 if ($payment->to_date <= ($date ?? now()->format('Y-m-d'))) {
                     // Remaining principal = scheduled - already paid via entries
                     $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
@@ -311,6 +310,7 @@ dd($paidInterest,$remainingInterestAmount,$remainingAmount);
                     $paidPrincipal   = min($remainingAmount, $remainingPrincipal);
                     $remainingAmount -= $paidPrincipal;
 
+                    dd($alreadyPaidPrincipal, $remainingPrincipal, $paidPrincipal,$remainingAmount);
                     $contract->left            = max(0, $contract->left - $paidPrincipal);
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 }
