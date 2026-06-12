@@ -281,11 +281,11 @@ class PaymentControllerNew extends Controller
             DB::commit();
 
             $successPayload = ['success' => true, 'message' => 'Successfully created payment...'];
-            IdempotencyKey::where('key', $request->header('Idempotency-Key'))->update([
-                'status_code' => 200,
-                'response'    => json_encode($successPayload),
-                'locked_at'   => null,
-            ]);
+//            IdempotencyKey::where('key', $request->header('Idempotency-Key'))->update([
+//                'status_code' => 200,
+//                'response'    => json_encode($successPayload),
+//                'locked_at'   => null,
+//            ]);
 
             if ($date < now()->toDateString()) {
                 $lastCalculatedDate = DocumentJournal::where('journalable_id', $journal->id)
