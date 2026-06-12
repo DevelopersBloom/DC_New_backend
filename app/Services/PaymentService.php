@@ -310,7 +310,6 @@ class PaymentService
                     $paidPrincipal   = min($remainingAmount, $remainingPrincipal);
                     $remainingAmount -= $paidPrincipal;
 
-                    dd($alreadyPaidPrincipal, $remainingPrincipal, $paidPrincipal,$remainingAmount);
                     $contract->left            = max(0, $contract->left - $paidPrincipal);
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 }
@@ -326,7 +325,7 @@ class PaymentService
         if (!$earlyHandled) {
             $alreadyPaid              = (float) $payment->entries()->sum('amount');
             $totalRequiredForThisLine = max(0, (float) $payment->amount - $alreadyPaid);
-
+dd($alreadyPaid,$totalRequiredForThisLine,$amount);
             if ($amount >= $totalRequiredForThisLine) {
                 // Ensure interest + principal = amountPaid (no unaccounted remainder)
                 if ($paidPrincipal == 0 && $totalRequiredForThisLine > $paidInterest) {
