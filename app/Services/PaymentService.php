@@ -325,7 +325,6 @@ class PaymentService
         if (!$earlyHandled) {
             $alreadyPaid              = (float) $payment->entries()->sum('amount');
             $totalRequiredForThisLine = max(0, (float) $payment->amount - $alreadyPaid);
-dd($alreadyPaid,$totalRequiredForThisLine,$amount);
             if ($amount >= $totalRequiredForThisLine) {
                 // Ensure interest + principal = amountPaid (no unaccounted remainder)
                 if ($paidPrincipal == 0 && $totalRequiredForThisLine > $paidInterest) {
@@ -344,7 +343,7 @@ dd($alreadyPaid,$totalRequiredForThisLine,$amount);
                 );
             } else {
                 $balanceAfter = (float) $contract->provided_amount;
-
+dd($balanceAfter);
                 $this->partiallyCompletePayment(
                     $payment, $amount, $deal_id, [],
                     $paidPrincipal, $paidInterest,
