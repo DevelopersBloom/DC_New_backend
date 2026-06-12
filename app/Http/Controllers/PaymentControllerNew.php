@@ -290,11 +290,15 @@ class PaymentControllerNew extends Controller
                     ->whereIn('document_type', [
                         DocumentJournal::EFFECTIVE_RATE_AMOUNT,
                         DocumentJournal::INTEREST_RATE_AMOUNT,
+                        DocumentJournal::RESERVE_GENERAL_AMOUNT,
+                        DocumentJournal::RESERVE_SPECIAL_AMOUNT,
+                        DocumentJournal::PENALTY_RATE_AMOUNT,
                     ])
                     ->max('date');
 
                 if ($lastCalculatedDate && $lastCalculatedDate >= $date) {
-                    RecalculateContractRangeJob::dispatch($contract->id, $date, $lastCalculatedDate);
+                    $to = max($lastCalculatedDate, now()->toDateString());
+                    RecalculateContractRangeJob::dispatch($contract->id, $date, $to);
                 }
             }
 
