@@ -282,13 +282,13 @@ class PaymentService
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->remaining        = max(0, (float) ($payment->remaining - $remainingAmount));
 
-                $alreadyPaidEarly = (float) $payment->entries()->sum('amount');
-                $earlyAmountPaid  = max(0, (float) $payment->amount - $alreadyPaidEarly);
+                // One entry: amount = interest + principalForLine exactly (no rounding gap)
                 $this->completePayment(
                     $payment, $payer, $cash, $contract->id, $deal_id,
-                    $paidPrincipal, $paidInterest,
+                    $principalForLine,
+                    $paidInterest,
                     $date, $balanceBefore, (float) $contract->provided_amount,
-                    $earlyAmountPaid
+                    $paidInterest + $principalForLine
                 );
                 $earlyHandled  = true;
                 $paidPrincipal = $principalForLine;
@@ -340,6 +340,8 @@ class PaymentService
                     $date, $balanceBefore, $balanceAfter,
                     $totalRequiredForThisLine
                 );
+                // Deduct consumed amount so handleRemainingAmount gets only the real excess
+                $remainingAmount = max(0, $remainingAmount - $totalRequiredForThisLine);
             } else {
                 $balanceAfter = (float) $contract->provided_amount;
                 $this->partiallyCompletePayment(
@@ -347,6 +349,8 @@ class PaymentService
                     $paidPrincipal, $paidInterest,
                     $date, $balanceBefore, $balanceAfter
                 );
+                // All cash consumed by partial payment — nothing left
+                $remainingAmount = 0;
             }
         }
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
