@@ -281,7 +281,7 @@ class PaymentService
                 $contract->left           = max(0, $contract->left - $principalForLine);
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->remaining        = max(0, (float) ($payment->remaining - $remainingAmount));
-
+dd($principalForLine,$paidPrincipal,$paidInterest);
                 // One entry: amount = interest + principalForLine exactly (no rounding gap)
                 $this->completePayment(
                     $payment, $payer, $cash, $contract->id, $deal_id,
