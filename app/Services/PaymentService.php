@@ -272,7 +272,6 @@ class PaymentService
             $dueSnapshot = (float) $payment->amount;
 
             $earlySplit = $amount + 10 >= $payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date) : null;
-          dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest     = $earlySplit['paid_interest'];
                 $paidPrincipal    = $earlySplit['paid_principal'];
@@ -282,7 +281,6 @@ class PaymentService
                 $contract->left           = max(0, $contract->left - $principalForLine);
                 $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
                 $payment->remaining        = max(0, (float) ($payment->remaining - $remainingAmount));
-dd($principalForLine,$paidPrincipal,$paidInterest);
                 // One entry: amount = interest + principalForLine exactly (no rounding gap)
                 $this->completePayment(
                     $payment, $payer, $cash, $contract->id, $deal_id,
