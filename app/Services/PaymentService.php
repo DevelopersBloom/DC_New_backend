@@ -313,6 +313,7 @@ class PaymentService
                     $contract->left            = max(0, $contract->left - $paidPrincipal);
                     $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
                 }
+                dd($remainingAmount,$paidPrincipal,$paidInterest);
             }
         } else {
             $alreadyPaidClassic = (float) $payment->entries()->sum('amount');
