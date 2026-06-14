@@ -350,8 +350,7 @@ class PaymentService
                     $date, $balanceBefore, $balanceAfter
                 );
                 // All cash consumed by partial payment — nothing left
-                dd($remainingAmount,$paidPrincipal,$paidInterest);
-                $remainingAmount = max(0, (float) $remainingAmount - $paidInterest - $paidPrincipal);
+//                $remainingAmount = max(0, (float) $remainingAmount - $paidInterest - $paidPrincipal);
             }
         }
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
