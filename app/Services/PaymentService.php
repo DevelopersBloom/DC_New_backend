@@ -272,6 +272,7 @@ class PaymentService
             $dueSnapshot = (float) $payment->amount;
 
             $earlySplit = $amount + 10 >= $payment->amount ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date) : null;
+          dd($earlySplit);
             if ($earlySplit !== null) {
                 $paidInterest     = $earlySplit['paid_interest'];
                 $paidPrincipal    = $earlySplit['paid_principal'];
