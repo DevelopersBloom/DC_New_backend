@@ -131,6 +131,7 @@ class PaymentService
                     $principal_amount += $result['principal_amount'];
                 }
             }
+            dd($amount);
             if ($amount > 0) {
                 $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id, $date);
 
@@ -343,14 +344,13 @@ class PaymentService
 //                $remainingAmount = max(0, $remainingAmount - $totalRequiredForThisLine);
             } else {
                 $balanceAfter = (float) $contract->provided_amount;
-                dd($amount,$paidPrincipal,$paidInterest,$balanceBefore,$balanceAfter,$totalRequiredForThisLine);
                 $this->partiallyCompletePayment(
-                    $payment, $amount, $deal_id, [],
+                    $payment, $paidInterest+$paidPrincipal, $deal_id, [],
                     $paidPrincipal, $paidInterest,
                     $date, $balanceBefore, $balanceAfter
                 );
                 // All cash consumed by partial payment — nothing left
-                $remainingAmount = 0;
+                $remainingAmount = max(0, (float) $remainingAmount - $paidInterest - $paidPrincipal);
             }
         }
         if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
