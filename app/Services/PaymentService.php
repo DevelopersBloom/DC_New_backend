@@ -342,8 +342,7 @@ class PaymentService
                     $totalRequiredForThisLine
                 );
                 // Deduct consumed amount so handleRemainingAmount gets only the real excess
-                dd($remainingAmount,$totalRequiredForThisLine);
-                $remainingAmount = max(0, $remainingAmount - $totalRequiredForThisLine);
+//                $remainingAmount = max(0, $remainingAmount - $totalRequiredForThisLine);
             } else {
                 $balanceAfter = (float) $contract->provided_amount;
                 $this->partiallyCompletePayment(
