@@ -111,7 +111,6 @@ class PaymentService
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
             foreach ($payments as $payment) {
-                dd($payments->count());
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
                 if ($amount > 0) {
@@ -344,6 +343,7 @@ class PaymentService
 //                $remainingAmount = max(0, $remainingAmount - $totalRequiredForThisLine);
             } else {
                 $balanceAfter = (float) $contract->provided_amount;
+                dd($amount,$paidPrincipal,$paidInterest,$balanceBefore,$balanceAfter,$totalRequiredForThisLine);
                 $this->partiallyCompletePayment(
                     $payment, $amount, $deal_id, [],
                     $paidPrincipal, $paidInterest,
