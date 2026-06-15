@@ -221,10 +221,14 @@ class Contract extends Model
                 return $query->where('status', 'executed');
             case 'Ժամկետնանց':
             case 'overdue':
-                return $query->whereHas('payments', function ($q) {
-                    $q->whereDate('date', '<', today())
-                    ->where('status', 'initial');
-                });
+                return $query->whereRaw(
+                    '(SELECT COALESCE(SUM(p.amount - COALESCE(pe.paid, 0)), 0)
+                      FROM payments p
+                      LEFT JOIN (SELECT payment_id, SUM(amount) as paid FROM payment_entries GROUP BY payment_id) pe
+                        ON pe.payment_id = p.id
+                      WHERE p.contract_id = contracts.id AND DATE(p.date) < ? AND p.status = ?) >= 1000',
+                    [today()->toDateString(), 'initial']
+                );
             case 'todays':
                 return $query->whereHas('payments', function ($q) {
                     $q->whereDate('date', today())
@@ -236,10 +240,16 @@ class Contract extends Model
     }
     public function getIsOverdueAttribute()
     {
-        return $this->payments()
+        $overdueAmount = $this->payments()
             ->whereDate('date', '<', Carbon::today())
             ->where('status', 'initial')
-            ->exists();
+            ->get()
+            ->sum(function ($payment) {
+                $alreadyPaid = $payment->entries()->sum('amount');
+                return max(0, (float) $payment->amount - $alreadyPaid);
+            });
+
+        return $overdueAmount >= 1000;
     }
     public function scopeFilterByRange($query, $field, $from, $to)
     {
