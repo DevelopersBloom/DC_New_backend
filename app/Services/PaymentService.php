@@ -139,7 +139,6 @@ class PaymentService
             }
             if ($amount > 0) {
                 if ($paymentMechanism === 'prepayment') {
-                    dd($amount);
                     $extra = $this->applyRemainingAsPrepayments(
                         $contract, $amount, $payer, $cash, $deal_id, $date,
                         $payments->pluck('id')->all()
@@ -683,7 +682,7 @@ class PaymentService
             ->orderBy('date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
-
+dd($alreadyProcessedIds,$futurePayments);
         foreach ($futurePayments as $row) {
             dd($remaining);
             if ($remaining <= 0) break;
