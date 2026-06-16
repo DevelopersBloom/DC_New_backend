@@ -684,7 +684,6 @@ class PaymentService
             ->orderBy('date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
-dd($alreadyProcessedIds,$futurePayments);
         foreach ($futurePayments as $row) {
             dd($remaining);
             if ($remaining <= 0) break;
