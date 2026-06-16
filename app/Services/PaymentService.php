@@ -685,7 +685,6 @@ class PaymentService
             ->orderBy('id', 'asc')
             ->get();
         foreach ($futurePayments as $row) {
-            dd($remaining);
             if ($remaining <= 0) break;
 
             $due = Carbon::parse($row->to_date ?? $row->date)->startOfDay();
