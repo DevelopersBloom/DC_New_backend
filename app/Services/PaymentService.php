@@ -287,7 +287,7 @@ class PaymentService
         // Pay scheduled interest first
         $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
         $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
-        $paidInterest          = min($remainingInterestAmount, $remainingInterestPlan, $remainingAmount);
+        $paidInterest          = min($remainingInterestPlan, $remainingAmount);
         dd($paidInterest,$remainingInterestAmount, $remainingInterestPlan, $remainingAmount);
         $remainingInterestAmount -= $paidInterest;
         $remainingAmount         -= $paidInterest;
