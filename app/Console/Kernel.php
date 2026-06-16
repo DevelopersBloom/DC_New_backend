@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\MarkDuePrepaymentsPaid;
 use App\Jobs\ProcessContractDailyRate;
 use App\Jobs\ProcessDailyBankProvision;
 use App\Jobs\ProcessDailyNdmInterest;
@@ -38,6 +39,12 @@ class Kernel extends ConsoleKernel
 
         $schedule->job(new ProcessDailyNdmInterest)
             ->dailyAt('00:10')
+            ->timezone('Asia/Yerevan')
+            ->withoutOverlapping(10)
+            ->appendOutputTo(storage_path('logs/schedule.log'));
+
+        $schedule->job(new MarkDuePrepaymentsPaid)
+            ->dailyAt('00:15')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/schedule.log'));

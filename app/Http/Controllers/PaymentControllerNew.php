@@ -132,6 +132,7 @@ class PaymentControllerNew extends Controller
 
             // ===== Payment Logic =====
             $old = $this->calcPaidAmount($contract);
+            $paymentMechanism = $request->input('payment_mechanism', 'early_split');
 
             $result = $this->paymentService->processPayments(
                 $contract,
@@ -144,7 +145,8 @@ class PaymentControllerNew extends Controller
                 $paymentIds->isNotEmpty(),
                 $interestAmount,
                 $paymentIds->isNotEmpty(),
-                $date
+                $date,
+                $paymentMechanism
             );
 
             // ===== Update History & Deal =====
@@ -161,8 +163,9 @@ class PaymentControllerNew extends Controller
             $clientId = $contract->client_id;
             $docNum   = Transaction::getNextDocumentNumber();
 
-            $interest = $result['interest_amount'];
-            $principal= $result['principal_amount'];
+            $interest             = $result['interest_amount'];
+            $principal            = $result['principal_amount'];
+            $prepaymentPrincipal  = $result['prepayment_principal'] ?? 0;
 
             // ---- Interest ----
             if ($interest > 0) {
@@ -195,6 +198,28 @@ class PaymentControllerNew extends Controller
                     DocumentJournal::PAY_MOTHER_AMOUNT,
                     $principal,
                     'mother_amount_payment',
+                    $rule->debit_account_id,
+                    $rule->credit_account_id,
+                    $deal->id,
+                    $journal->id,
+                    $clientId,
+                    $contract->id,
+                    $rule,
+                    $contract
+                );
+            }
+
+            // ---- Prepayment principal (before due date) → Dr 10000/102101 / Cr 39920 ----
+            if ($prepaymentPrincipal > 0) {
+                $prepaymentEvent = $cash ? 'prepayment_received_cash' : 'prepayment_received';
+                $rule = $this->getPostingRule($prepaymentEvent);
+
+                $this->postEntry(
+                    $date,
+                    $docNum,
+                    DocumentJournal::PREPAYMENT_RECEIVED,
+                    $prepaymentPrincipal,
+                    'prepayment_payment',
                     $rule->debit_account_id,
                     $rule->credit_account_id,
                     $deal->id,

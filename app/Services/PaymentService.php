@@ -13,6 +13,7 @@ use App\Models\Pawnshop;
 use App\Models\Payment;
 use App\Models\PaymentEntry;
 use App\Models\PostingRule;
+use App\Models\Prepayment;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Traits\ContractTrait;
@@ -27,16 +28,19 @@ class PaymentService
     use ContractTrait;
     use CorrectReserveTrait;
     protected $contractService;
-    public function __construct(ContractService $contractService)
+    protected PrepaymentService $prepaymentService;
+    public function __construct(ContractService $contractService, PrepaymentService $prepaymentService)
     {
-        $this->contractService = $contractService;
+        $this->contractService   = $contractService;
+        $this->prepaymentService = $prepaymentService;
     }
 
-    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $interestAmount = 0, $ispPaymentSelected = false, $date = null)
+    public function processPayments($contract, $amount, $payer, $cash, $payments, $deal_id, $journal_id = null, bool $forceScheduled = false, $interestAmount = 0, $ispPaymentSelected = false, $date = null, $paymentMechanism = null)
     {
         $payments_sum = 0;
         $interest_amount = 0;
         $principal_amount = 0;
+        $prepayment_principal = 0;
         $initial_amount = $amount;
 
         $contract->historyContext = [
@@ -123,12 +127,14 @@ class PaymentService
                         $deal_id,
                         $forceScheduledForSelected,
                         $interestAmount,
-                        $date
+                        $date,
+                        $paymentMechanism
                     );
                     $amount = $result['amount'];
                     $interestAmount = $result['remaining_interest'];
                     $interest_amount += $result['interest_amount'];
                     $principal_amount += $result['principal_amount'];
+                    $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
             if ($amount > 0) {
@@ -186,12 +192,13 @@ class PaymentService
         }
 
         return [
-            'payments_sum' => $payments_sum,
-            'interest_amount' => $interest_amount,
-            'principal_amount' => $principal_amount,
-            'penalty' => $payed_penalty,
-            'delay_days' => $delay_days,
-            'discount' => 0
+            'payments_sum'        => $payments_sum,
+            'interest_amount'     => $interest_amount,
+            'principal_amount'    => $principal_amount,
+            'prepayment_principal'=> $prepayment_principal,
+            'penalty'             => $payed_penalty,
+            'delay_days'          => $delay_days,
+            'discount'            => 0
         ];
     }
     public function processPenalty($contractId, $amount, $penalty, $payer, $cash, $deal_id = null, $parent_id = null, $isDiscount = false,$date = null)
@@ -251,12 +258,13 @@ class PaymentService
         }
     }
 
-    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false,$interestAmount = 0,$date = null)
+    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false, $interestAmount = 0, $date = null, $paymentMechanism = null)
     {
         $remainingAmount = $amount;
         $remainingInterestAmount = $interestAmount;
         $paidInterest = 0;
         $paidPrincipal = 0;
+        $prepaymentPrincipal = 0;
 
         $principalPayment = null;
         $interestPayment = null;
@@ -266,7 +274,65 @@ class PaymentService
         // Capture balance before any contract mutations
         $balanceBefore = (float) $contract->provided_amount;
 
-        if ($contract->payment_type == 'amortized') {
+        if ($contract->payment_type == 'amortized' && $paymentMechanism === 'prepayment') {
+            // ---- Prepayment mechanism: pay scheduled amounts; principal before due date → Prepayment record ----
+            $principalPayment = (float) ($payment->principal_payment ?? 0);
+            $interestPayment  = (float) ($payment->interest_payment ?? 0);
+
+            $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
+            $remainingInterestPlan = max(0, $interestPayment - $alreadyPaidInterest);
+            if ($remainingInterestAmount > 0 && $remainingInterestPlan > 0) {
+                $paidInterest            = min($remainingInterestAmount, $remainingInterestPlan, $remainingAmount);
+                $remainingInterestAmount -= $paidInterest;
+                $remainingAmount         -= $paidInterest;
+            }
+
+            $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
+            $remainingPrincipal   = max(0, $principalPayment - $alreadyPaidPrincipal);
+            $paidPrincipal        = min($remainingAmount, $remainingPrincipal);
+            $remainingAmount     -= $paidPrincipal;
+
+            $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
+            $now = $date ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay() : Carbon::now('Asia/Yerevan')->startOfDay();
+            $isPrepayment = $due->gt($now) && $paidPrincipal > 0;
+
+            if ($paidPrincipal > 0) {
+                $contract->left            = max(0, $contract->left - $paidPrincipal);
+                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+            }
+
+            $balanceAfter = (float) $contract->provided_amount;
+            $totalPaid = $paidInterest + $paidPrincipal;
+            $alreadyPaid = (float) $payment->entries()->sum('amount');
+
+            if ($alreadyPaid + $totalPaid >= (float) $payment->amount - 0.01) {
+                $this->completePayment(
+                    $payment, $payer, $cash, $contract->id, $deal_id,
+                    $paidPrincipal, $paidInterest,
+                    $date, $balanceBefore, $balanceAfter, $totalPaid
+                );
+            } else {
+                $this->partiallyCompletePayment(
+                    $payment, $totalPaid, $deal_id, [],
+                    $paidPrincipal, $paidInterest,
+                    $date, $balanceBefore, $balanceAfter
+                );
+            }
+
+            if ($isPrepayment) {
+                $this->prepaymentService->createSingle(
+                    $contract->id,
+                    $payment->id,
+                    $deal_id,
+                    $paidPrincipal,
+                    $payment->to_date
+                );
+                $prepaymentPrincipal = $paidPrincipal;
+                $paidPrincipal = 0;
+            }
+
+            $earlyHandled = true;
+        } elseif ($contract->payment_type == 'amortized') {
             $principalPayment = $payment->principal_payment;
             $interestPayment = $payment->interest_payment;
             $dueSnapshot = (float) $payment->amount;
@@ -352,7 +418,7 @@ class PaymentService
 //                $remainingAmount = max(0, (float) $remainingAmount - $paidInterest - $paidPrincipal);
             }
         }
-        if ($earlyHandled && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
+        if ($earlyHandled && $paymentMechanism !== 'prepayment' && $contract->payment_type === 'amortized' && (float) $payment->amount <= 0) {
             $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
             $now = $date
                 ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
@@ -373,10 +439,11 @@ class PaymentService
         $contract->save();
         $payment->save();
         return [
-            'interest_amount'  => $paidInterest,
-            'principal_amount' => $paidPrincipal,
-            'amount'           => $remainingAmount,
-            'remaining_interest' => $remainingInterestAmount,
+            'interest_amount'     => $paidInterest,
+            'principal_amount'    => $paidPrincipal,
+            'prepayment_principal'=> $prepaymentPrincipal,
+            'amount'              => $remainingAmount,
+            'remaining_interest'  => $remainingInterestAmount,
         ];
     }
 //    private function processSinglePayment($contract, $payment, $amount, $payer, $cash, $deal_id, bool $forceScheduledForSelected = false,$interestAmount = 0,$date = null)

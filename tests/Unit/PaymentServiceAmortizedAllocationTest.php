@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\Payment;
 use App\Services\ContractService;
 use App\Services\PaymentService;
+use App\Services\PrepaymentService;
 use Carbon\Carbon;
 use Mockery;
 use ReflectionMethod;
@@ -24,7 +25,7 @@ class PaymentServiceAmortizedAllocationTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-06-25 12:00:00', 'Asia/Yerevan'));
 
-        $service = new PaymentService(Mockery::mock(ContractService::class));
+        $service = new PaymentService(Mockery::mock(ContractService::class), Mockery::mock(PrepaymentService::class));
         $contract = new Contract([
             'provided_amount' => 100_000.0,
             'interest_rate' => 0.11,
@@ -49,7 +50,7 @@ class PaymentServiceAmortizedAllocationTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-06-25 12:00:00', 'Asia/Yerevan'));
 
-        $service = new PaymentService(Mockery::mock(ContractService::class));
+        $service = new PaymentService(Mockery::mock(ContractService::class), Mockery::mock(PrepaymentService::class));
         $contract = new Contract([
             'provided_amount' => 100_000.0,
             'interest_rate' => 0.11,
@@ -116,7 +117,7 @@ class PaymentServiceAmortizedAllocationTest extends TestCase
         $futureInterest = max(0, max(0, $P - $x) * (int) $futureDays * ($rate / 100));
         $expectedPaidInterest = $pastInterest + $futureInterest;
 
-        $service = new PaymentService(Mockery::mock(ContractService::class));
+        $service = new PaymentService(Mockery::mock(ContractService::class), Mockery::mock(PrepaymentService::class));
         $m = new ReflectionMethod(PaymentService::class, 'tryEarlyAmortizedPaymentSplit');
         $m->setAccessible(true);
         $split = $m->invoke($service, $contract, $payment, $cash, $asOf->toDateString());
