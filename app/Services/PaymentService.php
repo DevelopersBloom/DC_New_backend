@@ -288,6 +288,7 @@ class PaymentService
         $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
         $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
         $paidInterest          = min($remainingInterestAmount, $remainingInterestPlan, $remainingAmount);
+        dd($paidInterest,$remainingInterestAmount, $remainingInterestPlan, $remainingAmount);
         $remainingInterestAmount -= $paidInterest;
         $remainingAmount         -= $paidInterest;
 
