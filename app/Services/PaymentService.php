@@ -288,7 +288,6 @@ class PaymentService
         $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
         $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
         $paidInterest          = min($remainingInterestPlan, $remainingAmount);
-        dd($paidInterest,$remainingInterestAmount, $remainingInterestPlan, $remainingAmount);
         $remainingInterestAmount -= $paidInterest;
         $remainingAmount         -= $paidInterest;
 
@@ -297,7 +296,6 @@ class PaymentService
         $remainingPrincipal   = max(0, (float) ($payment->principal_payment ?? 0) - $alreadyPaidPrincipal);
         $paidPrincipal        = min($remainingAmount, $remainingPrincipal);
         $remainingAmount     -= $paidPrincipal;
-dd($paidInterest,$paidPrincipal,$remainingAmount,$remainingPrincipal,$remainingInterestAmount,$remainingInterestPlan,$remainingAmount);
         // Reduce loan balance immediately (prepayment commits the principal reduction)
         if ($paidPrincipal > 0) {
             $contract->left            = max(0, $contract->left - $paidPrincipal);
