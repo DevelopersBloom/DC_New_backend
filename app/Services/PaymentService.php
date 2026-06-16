@@ -137,6 +137,7 @@ class PaymentService
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
+            dd($result,$amount);
             if ($amount > 0) {
                 if ($paymentMechanism === 'prepayment') {
                     $extra = $this->applyRemainingAsPrepayments(
