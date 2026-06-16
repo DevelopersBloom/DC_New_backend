@@ -12,11 +12,14 @@ class PrepaymentService
             return;
         }
 
-        $alreadyExists = Prepayment::where('contract_id', $contractId)
+        $existing = Prepayment::where('contract_id', $contractId)
             ->where('due_date', $dueDate)
-            ->exists();
+            ->where('status', 'unpaid')
+            ->first();
 
-        if ($alreadyExists) {
+        if ($existing) {
+            // Accumulate partial prepayments for the same installment
+            $existing->increment('amount', $amount);
             return;
         }
 

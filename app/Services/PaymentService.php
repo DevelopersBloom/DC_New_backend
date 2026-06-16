@@ -138,8 +138,15 @@ class PaymentService
                 }
             }
             if ($amount > 0) {
-                $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id, $date);
-
+                if ($paymentMechanism === 'prepayment') {
+                    $extra = $this->applyRemainingAsPrepayments(
+                        $contract, $amount, $payer, $cash, $deal_id, $date,
+                        $payments->pluck('id')->all()
+                    );
+                    $prepayment_principal += $extra;
+                } else {
+                    $this->handleRemainingAmount($contract, $amount, $cash, $payments->last()->id, $deal_id, $date);
+                }
                 $amount = 0;
             }
 
@@ -649,6 +656,77 @@ class PaymentService
             'date'            => $date ?? Carbon::now()->format('Y-m-d'),
             'history'         => $history,
         ]);
+    }
+
+    /**
+     * Prepayment mode: apply leftover cash to upcoming installments.
+     * Walks future payment rows in date order, creates / accumulates a Prepayment record
+     * for each, and records a PaymentEntry so subsequent calls know the principal is covered.
+     *
+     * @param  int[]  $alreadyProcessedIds  IDs of the rows handled in the main loop (skip them)
+     * @return float  Total amount registered as prepayment_principal
+     */
+    private function applyRemainingAsPrepayments(
+        $contract, float $remaining, $payer, $cash, ?int $dealId, ?string $date, array $alreadyProcessedIds
+    ): float {
+        $totalPrepaid = 0;
+
+        $now = $date
+            ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
+            : Carbon::now('Asia/Yerevan')->startOfDay();
+
+        $futurePayments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->whereNotIn('id', $alreadyProcessedIds)
+            ->orderBy('date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        foreach ($futurePayments as $row) {
+            if ($remaining <= 0) break;
+
+            $due = Carbon::parse($row->to_date ?? $row->date)->startOfDay();
+            if (!$due->gt($now)) continue; // only rows whose due date is still ahead
+
+            $alreadyPaidPrincipal = (float) $row->entries()->sum('principal_amount');
+            $remainingPrincipal   = max(0, (float) ($row->principal_payment ?? 0) - $alreadyPaidPrincipal);
+            if ($remainingPrincipal <= 0) continue;
+
+            $toPrepay  = min($remaining, $remainingPrincipal);
+            $remaining -= $toPrepay;
+            $totalPrepaid += $toPrepay;
+
+            // Reduce loan balance (mirrors handlePrepayment behaviour)
+            $balanceBefore = (float) $contract->provided_amount;
+            $contract->left            = max(0, $contract->left - $toPrepay);
+            $contract->provided_amount = max(0, $contract->provided_amount - $toPrepay);
+            $balanceAfter  = (float) $contract->provided_amount;
+
+            // Record a partial entry so future handlePrepayment calls see the covered principal
+            PaymentEntry::create([
+                'payment_id'       => $row->id,
+                'contract_id'      => $contract->id,
+                'deal_id'          => $dealId,
+                'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                'user_id'          => auth()->id() ?? 1,
+                'reference'        => Str::uuid(),
+                'amount'           => $toPrepay,
+                'principal_amount' => $toPrepay,
+                'interest_amount'  => 0,
+                'penalty_amount'   => 0,
+                'balance_before'   => $balanceBefore,
+                'balance_after'    => $balanceAfter,
+                'document_type'    => 'prepayment_payment',
+                'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                'cash'             => $cash ?? false,
+            ]);
+
+            // Create or accumulate the Prepayment record for this installment
+            $this->prepaymentService->createSingle($contract->id, $row->id, $dealId, $toPrepay, $row->to_date);
+        }
+
+        return $totalPrepaid;
     }
 
     private function handleRemainingAmount($contract, $amount, $cash, $payment_id, $deal_id = null,$date = null)
