@@ -114,6 +114,7 @@ class PaymentService
             // If the entered amount can fully cover all selected rows, or the caller explicitly
             // requests scheduled (e.g. makePayment with explicit IDs), skip early split.
             $forceScheduledForSelected = $forceScheduled || ($amount >= $selectedTotalDue);
+            $processedPaymentIds = [];
             foreach ($payments as $payment) {
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
@@ -130,18 +131,19 @@ class PaymentService
                         $date,
                         $paymentMechanism
                     );
-                    $amount = $result['amount'];
-                    $interestAmount = $result['remaining_interest'];
-                    $interest_amount += $result['interest_amount'];
-                    $principal_amount += $result['principal_amount'];
-                    $prepayment_principal += $result['prepayment_principal'] ?? 0;
+                    $processedPaymentIds[] = $payment->id;
+                    $amount                = $result['amount'];
+                    $interestAmount        = $result['remaining_interest'];
+                    $interest_amount       += $result['interest_amount'];
+                    $principal_amount      += $result['principal_amount'];
+                    $prepayment_principal  += $result['prepayment_principal'] ?? 0;
                 }
             }
             if ($amount > 0) {
                 if ($paymentMechanism === 'prepayment') {
                     $extra = $this->applyRemainingAsPrepayments(
                         $contract, $amount, $payer, $cash, $deal_id, $date,
-                        $payments->pluck('id')->all()
+                        $processedPaymentIds
                     );
                     $prepayment_principal += $extra;
                 } else {
