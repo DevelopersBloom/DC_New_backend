@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Contract;
 use App\Models\Discount;
 use App\Models\History;
 use App\Models\HistoryType;
 use App\Models\Payment;
-use Illuminate\Support\Facades\DB;
+use App\Services\Payments\PaymentService;
 
 class DiscountService
 {

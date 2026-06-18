@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Contract;
 use App\Services\ContractService;
-use App\Services\PaymentService;
+use App\Services\Payments\PaymentService;
 use Illuminate\Support\Collection;
 use Mockery;
 use Tests\TestCase;

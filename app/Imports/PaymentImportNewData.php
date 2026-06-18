@@ -2,21 +2,10 @@
 
 namespace App\Imports;
 
-use App\Models\Contract;
-use App\Models\ContractAmountHistory;
-use App\Models\History;
-use App\Models\HistoryType;
-use App\Models\Order;
 use App\Models\Payment;
-use App\Models\User;
-use App\Services\PaymentService;
-use App\Traits\ContractTrait;
-use App\Traits\FileTrait;
-use App\Traits\HistoryTrait;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class PaymentImportNewData implements ToCollection
 {

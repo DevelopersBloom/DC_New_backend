@@ -3,15 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Imports\ChartOfAccountsHierarchyImport;
-use App\Imports\ContractImport;
-use App\Imports\ContractImportNew;
-use App\Imports\ContractsImportNewData;
-use App\Imports\DealsImport;
-use App\Imports\ItemImport;
-use App\Imports\PaymentImportNew;
-use App\Imports\PaymentImportNewData;
-use App\Services\ContractService;
-use App\Services\PaymentService;
 use Illuminate\Console\Command;
 use Maatwebsite\Excel\Facades\Excel;
 

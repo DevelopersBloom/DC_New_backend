@@ -5,23 +5,21 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ExecuteItemRequest;
 use App\Http\Requests\PaymentRequest;
 use App\Jobs\RecalculateContractRangeJob;
-use App\Models\ChartOfAccount;
-use App\Models\Client;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\DealAction;
 use App\Models\DocumentJournal;
 use App\Models\History;
 use App\Models\HistoryType;
+use App\Models\IdempotencyKey;
 use App\Models\Modification;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentEntry;
 use App\Models\PostingRule;
-use App\Models\IdempotencyKey;
 use App\Models\Transaction;
 use App\Services\ActivityService;
-use App\Services\PaymentService;
+use App\Services\Payments\PaymentService;
 use App\Services\PostingDatePolicy;
 use App\Traits\CalculatesAccountBalancesTrait;
 use App\Traits\ContractTrait;
@@ -32,7 +30,6 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use PhpParser\Node\Expr\AssignOp\Mod;
 
 class PaymentControllerNew extends Controller
 {
