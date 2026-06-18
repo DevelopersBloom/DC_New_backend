@@ -157,6 +157,14 @@ class PaymentService
                         $contract, $amount, $payer, $cash, $deal_id, $date, $processedPaymentIds
                     );
                     $prepayment_principal += $extra;
+                } elseif ($paymentMechanism === 'interest') {
+                    $applied = $this->applyExtraToFutureInterest(
+                        $contract, $amount, $payments->last()->id ?? null
+                    );
+                    $interest_amount += $applied;
+//                }
+//                elseif ($paymentMechanism === 'principal') {
+//                    $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, false);
                 } else {
                     $this->handleRemainingAmount(
                         $contract, $amount, $cash, $payments->last()->id, $deal_id, $date
@@ -857,5 +865,41 @@ class PaymentService
                 ]);
             }
         }
+    }
+
+    // ── Future-interest coverage (mechanism: 'interest') ────────────────────
+
+    private function applyExtraToFutureInterest(Contract $contract, float $extra, ?int $excludePaymentId = null): float
+    {
+        $applied = 0.0;
+
+        $futurePayments = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->when($excludePaymentId, fn($q) => $q->where('id', '!=', $excludePaymentId))
+            ->orderBy('date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        foreach ($futurePayments as $payment) {
+            if ($extra <= 0) break;
+
+            $interestDue = (float) $payment->interest_payment;
+            if ($interestDue <= 0) continue;
+
+            $deduct = min($extra, $interestDue);
+            $payment->interest_payment -= $deduct;
+            $payment->amount = $payment->interest_payment + (float) ($payment->principal_payment ?? 0);
+            $extra   -= $deduct;
+            $applied += $deduct;
+
+            if ((float) $payment->amount <= 0) {
+                $payment->status = 'completed';
+            }
+
+            $payment->save();
+        }
+
+        return $applied;
     }
 }

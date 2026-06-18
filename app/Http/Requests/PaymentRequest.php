@@ -37,7 +37,7 @@ class PaymentRequest extends FormRequest
             'payer.surname' => 'nullable|string',
             'payer.phone'   => 'nullable|string',
             'cash'              => 'required|boolean',
-            'payment_mechanism' => 'nullable|in:early_split,prepayment',
+            'payment_mechanism' => 'nullable|in:early_split,prepayment,interest,principal',
         ];
     }
 }
