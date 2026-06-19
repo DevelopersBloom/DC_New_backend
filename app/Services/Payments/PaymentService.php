@@ -35,9 +35,10 @@ class PaymentService
     use CorrectReserveTrait;
 
     public function __construct(
-        protected ContractService         $contractService,
-        protected PrepaymentHandler       $prepaymentHandler,
-        protected ScheduledPaymentHandler $scheduledHandler,
+        protected ContractService                  $contractService,
+        protected PrepaymentHandler                $prepaymentHandler,
+        protected ScheduledPaymentHandler          $scheduledHandler,
+        protected LatePaymentInterestRecalculator  $lateInterestRecalculator,
     ) {}
 
     // ── Main payment loop ────────────────────────────────────────────────────
@@ -61,6 +62,14 @@ class PaymentService
         $old_provided  = $contract->provided_amount;
         $old_left      = $contract->left;
         $old_collected = $contract->collected;
+
+        // ── Late-payment interest recalculation ──────────────────────────────
+        // Adjust interest on installments whose period was crossed while the
+        // client had not yet paid.  Runs before penalty so penalty sees the
+        // correct (updated) amounts; no-ops when no installments are affected.
+        if ($date !== null && $contract->payment_type === 'amortized') {
+            $this->lateInterestRecalculator->recalculate($contract, $date, $payments);
+        }
 
         // ── Penalty first ────────────────────────────────────────────────────
         $result_penalty = $this->countPenalty($contract->id, $date);
