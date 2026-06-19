@@ -129,7 +129,7 @@ class LatePaymentInterestRecalculator
 
             $results[] = ['payment' => $payment, 'interest' => $interest];
         }
-
+dd($results);
         return $results;
     }
 
@@ -138,7 +138,6 @@ class LatePaymentInterestRecalculator
      */
     public static function segmentInterest(float $balance, float $dailyRate, int $days): float
     {
-        dd($balance, $dailyRate, $days);
         return $balance * $dailyRate * $days;
     }
 }
