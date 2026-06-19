@@ -109,7 +109,6 @@ class LatePaymentInterestRecalculator
                 }
             }
             $balanceAtStart = $originalBalance - $collectedBeforeFrom;
-            dd($payDate,$toDate,$payDate->gte($toDate));
 
             if ($payDate->gte($toDate)) {
                 // Fully crossed: the entire period elapsed before the client paid.
@@ -139,6 +138,7 @@ class LatePaymentInterestRecalculator
      */
     public static function segmentInterest(float $balance, float $dailyRate, int $days): float
     {
+        dd($balance, $dailyRate, $days);
         return $balance * $dailyRate * $days;
     }
 }
