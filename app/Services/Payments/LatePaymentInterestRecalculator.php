@@ -137,6 +137,7 @@ dd($updates);
      */
     public static function segmentInterest(float $balance, float $dailyRate, int $days): float
     {
+        dd($balance, $dailyRate, $days, $balance * $dailyRate * $days);
         return $balance * $dailyRate * $days;
     }
 }
