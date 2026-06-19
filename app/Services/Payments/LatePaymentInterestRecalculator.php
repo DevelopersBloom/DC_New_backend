@@ -114,6 +114,7 @@ dd($updates);
                 // Fully crossed: the entire period elapsed before the client paid.
                 // No principal was collected during this period → constant balance.
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $totalDays);
+                dd($interest);
             } else {
                 // Partially crossed: split at paymentDate.
                 $daysBefore = (int) $fromDate->diffInDays($payDate);
