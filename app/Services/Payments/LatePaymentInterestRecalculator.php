@@ -109,7 +109,8 @@ class LatePaymentInterestRecalculator
                 }
             }
             $balanceAtStart = $originalBalance - $collectedBeforeFrom;
-dd($balanceAtStart,$originalBalance,$collectedBeforeFrom,$dailyRate,$paymentDate,$historicalEntries);
+            dd($payDate,$toDate,$payDate->gte($toDate));
+
             if ($payDate->gte($toDate)) {
                 // Fully crossed: the entire period elapsed before the client paid.
                 // No principal was collected during this period → constant balance.
