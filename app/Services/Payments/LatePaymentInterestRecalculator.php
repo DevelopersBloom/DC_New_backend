@@ -126,9 +126,11 @@ dd($updates);
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore)
                     + self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter);
             }
-dd($payment,$interest);
-            $results[] = ['payment' => $payment, 'interest' => $interest];
+            $i = 0;
+            $results[] = ['payment' => $i, 'interest' => $interest];
+            $i++;
         }
+        dd($results);
         return $results;
     }
 
