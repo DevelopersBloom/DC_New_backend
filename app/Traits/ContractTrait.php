@@ -885,7 +885,7 @@ trait ContractTrait
     private function resolveEvent(string $base, string $class, bool $cash): string
     {
         if ($class === 'loss') {
-            return "{$base}_loss";
+            return "pay_principal_loss";
         }
 
         if ($cash) {
