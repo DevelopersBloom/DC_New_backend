@@ -120,6 +120,7 @@ class Contract extends Model
         'interest_rate_type',
         'security_type',
         'loan_use_field',
+        'payment_day',
     ];
 
     protected $casts = [

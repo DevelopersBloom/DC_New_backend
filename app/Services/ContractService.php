@@ -621,6 +621,122 @@ class   ContractService
         return $pmt - $ipmt;
     }
 
+    /**
+     * Pure schedule builder for broken-period annuity contracts.
+     *
+     * Returns an ordered array of row descriptors — one for the broken-period
+     * (if brokenDays > 0) followed by `$months` regular installments.
+     * No DB I/O; exposed as protected for unit testing via ReflectionMethod.
+     *
+     * Interest rate semantics (matching ContractCalculationService):
+     *   $interestRate  — daily rate stored as a percentage value, e.g. 0.049315
+     *                    for 18 % annual (= 18/365).  interest = balance × (rate/100) × days.
+     *   $feeAnnualPct  — annual fee percentage, e.g. 1.0 for 1 %.
+     *
+     * Broken-period interest uses actual day-count (daily rate × days).
+     * Regular installment interest uses the nominal monthly rate (annual / 12)
+     * so that the PMT formula and individual rows are fully consistent.
+     *
+     * @return array<int, array{
+     *   is_broken_period: bool,
+     *   calendar_due_date: string,
+     *   business_due_date: string,
+     *   from_date: string,
+     *   days: int,
+     *   principal: float,
+     *   interest: float,
+     *   service_fee: float,
+     *   total: float,
+     *   balance_after: float,
+     *   is_last: bool,
+     * }>
+     */
+    protected function computeBrokenPeriodAnnuitySchedule(
+        float  $loanAmount,
+        float  $interestRate,
+        float  $feeAnnualPct,
+        int    $months,
+        Carbon $disbursementDate,
+        int    $paymentDay
+    ): array {
+        $annualPct     = $interestRate * 365;
+        $monthlyRate   = $annualPct / 100 / 12;
+        $feeMonthly    = $feeAnnualPct / 100 / 12;
+        $allMonthly    = $monthlyRate + $feeMonthly;
+        $pmt           = -$this->excelPmt($allMonthly, $months, $loanAmount);
+
+        // First calendar payment date: next occurrence of $paymentDay strictly after disbursement.
+        if ($disbursementDate->day < $paymentDay) {
+            $firstCalendar = $disbursementDate->copy()->day($paymentDay);
+        } else {
+            $firstCalendar = $disbursementDate->copy()->addMonthNoOverflow()->day($paymentDay);
+        }
+
+        $brokenDays = (int) $disbursementDate->diffInDays($firstCalendar);
+        $rows       = [];
+        $balance    = $loanAmount;
+
+        // Row #0 — broken period (interest only, balance unchanged).
+        if ($brokenDays > 0) {
+            $dailyRate      = $interestRate / 100.0;
+            $brokenInterest = round($loanAmount * $dailyRate * $brokenDays, 2);
+            $bizDate        = $this->getNextWorkingDay($firstCalendar->copy());
+
+            $rows[] = [
+                'is_broken_period' => true,
+                'calendar_due_date' => $firstCalendar->toDateString(),
+                'business_due_date' => $bizDate->toDateString(),
+                'from_date'         => $disbursementDate->toDateString(),
+                'days'              => $brokenDays,
+                'principal'         => 0.0,
+                'interest'          => $brokenInterest,
+                'service_fee'       => 0.0,
+                'total'             => $brokenInterest,
+                'balance_after'     => $loanAmount,
+                'is_last'           => false,
+            ];
+        }
+
+        // Rows #1 .. #months — standard annuity installments.
+        for ($i = 1; $i <= $months; $i++) {
+            $isLast       = ($i === $months);
+            $calendarDate = $firstCalendar->copy()->addMonthsNoOverflow($i);
+            $bizDate      = $this->getNextWorkingDay($calendarDate->copy());
+
+            $prevCalendar = $firstCalendar->copy()->addMonthsNoOverflow($i - 1);
+            $fromDate     = $i === 1 ? $firstCalendar->copy() : $this->getNextWorkingDay($prevCalendar->copy());
+
+            $interest   = round($balance * $monthlyRate, 2);
+            $serviceFee = $feeAnnualPct > 0 ? round($balance * $feeMonthly, 2) : 0.0;
+
+            if ($isLast) {
+                $principal = $balance;
+                $total     = round($principal + $interest + $serviceFee, 2);
+            } else {
+                $principal = round($pmt - $interest - $serviceFee, 2);
+                $total     = round($pmt, 2);
+            }
+
+            $balance = round($balance - $principal, 2);
+
+            $rows[] = [
+                'is_broken_period'  => false,
+                'calendar_due_date' => $calendarDate->toDateString(),
+                'business_due_date' => $bizDate->toDateString(),
+                'from_date'         => $fromDate->toDateString(),
+                'days'              => (int) $fromDate->diffInDays($bizDate),
+                'principal'         => $principal,
+                'interest'          => $interest,
+                'service_fee'       => $serviceFee,
+                'total'             => $total,
+                'balance_after'     => $balance,
+                'is_last'           => $isLast,
+            ];
+        }
+
+        return $rows;
+    }
+
     protected function createAnnuityPayment(Contract $contract, $import_date = null, $import_pawnshop_id = null, $months = null, int $startPgiId = 1)
     {
         $loanAmount = (float) $contract->provided_amount;
@@ -629,8 +745,6 @@ class   ContractService
             $months = (int) $contract->deadline_days;
         }
 
-//        $feeAnnualPercent = (float) $contract->fee_annual_rate;
-//        $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
         $interestAnnualPercent = (float) $contract->interest_rate * 365;
         $interestMonthlyRate   = ($interestAnnualPercent / 100) / 12;
 
@@ -638,16 +752,72 @@ class   ContractService
         $feeMonthlyRate   = ($feeAnnualPercent / 100) / 12;
 
         $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
-
         $monthlyPayment = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
+
         $pawnshop_id = $import_pawnshop_id ?? auth()->user()->pawnshop_id;
         $pgi_id      = $startPgiId;
 
-        $currentDate = $import_date
-            ? \Carbon\Carbon::parse($import_date)
-            : \Carbon\Carbon::parse($contract->date);
+        $disbursementDate = $import_date
+            ? Carbon::parse($import_date)
+            : Carbon::parse($contract->date);
 
         $schedule = [];
+
+        // --- Broken-period path (payment_day is set) ---
+        $paymentDay = (int) ($contract->payment_day ?? 0);
+        if ($paymentDay >= 1 && $paymentDay <= 28) {
+            $rows = $this->computeBrokenPeriodAnnuitySchedule(
+                $loanAmount,
+                (float) $contract->interest_rate,
+                $feeAnnualPercent,
+                $months,
+                $disbursementDate,
+                $paymentDay
+            );
+
+            foreach ($rows as $row) {
+                Payment::create([
+                    'contract_id'                => $contract->id,
+                    'date'                       => $row['business_due_date'],
+                    'to_date'                    => $row['business_due_date'],
+                    'calendar_due_date'          => $row['calendar_due_date'],
+                    'from_date'                  => $row['from_date'],
+                    'days'                       => $row['days'],
+                    'amount'                     => $row['total'],
+                    'original_amount'            => $row['total'],
+                    'principal_payment'          => $row['principal'],
+                    'original_principal_payment' => $row['principal'],
+                    'interest_payment'           => $row['interest'],
+                    'original_interest_payment'  => $row['interest'],
+                    'service_fee_payment'        => $row['service_fee'],
+                    'remaining'                  => $row['balance_after'],
+                    'is_broken_period'           => $row['is_broken_period'],
+                    'last_payment'               => $row['is_last'],
+                    'kasko_amount'               => 0,
+                    'pawnshop_id'                => $pawnshop_id,
+                    'PGI_ID'                     => $pgi_id,
+                ]);
+
+                $pgi_id++;
+
+                $schedule[] = [
+                    'date'        => $row['business_due_date'],
+                    'payment'     => $row['total'],
+                    'monthly_fee' => round($row['service_fee'], 3),
+                    'total'       => round($row['total'], 3),
+                    'principal'   => round($row['principal'], 3),
+                    'interest'    => round($row['interest'], 3),
+                    'balance'     => $row['balance_after'],
+                ];
+            }
+
+            $contract->payment_schedule = $schedule;
+            $contract->save();
+            return;
+        }
+
+        // --- Legacy path (no payment_day) ---
+        $currentDate = $disbursementDate;
 
         for ($i = 1; $i <= $months; $i++) {
             $isLastMonth = ($i === $months);
@@ -658,29 +828,22 @@ class   ContractService
             $prevPayDate    = $this->getNextWorkingDay(clone $prevRawDate);
             $paymentDate    = $this->getNextWorkingDay(clone $rawPaymentDate);
 
-            $daysPrev = $i == 1 ? $prevRawDate : $prevPayDate;
-//            $daysInPeriod   = $paymentDate->diffInDays($prevRawDate);
-            $daysInPeriod   = $paymentDate->diffInDays($daysPrev);
+            $daysPrev     = $i == 1 ? $prevRawDate : $prevPayDate;
+            $daysInPeriod = $paymentDate->diffInDays($daysPrev);
 
             $interestMonthlyRate = ($contract->interest_rate / 100) * $daysInPeriod;
-
-            $allMonthlyRate = $interestMonthlyRate + $feeMonthlyRate;
-
-//            $monthlyPayment   = -$this->excelPmt($allMonthlyRate, $months, $loanAmount);
+            $allMonthlyRate      = $interestMonthlyRate + $feeMonthlyRate;
 
             $endingBalance    = -$this->excelFv($allMonthlyRate, $i, -$monthlyPayment, $loanAmount);
-//            $principalPayment = -$this->excelPpmt($allMonthlyRate, $i, $months, $loanAmount);
-
-//            $interestPayment  = -$this->excelIpmt($interestMonthlyRate, $i, $months, $loanAmount);
-            $interestPayment = $this->calcAmount($loanAmount,$daysInPeriod,$contract->interest_rate/100);
-            $servicePayment = 0;
+            $interestPayment  = $this->calcAmount($loanAmount, $daysInPeriod, $contract->interest_rate / 100);
+            $servicePayment   = 0;
             if ($feeAnnualPercent) {
                 $feeDailyPercent = $feeAnnualPercent / 365;
-                $servicePayment = $this->calcAmount($loanAmount,$daysInPeriod,$feeDailyPercent/100);
+                $servicePayment  = $this->calcAmount($loanAmount, $daysInPeriod, $feeDailyPercent / 100);
             }
             $principalPayment = $monthlyPayment - $interestPayment - $servicePayment;
             $monthlyFeeAmount = -$this->excelIpmt($feeMonthlyRate, $i, $months, $loanAmount);
-            $loanAmount -= $principalPayment;
+            $loanAmount      -= $principalPayment;
 
             $kaskoAmount = 0;
             if ($contract->kasko_amount && $paymentDate->month == $currentDate->month && !$isLastMonth) {
@@ -688,40 +851,40 @@ class   ContractService
             }
 
             if ($isLastMonth) {
-                $monthlyPayment += $loanAmount;
+                $monthlyPayment   += $loanAmount;
                 $principalPayment += $loanAmount;
-                $loanAmount = 0;
+                $loanAmount        = 0;
             }
+
             Payment::create([
-                'contract_id'         => $contract->id,
-                'date'                => $paymentDate->format('Y-m-d'),
-                'to_date'             => $paymentDate->format('Y-m-d'),
-                'from_date'           =>  $i == 1 ? $prevRawDate->format('Y-m-d') : $prevPayDate->format('Y-m-d'),
-                'days'                => $daysInPeriod,
-                'amount'              => round($monthlyPayment, 10),
-                'original_amount'     => round($monthlyPayment, 10),
-                'principal_payment'   => round($principalPayment, 10),
+                'contract_id'                => $contract->id,
+                'date'                       => $paymentDate->format('Y-m-d'),
+                'to_date'                    => $paymentDate->format('Y-m-d'),
+                'from_date'                  => $i == 1 ? $prevRawDate->format('Y-m-d') : $prevPayDate->format('Y-m-d'),
+                'days'                       => $daysInPeriod,
+                'amount'                     => round($monthlyPayment, 10),
+                'original_amount'            => round($monthlyPayment, 10),
+                'principal_payment'          => round($principalPayment, 10),
                 'original_principal_payment' => round($principalPayment, 10),
-                'interest_payment'    => round($interestPayment, 10),
-                'original_interest_payment' => $interestPayment,
-                'service_fee_payment' => round($monthlyFeeAmount, 10),
-//                'remaining'           => round(max($endingBalance, 0), 10),
-                'remaining'           => round($loanAmount,10),
-                'kasko_amount'        => $kaskoAmount,
-                'pawnshop_id'         => $pawnshop_id,
-                'PGI_ID'              => $pgi_id,
+                'interest_payment'           => round($interestPayment, 10),
+                'original_interest_payment'  => $interestPayment,
+                'service_fee_payment'        => round($monthlyFeeAmount, 10),
+                'remaining'                  => round($loanAmount, 10),
+                'kasko_amount'               => $kaskoAmount,
+                'pawnshop_id'                => $pawnshop_id,
+                'PGI_ID'                     => $pgi_id,
             ]);
 
             $pgi_id++;
 
             $schedule[] = [
-                'date'         => $paymentDate->format('Y-m-d'),
-                'payment'      => round($monthlyPayment, 3),
-                'monthly_fee'  => round($monthlyFeeAmount, 3),
-                'total'        => round($monthlyPayment + $monthlyFeeAmount, 3),
-                'principal'    => round($principalPayment, 3),
-                'interest'     => round($interestPayment, 3),
-                'balance'      => round(max($endingBalance, 0), 3),
+                'date'        => $paymentDate->format('Y-m-d'),
+                'payment'     => round($monthlyPayment, 3),
+                'monthly_fee' => round($monthlyFeeAmount, 3),
+                'total'       => round($monthlyPayment + $monthlyFeeAmount, 3),
+                'principal'   => round($principalPayment, 3),
+                'interest'    => round($interestPayment, 3),
+                'balance'     => round(max($endingBalance, 0), 3),
             ];
         }
 

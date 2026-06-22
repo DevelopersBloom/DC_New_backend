@@ -43,7 +43,9 @@ class Payment extends Model
         'effective_payment',
         'kasko_amount',
         'kasko_paid',
-        'service_fee_payment'
+        'service_fee_payment',
+        'is_broken_period',
+        'calendar_due_date',
     ];
     protected $casts = [
         'mother'             => 'decimal:2',
