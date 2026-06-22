@@ -184,7 +184,7 @@ class PaymentControllerNew extends Controller
 
             // ---- Principal ----
             if ($principal > 0) {
-                $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash));
+                $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash,'principal'));
 
                 $journalPrincipal = $this->postEntry(
                     $date,

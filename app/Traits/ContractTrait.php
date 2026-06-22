@@ -882,21 +882,37 @@ trait ContractTrait
         return $rule;
     }
 
-    private function resolveEvent(string $base, string $class, bool $cash): string
+    private function resolveEvent(string $base, string $class, bool $cash, $filter = null): string
     {
-        if ($class === 'loss') {
-            if ($cash) {
-                return 'pay_principal_loss_cash';
-            }
-            return "pay_principal_loss";
-        }
+        $prefix = ($class === 'loss' && $filter === 'principal') ? 'pay_principal' : $base;
+        $suffix = ($class === 'loss' ? '_loss' : '') . ($cash ? '_cash' : '');
 
-        if ($cash) {
-            return "{$base}_cash";
-        }
-
-        return $base;
+        return $prefix . $suffix;
     }
+//    private function resolveEvent(string $base, string $class, bool $cash,$filter=null): string
+//    {
+//        if ($class === 'loss') {
+//            if ($cash) {
+//                if ($filter == 'principal') {
+//                    return 'pay_principal_loss_cash';
+//
+//                } else {
+//                    return "{$base}_loss_cash";
+//                }
+//            }
+//            if ($filter == 'principal') {
+//                return 'pay_principal_loss';
+//            } else {
+//                return "{$base}_loss";
+//            }
+//        }
+//
+//        if ($cash) {
+//            return "{$base}_cash";
+//        }
+//
+//        return $base;
+//    }
     private function postEntry(
         $date,
         &$docNum,
