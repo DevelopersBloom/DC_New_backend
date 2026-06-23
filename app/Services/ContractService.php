@@ -659,6 +659,7 @@ class   ContractService
         Carbon $disbursementDate,
         int    $paymentDay
     ): array {
+        dd($loanAmount,$interestRate,$feeAnnualPct,$disbursementDate,$paymentDay);
         $annualPct     = $interestRate * 365;
         $monthlyRate   = $annualPct / 100 / 12;
         $feeMonthly    = $feeAnnualPct / 100 / 12;
