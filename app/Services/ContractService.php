@@ -765,7 +765,7 @@ class   ContractService
         $schedule = [];
 
         // --- Broken-period path (payment_day is set) ---
-        $paymentDay = (int) ($contract->payment_day ?? 0);
+        $paymentDay = 5;//(int) ($contract->payment_day ?? 0);
         if ($paymentDay >= 1 && $paymentDay <= 28) {
             $rows = $this->computeBrokenPeriodAnnuitySchedule(
                 $loanAmount,
