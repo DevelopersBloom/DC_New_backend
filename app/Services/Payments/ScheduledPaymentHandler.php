@@ -375,7 +375,7 @@ class ScheduledPaymentHandler
 
         $contract->left            = max(0, $contract->left - $principalForLine);
         $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
-        $payment->remaining        = max(0, (float) ($payment->remaining - $remainingCash));
+        //$payment->remaining        = max(0, (float) ($payment->remaining - $remainingCash));
 
         $this->recorder->completePayment(
             $payment, $payer, $cash, $contract->id, $deal_id,
