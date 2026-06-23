@@ -419,6 +419,7 @@ class   ContractService
             'interest_rate_type' => $data['interest_rate_type'] ?? 2,
             'security_type'      => $data['security_type'] ?? 4,
             'loan_use_field'     => $data['loan_use_field'] ?? null,
+            'payment_day'        => $data['payment_day'] ?? null,
 //            'kasko_amount' => $data['kasko_amount'] ?? null,
         ];
 
@@ -659,7 +660,6 @@ class   ContractService
         Carbon $disbursementDate,
         int    $paymentDay
     ): array {
-        dd($loanAmount,$interestRate,$feeAnnualPct,$disbursementDate,$paymentDay);
         $annualPct     = $interestRate * 365;
         $monthlyRate   = $annualPct / 100 / 12;
         $feeMonthly    = $feeAnnualPct / 100 / 12;
@@ -765,7 +765,7 @@ class   ContractService
         $schedule = [];
 
         // --- Broken-period path (payment_day is set) ---
-        $paymentDay = 5;//(int) ($contract->payment_day ?? 0);
+        $paymentDay = (int) ($contract->payment_day ?? 0);
         if ($paymentDay >= 1 && $paymentDay <= 28) {
             $rows = $this->computeBrokenPeriodAnnuitySchedule(
                 $loanAmount,
