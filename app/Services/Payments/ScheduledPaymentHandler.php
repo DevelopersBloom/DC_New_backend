@@ -299,6 +299,17 @@ class ScheduledPaymentHandler
         return $history;
     }
 
+    // ── Public preview helper ───────────────────────────────────────────────
+
+    /**
+     * Read-only early-split calculation for payment preview (no DB writes).
+     */
+    public function calculateEarlySplitPreview(
+        Contract $contract, Payment $payment, float $cashAfterPenalty, ?string $paymentDate = null
+    ): ?array {
+        return $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $cashAfterPenalty, $paymentDate);
+    }
+
     // ── Private internals ───────────────────────────────────────────────────
 
     /**

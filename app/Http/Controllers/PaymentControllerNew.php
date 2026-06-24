@@ -376,6 +376,38 @@ class PaymentControllerNew extends Controller
         }
     }
 
+    public function previewPayment(Request $request): JsonResponse
+    {
+        $request->validate([
+            'contract_id'       => 'required|exists:contracts,id',
+            'amount'            => 'required|numeric|min:0.01',
+            'date'              => 'nullable|date',
+            'payment_mechanism' => 'nullable|in:early_split,prepayment,interest,principal',
+            'payment_ids'       => 'nullable|array',
+            'payment_ids.*'     => 'integer|exists:payments,id',
+        ]);
+
+        $contract = Contract::findOrFail($request->contract_id);
+        $date     = $request->date ?? now()->toDateString();
+
+        if ($error = $this->postingDatePolicy->validate($date)) {
+            return $error;
+        }
+
+        $breakdown = $this->paymentService->previewPaymentBreakdown(
+            $contract,
+            (float) $request->amount,
+            $date,
+            $request->input('payment_mechanism', 'early_split'),
+            $request->input('payment_ids', [])
+        );
+
+        return response()->json(array_merge(
+            ['total_amount' => (float) $request->amount],
+            $breakdown
+        ));
+    }
+
     public function makeFullPayment(Request $request): JsonResponse
     {
             $idempotencyKey = $request->header('Idempotency-Key');

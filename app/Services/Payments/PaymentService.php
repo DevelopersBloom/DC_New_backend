@@ -719,6 +719,184 @@ class PaymentService
         return $payment;
     }
 
+    // ── Payment preview (read-only breakdown) ───────────────────────────────
+
+    /**
+     * Simulate the payment allocation and return the interest / principal split
+     * without writing anything to the database.
+     *
+     * @return array{penalty_amount:float, interest_amount:float, principal_amount:float, prepayment_principal:float}
+     */
+    public function previewPaymentBreakdown(
+        Contract $contract,
+        float $amount,
+        ?string $date = null,
+        ?string $paymentMechanism = null,
+        array $paymentIds = []
+    ): array {
+        $contractClone   = clone $contract;
+        $remaining       = $amount;
+        $interestAmount  = 0.0;
+        $principalAmount = 0.0;
+        $prepayPrincipal = 0.0;
+        $penaltyPaid     = 0.0;
+
+        // ── Step 1: Penalty deduction ────────────────────────────────────────
+        $penaltyResult = $this->countPenalty($contract->id, $date);
+        $penalty = (float) ($penaltyResult['penalty_amount'] ?? 0);
+
+        if ($penalty > 0) {
+            $penaltyPaid = min($remaining, $penalty);
+            $remaining  -= $penaltyPaid;
+        }
+
+        if ($remaining <= 0) {
+            return [
+                'penalty_amount'       => round($penaltyPaid, 2),
+                'interest_amount'      => 0.0,
+                'principal_amount'     => 0.0,
+                'prepayment_principal' => 0.0,
+            ];
+        }
+
+        // ── Step 2: Load relevant payment rows ───────────────────────────────
+        $paymentIdsCollection = collect($paymentIds)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $payments = Payment::query()
+            ->where('contract_id', $contract->id)
+            ->where('status', 'initial')
+            ->when(
+                $paymentIdsCollection->isNotEmpty(),
+                fn ($q) => $q->whereIn('id', $paymentIdsCollection),
+                fn ($q) => $q->where('type', 'regular')
+            )
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get();
+
+        // ── Step 3: Current interest to cover ───────────────────────────────
+        $current          = $this->calculateCurrentPayment($contract, $date);
+        $remainingInterest = max(0.0, (float) ($current['interest_amount'] ?? 0));
+
+        $ispPaymentSelected    = $paymentIdsCollection->isNotEmpty();
+        $selectedTotalDue      = $payments->sum(fn ($p) => (float) ($p->amount ?? 0) + (float) ($p->penalty ?? 0));
+        $forceScheduled        = $ispPaymentSelected || ($remaining >= $selectedTotalDue);
+        $today                 = $date ?? now()->format('Y-m-d');
+
+        // ── Step 4: Simulate per-row allocation (no saves) ──────────────────
+        foreach ($payments as $payment) {
+            $payment = $this->normalizePaymentDates($payment, $contractClone);
+
+            if ($payment->from_date >= $today && !$ispPaymentSelected) {
+                continue;
+            }
+
+            if ($remaining <= 0) {
+                break;
+            }
+
+            if ($contractClone->payment_type === 'amortized' && $paymentMechanism === 'prepayment') {
+                // Pay scheduled interest first, then scheduled principal
+                $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
+                $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
+                $paidInterest          = min($remainingInterestPlan, $remaining);
+                $remaining            -= $paidInterest;
+                $remainingInterest    -= $paidInterest;
+                $interestAmount       += $paidInterest;
+
+                $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
+                $remainingPrincipal   = max(0, (float) ($payment->principal_payment ?? 0) - $alreadyPaidPrincipal);
+                $paidPrincipal        = min($remaining, $remainingPrincipal);
+                $remaining           -= $paidPrincipal;
+
+                $contractClone->provided_amount = max(0, $contractClone->provided_amount - $paidPrincipal);
+                $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
+
+                $due = \Illuminate\Support\Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
+                $now = \Illuminate\Support\Carbon::parse($today)->startOfDay();
+
+                if ($due->gt($now) && $paidPrincipal > 0) {
+                    $prepayPrincipal += $paidPrincipal;
+                } else {
+                    $principalAmount += $paidPrincipal;
+                }
+
+            } elseif ($contractClone->payment_type === 'amortized') {
+                // Try early split first
+                $earlySplit = ($remaining + 10 >= (float) $payment->amount)
+                    ? $this->scheduledHandler->calculateEarlySplitPreview($contractClone, $payment, $remaining, $date)
+                    : null;
+
+                if ($earlySplit !== null) {
+                    $paidInterest   = $earlySplit['paid_interest'];
+                    $paidPrincipal  = $earlySplit['principal_for_line'];
+                    $remaining      = $earlySplit['remaining_cash'];
+
+                    $contractClone->provided_amount = max(0, $contractClone->provided_amount - $paidPrincipal);
+                    $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
+
+                    $interestAmount  += $paidInterest;
+                    $principalAmount += $paidPrincipal;
+                    $remainingInterest = 0;
+                } else {
+                    // Scheduled path: interest first, then principal (past due only)
+                    $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
+                    $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
+                    $paidInterest          = 0;
+
+                    if ($remainingInterest > 0 && $remainingInterestPlan > 0) {
+                        $paidInterest       = min($remainingInterest, $remainingInterestPlan, $remaining);
+                        $remainingInterest -= $paidInterest;
+                        $remaining        -= $paidInterest;
+                    }
+
+                    $paidPrincipal = 0;
+                    if (($payment->to_date ?? $payment->date) <= $today) {
+                        $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
+                        $remainingPrincipal   = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
+                        $paidPrincipal        = min($remaining, $remainingPrincipal);
+                        $remaining           -= $paidPrincipal;
+
+                        $contractClone->provided_amount = max(0, $contractClone->provided_amount - $paidPrincipal);
+                        $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
+                    }
+
+                    $interestAmount  += $paidInterest;
+                    $principalAmount += $paidPrincipal;
+                }
+            } else {
+                // Classic: scheduled payment = interest only
+                $alreadyPaid  = (float) $payment->entries()->sum('amount');
+                $remainingDue = max(0, (float) $payment->amount - $alreadyPaid);
+                $paidInterest = min($remaining, $remainingDue);
+                $remaining   -= $paidInterest;
+                $interestAmount += $paidInterest;
+            }
+        }
+
+        // ── Step 5: Leftover cash allocation ────────────────────────────────
+        if ($remaining > 0) {
+            if ($paymentMechanism === 'prepayment') {
+                $prepayPrincipal += $remaining;
+            } elseif ($paymentMechanism === 'interest') {
+                $interestAmount += $remaining;
+            } else {
+                $principalAmount += $remaining;
+            }
+        }
+
+        return [
+            'penalty_amount'       => round($penaltyPaid, 2),
+            'interest_amount'      => round($interestAmount, 2),
+            'principal_amount'     => round($principalAmount, 2),
+            'prepayment_principal' => round($prepayPrincipal, 2),
+        ];
+    }
+
     // ── Schedule recalculation proxy ─────────────────────────────────────────
 
     public function recalculateAmortizedSchedule(Contract $contract, ?string $date = null): void

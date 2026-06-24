@@ -248,6 +248,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/{id}/credit-registry/l005/send', [CreditRegistryController::class, 'sendL005']);
         Route::post('/{id}/credit-registry/l006/send', [CreditRegistryController::class, 'sendL006']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
+        Route::get('/preview-payment', [PaymentControllerNew::class, 'previewPayment']);
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware(['can:make_contract_payment']);//'idempotent:contracts.make-payment'
         Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment'])->middleware(['can:make_full_contract_payment', 'idempotent:contracts.make-full-payment']);
         Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial'])->middleware('can:make_partial_contract_payment');
