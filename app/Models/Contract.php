@@ -221,9 +221,13 @@ class Contract extends Model
                 return $query->where('status', 'executed');
             case 'Ժամկետնանց':
             case 'overdue':
-                return $query->whereHas('payments', function ($q) {
-                    $q->whereDate('date', '<', today())
-                    ->where('status', 'initial');
+                return $query->whereIn('id', function ($q) {
+                    $q->select('contract_id')
+                        ->from('payments')
+                        ->whereDate('date', '<', today())
+                        ->where('status', 'initial')
+                        ->groupBy('contract_id')
+                        ->havingRaw('SUM(amount) > 1000');
                 });
             case 'todays':
                 return $query->whereHas('payments', function ($q) {
