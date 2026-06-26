@@ -215,14 +215,17 @@ class ScheduledPaymentHandler
         }
 
         if (!empty($changes)) {
-            $remainingInitialPayments = Payment::where('contract_id', $contract->id)
+            $affectedPaymentIds = array_column($changes, 'payment_id');
+
+            $affectedPayments = Payment::where('contract_id', $contract->id)
                 ->where('type', 'regular')
                 ->where('status', 'initial')
+                ->whereIn('id', $affectedPaymentIds)
                 ->orderBy('to_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
 
-            $this->recalculateInterest($contract, $remainingInitialPayments, $now);
+            $this->recalculateInterest($contract, $affectedPayments, $now);
         }
 
         foreach ($changes as &$change) {
