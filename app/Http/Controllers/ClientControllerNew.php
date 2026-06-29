@@ -320,6 +320,8 @@ class ClientControllerNew extends Controller
                     'risk_weight'       => $classification->risk_weight ?? null,
                     'reserve_percent'   => $classification->reserve_percent ?? null,
                     'date'              => now(),
+                    'actionable_type'   => Client::class,
+                    'actionable_id'     => $client->id,
                 ]);
 
                 return response()->json(['message' => 'Classification is already set to this value, but history record was created.']);
