@@ -298,7 +298,7 @@ class ClientControllerNew extends Controller
     public function updateClientClassification(Request $request)
     {
         $request->validate([
-            'client_id' => 'required|exists:clients,id',
+            'client_id'      => 'required|exists:clients,id',
             'classification' => 'required|string',
         ]);
 
@@ -322,6 +322,7 @@ class ClientControllerNew extends Controller
                     'date'              => now(),
                     'actionable_type'   => Client::class,
                     'actionable_id'     => $client->id,
+                    'comment'           => 'Client classification history update when classification is already set to this value.',
                 ]);
 
                 return response()->json(['message' => 'Classification is already set to this value, but history record was created.']);
