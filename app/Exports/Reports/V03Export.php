@@ -16,11 +16,12 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class V03Export
 {
-    public function export($from, $to)
+    public function export($from, $to, string $version = 'new')
     {
         // Load XLSX template
-        $path = base_path('v03.xlsx');
-        $reader = IOFactory::createReader('Xlsx');
+        $templateFile = $version === 'new' ? 'v03-2.xls' : 'v03.xlsx';
+        $path = base_path($templateFile);
+        $reader = IOFactory::createReaderForFile($path);
         $spreadsheet = $reader->load($path);
 
         // ---------------------------
