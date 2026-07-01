@@ -415,7 +415,7 @@ class PaymentService
             'date'        => $date ?? now()->toDateString(),
             'pawnshop_id' => auth()->user()->pawnshop_id ?? 1,
         ];
-
+dd($partialAmount);
         $payments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
             ->where('status', 'initial')
