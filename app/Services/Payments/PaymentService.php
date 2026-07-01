@@ -1084,7 +1084,6 @@ class PaymentService
             $applied += $deduct;
 
             $alreadyPaidTotal = (float) PaymentEntry::where('payment_id', $payment->id)->sum('amount');
-            dd($alreadyPaidTotal,$deduct);
             if ($alreadyPaidTotal + $deduct >= (float) $payment->amount) {
                 $payment->status = 'completed';
             }
