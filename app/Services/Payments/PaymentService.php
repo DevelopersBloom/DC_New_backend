@@ -167,6 +167,7 @@ class PaymentService
                     );
                     $prepayment_principal += $extra;
                 } elseif ($paymentMechanism === 'interest') {
+                    dd($amount);
                     $applied = $this->applyExtraToFutureInterest(
                         $contract, $amount, $payments->last()->id ?? null
                     );
