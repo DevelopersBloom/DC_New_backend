@@ -554,7 +554,6 @@ class PaymentService
                 if ($firstPaymentId === null) {
                     $firstPaymentId = $change['payment_id'];
                 }
-                dd($reduction);
                 $existingEntry = PaymentEntry::where('payment_id', $change['payment_id'])
                     ->where('document_type', 'partial_payment')
                     ->when($deal_id, fn ($q) => $q->where('deal_id', $deal_id))
