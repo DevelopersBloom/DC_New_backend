@@ -176,6 +176,7 @@ class PaymentService
 //                elseif ($paymentMechanism === 'principal') {
 //                    $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, false);
                 } else {
+                    dd($amount);
                     $this->handleRemainingAmount(
                         $contract, $amount, $cash, $payments->last()->id, $deal_id, $date
                     );
