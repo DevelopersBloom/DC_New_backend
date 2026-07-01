@@ -37,13 +37,11 @@ class PaymentEntryRecorder
             'phone'         => $payer['phone'] ?? null,
         ] : null;
 
-        PaymentEntry::create([
-            'payment_id'       => $payment->id,
+        $this->upsertEntry($payment->id, [
             'contract_id'      => $contract_id,
             'deal_id'          => $deal_id,
             'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
             'user_id'          => auth()->id() ?? 1,
-            'reference'        => Str::uuid(),
             'amount'           => $oldAmount,
             'principal_amount' => $principal_payment ?? 0,
             'interest_amount'  => $interest_payment  ?? 0,
@@ -90,13 +88,11 @@ class PaymentEntryRecorder
         $oldAmount = $payment->amount;
         $oldDate   = $payment->date;
 
-        PaymentEntry::create([
-            'payment_id'       => $payment->id,
+        $this->upsertEntry($payment->id, [
             'contract_id'      => $payment->contract_id,
             'deal_id'          => $deal_id,
             'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
             'user_id'          => auth()->id() ?? 1,
-            'reference'        => Str::uuid(),
             'amount'           => $paid,
             'principal_amount' => $principalPaid,
             'interest_amount'  => $interestPaid,
@@ -127,6 +123,37 @@ class PaymentEntryRecorder
             'date'            => $date ?? Carbon::now()->format('Y-m-d'),
             'history'         => $history,
         ]);
+    }
+
+    /**
+     * Create a new PaymentEntry or, if one already exists for this payment_id,
+     * accumulate the monetary amounts into it and refresh the terminal fields.
+     */
+    private function upsertEntry(int $paymentId, array $data): void
+    {
+        $existing = PaymentEntry::where('payment_id', $paymentId)
+            ->where('document_type', $data['document_type'] ?? 'regular_payment')
+            ->when(!empty($data['deal_id']), fn ($q) => $q->where('deal_id', $data['deal_id']))
+            ->latest('id')
+            ->first();
+
+        if ($existing) {
+            $existing->amount           += (float) ($data['amount']           ?? 0);
+            $existing->interest_amount  += (float) ($data['interest_amount']  ?? 0);
+            $existing->principal_amount += (float) ($data['principal_amount'] ?? 0);
+            $existing->penalty_amount   += (float) ($data['penalty_amount']   ?? 0);
+            $existing->balance_after     = $data['balance_after']  ?? $existing->balance_after;
+            $existing->date              = $data['date']            ?? $existing->date;
+            if (!empty($data['meta_data'])) {
+                $existing->meta_data = $data['meta_data'];
+            }
+            $existing->save();
+        } else {
+            PaymentEntry::create(array_merge($data, [
+                'payment_id' => $paymentId,
+                'reference'  => Str::uuid(),
+            ]));
+        }
     }
 
     /**

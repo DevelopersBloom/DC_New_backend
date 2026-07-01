@@ -167,9 +167,9 @@ class PaymentService
                     );
                     $prepayment_principal += $extra;
                 } elseif ($paymentMechanism === 'interest') {
-                    dd($amount);
                     $applied = $this->applyExtraToFutureInterest(
-                        $contract, $amount, $payments->last()->id ?? null
+                        $contract, $amount, $payments->last()->id ?? null,
+                        $deal_id, $cash, $date
                     );
                     $interest_amount += $applied;
 //                }
@@ -1057,9 +1057,12 @@ class PaymentService
 
     // ── Future-interest coverage (mechanism: 'interest') ────────────────────
 
-    private function applyExtraToFutureInterest(Contract $contract, float $extra, ?int $excludePaymentId = null): float
-    {
-        $applied = 0.0;
+    private function applyExtraToFutureInterest(
+        Contract $contract, float $extra, ?int $excludePaymentId = null,
+        $deal_id = null, $cash = null, $date = null
+    ): float {
+        $applied       = 0.0;
+        $balanceBefore = (float) $contract->provided_amount;
 
         $futurePayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
@@ -1076,16 +1079,46 @@ class PaymentService
             if ($interestDue <= 0) continue;
 
             $deduct = min($extra, $interestDue);
-            $payment->interest_payment -= $deduct;
-            $payment->amount = $payment->interest_payment + (float) ($payment->principal_payment ?? 0);
+            //$payment->interest_payment -= $deduct;
+            //$payment->amount = $payment->interest_payment + (float) ($payment->principal_payment ?? 0);
             $extra   -= $deduct;
             $applied += $deduct;
-
-            if ((float) $payment->amount <= 0) {
+dd($deduct,$deal_id);
+            if ((float) $payment->amount  <= 0) {
                 $payment->status = 'completed';
             }
 
             $payment->save();
+
+            $existing = PaymentEntry::where('payment_id', $payment->id)
+                ->when($deal_id, fn ($q) => $q->where('deal_id', $deal_id))
+                ->latest('id')
+                ->first();
+            if ($existing) {
+                $existing->amount          += $deduct;
+                $existing->interest_amount += $deduct;
+                $existing->balance_after    = $balanceBefore;
+                $existing->date             = $date ?? $existing->date;
+                $existing->save();
+            } else {
+                PaymentEntry::create([
+                    'payment_id'       => $payment->id,
+                    'contract_id'      => $contract->id,
+                    'deal_id'          => $deal_id,
+                    'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                    'user_id'          => auth()->id() ?? 1,
+                    'reference'        => Str::uuid(),
+                    'amount'           => $deduct,
+                    'principal_amount' => 0,
+                    'interest_amount'  => $deduct,
+                    'penalty_amount'   => 0,
+                    'balance_before'   => $balanceBefore,
+                    'balance_after'    => $balanceBefore,
+                    'document_type'    => 'interest_payment',
+                    'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                    'cash'             => $cash ?? false,
+                ]);
+            }
         }
 
         return $applied;
