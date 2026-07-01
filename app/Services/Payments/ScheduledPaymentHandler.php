@@ -39,7 +39,7 @@ class ScheduledPaymentHandler
         $earlySplit = $amount + 10 >= $payment->amount
             ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date)
             : null;
-
+dd($earlySplit);
         if ($earlySplit !== null) {
             return $this->applyEarlySplit(
                 $contract, $payment, $payer, $cash, $deal_id, $earlySplit, $date, $balanceBefore
