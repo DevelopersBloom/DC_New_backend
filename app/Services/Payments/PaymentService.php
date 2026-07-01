@@ -1079,11 +1079,13 @@ class PaymentService
             $interestDue         = max(0, (float) $payment->original_interest_payment - $alreadyPaidInterest);
             if ($interestDue <= 0) continue;
 
-            $deduct  = min($extra, $interestDue);
-            $extra  -= $deduct;
+            $deduct   = min($extra, $interestDue);
+            $extra   -= $deduct;
             $applied += $deduct;
-            if ($alreadyPaidInterest + $deduct >= (float) $payment->original_interest_payment
-                && (float) ($payment->principal_payment ?? 0) <= 0) {
+
+            $alreadyPaidTotal = (float) PaymentEntry::where('payment_id', $payment->id)->sum('amount');
+            dd($alreadyPaidTotal,$deduct);
+            if ($alreadyPaidTotal + $deduct >= (float) $payment->amount) {
                 $payment->status = 'completed';
             }
 
