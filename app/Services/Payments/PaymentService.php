@@ -415,7 +415,6 @@ class PaymentService
             'date'        => $date ?? now()->toDateString(),
             'pawnshop_id' => auth()->user()->pawnshop_id ?? 1,
         ];
-dd($partialAmount);
         $payments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
             ->where('status', 'initial')
@@ -555,23 +554,36 @@ dd($partialAmount);
                 if ($firstPaymentId === null) {
                     $firstPaymentId = $change['payment_id'];
                 }
-                PaymentEntry::create([
-                    'payment_id'       => $change['payment_id'],
-                    'contract_id'      => $contract->id,
-                    'deal_id'          => $deal_id,
-                    'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
-                    'user_id'          => auth()->id() ?? 1,
-                    'reference'        => Str::uuid(),
-                    'amount'           => $reduction,
-                    'principal_amount' => $reduction,
-                    'interest_amount'  => 0,
-                    'penalty_amount'   => 0,
-                    'balance_before'   => $runningBalance,
-                    'balance_after'    => $entryBalanceAfter,
-                    'document_type'    => 'partial_payment',
-                    'date'             => $date ?? Carbon::now()->format('Y-m-d'),
-                    'cash'             => $cash ?? false,
-                ]);
+                dd($reduction);
+                $existingEntry = PaymentEntry::where('payment_id', $change['payment_id'])
+                    ->where('document_type', 'partial_payment')
+                    ->when($deal_id, fn ($q) => $q->where('deal_id', $deal_id))
+                    ->latest('id')
+                    ->first();
+                if ($existingEntry) {
+                    $existingEntry->amount           += $reduction;
+                    $existingEntry->principal_amount += $reduction;
+                    $existingEntry->balance_after     = $entryBalanceAfter;
+                    $existingEntry->save();
+                } else {
+                    PaymentEntry::create([
+                        'payment_id'       => $change['payment_id'],
+                        'contract_id'      => $contract->id,
+                        'deal_id'          => $deal_id,
+                        'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                        'user_id'          => auth()->id() ?? 1,
+                        'reference'        => Str::uuid(),
+                        'amount'           => $reduction,
+                        'principal_amount' => $reduction,
+                        'interest_amount'  => 0,
+                        'penalty_amount'   => 0,
+                        'balance_before'   => $runningBalance,
+                        'balance_after'    => $entryBalanceAfter,
+                        'document_type'    => 'partial_payment',
+                        'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                        'cash'             => $cash ?? false,
+                    ]);
+                }
                 $runningBalance = $entryBalanceAfter;
             }
         } else {
@@ -582,23 +594,35 @@ dd($partialAmount);
                 ->orderBy('date', 'asc')->orderBy('id', 'asc')
                 ->first();
             $firstPaymentId = $nextPayment?->id;
-            PaymentEntry::create([
-                'payment_id'       => $firstPaymentId,
-                'contract_id'      => $contract->id,
-                'deal_id'          => $deal_id,
-                'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
-                'user_id'          => auth()->id() ?? 1,
-                'reference'        => Str::uuid(),
-                'amount'           => $partialAmount,
-                'principal_amount' => $partialAmount,
-                'interest_amount'  => 0,
-                'penalty_amount'   => 0,
-                'balance_before'   => $balanceBefore,
-                'balance_after'    => $balanceAfter,
-                'document_type'    => 'partial_payment',
-                'date'             => $date ?? Carbon::now()->format('Y-m-d'),
-                'cash'             => $cash ?? false,
-            ]);
+            $existingEntry  = PaymentEntry::where('payment_id', $firstPaymentId)
+                ->where('document_type', 'partial_payment')
+                ->when($deal_id, fn ($q) => $q->where('deal_id', $deal_id))
+                ->latest('id')
+                ->first();
+            if ($existingEntry) {
+                $existingEntry->amount           += $partialAmount;
+                $existingEntry->principal_amount += $partialAmount;
+                $existingEntry->balance_after     = $balanceAfter;
+                $existingEntry->save();
+            } else {
+                PaymentEntry::create([
+                    'payment_id'       => $firstPaymentId,
+                    'contract_id'      => $contract->id,
+                    'deal_id'          => $deal_id,
+                    'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
+                    'user_id'          => auth()->id() ?? 1,
+                    'reference'        => Str::uuid(),
+                    'amount'           => $partialAmount,
+                    'principal_amount' => $partialAmount,
+                    'interest_amount'  => 0,
+                    'penalty_amount'   => 0,
+                    'balance_before'   => $balanceBefore,
+                    'balance_after'    => $balanceAfter,
+                    'document_type'    => 'partial_payment',
+                    'date'             => $date ?? Carbon::now()->format('Y-m-d'),
+                    'cash'             => $cash ?? false,
+                ]);
+            }
         }
 
         return $firstPaymentId;
