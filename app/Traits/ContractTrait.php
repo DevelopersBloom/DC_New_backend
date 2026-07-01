@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Traits;
 
@@ -734,8 +734,8 @@ trait ContractTrait
                 'document_number' => $nextDocNum,
                 'document_type' => $ruleKey,
                 'amount_amd' => $amount,
-                'debit_partner_id' => $rule->resolveDebitPartnerId($contract) ?? $debetPartnerId,
-                'credit_partner_id' => $rule->resolveCreditPartnerId($contract) ?? $contract->client_id,
+                'debit_partner_id' => $rule->resolveDebitPartnerId($contract),
+                'credit_partner_id' => $rule->resolveCreditPartnerId($contract),
                 'comment' => $comment,
                 'debit_account_id' => $debitAccountId,
                 'credit_account_id' => $creditAccountId,
@@ -751,9 +751,9 @@ trait ContractTrait
                 'document_number' => $nextDocNum,
                 'document_type' => $ruleKey,
                 'debit_account_id' => $debitAccountId,
-                'debit_partner_id' => $rule->resolveDebitPartnerId($contract) ?? $debetPartnerId,
+                'debit_partner_id' => $rule->resolveDebitPartnerId($contract),
                 'credit_account_id' => $creditAccountId,
-                'credit_partner_id' => $rule->resolveCreditPartnerId($contract) ?? $contract->client_id,
+                'credit_partner_id' => $rule->resolveCreditPartnerId($contract),
                 'amount_amd' => $amount,
                 'comment' => $comment,
                 'user_id' => auth()->id(),
@@ -933,8 +933,8 @@ trait ContractTrait
             'document_number' => $docNum,
             'document_type' => $type,
             'amount_amd' => $amount,
-            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract) ?? null,
-            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract) ?? $clientId,
+            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract),
+            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract),
             'comment' => $comment,
             'debit_account_id' => $debit,
             'credit_account_id' => $credit,
@@ -951,8 +951,8 @@ trait ContractTrait
             'document_type' => $type,
             'debit_account_id' => $debit,
             'credit_account_id' => $credit,
-            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract) ?? null,
-            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract) ?? $clientId,
+            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract),
+            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract),
             'debit_currency_id' => 1,
             'credit_currency_id' => 1,
             'amount_amd' => $amount,

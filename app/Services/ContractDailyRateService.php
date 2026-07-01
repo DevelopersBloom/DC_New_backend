@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Services;
 
@@ -106,8 +106,8 @@ class ContractDailyRateService
             'document_number'  => $this->nextDocNumber(),
             'document_type'    => $type,
             'amount_amd'       => $amount,
-            'debit_partner_id' => $rule->resolveDebitPartnerId($contract) ?? $contract->client_id,
-            'credit_partner_id'=> $rule->resolveCreditPartnerId($contract) ?? null,
+            'debit_partner_id' => $rule->resolveDebitPartnerId($contract),
+            'credit_partner_id'=> $rule->resolveCreditPartnerId($contract),
             'debit_account_id' => $rule->debit_account_id,
             'credit_account_id'=> $rule->credit_account_id,
             'comment'          => $comment . ' for contract #' . $contract->id,
@@ -122,8 +122,8 @@ class ContractDailyRateService
             'document_number'      => $doc->document_number,
             'document_type'        => $type,
             'amount_amd'           => $amount,
-            'debit_partner_id'     => $rule->resolveDebitPartnerId($contract) ?? $contract->client_id,
-            'credit_partner_id'    => $rule->resolveCreditPartnerId($contract) ?? null,
+            'debit_partner_id'     => $rule->resolveDebitPartnerId($contract),
+            'credit_partner_id'    => $rule->resolveCreditPartnerId($contract),
             'debit_account_id'     => $rule->debit_account_id,
             'credit_account_id'    => $rule->credit_account_id,
             'comment'              => $comment . ' for contract #' . $contract->id,
