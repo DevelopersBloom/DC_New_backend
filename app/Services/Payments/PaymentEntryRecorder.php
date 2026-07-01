@@ -166,11 +166,15 @@ class PaymentEntryRecorder
         float $paidInterest, float $paidPrincipal, float $originalAmount,
         ?string $date, float $balanceBefore
     ): void {
-        $alreadyPaid    = (float) $payment->entries()->sum('amount');
-        $totalRemaining = max(0, (float) $payment->amount - $alreadyPaid);
-        $balanceAfter   = (float) $contract->provided_amount;
+        $alreadyPaid         = (float) $payment->entries()->sum('amount');
+        $totalRemaining      = max(0, (float) $payment->amount - $alreadyPaid);
+        $balanceAfter        = (float) $contract->provided_amount;
 
-        if ($originalAmount >= $totalRemaining) {
+        $alreadyPaidInterest  = (float) $payment->entries()->sum('interest_amount');
+        $interestFullyCovered = ($alreadyPaidInterest + $paidInterest) >= (float) $payment->interest_payment;
+        $netAmount            = $originalAmount - $alreadyPaid;
+dd($netAmount,$originalAmount,$alreadyPaid);
+        if ($netAmount >= $totalRemaining && $interestFullyCovered) {
             // Fill any rounding gap so entry totals match the due amount exactly
             if ($paidPrincipal == 0 && $totalRemaining > $paidInterest) {
                 $gap           = $totalRemaining - $paidInterest;
