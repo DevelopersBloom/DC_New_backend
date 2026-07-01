@@ -1082,7 +1082,6 @@ class PaymentService
             $deduct  = min($extra, $interestDue);
             $extra  -= $deduct;
             $applied += $deduct;
-dd($deduct);
             if ($alreadyPaidInterest + $deduct >= (float) $payment->original_interest_payment
                 && (float) ($payment->principal_payment ?? 0) <= 0) {
                 $payment->status = 'completed';
