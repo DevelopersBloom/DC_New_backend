@@ -195,35 +195,15 @@ trait FileTrait
         }
         return $order_amount;
     }
-    public function generateOrderIn($request){
-        $contract = Contract::where('id',$request->contract_id)->first();
-        $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
-        $purpose = $this->getOrderPurpose($request);
-        $amount = $this->getOrderAmount($request);
-        $order_id = $this->getOrder($request->cash,'in');
-        $res = [
-            'contract_id' => $contract->id,
-            'type' => 'in',
-            'title' => 'Օրդեր',
-            'pawnshop_id' => auth()->user()->pawnshop_id,
-            'order' => $order_id,
-            'amount' => $amount,
-            'rep_id' => '2211',
-            'date' => Carbon::now()->format('d.m.Y'),
-            'client_name' => $client_name,
-            'purpose' => $purpose,
-            'cash' => $request->cash,
-            'user_id' => auth()->id(),
-        ];
-        $new_order = Order::create($res);
-        return $new_order;
-    }
     public function generateOrderInNew($request,$payments,$filter=null,$date=null)
     {
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $purpose = $this->getOrderPurposeNew($request,$payments);
-        $amount = $this->getOrderAmountNew($request,$payments);
+        $amount = 'Հերթական վճարում';//$this->getOrderAmountNew($request,$payments);
+        if ($request->cash) {
+            $amount = round($amount);
+        }
         $order_id = $this->getOrder($request->cash,'in');
         $res = [
             'contract_id' => $contract->id,
@@ -245,6 +225,9 @@ trait FileTrait
     }
 
     public function generateOrder($contract,$amount, $purpose,$type,$cash,$filter=null,$date=null){
+        if ($cash) {
+            $amount = round($amount);
+        }
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
         $order_id = $this->getOrder($cash,$type);
         $res = [

@@ -505,6 +505,9 @@ DealController extends Controller
 
     private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver,$cash, $client_id = null)
     {
+        if ($cash) {
+            $amount = round($amount);
+        }
         return Order::create([
             'type' => $type,
             'title' => $title,
