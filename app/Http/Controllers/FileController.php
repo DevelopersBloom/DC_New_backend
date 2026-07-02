@@ -264,8 +264,14 @@ class FileController extends Controller
         $firstItem = $contract->items->first();
         $categoryName = $firstItem->category->name ?? 'gold';
 
+        $appPath = null;
+        $appProcessor = null;
+
         if ($categoryName == 'car') {
             $templateFileName = 'contract_car_template.docx';
+            $templateApp = 'application_car.docx';
+            $appPath = public_path('files/' . $templateApp);
+
         } elseif ($categoryName == 'gold') {
             $templateFileName = 'contract_gold_template.docx';
         } elseif ($categoryName == 'car-purchase') {
@@ -282,6 +288,12 @@ class FileController extends Controller
 
         $templateProcessor = new TemplateProcessor($templatePath);
 
+        if ($appPath) {
+            if (!file_exists($appPath)) {
+                abort(404, "Template not found: " . $templateApp);
+            }
+            $appProcessor = new TemplateProcessor($appPath);
+        }
         $clientName = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');
         $userName = $user ? ($user->name . ' ' . $user->surname) : '';
         $sellerName = $seller ? ($seller->name . ' ' . $seller->surname) : '';
@@ -293,6 +305,7 @@ class FileController extends Controller
                 ? ($seller->social_card_number ?? '')
                 : ($seller->tax_number ?? ''))
             : '';
+        $deadline = \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y');
         $templateProcessor->setValues([
             'num' => $contract->num,
             'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
@@ -308,7 +321,7 @@ class FileController extends Controller
             'mother_amount' => $this->makeMoney((int)$contract->estimated_amount),
             'interest_annual_rate' => $yearlyRate . ' %',
             'effective_annual_rate' => $effectiveRate . ' %',
-            'deadline' => \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y'),
+            'deadline' => $deadline,
             'bank_name' => $client->bank_name,
             'account_number' => $client->account_number,
             'card_number' => $client->card_number,
@@ -353,6 +366,28 @@ class FileController extends Controller
                     'i_prov'     => $this->makeMoney((int)$amount),
                     'i_desc'     => $contract->description ?? '',
                 ]);
+                $appProcessor->setValues([
+                    'car_model' => $firstItem->car_model . ' ' . $firstItem->car_make,
+                    'ident' => $firstItem->identification,
+                    'lic_pl' => $firstItem->license_plate,
+                    'man' => $firstItem->manufacture,
+                    'color' => $firstItem->color,
+                    'power' => $firstItem->power,
+                    'reg' => $firstItem->registration,
+                    'deadline' => $deadline,
+                    'pr_amount' => (int)$amount,
+                    'date' =>  \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
+                ]);
+
+                $appFilename = $contract->num . '_մեքենայի_դիմում.docx';
+                $appPathToSave = storage_path('app/tmp/' . $appFilename);
+
+                if (!file_exists(dirname($appPathToSave))) {
+                    mkdir(dirname($appPathToSave), 0775, true);
+                }
+
+                $appProcessor->saveAs($appPathToSave);
+                $filesToZip[] = $appPathToSave;
             }
         } else {
             $itemRows = [];
