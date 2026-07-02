@@ -367,7 +367,7 @@ class FileController extends Controller
                     'i_desc'     => $contract->description ?? '',
                 ]);
                 $appProcessor->setValues([
-                    'car_model' => $firstItem->car_model . ' ' . $firstItem->car_make,
+                    'model' => $firstItem->car_model . ' ' . $firstItem->car_make,
                     'ident' => $firstItem->identification,
                     'lic_pl' => $firstItem->license_plate,
                     'man' => $firstItem->manufacture,
