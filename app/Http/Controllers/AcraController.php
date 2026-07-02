@@ -50,8 +50,12 @@ class AcraController
             ->whereIn('document_type', [
                 DocumentJournal::PAY_MOTHER_AMOUNT,
                 DocumentJournal::INTEREST_REPAYMENT,
-                DocumentJournal::PAY_MOTHER_AMOUNT_CASH
-
+                DocumentJournal::PAY_MOTHER_AMOUNT_CASH,
+                // Full repayments write the posting-rule key as document_type,
+                // so without these a fully repaid loan disappears from the export.
+                DocumentJournal::PAY_MOTHER_AMOUNT_TRANSFER,
+                DocumentJournal::PAY_INTEREST_AMOUNT_TRANSFER,
+                DocumentJournal::PAY_INTEREST_AMOUNT_CASH,
             ])
             ->whereBetween('date', [$from, $to])
             ->get()
