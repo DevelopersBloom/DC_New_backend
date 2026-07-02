@@ -680,7 +680,7 @@ class FileController extends Controller
             'amount1' => $amount1,
             'amount2' => $this->makeMoney($order->amount),
             'rep_id' => 2211,
-            'num' => $contract->num,
+            'num' => $contract->num ?? null,
             'order' => $order->order,
             'date' => isset($order->date) ? $this->formatArmenianDate($order->date) : null,
             'receiver' => $order->receiver,
