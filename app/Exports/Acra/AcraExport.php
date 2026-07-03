@@ -376,7 +376,7 @@ class AcraExport
             // N, O, P, Q, U
             $sheet->setCellValue('N' . $row, 'AMD');
 
-            $riskClassTitle = $contract->client->classification->name;
+            $riskClassTitle = $contract->client->classification->name ?? '';
 
             $riskClassCode = match (strtolower($riskClassTitle)) {
                 'standard'    => '01',
