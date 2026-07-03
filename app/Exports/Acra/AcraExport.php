@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -156,6 +157,15 @@ class AcraExport
         $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode(self::INTEGER_FORMAT);
     }
 
+    /**
+     * The registry expects identifier columns (template format "@") as text
+     * cells; numeric cells there are rejected on upload.
+     */
+    private function setTextCellValue($sheet, string $coordinate, $value): void
+    {
+        $sheet->setCellValueExplicit($coordinate, (string) $value, DataType::TYPE_STRING);
+    }
+
     private function fillPackageInfo($sheet)
     {
         if (!$sheet) return;
@@ -205,7 +215,7 @@ class AcraExport
         $row = 2;
 
         foreach ($clients as $client) {
-            $sheet->setCellValue('A' . $row, $client->id);
+            $this->setTextCellValue($sheet, 'A' . $row, $client->id);
 
             $statusCode = null;
             if ($client->type === 'legal') {
