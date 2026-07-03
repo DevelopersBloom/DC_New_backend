@@ -95,6 +95,14 @@ class AcraExport
                 ->setHorizontal(Alignment::HORIZONTAL_LEFT)
                 ->setVertical(Alignment::VERTICAL_CENTER);
         }
+
+        // PackageInfo values (dates, counts) are right-aligned in the ACRA sample file.
+        $packageInfo = $spreadsheet->getSheetByName('PackageInfo');
+        if ($packageInfo) {
+            $packageInfo->getStyle('B1:B6')
+                ->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
     }
 
     private function formatDate($date, $format = 'd.m.Y')
@@ -110,7 +118,7 @@ class AcraExport
         }
     }
 
-    private function setDateCellValue($sheet, string $coordinate, $date): void
+    private function setDateCellValue($sheet, string $coordinate, $date, string $format = self::DATE_FORMAT): void
     {
         if (!$date) {
             $sheet->setCellValue($coordinate, '');
@@ -120,7 +128,7 @@ class AcraExport
         try {
             $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
             $sheet->setCellValue($coordinate, ExcelDate::PHPToExcel($carbon));
-            $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode(self::DATE_FORMAT);
+            $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode($format);
         } catch (\Exception $e) {
             $sheet->setCellValue($coordinate, '');
         }
@@ -136,9 +144,9 @@ class AcraExport
     {
         if (!$sheet) return;
         $sheet->setCellValue('B1', $this->customerCode);
-        $sheet->setCellValue('B2', $this->formatDate($this->from, 'Y-m-d'));
-        $sheet->setCellValue('B3', $this->formatDate($this->to, 'Y-m-d'));
-        $sheet->setCellValue('B4', now()->format('Y-m-d H:i:s'));
+        $this->setDateCellValue($sheet, 'B2', $this->from, 'd/mm/yyyy');
+        $this->setDateCellValue($sheet, 'B3', $this->to, 'd/mm/yyyy');
+        $this->setDateCellValue($sheet, 'B4', now(), 'dd/mm/yyyy hh:mm:ss');
         $sheet->setCellValue('B5', 1);
         $sheet->setCellValue('B6', 1);
     }
