@@ -390,9 +390,12 @@ class AcraExport
             $sheet->setCellValue('O' . $row, $riskClassCode);
 
             // X: last risk classification date ("Վարկի վերջին դասակարգման ամսաթիվ").
-            // Whenever a risk class (column O) is set, this date is mandatory.
+            // Left blank when the client has no risk class, and also for "standard"
+            // (01) — only non-standard classes (02-05) carry a classification date.
+            $requiresClassificationDate = !in_array($riskClassCode, ['', '01'], true);
+
             $lastClassificationDate = null;
-            if ($contract->client->classification_id) {
+            if ($requiresClassificationDate && $contract->client->classification_id) {
                 $lastClassificationDate = ClassificationHistory::query()
                     ->where('client_id', $contract->client_id)
                     ->where('classification_id', $contract->client->classification_id)
@@ -404,7 +407,7 @@ class AcraExport
 
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
-            } elseif ($riskClassCode !== '') {
+            } elseif ($requiresClassificationDate) {
                 $this->validationErrors[] = sprintf(
                     'Credit row %d (contract %s, client %s): risk class "%s" is set but the last classification date (X) is missing.',
                     $row,
