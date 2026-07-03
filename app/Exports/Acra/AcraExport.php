@@ -347,6 +347,13 @@ class AcraExport
                     ->sum('amount');
             }
 
+            // Match the "overdue" contract scope (Contract::scopeStatus): a debt
+            // is only reported as overdue when it exceeds MIN_OVERDUE_AMD.
+            if (($overdueMother + $overdueInterest) <= self::MIN_OVERDUE_AMD) {
+                $overdueMother = 0;
+                $overdueInterest = 0;
+            }
+
             $this->setIntegerCellValue($sheet, 'K' . $row, $overdueMother);
             $this->setIntegerCellValue($sheet, 'L' . $row, $overdueInterest);
 
@@ -590,13 +597,8 @@ class AcraExport
 
             $overdueTotal = (float) $this->cellValue($sheet, 'K', $row)
                 + (float) $this->cellValue($sheet, 'L', $row);
-            if ($overdueTotal > 0) {
-                if ($this->isBlank($this->cellValue($sheet, 'M', $row))) {
-                    $this->validationErrors[] = "{$label}: overdue amounts (K/L) are set but the overdue start date (M) is empty.";
-                }
-                if ($overdueTotal < self::MIN_OVERDUE_AMD) {
-                    $this->validationWarnings[] = "{$label}: overdue total {$overdueTotal} AMD is below the " . self::MIN_OVERDUE_AMD . " AMD threshold and should not be flagged as overdue.";
-                }
+            if ($overdueTotal > 0 && $this->isBlank($this->cellValue($sheet, 'M', $row))) {
+                $this->validationErrors[] = "{$label}: overdue amounts (K/L) are set but the overdue start date (M) is empty.";
             }
         }
     }
