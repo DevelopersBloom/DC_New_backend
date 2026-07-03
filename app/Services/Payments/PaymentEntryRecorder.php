@@ -173,7 +173,6 @@ class PaymentEntryRecorder
         $alreadyPaidInterest  = (float) $payment->entries()->sum('interest_amount');
         $interestFullyCovered = ($alreadyPaidInterest + $paidInterest) >= (float) $payment->interest_payment;
         $netAmount            = $originalAmount - $alreadyPaid;
-dd($netAmount,$originalAmount,$alreadyPaid);
         if ($netAmount >= $totalRemaining && $interestFullyCovered) {
             // Fill any rounding gap so entry totals match the due amount exactly
             if ($paidPrincipal == 0 && $totalRemaining > $paidInterest) {
