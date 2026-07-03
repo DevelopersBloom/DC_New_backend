@@ -103,6 +103,22 @@ class AcraExport
                 ->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         }
+
+        // Date columns are right-aligned in the ACRA sample file.
+        $dateColumns = [
+            'Debtor' => ['E', 'F'],
+            'Credit' => ['C', 'D', 'M', 'U', 'X'],
+        ];
+        foreach ($dateColumns as $sheetName => $columns) {
+            $sheet = $spreadsheet->getSheetByName($sheetName);
+            if (!$sheet) continue;
+            $highestRow = $sheet->getHighestRow();
+            foreach ($columns as $column) {
+                $sheet->getStyle("{$column}2:{$column}{$highestRow}")
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            }
+        }
     }
 
     private function formatDate($date, $format = 'd.m.Y')
