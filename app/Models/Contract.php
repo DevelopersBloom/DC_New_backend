@@ -208,7 +208,7 @@ class Contract extends Model
     {
         return $this->hasMany(Note::class);
     }
-    public function ղ՝($query, $status)
+    public function scopeFilterStatus($query, $status)
     {
         switch ($status) {
             case 'ակտիվ':
