@@ -566,7 +566,7 @@
 //     *
 //     * @return array<int, object{name: string, reserve_percent: float}> client_id => snapshot class
 //     */
-//    private function sheet1ClientClassificationsAsOf(string $snapshotDate): array
+//    public function sheet1ClientClassificationsAsOf(string $snapshotDate): array
 //    {
 //        $maxDates = DB::table('classification_histories')
 //            ->select('client_id', DB::raw('MAX(`date`) as max_date'))
@@ -1875,7 +1875,7 @@ class V06Export
      *
      * @return array<int, object{name: string, reserve_percent: float}> client_id => snapshot class
      */
-    private function sheet1ClientClassificationsAsOf(string $snapshotDate): array
+    public function sheet1ClientClassificationsAsOf(string $snapshotDate): array
     {
         $maxDates = DB::table('classification_histories')
             ->select('client_id', DB::raw('MAX(`date`) as max_date'))
