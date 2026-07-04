@@ -73,23 +73,27 @@ class V20Export
         $sheet->setCellValue('D23', $cashDebitCount);
 
 
-        $acc102101s = ChartOfAccount::where('code', 'like', '102101%')->pluck('id')->toArray();
+        $bankAccountIds = ChartOfAccount::where(function ($q) use ($bankAccounts) {
+            foreach ($bankAccounts as $code) {
+                $q->orWhere('code', 'like', $code . '%');
+            }
+        })->pluck('id')->toArray();
 
         $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate)->whereDate('date', '>=', $fromDate);
         $bankDebitSum = (clone $bankQuery)
-            ->whereIn('debit_account_id', $acc102101s)
+            ->whereIn('debit_account_id', $bankAccountIds)
             ->sum('amount_amd');
 
         $bankCreditSum = (clone $bankQuery)
-            ->whereIn('credit_account_id', $acc102101s)
+            ->whereIn('credit_account_id', $bankAccountIds)
             ->sum('amount_amd');
 
         $bankDebitCount = (clone $bankQuery)
-            ->whereIn('debit_account_id', $acc102101s)
+            ->whereIn('debit_account_id', $bankAccountIds)
             ->count();
 
         $bankCreditCount = (clone $bankQuery)
-            ->whereIn('credit_account_id', $acc102101s)
+            ->whereIn('credit_account_id', $bankAccountIds)
             ->count();
 
         $sheet->setCellValue('E22', $bankCreditSum / 1000);

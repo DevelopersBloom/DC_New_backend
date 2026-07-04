@@ -32,7 +32,7 @@ class V13Export
         $acc102101 = ChartOfAccount::idByCode('102101');
         $acc10000s = ChartOfAccount::where('code', 'like', '10000%')->pluck('id')->toArray();
 
-        $openingBalance = $this->getAccountBalance($acc10000, $fromDate);
+        $openingBalance = $this->getAccountBalanceBefore($acc10000, $fromDate);
         $sheet1->setCellValue('C21', abs($openingBalance / 1000));
 
 //        $debit10000NotFromBank = DocumentJournal::where('debit_account_id', $acc10000)
@@ -52,6 +52,7 @@ class V13Export
         $debit10000FromBank = DocumentJournal::where('debit_account_id', $acc10000)
             ->where('credit_account_id', $acc102101)
             ->where('date', '<=', $toDate)
+            ->where('date', '>=', $fromDate)
             ->sum('amount_amd');
         $sheet1->setCellValue('C24', abs($debit10000FromBank / 1000));
 
@@ -72,6 +73,7 @@ class V13Export
         $credit10000ToBank = DocumentJournal::where('credit_account_id', $acc10000)
             ->where('debit_account_id', $acc102101)
             ->where('date', '<=', $toDate)
+            ->where('date', '>=', $fromDate)
             ->sum('amount_amd');
         $sheet1->setCellValue('C27', abs($credit10000ToBank / 1000));
 
@@ -96,6 +98,24 @@ class V13Export
 
         $credit = DocumentJournal::where('credit_account_id', $accountId)
             ->where('date', '<=', $date)
+            ->sum('amount_amd');
+
+        return $debit - $credit;
+    }
+
+    /**
+     * Opening balance strictly before $date (excludes same-day movements).
+     */
+    private function getAccountBalanceBefore($accountId, $date)
+    {
+        if (!$accountId) return 0;
+
+        $debit = DocumentJournal::where('debit_account_id', $accountId)
+            ->where('date', '<', $date)
+            ->sum('amount_amd');
+
+        $credit = DocumentJournal::where('credit_account_id', $accountId)
+            ->where('date', '<', $date)
             ->sum('amount_amd');
 
         return $debit - $credit;
