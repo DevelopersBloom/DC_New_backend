@@ -1099,7 +1099,8 @@ class PaymentService
             if ($extra <= 0) break;
 
             $alreadyPaidInterest = (float) PaymentEntry::where('payment_id', $payment->id)->sum('interest_amount');
-            $interestDue         = max(0, (float) $payment->original_interest_payment - $alreadyPaidInterest);
+            $interestDue         = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
+//          $interestDue         = max(0, (float) $payment->original_interest_payment - $alreadyPaidInterest);
             if ($interestDue <= 0) continue;
 
             $deduct   = min($extra, $interestDue);
