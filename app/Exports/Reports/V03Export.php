@@ -29,6 +29,7 @@ class V03Export
         // ---------------------------
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
         $sheet1->setCellValueExplicit('D10', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+        $sheet1->getStyle('D10')->getFont()->setName('Sylfaen');
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 

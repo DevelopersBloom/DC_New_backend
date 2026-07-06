@@ -26,6 +26,7 @@ class V09Export
         $dateStr = $toDate->format('Y-m-d');
         $toDay = now();
         $sheet->setCellValueExplicit('B10', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+        $sheet->getStyle('B10')->getFont()->setName('Sylfaen');
         $sheet->setCellValue('C11', Date::PHPToExcel($fromDate));
         $sheet->setCellValue('E11', Date::PHPToExcel($toDate));
         $sheet->getStyle('C11:E11')->getNumberFormat()->setFormatCode('dd/mm/yy');

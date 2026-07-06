@@ -25,6 +25,7 @@ class V20Export
         $toDate = Carbon::parse($to);
 
         $sheet->setCellValueExplicit('C5','«Ակրեդիտ» ՎՄ ՍՊԸ',DataType::TYPE_STRING);
+        $sheet->getStyle('C5')->getFont()->setName('Sylfaen');
         $sheet->setCellValue('C6', Date::PHPToExcel($toDate));
 
         $bankAccounts = ['102101', '102102', '102103'];

@@ -24,6 +24,7 @@ class V13Export
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
 
         $sheet1->setCellValueExplicit('C13', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+        $sheet1->getStyle('C13')->getFont()->setName('Sylfaen');
         $sheet1->setCellValue('C14', Date::PHPToExcel($fromDate));
         $sheet1->setCellValue('C15', Date::PHPToExcel($toDate));
         $sheet1->getStyle('C14:C15')->getNumberFormat()->setFormatCode('dd/mm/yy');

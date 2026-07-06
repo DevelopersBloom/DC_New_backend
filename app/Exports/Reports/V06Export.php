@@ -1675,6 +1675,7 @@ class V06Export
         $sheet->getStyle('X125')->getNumberFormat()->setFormatCode('#,##0');
 
         $sheet->setCellValueExplicit('D5', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+        $sheet->getStyle('D5')->getFont()->setName('Sylfaen');
         $sheet->setCellValue('D7', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
         $sheet->getStyle('D7')->getNumberFormat()->setFormatCode('dd/mm/yy');
 

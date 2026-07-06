@@ -522,6 +522,7 @@ class V17Export
     {
         if ($from && $to) {
             $sheet->setCellValueExplicit('C9', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+            $sheet->getStyle('C9')->getFont()->setName('Sylfaen');
             $sheet->setCellValue('C10', Date::PHPToExcel($from));
             $sheet->setCellValue('E10', Date::PHPToExcel($to));
             $sheet->getStyle('C10:E10')->getNumberFormat()->setFormatCode('dd/mm/yy');
