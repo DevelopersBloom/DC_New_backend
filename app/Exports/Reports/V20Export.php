@@ -30,8 +30,16 @@ class V20Export
 
         $bankAccounts = ['102101', '102102', '102103'];
 
-        $count = ChartOfAccount::whereIn('code', $bankAccounts)->count();
-        $sheet->setCellValue('D11', $count);
+        $bankAccountIds = ChartOfAccount::where(function ($q) use ($bankAccounts) {
+            foreach ($bankAccounts as $code) {
+                $q->orWhere('code', 'like', $code . '%');
+            }
+        })->pluck('id')->toArray();
+
+        $sheet->setCellValue('C11', count($bankAccountIds));
+        $sheet->setCellValue('D11', 0);
+        $sheet->setCellValue('E11', 0);
+        $sheet->setCellValue('F11', 0);
 
 
         $legalCount = Contract::whereHas('client', function ($q) {
@@ -73,12 +81,6 @@ class V20Export
         $sheet->setCellValue('D22', $cashCreditCount);
         $sheet->setCellValue('D23', $cashDebitCount);
 
-
-        $bankAccountIds = ChartOfAccount::where(function ($q) use ($bankAccounts) {
-            foreach ($bankAccounts as $code) {
-                $q->orWhere('code', 'like', $code . '%');
-            }
-        })->pluck('id')->toArray();
 
         $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate)->whereDate('date', '>=', $fromDate);
         $bankDebitSum = (clone $bankQuery)

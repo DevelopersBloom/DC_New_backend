@@ -48,7 +48,7 @@ class MonthlyIncomeExpenseController extends Controller
             return response()->json(['message' => '`from` must be <= `to`'], 422);
         }
 
-        $previous = $this->svc->build($from);
+        $previous = $this->svc->build($from->copy()->subDay()->endOfDay());
         $current  = $this->svc->build($to);
         $currBy = [];
         foreach ($current as $r) {
