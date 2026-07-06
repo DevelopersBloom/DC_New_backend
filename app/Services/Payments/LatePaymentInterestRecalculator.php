@@ -126,6 +126,7 @@ class LatePaymentInterestRecalculator
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore)
                     + self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter);
             }
+            dd($interest);
             $payment->recalc_interest = $interest;
             $results[] = ['payment' => $payment, 'interest' => $interest];
         }
