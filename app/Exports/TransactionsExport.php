@@ -4,14 +4,15 @@ namespace App\Exports;
 
 use App\Models\Transaction;
 use Illuminate\Contracts\View\View;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class TransactionsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
+class TransactionsExport implements FromQuery, WithHeadings, WithMapping, WithColumnWidths, WithStyles, WithChunkReading
 {
     protected $from;
     protected $to;
@@ -22,7 +23,7 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
         $this->to = $to;
     }
 
-    public function collection()
+    public function query()
     {
         $query = Transaction::select([
             'id',
@@ -59,7 +60,21 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             $query->where('date', '<=', $this->to);
         }
 
-        return $query->orderBy('date', 'desc')->get();
+        return $query->orderBy('date', 'desc');
+    }
+
+    public function chunkSize(): int
+    {
+        return 500;
+    }
+
+    public function columnWidths(): array
+    {
+        return [
+            'A' => 12, 'B' => 16, 'C' => 16, 'D' => 14, 'E' => 14,
+            'F' => 22, 'G' => 10, 'H' => 14, 'I' => 14, 'J' => 22,
+            'K' => 10, 'L' => 14, 'M' => 20, 'N' => 20, 'O' => 12,
+        ];
     }
 
     public function headings(): array
