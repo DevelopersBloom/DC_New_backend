@@ -45,7 +45,8 @@ class LatePaymentInterestRecalculator
 
             $updates = $this->computeUpdates($allPayments, $originalBalance, $dailyRate, $paymentDate, $historicalEntries);
             foreach ($updates as ['payment' => $payment, 'interest' => $recalc_interest]) {
-                    $payment->interest_payment = round($recalc_interest, 2);
+                dd($payment,$payment->id);
+                $payment->interest_payment = round($recalc_interest, 2);
                 $payment->amount           = round((float) $payment->principal_payment + $recalc_interest, 2);
                 $payment->save();
             }
@@ -125,6 +126,7 @@ class LatePaymentInterestRecalculator
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore)
                     + self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter);
             }
+            $payment->recalc_interest = $interest;
             $results[] = ['payment' => $payment, 'interest' => $interest];
         }
         return $results;
