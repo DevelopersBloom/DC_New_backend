@@ -165,8 +165,6 @@ class TransactionController
         $from = $request->query('from_date');
         $to = $request->query('to_date');
 
-        set_time_limit(0);
-
         return Excel::download(new TransactionsExport($from, $to), 'transactions.xlsx');
     }
 
