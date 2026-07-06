@@ -4,14 +4,15 @@ namespace App\Exports;
 
 use App\Models\Transaction;
 use Illuminate\Contracts\View\View;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class TransactionsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
+class TransactionsExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithChunkReading
 {
     protected $from;
     protected $to;
@@ -22,7 +23,7 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
         $this->to = $to;
     }
 
-    public function collection()
+    public function query()
     {
         $query = Transaction::select([
             'id',
@@ -59,7 +60,12 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             $query->where('date', '<=', $this->to);
         }
 
-        return $query->orderBy('date', 'desc')->get();
+        return $query->orderBy('date', 'desc');
+    }
+
+    public function chunkSize(): int
+    {
+        return 1000;
     }
 
     public function headings(): array
