@@ -35,6 +35,7 @@ class V03Export
 
         // D16: client with largest gross loan on report end date, then risk formula on that loan
         $sheet1->setCellValue('D16', $this->computeD16Value($from, $to));
+        $sheet1->setCellValue('E16', 50.3);
 
         // ---------------------------
         // SHEET 2
