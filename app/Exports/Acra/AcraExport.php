@@ -144,7 +144,7 @@ class AcraExport
         // Date columns are right-aligned in the ACRA sample file.
         $dateColumns = [
             'Debtor' => ['E', 'F'],
-            'Credit' => ['C', 'D', 'M', 'U', 'X'],
+            'Credit' => ['C', 'D', 'E', 'M', 'U', 'X'],
         ];
         foreach ($dateColumns as $sheetName => $columns) {
             $sheet = $spreadsheet->getSheetByName($sheetName);
