@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -58,6 +59,8 @@ class AcraExport
         $this->fillCollateral($spreadsheet->getSheetByName('Collateral'));
         $this->fillGuarantor($spreadsheet->getSheetByName('Guarantor'));
 
+        $this->normalizeTextColumns($spreadsheet);
+
         $this->trimStyleOnlyColumns($spreadsheet);
 
         $this->applyGlobalStyles($spreadsheet);
@@ -84,6 +87,41 @@ class AcraExport
             'path' => $filePath,
             'name' => $fileName
         ];
+    }
+
+    /**
+     * The registry's checker reads every column the template formats as text
+     * ("@") with a typed String accessor, and crashes ("System.Double" ->
+     * "System.String") or mismatches cross-sheet ids when a numeric cell shows
+     * up there. Convert numeric cells in template-text columns to strings; the
+     * template's column formats are the registry's schema.
+     */
+    private function normalizeTextColumns($spreadsheet): void
+    {
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            $textColumns = [];
+            foreach ($sheet->getColumnDimensions() as $column => $dimension) {
+                $format = $spreadsheet->getCellXfByIndex($dimension->getXfIndex())
+                    ->getNumberFormat()->getFormatCode();
+                if ($format === '@') {
+                    $textColumns[$column] = true;
+                }
+            }
+            if (!$textColumns) {
+                continue;
+            }
+
+            foreach ($sheet->getCellCollection()->getCoordinates() as $coordinate) {
+                [$column, $rowNumber] = Coordinate::coordinateFromString($coordinate);
+                if ($rowNumber < 2 || !isset($textColumns[$column])) {
+                    continue;
+                }
+                $cell = $sheet->getCell($coordinate);
+                if ($cell->getDataType() === DataType::TYPE_NUMERIC) {
+                    $cell->setValueExplicit((string) $cell->getValue(), DataType::TYPE_STRING);
+                }
+            }
+        }
     }
 
     /**
@@ -242,9 +280,7 @@ class AcraExport
         $row = 2;
 
         foreach ($clients as $client) {
-            // Must stay numeric: the registry matches this id against the
-            // Credit sheet's column A, which is written as a number.
-            $sheet->setCellValue('A' . $row, (int) $client->id);
+            $sheet->setCellValue('A' . $row, $client->id);
 
             $statusCode = null;
             if ($client->type === 'legal') {
