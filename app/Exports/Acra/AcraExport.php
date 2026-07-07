@@ -23,6 +23,8 @@ class AcraExport
     protected $allClients;
     protected $from;
     protected $to;
+    /** Report generation time; PackageInfo B4 and the file name's package id. */
+    protected Carbon $createdAt;
     protected $customerCode = 'ACC';
     private const DATE_FORMAT = 'dd/mm/yyyy';
     private const INTEGER_FORMAT = '0';
@@ -44,6 +46,8 @@ class AcraExport
 
     public function export()
     {
+        $this->createdAt = now();
+
         $path = base_path('acra_template.xlsx');
         if (!file_exists($path)) {
             throw new \Exception("Template file not found at: " . $path);
@@ -75,8 +79,8 @@ class AcraExport
             throw ValidationException::withMessages(['acra' => $this->validationErrors]);
         }
 
-        // Package id is the report end date (YmdHis), not the generation time.
-        $packageId = Carbon::parse($this->to)->format('YmdHis');
+        // Package id is the CreatedDateTime (same timestamp as PackageInfo B4).
+        $packageId = $this->createdAt->format('YmdHis');
         $fileName = "{$this->customerCode}_01_01_{$packageId}.xlsx";
         $filePath = storage_path('app/public/' . $fileName);
 
@@ -237,7 +241,7 @@ class AcraExport
         $sheet->setCellValue('B1', $this->customerCode);
         $this->setDateCellValue($sheet, 'B2', $this->from, 'd/mm/yyyy');
         $this->setDateCellValue($sheet, 'B3', $this->to, 'd/mm/yyyy');
-        $this->setDateCellValue($sheet, 'B4', now(), 'dd/mm/yyyy hh:mm:ss');
+        $this->setDateCellValue($sheet, 'B4', $this->createdAt, 'dd/mm/yyyy hh:mm:ss');
         $sheet->setCellValue('B5', 1);
         $sheet->setCellValue('B6', 1);
     }
