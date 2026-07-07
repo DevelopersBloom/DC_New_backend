@@ -9,7 +9,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -73,7 +72,8 @@ class AcraExport
             throw ValidationException::withMessages(['acra' => $this->validationErrors]);
         }
 
-        $packageId = now()->format('YmdHis');
+        // Package id is the report end date (YmdHis), not the generation time.
+        $packageId = Carbon::parse($this->to)->format('YmdHis');
         $fileName = "{$this->customerCode}_01_01_{$packageId}.xlsx";
         $filePath = storage_path('app/public/' . $fileName);
 
@@ -193,15 +193,6 @@ class AcraExport
         $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode(self::INTEGER_FORMAT);
     }
 
-    /**
-     * The registry expects identifier columns (template format "@") as text
-     * cells; numeric cells there are rejected on upload.
-     */
-    private function setTextCellValue($sheet, string $coordinate, $value): void
-    {
-        $sheet->setCellValueExplicit($coordinate, (string) $value, DataType::TYPE_STRING);
-    }
-
     private function fillPackageInfo($sheet)
     {
         if (!$sheet) return;
@@ -251,7 +242,9 @@ class AcraExport
         $row = 2;
 
         foreach ($clients as $client) {
-            $this->setTextCellValue($sheet, 'A' . $row, $client->id);
+            // Must stay numeric: the registry matches this id against the
+            // Credit sheet's column A, which is written as a number.
+            $sheet->setCellValue('A' . $row, (int) $client->id);
 
             $statusCode = null;
             if ($client->type === 'legal') {
