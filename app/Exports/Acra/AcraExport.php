@@ -566,7 +566,10 @@ class AcraExport
 
                 $sheet->setCellValue('D' . $row, $gName);
                 $sheet->setCellValue('E' . $row, ($g->type === 'legal' ? $g->tax_number : $g->passport_series));
-                $sheet->setCellValue('T' . $row, '001');
+                if ($g->residency_status) {
+                    $sheet->setCellValue('K' . $row, $g->residency_status === 'resident' ? 1 : 2);
+                }
+                $sheet->setCellValue('T' . $row, 'AMD');
                 $row++;
             }
         }
