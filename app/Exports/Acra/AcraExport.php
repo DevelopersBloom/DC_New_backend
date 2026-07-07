@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -58,6 +59,8 @@ class AcraExport
         $this->fillCollateral($spreadsheet->getSheetByName('Collateral'));
         $this->fillGuarantor($spreadsheet->getSheetByName('Guarantor'));
 
+        $this->trimStyleOnlyColumns($spreadsheet);
+
         $this->applyGlobalStyles($spreadsheet);
 
         $this->validateSheets($spreadsheet);
@@ -81,6 +84,39 @@ class AcraExport
             'path' => $filePath,
             'name' => $fileName
         ];
+    }
+
+    /**
+     * The template carries a style-only (empty) column after the last real
+     * column on every sheet. Excel drops it on re-save, but PhpSpreadsheet
+     * keeps it, and the registry then rejects the file for having one column
+     * too many. Remove trailing columns that contain no values.
+     */
+    private function trimStyleOnlyColumns($spreadsheet): void
+    {
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            $lastDataColumn = 1;
+            foreach ($sheet->getCellCollection()->getCoordinates() as $coordinate) {
+                $value = $sheet->getCell($coordinate)->getValue();
+                if ($value === null || $value === '') {
+                    continue;
+                }
+                [$column] = Coordinate::coordinateFromString($coordinate);
+                $lastDataColumn = max($lastDataColumn, Coordinate::columnIndexFromString($column));
+            }
+
+            $highestColumn = Coordinate::columnIndexFromString($sheet->getHighestColumn());
+            for ($i = $highestColumn; $i > $lastDataColumn; $i--) {
+                $column = Coordinate::stringFromColumnIndex($i);
+                // Drops the column dimension (width/style definition)...
+                $sheet->removeColumn($column);
+                // ...and the style-only empty cells removeColumn leaves behind.
+                $sheet->getCellCollection()->removeColumn($column);
+            }
+            // Recalculate the cached highest column so the writer does not pad
+            // rows (and the dimension ref) back out to the phantom column.
+            $sheet->garbageCollect();
+        }
     }
 
     private function applyGlobalStyles($spreadsheet)
