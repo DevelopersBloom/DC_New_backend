@@ -395,7 +395,7 @@ class FileController extends Controller
                     'power' => $firstItem->power,
                     'reg' => $firstItem->registration,
                     'deadline' => $deadline,
-                    'pr_amount' => (int)$contract->contract_amount,
+                    'contract_amount' => (int)$contract->contract_amount,
                     'date' =>  \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
                     'day' => $appDay,
                     'month_arm' => $appMonthArm,
