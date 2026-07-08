@@ -311,7 +311,7 @@ class FileController extends Controller
             ? ($guarantor->name . ' ' . $guarantor->surname . ($guarantor->middle_name ? ' ' . $guarantor->middle_name : ''))
             : '';
         $representativePass = $guarantor && $guarantor->passport_series
-            ? $guarantor->passport_series . ', ' . \Carbon\Carbon::parse($guarantor->passport_validity)->format('d/m.Y') . ', ' . $guarantor->passport_issued
+            ? $guarantor->passport_series . ', ' . \Carbon\Carbon::parse($guarantor->passport_validity)->format('d/m/Y') . ', ' . $guarantor->passport_issued
             : '';
         $deadline = \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y');
         $city = $client->actual_province ?? $client->city;
