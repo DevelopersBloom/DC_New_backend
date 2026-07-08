@@ -10,6 +10,7 @@ use App\Services\CreditRegistryL002Service;
 use App\Services\CreditRegistryL003Service;
 use App\Services\CreditRegistryL005Service;
 use App\Services\CreditRegistryL006Service;
+use App\Services\BankIdService;
 use App\Services\CreditRegistryRiskModificationXmlService;
 use App\Services\Degs\DegsClient;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,7 @@ class CreditRegistryController extends Controller
         private CreditRegistryL006Service                $l006Service,
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
         private DegsClient                               $degsClient,
+        private BankIdService                            $bankIdService,
     )
     {
     }
@@ -56,6 +58,34 @@ class CreditRegistryController extends Controller
             'alive' => $result['alive'] ?? false,
             'raw' => $result['raw'] ?? null,
         ]);
+    }
+
+    // ================================================================
+    // BankID — P001
+    // ================================================================
+
+    /**
+     * POST /clients/{id}/fetch-bank-id
+     * Fetches BankID from CB and saves to client.bank_client_id.
+     * Pass ?dry_run=1 to test without hitting DEGS.
+     */
+    public function fetchBankId(int $id, Request $request): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        $dryRun = $request->boolean('dry_run');
+
+        try {
+            $bankId = $this->bankIdService->fetchAndSave($client, $dryRun);
+            return response()->json([
+                'ok'        => true,
+                'bank_id'   => $bankId,
+                'client_id' => $client->id,
+                'dry_run'   => $dryRun,
+            ]);
+        } catch (\Throwable $e) {
+            $errorMsg = mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8');
+            return response()->json(['ok' => false, 'error' => $errorMsg], 500);
+        }
     }
 
     // ================================================================

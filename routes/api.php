@@ -220,6 +220,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/store-client', [ClientControllerNew::class, 'storeClient'])->middleware('can:create_client');
         Route::post('/store-non-client', [ClientControllerNew::class, 'storeNonClient'])->middleware('can:create_client');
         Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification'])->middleware('can:classify_client');
+        Route::post('/{id}/fetch-bank-id', [CreditRegistryController::class, 'fetchBankId']);
     });
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');
     Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index']);
@@ -246,6 +247,8 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/credit-registry/risk-modifications', [CreditRegistryController::class, 'downloadUnsentRiskModifications'])->middleware('can:download_contract_file');
         Route::get('/credit-registry/test', [CreditRegistryController::class, 'testConnection']);
         Route::post('/{id}/credit-registry/l001/send', [CreditRegistryController::class, 'sendL001']);
+        Route::post('/{id}/credit-registry/l002/send', [CreditRegistryController::class, 'sendL002']);
+        Route::post('/{id}/credit-registry/l003/send', [CreditRegistryController::class, 'sendL003']);
         Route::post('/{id}/credit-registry/l005/send', [CreditRegistryController::class, 'sendL005']);
         Route::post('/{id}/credit-registry/l006/send', [CreditRegistryController::class, 'sendL006']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');

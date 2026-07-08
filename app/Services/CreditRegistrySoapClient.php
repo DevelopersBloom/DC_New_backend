@@ -54,6 +54,23 @@ class CreditRegistrySoapClient
         return $this->sendRequest('L006', $xmlContent, $dryRun);
     }
 
+    public function sendBankIdP001(string $xmlContent, bool $dryRun = false): int
+    {
+        if ($dryRun) {
+            \Log::debug('DEGS DryRun BankID P001', ['xml' => $xmlContent]);
+            return 0;
+        }
+        \Storage::disk('local')->put('logs/bankid_p001_' . now()->format('Y-m-d_H-i-s') . '.xml', $xmlContent);
+        $r = $this->post('/send-request', [
+            'appName' => 'BANKID',
+            'docType' => 'P001',
+            'isDelay' => false,
+            'xml'     => $xmlContent,
+        ]);
+
+        return (int) ($r['requestId'] ?? 0);
+    }
+
     public function isResponsePrepared(int $requestId): bool
     {
         $r = $this->post('/is-response-prepared', ['requestId' => $requestId]);
