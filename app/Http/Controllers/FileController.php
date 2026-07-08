@@ -305,7 +305,21 @@ class FileController extends Controller
                 ? ($seller->social_card_number ?? '')
                 : ($seller->tax_number ?? ''))
             : '';
+        $pass = $client->passport_series . ', ' .  \Carbon\Carbon::parse($client->passport_validity)->format('d/m.Y') . ', ' . $client->passport_issued;
+        $guarantor = $contract->guarantors->first();
+        $representativeName = $guarantor
+            ? ($guarantor->name . ' ' . $guarantor->surname . ($guarantor->middle_name ? ' ' . $guarantor->middle_name : ''))
+            : '';
+        $representativePass = $guarantor && $guarantor->passport_series
+            ? $guarantor->passport_series . ', ' . \Carbon\Carbon::parse($guarantor->passport_validity)->format('d/m.Y') . ', ' . $guarantor->passport_issued
+            : '';
         $deadline = \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y');
+        $city = $client->actual_province ?? $client->city;
+        $street = $client->actual_street_building ?? $client->street;
+        $contractDate = \Carbon\Carbon::parse($contract->date);
+        $appDay = $contractDate->format('d');
+        $appMonthArm = $this->armenianMonths()[$contractDate->month];
+        $appYear = $contractDate->format('Y');
         $templateProcessor->setValues([
             'num' => $contract->num,
             'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
@@ -314,8 +328,8 @@ class FileController extends Controller
             'passport_validity' => \Carbon\Carbon::parse($client->passport_validity)->format('d.m.Y'),
             'passport_issued' => $client->passport_issued,
             'social_card_number' => $client->social_card_number ?? $client->tax_number ?? '',
-            'city' => $client->actual_province ?? $client->city,
-            'street' => $client->actual_street_building ?? $client->street,
+            'city' => $city,
+            'street' => $street,
             'phone' => $client->phone ?? $contract->additional_phone ?? '',
             'contract_amount' => $this->makeMoney((int)$contract->contract_amount),
             'mother_amount' => $this->makeMoney((int)$contract->estimated_amount),
@@ -367,6 +381,12 @@ class FileController extends Controller
                     'i_desc'     => $contract->description ?? '',
                 ]);
                 $appProcessor->setValues([
+                    'client' => $clientName,
+                    'pass' => $pass,
+                    'city' => $city,
+                    'street' => $street,
+                    'representative' => $representativeName,
+                    'rep_pass' => $representativePass,
                     'model' => $firstItem->car_model . ' ' . $firstItem->car_make,
                     'ident' => $firstItem->identification,
                     'lic_pl' => $firstItem->license_plate,
@@ -375,8 +395,11 @@ class FileController extends Controller
                     'power' => $firstItem->power,
                     'reg' => $firstItem->registration,
                     'deadline' => $deadline,
-                    'pr_amount' => (int)$amount,
+                    'pr_amount' => (int)$contract->contract_amount,
                     'date' =>  \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
+                    'day' => $appDay,
+                    'month_arm' => $appMonthArm,
+                    'year' => $appYear,
                 ]);
 
                 $appFilename = $contract->num . '_մեքենայի_դիմում.docx';
@@ -473,15 +496,19 @@ class FileController extends Controller
         return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
     }
 
-    private function formatArmenianDate(string $date): string
+    private function armenianMonths(): array
     {
-        $months = [
+        return [
             1 => 'Հունվար', 2 => 'Փետրվար', 3 => 'Մարտ',    4 => 'Ապրիլ',
             5 => 'Մայիս',   6 => 'Հունիս',   7 => 'Հուլիս',  8 => 'Օգոստոս',
             9 => 'Սեպտեմբեր', 10 => 'Հոկտեմբեր', 11 => 'Նոյեմբեր', 12 => 'Դեկտեմբեր',
         ];
+    }
+
+    private function formatArmenianDate(string $date): string
+    {
         $parsed = Carbon::parse($date);
-        return $parsed->format('d') . ' ' . $months[$parsed->month] . ', ' . $parsed->format('Y');
+        return $parsed->format('d') . ' ' . $this->armenianMonths()[$parsed->month] . ', ' . $parsed->format('Y');
     }
 
     private function generateGuarantorDocx($contract, $guarantor): array
