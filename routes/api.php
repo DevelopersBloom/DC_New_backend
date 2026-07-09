@@ -236,6 +236,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/download/{id}', [FileController::class, 'downloadContract'])->middleware('can:download_contract_file');
         Route::get('/download-schedule/{id}', [FileController::class, 'downloadSchedule']);
         Route::get('/download-individual/{id}', [FileController::class, 'downloadIndividualSheet'])->middleware('can:download_contract_file');
+        Route::get('/download-main/{id}', [FileController::class, 'downloadContractDoc'])->middleware('can:download_contract_file');
+        Route::get('/download-car-application/{id}', [FileController::class, 'downloadCarApplicationDoc'])->middleware('can:download_contract_file');
+        Route::get('/download-guarantor/{id}/{guarantorId}', [FileController::class, 'downloadGuarantorDoc'])->middleware('can:download_contract_file');
+        Route::get('/download-marital-status/{id}', [FileController::class, 'downloadMaritalStatusDoc'])->middleware('can:download_contract_file');
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles'])->middleware('can:download_all_contract_files');
         Route::get('/export', [FileController::class, 'exportZip'])->middleware('can:export_contracts_zip');
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts'])->middleware('can:export_contracts');
