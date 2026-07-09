@@ -167,7 +167,7 @@ class ClientRequest extends FormRequest
                     'BIRTH_CERTIFICATE', 'RESIDENCE_CARD', 'TRAVEL_DOCUMENT',
                     'FOREIGN_PASSPORT', 'OTHER'
                 ])],
-                'is_married' => ['required', 'boolean'], // Պարտադիր ամուսնական կարգավիճակ
+                'is_married' => ['nullable', 'boolean'], // Պարտադիր ամուսնական կարգավիճակ
                 'name' => ['required', 'string', 'max:255'],
                 'surname' => ['required', 'string', 'max:255'],
                 'middle_name' => ['nullable', 'string', 'max:255'],
