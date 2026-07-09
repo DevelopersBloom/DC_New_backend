@@ -354,8 +354,13 @@ class AcraExport
     {
         if (!$sheet) return;
         $row = 2;
-        // Snapshot date for classification lookups: the last day the period covers.
-        $classificationAsOf = Carbon::parse($this->to)->subDay()->format('Y-m-d');
+        // Snapshot cutoff for classification lookups: the last day the period covers.
+        // The nightly classification job runs at 00:00 Yerevan time and stamps its
+        // ClassificationHistory row with the moment it actually executes (a few
+        // seconds after midnight), even though it computes that day's state. A
+        // pure whereDate() cutoff would exclude that row, so extend the cutoff
+        // with a grace window past midnight to still catch it.
+        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->addMinutes(10);
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
@@ -502,7 +507,7 @@ class AcraExport
                 $lastClassificationDate = ClassificationHistory::query()
                     ->where('client_id', $contract->client_id)
                     ->where('classification_id', $contract->client->classification_id)
-                    ->whereDate('date', '<=', $classificationAsOf)
+                    ->where('date', '<=', $classificationAsOf)
                     ->orderByDesc('date')
                     ->orderByDesc('id')
                     ->value('date');
