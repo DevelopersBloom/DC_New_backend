@@ -25,7 +25,7 @@ class AcraController
         // Match the "overdue" contract scope (Contract::scopeStatus): only count a
         // contract as overdue once its unpaid initial payments exceed 1000 AMD.
         $contractsWithInitialPayments = Payment::where('status', 'initial')
-            ->where('date', '<', $to)
+            ->where('date', '<', $from)
             ->groupBy('contract_id')
             ->havingRaw('SUM(amount) > ?', [AcraExport::MIN_OVERDUE_AMD])
             ->pluck('contract_id')
