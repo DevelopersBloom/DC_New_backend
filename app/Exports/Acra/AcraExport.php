@@ -360,7 +360,7 @@ class AcraExport
         // seconds after midnight), even though it computes that day's state. A
         // pure whereDate() cutoff would exclude that row, so extend the cutoff
         // with a grace window past midnight to still catch it.
-        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->addMinutes(10);
+        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->subMinutes(10);
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
