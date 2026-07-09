@@ -476,7 +476,7 @@ class FileController extends Controller
         [$individualTempPath] = $this->generateIndividualSheetDocx($contract);
         $filesToZip[] = $individualTempPath;
 
-        if ($client->type === 'individual' && !is_null($client->is_married && $categoryName == 'car')) {
+        if ($client->type === 'individual' && $categoryName == 'car' && !is_null($client->is_married)) {
             $maritalDocPath = $this->attachMaritalStatusDocx($client, $contract,$firstItem);
             if ($maritalDocPath) {
                 $filesToZip[] = $maritalDocPath;
@@ -584,8 +584,8 @@ class FileController extends Controller
             $templateProcessor->setValues([
                 'date' => $date,
                 'client' => $clientInfo,
-                'model' => $firstItem->car_model . ' ' . $firstItem->car_make,
-                'lic_pl' => $firstItem->licence_plate,
+                'model' => $firstItem->model . ' ' . $firstItem->car_make,
+                'lic_pl' => $firstItem->license_plate,
             ]);
         } else {
             $templateProcessor->setValues([
@@ -601,7 +601,7 @@ class FileController extends Controller
             mkdir(dirname($filePath), 0775, true);
         }
 
-        copy($templatePath, $filePath);
+        $templateProcessor->saveAs($filePath);
 
         return $filePath;
     }
