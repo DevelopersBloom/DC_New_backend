@@ -501,7 +501,6 @@ class AcraExport
             // Left blank when the client has no risk class, and also for "standard"
             // (01) — only non-standard classes (02-05) carry a classification date.
             $requiresClassificationDate = !in_array($riskClassCode, ['', '01'], true);
-dd($requiresClassificationDate);
             $lastClassificationDate = null;
             if ($requiresClassificationDate && $contract->client->classification_id) {
                 $lastClassificationDate = ClassificationHistory::query()
