@@ -65,6 +65,7 @@ class Client extends Model
 
         'gender',
         'document_type',
+        'is_married',
 
         'legal_country', 'legal_province', 'legal_community',
         'legal_settlement', 'legal_street_building', 'legal_zip_code',
@@ -80,6 +81,7 @@ class Client extends Model
         'date_of_birth'     => 'date:d-m-Y',
         'is_linked_to_company' => 'boolean',
         'is_company_employee'  => 'boolean',
+        'is_married'           => 'boolean',
     ];
 
 

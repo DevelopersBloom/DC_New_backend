@@ -476,6 +476,13 @@ class FileController extends Controller
         [$individualTempPath] = $this->generateIndividualSheetDocx($contract);
         $filesToZip[] = $individualTempPath;
 
+        if ($client->type === 'individual' && !is_null($client->is_married && $categoryName == 'car')) {
+            $maritalDocPath = $this->attachMaritalStatusDocx($client, $contract,$firstItem);
+            if ($maritalDocPath) {
+                $filesToZip[] = $maritalDocPath;
+            }
+        }
+
         $zipFileName = $contract->num . '_փաստաթղթեր.zip';
         $zipFilePath = storage_path('app/tmp/' . $zipFileName);
 
@@ -554,6 +561,51 @@ class FileController extends Controller
 
         return [$filePath];
     }
+    private function attachMaritalStatusDocx($client, Contract $contract,$firstItem): ?string
+    {
+        if ($client->is_married) {
+            $templateFileName = 'agreement.docx';
+            $label = 'Համաձայնություն';
+
+        } else {
+            $templateFileName = 'announcement.docx';
+            $label = 'Հայտարարություն';
+        }
+
+        $templatePath = public_path('files/' . $templateFileName);
+
+        if (!file_exists($templatePath)) {
+            return null;
+        }
+        $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+        $clientInfo = $client->name . ' ' . $client->middle_name . ' ' . $client->surname;
+        $date = $contract->date->format('d.m.Y');
+        if ($client->is_married) {
+            $templateProcessor->setValues([
+                'date' => $date,
+                'client' => $clientInfo,
+                'model' => $firstItem->car_model . ' ' . $firstItem->car_make,
+                'lic_pl' => $firstItem->licence_plate,
+            ]);
+        } else {
+            $templateProcessor->setValues([
+                'date' => $date,
+                'client' => $clientInfo,
+            ]);
+        }
+
+        $fileName = $contract->num . '_' . $label . '.docx';
+        $filePath = storage_path('app/tmp/' . $fileName);
+
+        if (!file_exists(dirname($filePath))) {
+            mkdir(dirname($filePath), 0775, true);
+        }
+
+        copy($templatePath, $filePath);
+
+        return $filePath;
+    }
+
     private function generateIndividualSheetDocx(Contract $contract): array
     {
         $client = $contract->client;
