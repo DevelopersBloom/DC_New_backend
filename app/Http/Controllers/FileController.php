@@ -579,7 +579,7 @@ class FileController extends Controller
         }
         $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
         $clientInfo = $client->name . ' ' . $client->middle_name . ' ' . $client->surname;
-        $date = $contract->date->format('d.m.Y');
+        $date = Carbon::parse($contract->date)->format('d.m.Y');
         if ($client->is_married) {
             $templateProcessor->setValues([
                 'date' => $date,
