@@ -80,7 +80,12 @@ class AcraController
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
             ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions) {
-                $query->whereBetween('date', [$from, $to])
+                // Upper bound is exclusive: the classification snapshot (see
+                // AcraExport::fillCredit) is taken as of $to - 1 day, so a
+                // contract dated exactly on $to has no classification history
+                // yet and shouldn't be pulled into this report.
+                $query->where('date', '>=', $from)
+                    ->where('date', '<', $to)
                     ->orWhereIn('id', $contractsWithInitialPayments)
                     ->orWhereIn('id', $contractsWithJournalActions);
             })->get();
