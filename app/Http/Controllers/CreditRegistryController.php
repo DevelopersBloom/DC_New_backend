@@ -271,6 +271,77 @@ class CreditRegistryController extends Controller
     }
 
     // ================================================================
+    // Preview — unified XML preview for any code (L001, L002, L003, L005, L006)
+    // ================================================================
+
+    /**
+     * GET /{id}/credit-registry/preview/{code}
+     * Returns the XML that would be sent for the given code, without sending it to DEGS.
+     * Extra params depend on the code:
+     *   L003: reason (optional, default "Սխալ գրանցում")
+     *   L005: field_type, new_value (required), old_value (optional)
+     *   L006: data_to_delete (required)
+     */
+    public function previewXml(Request $request, string $id, string $code): JsonResponse
+    {
+        $contract = Contract::find($id);
+        if (!$contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $code = strtoupper($code);
+
+        try {
+            $xml = match ($code) {
+                'L001' => $this->l001Service->generateL001Xml($contract),
+                'L002' => $this->l002Service->generateL002Xml((int)$contract->id),
+                'L003' => $this->l003Service->generateL003Xml(
+                    (int)$contract->id,
+                    $request->input('reason', 'Սխալ գրանցում'),
+                ),
+                'L005' => $this->generateL005FromRequest($request, $contract),
+                'L006' => $this->generateL006FromRequest($request, $contract),
+                default => throw new \InvalidArgumentException("Unknown code: {$code}. Expected one of L001, L002, L003, L005, L006."),
+            };
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'code' => $code,
+            'contract_id' => $contract->id,
+            'xml' => $xml,
+        ]);
+    }
+
+    private function generateL005FromRequest(Request $request, Contract $contract): string
+    {
+        $fieldType = $request->input('field_type');
+        $newValue = $request->input('new_value');
+
+        if (!$fieldType || !$newValue) {
+            throw new \InvalidArgumentException('field_type and new_value are required for L005');
+        }
+
+        return $this->l005Service->generateL005Xml(
+            contractId: (int)$contract->id,
+            fieldType: $fieldType,
+            newValue: $newValue,
+            oldValue: $request->input('old_value'),
+        );
+    }
+
+    private function generateL006FromRequest(Request $request, Contract $contract): string
+    {
+        $dataToDelete = $request->input('data_to_delete');
+        if (!$dataToDelete) {
+            throw new \InvalidArgumentException('data_to_delete is required for L006');
+        }
+
+        return $this->l006Service->generateL006Xml((int)$contract->id, $dataToDelete);
+    }
+
+    // ================================================================
     // Response polling
     // ================================================================
 
