@@ -54,7 +54,6 @@ class PrepaymentHandler
 //            $contract->left            = max(0, $contract->left - $paidPrincipal);
 //            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
 //        }
-dd($paidInterest,$paidPrincipal);
         // ── Record entry (complete or partial) ──────────────────────────────
         $totalPaid    = $paidInterest + $paidPrincipal;
         $alreadyPaid  = (float) $payment->entries()->sum('amount');
@@ -93,8 +92,7 @@ dd($paidInterest,$paidPrincipal);
             // Cash beyond what this row needs also waits in the bucket, as a lump
             // partial_amount — not yet assigned to a specific future installment.
             $partialAmount   = $remainingAmount;
-            $remainingAmount = 0;
-
+dd($partialAmount,$remainingAmount,$paidInterest,$paidPrincipal);
             if ($paidPrincipal > 0 || $deferredInterest > 0 || $partialAmount > 0) {
                 $this->prepaymentService->createSingle(
                     $contract->id, $payment->id, $deal_id,
