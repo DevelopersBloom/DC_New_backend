@@ -16,6 +16,7 @@ class Prepayment extends Model
         'amount',
         'principal_amount',
         'interest_amount',
+        'partial_amount',
         'due_date',
         'status',
         'paid_at',
@@ -27,6 +28,7 @@ class Prepayment extends Model
         'amount'           => 'decimal:2',
         'principal_amount' => 'decimal:2',
         'interest_amount'  => 'decimal:2',
+        'partial_amount'   => 'decimal:2',
     ];
 
     public function contract()

@@ -24,7 +24,10 @@ class PrepaymentHandler
      * date, only the interest actually accrued by the payment date (balance × elapsed
      * days × daily rate) is settled normally — the rest of the scheduled interest for
      * this row, plus the principal, go into the Prepayment record instead of posting
-     * to the interest/loan accounts (→ liability account 39920).
+     * to the interest/loan accounts (→ liability account 39920). Any cash left over
+     * beyond what this row needs is folded into the same record as partial_amount —
+     * an undifferentiated amount not yet tied to a future installment, to be applied
+     * (in full or in part) whenever that installment becomes due.
      */
     public function handle(
         $contract, $payment, $payer, $cash, $deal_id,
@@ -87,15 +90,21 @@ class PrepaymentHandler
             $deferredInterest = $paidInterest - $accruedInterest;
             $paidInterest     = $accruedInterest;
 
-            if ($paidPrincipal > 0 || $deferredInterest > 0) {
+            // Cash beyond what this row needs also waits in the bucket, as a lump
+            // partial_amount — not yet assigned to a specific future installment.
+            $partialAmount   = $remainingAmount;
+            $remainingAmount = 0;
+
+            if ($paidPrincipal > 0 || $deferredInterest > 0 || $partialAmount > 0) {
                 $this->prepaymentService->createSingle(
-                    $contract->id, $payment->id, $deal_id, $paidPrincipal, $deferredInterest, $payment->to_date
+                    $contract->id, $payment->id, $deal_id,
+                    $paidPrincipal, $deferredInterest, $partialAmount, $payment->to_date
                 );
-                $prepaymentPrincipal = $paidPrincipal + $deferredInterest;
+                $prepaymentPrincipal = $paidPrincipal + $deferredInterest + $partialAmount;
                 $paidPrincipal       = 0;
             }
         }
-
+dd($paidInterest,$paidPrincipal,$prepaymentPrincipal,$remainingAmount,$remainingInterestAmount);
         return [
             'interest_amount'      => $paidInterest,
             'principal_amount'     => $paidPrincipal,
@@ -183,7 +192,7 @@ class PrepaymentHandler
 
             // Create or accumulate the Prepayment record for this installment
             $this->prepaymentService->createSingle(
-                $contract->id, $row->id, $dealId, $paidPrincipalPart, $paidInterestPart, $row->to_date
+                $contract->id, $row->id, $dealId, $paidPrincipalPart, $paidInterestPart, 0.0, $row->to_date
             );
         }
 

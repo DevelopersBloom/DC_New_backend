@@ -82,13 +82,14 @@ class PrepaymentHandlerTest extends TestCase
         $prepaymentService = Mockery::mock(PrepaymentService::class);
         $prepaymentService->shouldReceive('createSingle')
             ->once()
-            ->with(42, 7, 99, 20_000.0, 6_000.0, '2026-07-30')
+            ->with(42, 7, 99, 20_000.0, 6_000.0, 11_000.0, '2026-07-30')
             ->andReturnNull();
 
         $handler = $this->makeHandler($prepaymentService);
 
         // Cash covers the full row (9 000 interest + 20 000 principal = 29 000) with
-        // 11 000 left over for the next installment (handled by applyRemaining()).
+        // 11 000 left over — folded into the same Prepayment record as partial_amount
+        // instead of being spread across future installments.
         $result = $handler->handle(
             $contract, $payment, null, true, 99,
             40_000.0, 0.0, '2026-07-10', 300_000.0
@@ -96,8 +97,8 @@ class PrepaymentHandlerTest extends TestCase
 
         $this->assertEqualsWithDelta(3_000.0, $result['interest_amount'], 0.01, 'Only the 10 accrued days should post as interest income');
         $this->assertEqualsWithDelta(0.0, $result['principal_amount'], 0.01, 'Principal is deferred into the Prepayment record, not posted directly');
-        $this->assertEqualsWithDelta(26_000.0, $result['prepayment_principal'], 0.01, 'Prepayment = deferred interest (6 000) + principal (20 000)');
-        $this->assertEqualsWithDelta(11_000.0, $result['amount'], 0.01, 'Leftover cash after covering the full row');
+        $this->assertEqualsWithDelta(37_000.0, $result['prepayment_principal'], 0.01, 'Prepayment = deferred interest (6 000) + principal (20 000) + leftover partial (11 000)');
+        $this->assertEqualsWithDelta(0.0, $result['amount'], 0.01, 'All cash is absorbed into the bucket, nothing left to flow onward');
 
         $this->assertEqualsWithDelta(280_000.0, $contract->provided_amount, 0.01, 'Principal reduction still happens immediately');
     }

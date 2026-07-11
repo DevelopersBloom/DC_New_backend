@@ -8,9 +8,9 @@ class PrepaymentService
 {
     public function createSingle(
         int $contractId, int $paymentId, ?int $dealId,
-        float $principalAmount, float $interestAmount, string $dueDate
+        float $principalAmount, float $interestAmount, float $partialAmount, string $dueDate
     ): void {
-        $amount = $principalAmount + $interestAmount;
+        $amount = $principalAmount + $interestAmount + $partialAmount;
         if ($amount <= 0) {
             return;
         }
@@ -25,6 +25,7 @@ class PrepaymentService
             $existing->increment('amount', $amount);
             $existing->increment('principal_amount', $principalAmount);
             $existing->increment('interest_amount', $interestAmount);
+            $existing->increment('partial_amount', $partialAmount);
             return;
         }
 
@@ -35,6 +36,7 @@ class PrepaymentService
             'amount'           => $amount,
             'principal_amount' => $principalAmount,
             'interest_amount'  => $interestAmount,
+            'partial_amount'   => $partialAmount,
             'due_date'         => $dueDate,
             'status'           => 'unpaid',
         ]);
