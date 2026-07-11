@@ -6,8 +6,11 @@ use App\Models\Prepayment;
 
 class PrepaymentService
 {
-    public function createSingle(int $contractId, int $paymentId, ?int $dealId, float $amount, string $dueDate): void
-    {
+    public function createSingle(
+        int $contractId, int $paymentId, ?int $dealId,
+        float $principalAmount, float $interestAmount, string $dueDate
+    ): void {
+        $amount = $principalAmount + $interestAmount;
         if ($amount <= 0) {
             return;
         }
@@ -20,16 +23,20 @@ class PrepaymentService
         if ($existing) {
             // Accumulate partial prepayments for the same installment
             $existing->increment('amount', $amount);
+            $existing->increment('principal_amount', $principalAmount);
+            $existing->increment('interest_amount', $interestAmount);
             return;
         }
 
         Prepayment::create([
-            'contract_id' => $contractId,
-            'payment_id'  => $paymentId,
-            'deal_id'     => $dealId,
-            'amount'      => $amount,
-            'due_date'    => $dueDate,
-            'status'      => 'unpaid',
+            'contract_id'      => $contractId,
+            'payment_id'       => $paymentId,
+            'deal_id'          => $dealId,
+            'amount'           => $amount,
+            'principal_amount' => $principalAmount,
+            'interest_amount'  => $interestAmount,
+            'due_date'         => $dueDate,
+            'status'           => 'unpaid',
         ]);
     }
 }

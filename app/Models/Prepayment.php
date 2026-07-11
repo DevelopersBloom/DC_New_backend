@@ -14,15 +14,19 @@ class Prepayment extends Model
         'payment_id',
         'deal_id',
         'amount',
+        'principal_amount',
+        'interest_amount',
         'due_date',
         'status',
         'paid_at',
     ];
 
     protected $casts = [
-        'due_date' => 'date',
-        'paid_at'  => 'datetime',
-        'amount'   => 'decimal:2',
+        'due_date'         => 'date',
+        'paid_at'          => 'datetime',
+        'amount'           => 'decimal:2',
+        'principal_amount' => 'decimal:2',
+        'interest_amount'  => 'decimal:2',
     ];
 
     public function contract()
