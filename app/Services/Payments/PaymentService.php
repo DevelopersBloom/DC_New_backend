@@ -152,7 +152,6 @@ class PaymentService
                     );
                     $processedPaymentIds[] = $payment->id;
                     $amount               = $result['amount'];
-                    $interestAmount       = $result['remaining_interest'];
                     $interest_amount      += $result['interest_amount'];
                     $principal_amount     += $result['principal_amount'];
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;

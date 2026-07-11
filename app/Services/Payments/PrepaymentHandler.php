@@ -41,7 +41,6 @@ class PrepaymentHandler
         $paidInterest          = min($remainingInterestPlan, $remainingAmount);
         $remainingInterestAmount -= $paidInterest;
         $remainingAmount         -= $paidInterest;
-dd($remainingInterestAmount,$paidInterest,$interestAmount);
         // ── Pay scheduled principal ─────────────────────────────────────────
         $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
         $remainingPrincipal   = max(0, (float) ($payment->principal_payment ?? 0) - $alreadyPaidPrincipal);
@@ -99,13 +98,12 @@ dd($remainingInterestAmount,$paidInterest,$interestAmount);
                 $paidPrincipal       = 0;
             }
         }
-dd($paidInterest,$paidPrincipal,$prepaymentPrincipal,$remainingAmount,$remainingInterestAmount);
+        dd($remainingAmount,,$paidPrincipal,$prepaymentPrincipal);
         return [
             'interest_amount'      => $paidInterest,
             'principal_amount'     => $paidPrincipal,
             'prepayment_principal' => $prepaymentPrincipal,
             'amount'               => $remainingAmount,
-            'remaining_interest'   => $remainingInterestAmount,
         ];
     }
 
