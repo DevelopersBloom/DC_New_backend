@@ -307,6 +307,7 @@ class PaymentService
         bool $forceScheduledForSelected = false, $interestAmount = 0,
         $date = null, $paymentMechanism = null
     ): array {
+        dd($amount);
         $balanceBefore = (float) $contract->provided_amount;
 
         if ($contract->payment_type === 'amortized' && $paymentMechanism === 'prepayment') {
