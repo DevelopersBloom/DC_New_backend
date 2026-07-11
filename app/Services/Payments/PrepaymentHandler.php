@@ -159,8 +159,7 @@ class PrepaymentHandler
 
             // Loan balance is NOT reduced here — only the entry is recorded.
             $balanceBefore = (float) $contract->provided_amount;
-            $balanceAfter  = $balanceBefore - $paidPrincipalPart;
-dd($paidPrincipalPart,$toPrepay,$balanceBefore,$balanceAfter,$remaining);
+            $balanceAfter  = $balanceBefore;
             // Record an entry so future calls see the covered interest/principal
             PaymentEntry::create([
                 'payment_id'       => $row->id,
