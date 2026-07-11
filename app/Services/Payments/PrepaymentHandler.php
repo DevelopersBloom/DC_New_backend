@@ -98,7 +98,7 @@ class PrepaymentHandler
                 $paidPrincipal       = 0;
             }
         }
-        dd($remainingAmount,,$paidPrincipal,$prepaymentPrincipal);
+        dd($remainingAmount,$paidInterest,$paidPrincipal,$prepaymentPrincipal);
         return [
             'interest_amount'      => $paidInterest,
             'principal_amount'     => $paidPrincipal,
