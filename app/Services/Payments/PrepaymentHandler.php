@@ -94,7 +94,7 @@ class PrepaymentHandler
                     $contract->id, $payment->id, $deal_id,
                     $paidPrincipal, $deferredInterest, $partialAmount, $payment->to_date
                 );
-                $prepaymentPrincipal = $paidPrincipal + $deferredInterest + $partialAmount;
+                $prepaymentPrincipal = $paidPrincipal + $partialAmount;
                 $paidPrincipal       = 0;
             }
         }
