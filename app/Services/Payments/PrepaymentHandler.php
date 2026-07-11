@@ -50,11 +50,11 @@ class PrepaymentHandler
         $remainingAmount     -= $paidPrincipal;
 
         // Reduce loan balance immediately (prepayment commits the principal reduction)
-        if ($paidPrincipal > 0) {
-            $contract->left            = max(0, $contract->left - $paidPrincipal);
-            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
-        }
-
+//        if ($paidPrincipal > 0) {
+//            $contract->left            = max(0, $contract->left - $paidPrincipal);
+//            $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
+//        }
+dd($paidInterest,$paidPrincipal);
         // ── Record entry (complete or partial) ──────────────────────────────
         $totalPaid    = $paidInterest + $paidPrincipal;
         $alreadyPaid  = (float) $payment->entries()->sum('amount');
