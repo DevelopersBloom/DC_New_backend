@@ -109,13 +109,14 @@ class PrepaymentHandler
     /**
      * Prepayment mode: apply leftover cash to upcoming installments.
      *
-     * Walks future payment rows in ascending date order, reduces loan balance for the
-     * principal portion, creates/accumulates a Prepayment record covering interest +
-     * principal for each row, and writes a PaymentEntry so subsequent calls see the
-     * covered amounts.
+     * Walks future payment rows in ascending date order and writes a PaymentEntry
+     * covering interest + principal for each row, so subsequent calls see the covered
+     * amounts — but the loan balance (contract->left / provided_amount) is NOT reduced
+     * and no Prepayment ledger record is created; the row's principal/interest are only
+     * marked as paid in payment_entries.
      *
      * @param  int[]  $alreadyProcessedIds  IDs of rows already handled in the main loop (skip them)
-     * @return float  Total interest + principal registered as prepayments
+     * @return float  Total interest + principal covered this way
      */
     public function applyRemaining(
         $contract, float $remaining, $payer, $cash, ?int $dealId,
@@ -141,29 +142,26 @@ class PrepaymentHandler
             $due = Carbon::parse($row->to_date ?? $row->date)->startOfDay();
             if (!$due->gt($now)) continue; // only rows whose due date is still ahead
 
-            $alreadyPaidInterest = (float) $row->entries()->sum('interest_amount');
-            $remainingInterest   = max(0, (float) $row->interest_payment - $alreadyPaidInterest);
-            $paidInterestPart    = min($remaining, $remainingInterest);
+//            $alreadyPaidInterest = (float) $row->entries()->sum('interest_amount');
+//            $remainingInterest   = max(0, (float) $row->interest_payment - $alreadyPaidInterest);
+//            $paidInterestPart    = min($remaining, $remainingInterest);
 
             $alreadyPaidPrincipal = (float) $row->entries()->sum('principal_amount');
             $remainingPrincipal   = max(0, (float) ($row->principal_payment ?? 0) - $alreadyPaidPrincipal);
-            $paidPrincipalPart    = min($remaining - $paidInterestPart, $remainingPrincipal);
+//            $paidPrincipalPart    = min($remaining - $paidInterestPart, $remainingPrincipal);
+            $paidPrincipalPart    = min($remaining, $remainingPrincipal);
 
-            $toPrepay = $paidInterestPart + $paidPrincipalPart;
+            $toPrepay =  $paidPrincipalPart;
             if ($toPrepay <= 0) continue;
 
             $remaining    -= $toPrepay;
             $totalPrepaid += $toPrepay;
 
-            // Reduce loan balance for the principal portion only (mirrors handle() behaviour)
+            // Loan balance is NOT reduced here — only the entry is recorded.
             $balanceBefore = (float) $contract->provided_amount;
-            if ($paidPrincipalPart > 0) {
-                $contract->left            = max(0, $contract->left - $paidPrincipalPart);
-                $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipalPart);
-            }
-            $balanceAfter = (float) $contract->provided_amount;
-
-            // Record a partial entry so future handle() calls see the covered interest/principal
+            $balanceAfter  = $balanceBefore;
+dd($paidPrincipalPart,$toPrepay,$balanceBefore,$balanceAfter,$remaining);
+            // Record an entry so future calls see the covered interest/principal
             PaymentEntry::create([
                 'payment_id'       => $row->id,
                 'contract_id'      => $contract->id,
@@ -173,7 +171,7 @@ class PrepaymentHandler
                 'reference'        => Str::uuid(),
                 'amount'           => $toPrepay,
                 'principal_amount' => $paidPrincipalPart,
-                'interest_amount'  => $paidInterestPart,
+                'interest_amount'  => 0,
                 'penalty_amount'   => 0,
                 'balance_before'   => $balanceBefore,
                 'balance_after'    => $balanceAfter,
@@ -181,11 +179,6 @@ class PrepaymentHandler
                 'date'             => $date ?? Carbon::now()->format('Y-m-d'),
                 'cash'             => $cash ?? false,
             ]);
-
-            // Create or accumulate the Prepayment record for this installment
-            $this->prepaymentService->createSingle(
-                $contract->id, $row->id, $dealId, $paidPrincipalPart, $paidInterestPart, 0.0, $row->to_date
-            );
         }
 
         return $totalPrepaid;

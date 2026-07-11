@@ -157,7 +157,6 @@ class PaymentService
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
-            dd($amount,$interest_amount,$principal_amount,$prepayment_principal);
 
             // ── Handle leftover cash ─────────────────────────────────────────
             if ($amount > 0) {
