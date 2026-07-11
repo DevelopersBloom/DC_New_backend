@@ -90,7 +90,6 @@ class PrepaymentHandler
             // Cash beyond what this row needs also waits in the bucket, as a lump
             // partial_amount — not yet assigned to a specific future installment.
             $partialAmount   = $remainingAmount;
-dd($paidPrincipal,$paidInterest,$remainingAmount);
             if ($paidPrincipal > 0 || $deferredInterest > 0 || $partialAmount > 0) {
                 $this->prepaymentService->createSingle(
                     $contract->id, $payment->id, $deal_id,
