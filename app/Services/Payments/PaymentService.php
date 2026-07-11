@@ -48,7 +48,6 @@ class PaymentService
         $journal_id = null, bool $forceScheduled = false, $interestAmount = 0,
         $ispPaymentSelected = false, $date = null, $paymentMechanism = null
     ): array {
-        dd($amount);
         $payments_sum         = 0;
         $interest_amount      = 0;
         $principal_amount     = 0;
