@@ -35,7 +35,6 @@ class PrepaymentHandler
     ): array {
         $remainingAmount         = $amount;
         $remainingInterestAmount = $interestAmount;
-dd($remainingAmount);
         // ── Pay scheduled interest first ────────────────────────────────────
         $alreadyPaidInterest   = (float) $payment->entries()->sum('interest_amount');
         $remainingInterestPlan = max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
