@@ -50,6 +50,8 @@ class DocumentJournal extends Model
     const LOSS_INTEREST_NOMINAL      = 'Կորստի անվանական տոկոս';
     const LOSS_PENALTY               = 'Կորստի տուգանք';
     const PREPAYMENT_RECEIVED        = 'Կանխավճար ստացված';
+    const PREPAYMENT_APPLY_PRINCIPAL = 'Կանխավճարի կիրառում - մայր գումար';
+    const PREPAYMENT_APPLY_INTEREST  = 'Կանխավճարի կիրառում - տոկոս';
     protected $fillable = [
         'date',
         'operation_number',

@@ -92,7 +92,7 @@ class PrepaymentHandler
             if ($paidPrincipal > 0 || $deferredInterest > 0 || $partialAmount > 0) {
                 $this->prepaymentService->createSingle(
                     $contract->id, $payment->id, $deal_id,
-                    $paidPrincipal, $deferredInterest, $partialAmount, $payment->to_date
+                    $paidPrincipal, $deferredInterest, $partialAmount, $payment->to_date, (bool) $cash
                 );
                 $prepaymentPrincipal = $paidPrincipal + $partialAmount;
                 $paidPrincipal       = 0;
