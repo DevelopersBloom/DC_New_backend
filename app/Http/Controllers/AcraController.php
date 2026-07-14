@@ -38,7 +38,7 @@ class AcraController
         $journalToContractMap = $mainContractJournals->pluck('journalable_id', 'id');
         $mainJournalIds = $mainContractJournals->pluck('id')->toArray();
         $mainContractsIds = $mainContractJournals->pluck('journalable_id')->toArray();
-
+dd(2);
         $contractsWithJournalActions = DocumentJournal::where(function ($query) use ($mainJournalIds, $mainContractsIds) {
 
             $query->where(function ($q) use ($mainJournalIds) {
