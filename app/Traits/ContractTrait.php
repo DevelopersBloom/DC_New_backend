@@ -554,7 +554,12 @@ trait ContractTrait
                 $interestAmount += (float) $payment->interest_payment;
             } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
-
+                $originalInterestAmount = $this->calcAmount(
+                    $balance,
+                    $payment->days,
+                    $contract->interest_rate
+                );
+                $paidInterestAmount = $originalInterestAmount - $payment->interest_payment;
                 $interestAmount += $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
@@ -596,7 +601,7 @@ trait ContractTrait
                 $futureInterestDiscount = $principalBase * $futureDays * $dailyRate;
             }
         }
-dd($interestAmount);
+dd($interestAmount,$originalInterestAmount,$paidInterestAmount);
         return [
             "endDate"                  => $currentDate,
 //            "totalAccruedInterest"     => $totalAccruedInterest,
