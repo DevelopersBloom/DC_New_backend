@@ -92,7 +92,7 @@ class AcraController
 
         $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();
         $contractClientIds = $contracts->pluck('client_id')->toArray();
-
+dd($updatedClientIds);
         $allClientIds = array_unique(array_merge($contractClientIds, $updatedClientIds));
         $allClients = Client::whereIn('id', $allClientIds)->get();
 
