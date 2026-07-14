@@ -361,7 +361,7 @@ class AcraExport
         // pure whereDate() cutoff would exclude that row, so extend the cutoff
         // with a grace window past midnight to still catch it.
 //        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->subMinutes(10);
-        $classificationAsOf = Carbon::parse($this->to)->endOfDay();
+        $classificationAsOf = Carbon::parse($this->from)->endOfDay();
 
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
