@@ -533,6 +533,7 @@ trait ContractTrait
 
         $scheduledPayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
+            ->where('status','initial')
             ->orderBy('id','asc')
 //            ->orderBy('from_date', 'asc')
             ->get();
