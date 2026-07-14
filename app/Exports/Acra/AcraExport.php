@@ -507,7 +507,7 @@ class AcraExport
             if ($requiresClassificationDate && $contract->client->classification_id) {
                 $lastClassificationDate = ClassificationHistory::query()
                     ->where('client_id', $contract->client_id)
-                    ->where('classification_id', $contract->client->classification_id)
+                    //->where('classification_id', $contract->client->classification_id)
                     ->where('date', '<=', $classificationAsOf)
                     ->orderByDesc('date')
                     ->orderByDesc('id')
@@ -516,13 +516,13 @@ class AcraExport
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
             } elseif ($requiresClassificationDate) {
-//                $this->validationErrors[] = sprintf(
-//                    'Credit row %d (contract %s, client %s): risk class "%s" is set but the last classification date (X) is missing.',
-//                    $row,
-//                    $contract->num,
-//                    $contract->client_id,
-//                    $riskClassTitle
-//                );
+                $this->validationErrors[] = sprintf(
+                    'Credit row %d (contract %s, client %s): risk class "%s" is set but the last classification date (X) is missing.',
+                    $row,
+                    $contract->num,
+                    $contract->client_id,
+                    $riskClassTitle
+                );
                 continue;
             }
 
