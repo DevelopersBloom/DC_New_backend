@@ -12,8 +12,9 @@ use Illuminate\Support\Str;
 class PrepaymentHandler
 {
     public function __construct(
-        protected PrepaymentService    $prepaymentService,
-        protected PaymentEntryRecorder $recorder,
+        protected PrepaymentService     $prepaymentService,
+        protected PaymentEntryRecorder  $recorder,
+        protected PaymentDateClassifier $dateClassifier,
     ) {}
 
     /**
@@ -72,13 +73,13 @@ class PrepaymentHandler
         // ── Before due date → only the accrued-to-date interest is recognized now;
         //    the not-yet-accrued remainder of this row's interest, plus principal,
         //    go into the Prepayment record instead (→ account 39920) ─────────────
-        $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-        $now = $date
+        $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
+        $now    = $date
             ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
             : Carbon::now('Asia/Yerevan')->startOfDay();
 
         $prepaymentPrincipal = 0;
-        if ($due->gt($now)) {
+        if ($timing === PaymentDateClassifier::SOONER) {
             $from        = Carbon::parse($payment->from_date)->startOfDay();
             $elapsedDays = max(0, $from->diffInDays($now));
             $rate        = (float) $contract->interest_rate;
@@ -124,10 +125,6 @@ class PrepaymentHandler
     ): float {
         $totalPrepaid = 0;
 
-        $now = $date
-            ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
-            : Carbon::now('Asia/Yerevan')->startOfDay();
-
         $futurePayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
             ->where('status', 'initial')
@@ -139,8 +136,8 @@ class PrepaymentHandler
         foreach ($futurePayments as $row) {
             if ($remaining <= 0) break;
 
-            $due = Carbon::parse($row->to_date ?? $row->date)->startOfDay();
-            if (!$due->gt($now)) continue; // only rows whose due date is still ahead
+            $timing = $this->dateClassifier->classifyAgainstDueDate($row->to_date ?? $row->date, $date);
+            if ($timing !== PaymentDateClassifier::SOONER) continue; // only rows whose due date is still ahead
 
 //            $alreadyPaidInterest = (float) $row->entries()->sum('interest_amount');
 //            $remainingInterest   = max(0, (float) $row->interest_payment - $alreadyPaidInterest);

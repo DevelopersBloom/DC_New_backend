@@ -40,6 +40,7 @@ class PaymentService
         protected PrepaymentHandler                $prepaymentHandler,
         protected ScheduledPaymentHandler          $scheduledHandler,
         protected LatePaymentInterestRecalculator  $lateInterestRecalculator,
+        protected PaymentDateClassifier            $dateClassifier,
     ) {}
 
     // ── Main payment loop ────────────────────────────────────────────────────
@@ -907,10 +908,9 @@ class PaymentService
                 $contractClone->provided_amount = max(0, $contractClone->provided_amount - $paidPrincipal);
                 $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
 
-                $due = \Illuminate\Support\Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-                $now = \Illuminate\Support\Carbon::parse($today)->startOfDay();
+                $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $today);
 
-                if ($due->gt($now) && $paidPrincipal > 0) {
+                if ($timing === PaymentDateClassifier::SOONER && $paidPrincipal > 0) {
                     $prepayPrincipal += $paidPrincipal;
                 } else {
                     $principalAmount += $paidPrincipal;
@@ -918,7 +918,8 @@ class PaymentService
 
             } elseif ($contractClone->payment_type === 'amortized') {
                 // Try early split first
-                $earlySplit = ($remaining + 10 >= (float) $payment->amount)
+                $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
+                $earlySplit = $timing === PaymentDateClassifier::SOONER
                     ? $this->scheduledHandler->calculateEarlySplitPreview($contractClone, $payment, $remaining, $date)
                     : null;
 

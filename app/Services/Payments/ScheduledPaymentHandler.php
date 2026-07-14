@@ -21,6 +21,7 @@ class ScheduledPaymentHandler
 
     public function __construct(
         protected PaymentEntryRecorder $recorder,
+        protected PaymentDateClassifier $dateClassifier,
     ) {}
 
     // ── Per-row handlers ────────────────────────────────────────────────────
@@ -36,7 +37,8 @@ class ScheduledPaymentHandler
         $remainingAmount         = $amount;
         $remainingInterestAmount = $interestAmount;
 
-        $earlySplit = $amount + 10 >= $payment->amount
+        $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
+        $earlySplit = $timing === PaymentDateClassifier::SOONER
             ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date)
             : null;
         if ($earlySplit !== null) {
@@ -327,14 +329,15 @@ class ScheduledPaymentHandler
             return null;
         }
 
+        $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $paymentDate);
+        if ($timing !== PaymentDateClassifier::SOONER) {
+            return null;
+        }
+
         $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
         $now = $paymentDate
             ? Carbon::parse($paymentDate)->setTimezone('Asia/Yerevan')->startOfDay()
             : Carbon::now('Asia/Yerevan')->startOfDay();
-
-        if (!$due->gt($now)) {
-            return null;
-        }
 
         $from        = Carbon::parse($payment->from_date)->startOfDay();
         $elapsedDays = max(1, $from->diffInDays($now));
@@ -399,12 +402,13 @@ class ScheduledPaymentHandler
 
         // Recalculate future interest on the reduced principal
         if ((float) $payment->amount <= 0) {
-            $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-            $now = $date
-                ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
-                : Carbon::now('Asia/Yerevan')->startOfDay();
+            $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
 
-            if ($due->gt($now)) {
+            if ($timing === PaymentDateClassifier::SOONER) {
+                $now = $date
+                    ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
+                    : Carbon::now('Asia/Yerevan')->startOfDay();
+
                 $remaining = Payment::where('contract_id', $contract->id)
                     ->where('type', 'regular')->where('status', 'initial')
                     ->orderBy('date')->orderBy('id')
