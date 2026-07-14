@@ -502,7 +502,6 @@ class AcraExport
             // (01) — only non-standard classes (02-05) carry a classification date.
             $requiresClassificationDate = !in_array($riskClassCode, ['', '01'], true);
             $lastClassificationDate = null;
-            dd($requiresClassificationDate);
             if ($requiresClassificationDate && $contract->client->classification_id) {
                 $lastClassificationDate = ClassificationHistory::query()
                     ->where('client_id', $contract->client_id)
@@ -511,6 +510,7 @@ class AcraExport
                     ->orderByDesc('date')
                     ->orderByDesc('id')
                     ->value('date');
+                dd($lastClassificationDate);
             }
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
