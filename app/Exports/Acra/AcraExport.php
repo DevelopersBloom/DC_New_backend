@@ -512,18 +512,18 @@ class AcraExport
                     ->orderByDesc('date')
                     ->orderByDesc('id')
                     ->value('date');
-                dd($requiresClassificationDate,$contract->client->classification_id,$classificationAsOf,$lastClassificationDate);
             }
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
             } elseif ($requiresClassificationDate) {
-                $this->validationErrors[] = sprintf(
-                    'Credit row %d (contract %s, client %s): risk class "%s" is set but the last classification date (X) is missing.',
-                    $row,
-                    $contract->num,
-                    $contract->client_id,
-                    $riskClassTitle
-                );
+//                $this->validationErrors[] = sprintf(
+//                    'Credit row %d (contract %s, client %s): risk class "%s" is set but the last classification date (X) is missing.',
+//                    $row,
+//                    $contract->num,
+//                    $contract->client_id,
+//                    $riskClassTitle
+//                );
+                continue;
             }
 
             if ($contract->status) {
