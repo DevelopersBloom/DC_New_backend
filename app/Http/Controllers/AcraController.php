@@ -60,8 +60,8 @@ class AcraController
                 DocumentJournal::PAY_INTEREST_AMOUNT_TRANSFER,
                 DocumentJournal::PAY_INTEREST_AMOUNT_CASH,
             ])
-            ->where('date' >= $from)
-            ->where('date' < $to)
+            ->where('date', '>=', $from)
+            ->where('date', '<', $to)
 //            ->whereBetween('date', [$from, $to])
             ->get()
             ->map(function ($journal) use ($journalToContractMap) {
