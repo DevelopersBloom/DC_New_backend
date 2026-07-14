@@ -559,7 +559,7 @@ trait ContractTrait
                     $payment->days,
                     $contract->interest_rate
                 );
-                $paidInterestAmount = $originalInterestAmount - $payment->interest_payment;
+                $paidInterestAmount = round($originalInterestAmount - $payment->interest_payment);
                 $interestAmount += $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
