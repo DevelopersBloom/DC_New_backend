@@ -154,6 +154,7 @@ class ContractControllerNew extends Controller
         $motherAmountToPay = $this->calculateMotherAmountToPay($contract);
         $contract->mother_amount_to_pay  = $motherAmountToPay['mother_amount_to_pay'];
         $contract->prepayment_credit     = $motherAmountToPay['principal_from_bucket'];
+        $contract->prepayment_balance    = $motherAmountToPay['prepayment_balance'];
 
         $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 

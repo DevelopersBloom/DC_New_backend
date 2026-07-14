@@ -229,6 +229,7 @@ class ContractDetailResource extends JsonResource
             'future_interest_discount' => $this->future_interest_discount ?? 0,
             'mother_amount_to_pay' => $this->mother_amount_to_pay,
             'prepayment_credit' => $this->prepayment_credit,
+            'prepayment_balance' => $this->prepayment_balance,
         ];
     }
 }

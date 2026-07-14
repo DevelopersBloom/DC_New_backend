@@ -629,6 +629,7 @@ trait ContractTrait
             'provided_amount'       => $providedAmount,
             'principal_from_bucket' => $principalFromBucket,
             'mother_amount_to_pay'  => $providedAmount - $principalFromBucket,
+            'prepayment_balance'    => $bucketPrincipalLike,
         ];
     }
 
