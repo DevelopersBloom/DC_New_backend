@@ -510,7 +510,7 @@ class AcraExport
                     ->orderByDesc('date')
                     ->orderByDesc('id')
                     ->value('date');
-                dd($lastClassificationDate);
+                dd($requiresClassificationDate,$contract->client->classification_id,$classificationAsOf,$lastClassificationDate);
             }
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
