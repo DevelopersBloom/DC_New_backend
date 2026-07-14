@@ -15,6 +15,8 @@ class Order extends Model
     CONST NDM_FILTER = "ndm";
     CONST REFUND_LUMP = 'Միանվագ վճարի ետվերադարձ';
     CONST REFUND_LUMP_FILTER = "refund_lump";
+    CONST REFUND_PREPAYMENT = 'Կանխավճարի ետվերադարձ';
+    CONST REFUND_PREPAYMENT_FILTER = "refund_prepayment";
     CONST FULL_FILTER = 'full';
     CONST PARTIAL_FILTER = 'partial';
     CONST REGULAR_FILTER = 'regular';

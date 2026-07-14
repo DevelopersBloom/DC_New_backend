@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="29b9b117-622a-4c48-8dd9-e660009db0ab" name="Changes" comment="" />
+    <list default="true" id="29b9b117-622a-4c48-8dd9-e660009db0ab" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../app/Http/Controllers/ContractControllerNew.php" beforeDir="false" afterPath="$PROJECT_DIR$/../app/Http/Controllers/ContractControllerNew.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/Http/Controllers/PaymentControllerNew.php" beforeDir="false" afterPath="$PROJECT_DIR$/../app/Http/Controllers/PaymentControllerNew.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/Http/Resources/ContractDetailResource.php" beforeDir="false" afterPath="$PROJECT_DIR$/../app/Http/Resources/ContractDetailResource.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/Models/DocumentJournal.php" beforeDir="false" afterPath="$PROJECT_DIR$/../app/Models/DocumentJournal.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/Models/Order.php" beforeDir="false" afterPath="$PROJECT_DIR$/../app/Models/Order.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/Services/Payments/PaymentService.php" beforeDir="false" afterPath="$PROJECT_DIR$/../app/Services/Payments/PaymentService.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../app/Traits/ContractTrait.php" beforeDir="false" afterPath="$PROJECT_DIR$/../app/Traits/ContractTrait.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../routes/api.php" beforeDir="false" afterPath="$PROJECT_DIR$/../routes/api.php" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -18,29 +27,29 @@
     <urls />
   </component>
   <component name="PhpWorkspaceProjectConfiguration" interpreter_name="$PROJECT_DIR$/../../../xampp/php/php.exe" />
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 4
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectId" id="3EAKjXzzFnBvpHRsCOCCj5gWymd" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "C:/projects/DC_New_backend/public",
-    "nodejs_package_manager_path": "npm",
-    "to.speed.mode.migration.done": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/projects/DC_New_backend/public&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -57,6 +66,7 @@
       <option name="presentableId" value="Default" />
       <updated>1779616069950</updated>
       <workItem from="1779616071016" duration="13000" />
+      <workItem from="1784010437665" duration="14000" />
     </task>
     <servers />
   </component>

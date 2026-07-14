@@ -11,6 +11,7 @@ use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\Prepayment;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use Carbon\Carbon;
@@ -606,6 +607,31 @@ trait ContractTrait
             "future_interest_discount" => round($futureInterestDiscount, 2),
         ];
     }
+
+    /**
+     * How much principal (mother amount) still needs to be paid to close the contract —
+     * the remaining provided_amount, credited by whatever the prepayment bucket
+     * (unpaid Prepayment records) already covers. Used both for the payoff quote shown
+     * to the frontend and for the actual full-payment processing, so both agree.
+     */
+    public function calculateMotherAmountToPay(Contract $contract): array
+    {
+        $providedAmount = (float) $contract->provided_amount;
+
+        $bucketPrincipalLike = (float) Prepayment::where('contract_id', $contract->id)
+            ->where('status', 'unpaid')
+            ->get()
+            ->sum(fn ($p) => (float) $p->principal_amount + (float) $p->partial_amount);
+
+        $principalFromBucket = min($bucketPrincipalLike, $providedAmount);
+
+        return [
+            'provided_amount'       => $providedAmount,
+            'principal_from_bucket' => $principalFromBucket,
+            'mother_amount_to_pay'  => $providedAmount - $principalFromBucket,
+        ];
+    }
+
     public function countPenalty($contract_id, $import_date = null)
     {
         $contract = Contract::find($contract_id);

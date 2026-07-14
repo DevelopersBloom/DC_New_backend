@@ -151,10 +151,26 @@ class ContractControllerNew extends Controller
         $contract->penalty_amount         = $currentPaymentAmount['penalty_amount'];
         $contract->future_interest_discount = $currentPaymentAmount['future_interest_discount'] ?? 0;
 
+        $motherAmountToPay = $this->calculateMotherAmountToPay($contract);
+        $contract->mother_amount_to_pay  = $motherAmountToPay['mother_amount_to_pay'];
+        $contract->prepayment_credit     = $motherAmountToPay['principal_from_bucket'];
+
         $this->contractCalculationService->calculateAllMetrics($contract, $calcToday);
 
         return new ContractDetailResource($contract);
     }
+
+    /**
+     * Standalone payoff-quote endpoint: how much principal (mother amount) still needs
+     * to be paid to close the contract, net of any prepayment bucket credit.
+     */
+    public function motherAmountToPay(int $id): JsonResponse
+    {
+        $contract = Contract::findOrFail($id);
+
+        return response()->json($this->calculateMotherAmountToPay($contract));
+    }
+
     public function getHistoryDetails(int $id)
     {
         $history = History::with('user', 'order','contract')->find($id);

@@ -9,6 +9,7 @@ use App\Models\DocumentJournal;
 use App\Models\Modification;
 use App\Models\Payment;
 use App\Models\PaymentEntry;
+use App\Models\Prepayment;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Models\User;
@@ -630,11 +631,29 @@ class PaymentService
 
     public function processFullPayment(
         $contract, $amount, $payer, $cash, $deal_id = null, $date = null
-    ): mixed {
+    ): array {
         Payment::where('contract_id', $contract->id)->where('status', 'initial')->delete();
 
         $providedAmount = $contract->provided_amount;
-        $interestAmount = $amount - $providedAmount;
+
+        $duePrepayments = Prepayment::where('contract_id', $contract->id)
+            ->where('status', 'unpaid')
+            ->get();
+
+        $bucketPrincipalLike = (float) $duePrepayments->sum(
+            fn ($p) => (float) $p->principal_amount + (float) $p->partial_amount
+        );
+        $bucketInterest = (float) $duePrepayments->sum('interest_amount');
+
+        $motherAmountToPay    = $this->calculateMotherAmountToPay($contract);
+        $principalFromBucket  = $motherAmountToPay['principal_from_bucket'];
+        $refundAmount         = max(0, $bucketPrincipalLike - $providedAmount);
+
+        // $bucketInterest was already recognized into contract->collected when it was
+        // deposited (PrepaymentHandler::handle() adds it via processPayments()) — only
+        // its GL reclassification (liability → income, below) is still pending, so it
+        // must not be added to $interestAmount/collected again here.
+        $interestAmount = ($amount + $principalFromBucket) - $providedAmount;
 
         $history['contract_changes'] = [
             'contract_id'   => $contract->id,
@@ -693,6 +712,51 @@ class PaymentService
         ];
         $contract->save();
 
+        // ── B4: reclassify the bucket out of the liability account, refund the rest ──
+        if ($duePrepayments->isNotEmpty()) {
+            $journal = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contract->id)
+                ->first();
+            $docNum = Transaction::getNextDocumentNumber();
+
+            if ($principalFromBucket > 0) {
+                $rule = $this->getPostingRule('prepayment_apply_principal');
+                $this->postEntry(
+                    $date ?? Carbon::now()->format('Y-m-d'), $docNum, DocumentJournal::PREPAYMENT_APPLY_PRINCIPAL,
+                    $principalFromBucket, 'prepayment_apply_principal_on_closure',
+                    $rule->debit_account_id, $rule->credit_account_id,
+                    $deal_id, $journal?->id, $contract->client_id, $contract->id, $rule, $contract
+                );
+            }
+
+            if ($bucketInterest > 0) {
+                $rule = $this->getPostingRule('prepayment_apply_interest');
+                $this->postEntry(
+                    $date ?? Carbon::now()->format('Y-m-d'), $docNum, DocumentJournal::PREPAYMENT_APPLY_INTEREST,
+                    $bucketInterest, 'prepayment_apply_interest_on_closure',
+                    $rule->debit_account_id, $rule->credit_account_id,
+                    $deal_id, $journal?->id, $contract->client_id, $contract->id, $rule, $contract
+                );
+            }
+
+            if ($refundAmount > 0) {
+                $refundEvent = $cash ? 'prepayment_refund_cash' : 'prepayment_refund';
+                $rule        = $this->getPostingRule($refundEvent);
+                $this->postEntry(
+                    $date ?? Carbon::now()->format('Y-m-d'), $docNum, DocumentJournal::PREPAYMENT_REFUND,
+                    $refundAmount, 'prepayment_refund_on_closure',
+                    $rule->debit_account_id, $rule->credit_account_id,
+                    $deal_id, $journal?->id, $contract->client_id, $contract->id, $rule, $contract
+                );
+            }
+
+            foreach ($duePrepayments as $duePrepayment) {
+                $duePrepayment->status  = 'paid';
+                $duePrepayment->paid_at = $date ? Carbon::parse($date)->startOfDay() : Carbon::now();
+                $duePrepayment->save();
+            }
+        }
+
         $nowDate = $date ?? now()->toDateString();
         Modification::insert([
             [
@@ -739,7 +803,11 @@ class PaymentService
             );
         }
 
-        return $payment;
+        return [
+            'payment_id'           => $payment,
+            'refund_amount'        => $refundAmount,
+            'principal_from_bucket' => $principalFromBucket,
+        ];
     }
 
     // ── Payment preview (read-only breakdown) ───────────────────────────────

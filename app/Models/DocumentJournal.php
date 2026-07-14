@@ -52,6 +52,7 @@ class DocumentJournal extends Model
     const PREPAYMENT_RECEIVED        = 'Կանխավճար ստացված';
     const PREPAYMENT_APPLY_PRINCIPAL = 'Կանխավճարի կիրառում - մայր գումար';
     const PREPAYMENT_APPLY_INTEREST  = 'Կանխավճարի կիրառում - տոկոս';
+    const PREPAYMENT_REFUND          = 'Կանխավճարի ետվերադարձ';
     protected $fillable = [
         'date',
         'operation_number',

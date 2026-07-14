@@ -441,7 +441,9 @@ class PaymentControllerNew extends Controller
 
             $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null, null, null, $date);
             $oldPaymentAmount = $this->calcPaidAmount($contract);
-            $paymentId = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id,$date);
+            $fullPaymentResult = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id,$date);
+            $paymentId = $fullPaymentResult['payment_id'];
+            $prepaymentRefundAmount = $fullPaymentResult['refund_amount'];
             $newPaymentAmount = $oldPaymentAmount + $totalAmount;
             $deal->payment_id = $paymentId;
             $deal->save();
@@ -538,6 +540,39 @@ class PaymentControllerNew extends Controller
                 'new_value' => (string)($newPaymentAmount),
                 'effective_date' => $date,
             ]);
+
+            // ── B4: refund whatever bucket amount could not be offset against payoff ──
+            if ($prepaymentRefundAmount > 0) {
+                $prepaymentRefundOrder = $this->generateOrder(
+                    $contract, $prepaymentRefundAmount, Order::REFUND_PREPAYMENT, 'out', $cash, Order::REFUND_PREPAYMENT_FILTER, $date
+                );
+                $prepaymentRefundType = HistoryType::where('name', 'prepayment_refund')->first();
+
+                History::create([
+                    'amount'      => $prepaymentRefundAmount,
+                    'type_id'     => $prepaymentRefundType->id,
+                    'user_id'     => auth()->user()->id,
+                    'order_id'    => $prepaymentRefundOrder->id,
+                    'contract_id' => $contract->id,
+                    'date'        => $date,
+                ]);
+
+                $prepaymentRefundDeal = $this->createDeal(
+                    $prepaymentRefundAmount, null, null, null, null, 'out', $contract->id, $contract->client->id,
+                    $prepaymentRefundOrder->id, $cash, null, Order::REFUND_PREPAYMENT, Order::REFUND_PREPAYMENT_FILTER,
+                    null, null, null, null, $date
+                );
+                DealAction::create([
+                    'deal_id'         => $prepaymentRefundDeal->id,
+                    'actionable_id'   => $paymentId,
+                    'actionable_type' => Payment::class,
+                    'amount'          => $prepaymentRefundAmount,
+                    'type'            => 'refund',
+                    'description'     => 'Prepayment bucket refund',
+                    'date'            => $date,
+                ]);
+            }
+
             if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
                 $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
                 if ($refundAmount > 0) {
@@ -563,15 +598,15 @@ class PaymentControllerNew extends Controller
                         'description' => 'Refund payment',
                         'date' => $date,
                     ]);
-                    $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a lump sum refund', 'refund_amount' => $refundAmount];
+                    $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a lump sum refund', 'refund_amount' => $refundAmount, 'prepayment_refund_amount' => $prepaymentRefundAmount];
                     if ($idempotencyKey) {
                         IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
                     }
                     return response()->json($payload);
                 }
             }
-            if (isset($refundAmount) && $refundAmount > 0) {
-                $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a refund', 'refund_amount' => $refundAmount];
+            if ((isset($refundAmount) && $refundAmount > 0) || $prepaymentRefundAmount > 0) {
+                $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a refund', 'refund_amount' => $refundAmount ?? 0, 'prepayment_refund_amount' => $prepaymentRefundAmount];
                 if ($idempotencyKey) {
                     IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
                 }
