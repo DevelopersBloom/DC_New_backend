@@ -94,7 +94,7 @@ class AcraController
         $contractClientIds = $contracts->pluck('client_id')->toArray();
         $allClientIds = array_unique(array_merge($contractClientIds, $updatedClientIds));
         $allClients = Client::whereIn('id', $allClientIds)->get();
-        dd($allClients);
+        dd($contractClientIds);
 
         $acraExport = new AcraExport($contracts, $allClients, $from, $to);
         $fileData = $acraExport->export();
