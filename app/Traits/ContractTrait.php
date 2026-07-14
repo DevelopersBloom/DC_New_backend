@@ -596,7 +596,7 @@ trait ContractTrait
                 $futureInterestDiscount = $principalBase * $futureDays * $dailyRate;
             }
         }
-
+dd($interestAmount);
         return [
             "endDate"                  => $currentDate,
 //            "totalAccruedInterest"     => $totalAccruedInterest,
