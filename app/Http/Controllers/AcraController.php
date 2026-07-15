@@ -78,8 +78,12 @@ class AcraController
             ->unique()
             ->toArray();
 
+        // Manual exclusion: client 4 (Գրիշա Հունեյան) must not appear in the ACRA export.
+        $excludedClientIds = [4];
+
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
+            ->whereNotIn('client_id', $excludedClientIds)
             ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions) {
                 // Upper bound is exclusive: the classification snapshot (see
                 // AcraExport::fillCredit) is taken as of $to - 1 day, so a
@@ -94,7 +98,7 @@ class AcraController
         $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();
         $contractClientIds = $contracts->pluck('client_id')->toArray();
         $allClientIds = array_unique(array_merge($contractClientIds, $updatedClientIds));
-        $allClients = Client::whereIn('id', $allClientIds)->where('name','!=','Գրիշա')->get();
+        $allClients = Client::whereIn('id', $allClientIds)->whereNotIn('id', $excludedClientIds)->get();
 
         $acraExport = new AcraExport($contracts, $allClients, $from, $to);
         $fileData = $acraExport->export();
