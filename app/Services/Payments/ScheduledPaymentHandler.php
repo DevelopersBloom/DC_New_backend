@@ -66,7 +66,7 @@ class ScheduledPaymentHandler
             $contract->left            = max(0, $contract->left - $paidPrincipal);
             $contract->provided_amount = max(0, $contract->provided_amount - $paidPrincipal);
         }
-
+dd($paidInterest,$paidPrincipal);
         $this->recorder->recordEntry(
             $contract, $payment, $payer, $cash, $deal_id,
             $paidInterest, $paidPrincipal, $amount, $date, $balanceBefore
