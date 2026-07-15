@@ -133,7 +133,7 @@ class PaymentControllerNew extends Controller
             // ===== Payment Logic =====
             $old = $this->calcPaidAmount($contract);
             $paymentMechanism = $resolvedPaymentMechanism;
-
+dd($paymentMechanism);
             $result = $this->paymentService->processPayments(
                 $contract,
                 $amount,
