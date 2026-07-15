@@ -160,22 +160,27 @@ class PaymentService
                 }
             }
             // ── Handle leftover cash ─────────────────────────────────────────
+            // Prepayment/future-interest mechanisms only make sense when this
+            // payment is actually SOONER (R6) — a due-date/late leftover always
+            // follows R9/R11 (reduce upcoming principal + recalc) regardless of
+            // which mechanism the request asked for.
             if ($amount > 0) {
-                if ($paymentMechanism === 'prepayment') {
+                $timing = $this->dateClassifier->classify($contract, $date);
+
+                if ($timing === PaymentDateClassifier::SOONER && $paymentMechanism === 'prepayment') {
                     $extra = $this->prepaymentHandler->applyRemaining(
                         $contract, $amount, $payer, $cash, $deal_id, $date, $processedPaymentIds
                     );
-                    //$prepayment_principal += $extra;
-                } elseif ($paymentMechanism === 'interest') {
-                    $applied = $this->applyExtraToFutureInterest(
-                        $contract, $amount, $payments->last()->id ?? null,
-                        $deal_id, $cash, $date
-                    );
-                    $interest_amount += $applied;
+                    $prepayment_principal += $extra;
+                }
+//                elseif ($timing === PaymentDateClassifier::SOONER && $paymentMechanism === 'interest') {
+//                    $applied = $this->applyExtraToFutureInterest(
+//                        $contract, $amount, $payments->last()->id ?? null,
+//                        $deal_id, $cash, $date
+//                    );
+//                    $interest_amount += $applied;
 //                }
-//                elseif ($paymentMechanism === 'principal') {
-//                    $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, false);
-                } else {
+                 else {
                     $this->handleRemainingAmount(
                         $contract, $amount, $cash, $payments->last()->id, $deal_id, $date
                     );
