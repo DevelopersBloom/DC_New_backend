@@ -86,7 +86,9 @@ class PrepaymentHandler
 
             $accruedInterest  = min($paidInterest, $balanceBefore * $elapsedDays * $rate / 100);
             $deferredInterest = $paidInterest - $accruedInterest;
-            $paidInterest     = $deferredInterest;
+            // Only the accrued-to-date portion is posted as a real interest payment;
+            // the deferred remainder goes into the bucket below.
+            $paidInterest    = $accruedInterest;
             // Cash beyond what this row needs also waits in the bucket, as a lump
             // partial_amount — not yet assigned to a specific future installment.
             $partialAmount   = $remainingAmount;
@@ -95,7 +97,11 @@ class PrepaymentHandler
                     $contract->id, $payment->id, $deal_id,
                     $paidPrincipal, $deferredInterest, $partialAmount, $payment->to_date, (bool) $cash
                 );
-                $prepaymentPrincipal = $paidPrincipal + $partialAmount;
+                // Everything that went into the Prepayment record (principal + deferred
+                // interest + partial — i.e. sum(prepayment.amount)) is posted to the
+                // liability account (39920) via document_journal; only $paidInterest
+                // (accrued) is posted separately as a normal interest payment.
+                $prepaymentPrincipal = $paidPrincipal + $deferredInterest + $partialAmount;
                 $paidPrincipal       = 0;
             }
         }
