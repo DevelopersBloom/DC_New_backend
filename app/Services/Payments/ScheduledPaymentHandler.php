@@ -342,7 +342,7 @@ class ScheduledPaymentHandler
             ? Carbon::parse($paymentDate)->setTimezone('Asia/Yerevan')->startOfDay()
             : Carbon::now('Asia/Yerevan')->startOfDay();
         $elapsedDays = max(0, $from->diffInDays($now));
-
+dd($elapsedDays);
         $balance = (float) $contract->provided_amount;
         $rate    = (float) $contract->interest_rate;
 
