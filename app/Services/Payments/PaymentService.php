@@ -165,7 +165,7 @@ class PaymentService
                     $extra = $this->prepaymentHandler->applyRemaining(
                         $contract, $amount, $payer, $cash, $deal_id, $date, $processedPaymentIds
                     );
-                    $prepayment_principal += $extra;
+                    //$prepayment_principal += $extra;
                 } elseif ($paymentMechanism === 'interest') {
                     $applied = $this->applyExtraToFutureInterest(
                         $contract, $amount, $payments->last()->id ?? null,
