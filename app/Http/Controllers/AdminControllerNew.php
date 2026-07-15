@@ -615,7 +615,7 @@ class AdminControllerNew extends Controller
             'penalty',
             'discount',
             'created_by',
-            'principal_payment',
+            'principal_amount',
             'prepayment',
             //DB::raw("(CASE WHEN purpose IN ('Ամբողջական վճարում', 'Հերթական վճարում', 'Մասնակի վճարում') THEN amount - COALESCE(interest_amount, 0) - COALESCE(penalty, 0) ELSE NULL END) as principal_payment")
         )
