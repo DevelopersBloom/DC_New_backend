@@ -164,7 +164,7 @@ class PaymentControllerNew extends Controller
             $interest             = $result['interest_amount'];
             $principal            = $result['principal_amount'];
             $prepaymentPrincipal  = $result['prepayment_principal'] ?? 0;
-
+dd($result);
             // ---- Interest ----
             if ($interest > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_interest_amount', $class, $cash));
