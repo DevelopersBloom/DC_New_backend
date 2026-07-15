@@ -71,7 +71,6 @@ class PaymentControllerNew extends Controller
         }
 
         $earlyMode = $request->input('early_mode', 'prepayment');
-        $resolvedPaymentMechanism = $earlyMode === 'principal' ? 'early_split' : 'prepayment';
 
         DB::beginTransaction();
 
@@ -132,7 +131,7 @@ class PaymentControllerNew extends Controller
 
             // ===== Payment Logic =====
             $old = $this->calcPaidAmount($contract);
-            $paymentMechanism = $resolvedPaymentMechanism;
+            $paymentMechanism = $earlyMode;
 dd($paymentMechanism);
             $result = $this->paymentService->processPayments(
                 $contract,
