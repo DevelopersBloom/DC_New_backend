@@ -19,6 +19,7 @@ use App\Models\PaymentEntry;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
+use App\Services\Payments\PaymentDateClassifier;
 use App\Services\Payments\PaymentService;
 use App\Services\PostingDatePolicy;
 use App\Traits\CalculatesAccountBalancesTrait;
@@ -41,15 +42,18 @@ class PaymentControllerNew extends Controller
     protected PaymentService $paymentService;
     protected ActivityService $activityService;
     protected PostingDatePolicy $postingDatePolicy;
+    protected PaymentDateClassifier $dateClassifier;
 
     public function __construct(
         PaymentService $paymentService,
         ActivityService $activityService,
-        PostingDatePolicy $postingDatePolicy
+        PostingDatePolicy $postingDatePolicy,
+        PaymentDateClassifier $dateClassifier
     ) {
         $this->paymentService     = $paymentService;
         $this->activityService    = $activityService;
         $this->postingDatePolicy  = $postingDatePolicy;
+        $this->dateClassifier     = $dateClassifier;
     }
 
     public function makePayment(PaymentRequest $request): JsonResponse
@@ -69,6 +73,18 @@ class PaymentControllerNew extends Controller
         if ((float) $request->amount >= $fullThreshold) {
             return $this->makeFullPayment($request);
         }
+
+        // ===== C1: early_mode (SOONER-only choice between bucket vs immediate principal) =====
+        // Frontend is responsible for only offering early_mode when the payment is
+        // actually SOONER — backend trusts the input and just resolves it.
+        $earlyMode = $request->input('early_mode', 'prepayment');
+        $timing    = $this->dateClassifier->classify($contract, $date);
+
+        $resolvedPaymentMechanism = $request->input('payment_mechanism');
+        if (!$resolvedPaymentMechanism && $timing === PaymentDateClassifier::SOONER) {
+            $resolvedPaymentMechanism = $earlyMode === 'principal' ? 'early_split' : 'prepayment';
+        }
+        $resolvedPaymentMechanism = $resolvedPaymentMechanism ?? 'early_split';
 
         DB::beginTransaction();
 
@@ -129,7 +145,7 @@ class PaymentControllerNew extends Controller
 
             // ===== Payment Logic =====
             $old = $this->calcPaidAmount($contract);
-            $paymentMechanism = $request->input('payment_mechanism', 'early_split');
+            $paymentMechanism = $resolvedPaymentMechanism;
 
             $result = $this->paymentService->processPayments(
                 $contract,

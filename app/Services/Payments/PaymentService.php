@@ -924,15 +924,22 @@ class PaymentService
                     : null;
 
                 if ($earlySplit !== null) {
-                    $paidInterest   = $earlySplit['paid_interest'];
-                    $paidPrincipal  = $earlySplit['principal_for_line'];
-                    $remaining      = $earlySplit['remaining_cash'];
+                    // R10 (C2): interest_due already collected by the split; the rest
+                    // (principal_part) reduces this row's own principal first — any
+                    // excess spills to the next row (R9), via the same loop.
+                    $paidInterest  = $earlySplit['paid_interest'];
+                    $principalPart = $earlySplit['principal_part'];
+
+                    $alreadyPaidPrincipalForRow = (float) $payment->entries()->sum('principal_amount');
+                    $remainingPrincipalForRow   = max(0, (float) ($payment->principal_payment ?? 0) - $alreadyPaidPrincipalForRow);
+                    $paidPrincipal              = min($principalPart, $remainingPrincipalForRow);
 
                     $contractClone->provided_amount = max(0, $contractClone->provided_amount - $paidPrincipal);
                     $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
 
-                    $interestAmount  += $paidInterest;
-                    $principalAmount += $paidPrincipal;
+                    $interestAmount   += $paidInterest;
+                    $principalAmount  += $paidPrincipal;
+                    $remaining         = $principalPart - $paidPrincipal;
                     $remainingInterest = 0;
                 } else {
                     // Scheduled path: interest first, then principal (past due only)

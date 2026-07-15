@@ -27,8 +27,9 @@ class ScheduledPaymentHandler
     // ── Per-row handlers ────────────────────────────────────────────────────
 
     /**
-     * Amortized installment: attempt early-split first; fall back to the scheduled
-     * interest-first → principal (past-due only) path.
+     * Amortized installment: SOONER payments go through the R10 "reduce principal"
+     * split (C2); everything else falls back to the scheduled interest-first →
+     * principal (past-due only) path.
      */
     public function handleAmortized(
         $contract, $payment, $payer, $cash, $deal_id,
@@ -38,12 +39,9 @@ class ScheduledPaymentHandler
         $remainingInterestAmount = $interestAmount;
 
         $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
-        $earlySplit = $timing === PaymentDateClassifier::SOONER
-            ? $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $remainingAmount, $date)
-            : null;
-        if ($earlySplit !== null) {
-            return $this->applyEarlySplit(
-                $contract, $payment, $payer, $cash, $deal_id, $earlySplit, $date, $balanceBefore
+        if ($timing === PaymentDateClassifier::SOONER) {
+            return $this->handleSoonerPrincipal(
+                $contract, $payment, $payer, $cash, $deal_id, $remainingAmount, $date, $balanceBefore
             );
         }
 
@@ -306,24 +304,30 @@ class ScheduledPaymentHandler
     // ── Public preview helper ───────────────────────────────────────────────
 
     /**
-     * Read-only early-split calculation for payment preview (no DB writes).
+     * Read-only R10 split calculation for payment preview (no DB writes).
      */
     public function calculateEarlySplitPreview(
         Contract $contract, Payment $payment, float $cashAfterPenalty, ?string $paymentDate = null
     ): ?array {
-        return $this->tryEarlyAmortizedPaymentSplit($contract, $payment, $cashAfterPenalty, $paymentDate);
+        return $this->calculateSoonerPrincipalSplit($contract, $payment, $cashAfterPenalty, $paymentDate);
     }
 
-    // ── Private internals ───────────────────────────────────────────────────
+    // ── Sooner + "reduce principal" (C2 / R10) ──────────────────────────────
 
     /**
-     * Early payment (before installment due date): split cash using
-     *   cash = past_interest + calcAmount(P − x, future_days) + x
-     * (same interest basis as ContractTrait::calcAmount).
-     * Returns null when due date is today or past, or the split does not apply.
+     * C2/R10: interest_due = balance × elapsed days (from_date → payment date) × rate,
+     * collected first; whatever cash remains is returned as principal_part, to be
+     * applied as an ordinary principal reduction (R9) by the caller — which also
+     * naturally recalculates this row's remaining interest (payment date → due
+     * date) on the reduced balance.
+     *
+     * Q3: if cash doesn't even cover the accrued interest, all of it is taken as
+     * interest and principal_part is 0 (no rejection).
+     *
+     * Pure — no DB writes — so it can also back the read-only preview endpoint.
      */
-    private function tryEarlyAmortizedPaymentSplit(
-        Contract $contract, Payment $payment, float $cashAfterPenalty, $paymentDate = null
+    public function calculateSoonerPrincipalSplit(
+        Contract $contract, Payment $payment, float $cashAfterPenalty, ?string $paymentDate = null
     ): ?array {
         if ($payment->type !== 'regular' || $payment->status !== 'initial') {
             return null;
@@ -334,97 +338,49 @@ class ScheduledPaymentHandler
             return null;
         }
 
-        $due = Carbon::parse($payment->to_date ?? $payment->date)->startOfDay();
-        $now = $paymentDate
+        $from = Carbon::parse($payment->from_date)->startOfDay();
+        $now  = $paymentDate
             ? Carbon::parse($paymentDate)->setTimezone('Asia/Yerevan')->startOfDay()
             : Carbon::now('Asia/Yerevan')->startOfDay();
+        $elapsedDays = max(0, $from->diffInDays($now));
 
-        $from        = Carbon::parse($payment->from_date)->startOfDay();
-        $elapsedDays = max(1, $from->diffInDays($now));
-        $futureDays  = $now->diffInDays($due);
-        if ($futureDays < 1) {
-            return null;
-        }
+        $balance = (float) $contract->provided_amount;
+        $rate    = (float) $contract->interest_rate;
 
-        $P    = (float) $contract->provided_amount;
-        $rate = (float) $contract->interest_rate;
+        $alreadyPaidInterest = (float) $payment->entries()->sum('interest_amount');
+        $interestDue         = max(0, $balance * $elapsedDays * $rate / 100 - $alreadyPaidInterest);
 
-        if ($P <= 0 || $cashAfterPenalty <= 0) {
-            return null;
-        }
-
-        $pastInterest = $P * $elapsedDays * $rate / 100;
-        $kFuture      = $futureDays * ($rate / 100);
-        $denom        = 1 - $kFuture;
-        if (abs($denom) < 1e-9) {
-            return null;
-        }
-
-        $x = ($cashAfterPenalty - $pastInterest - $P * $kFuture) / $denom;
-        if ($x < 0) {
-            return null;
-        }
-        $x = min($x, $P, $cashAfterPenalty);
-
-        // Keep precision here; ContractTrait::calcAmount returns int and truncates decimals.
-        $futureInterest   = max(0, max(0, $P - $x) * (int) $futureDays * ($rate / 100));
-        $paidInterest     = $pastInterest + $futureInterest;
-        $principalForLine = min($x, (float) ($payment->principal_payment ?? 0));
-        $remainingCash    = max(0, $cashAfterPenalty - $paidInterest - $principalForLine);
+        $paidInterest  = min(max(0, $cashAfterPenalty), $interestDue);
+        $principalPart = max(0, $cashAfterPenalty - $interestDue);
 
         return [
-            'paid_interest'      => (float) $paidInterest,
-            'paid_principal'     => (float) $x,
-            'principal_for_line' => (float) $principalForLine,
-            'initial_principal'  => (float) $payment->principal_payment,
-            'remaining_cash'     => (float) $remainingCash,
+            'paid_interest'  => (float) $paidInterest,
+            'principal_part' => (float) $principalPart,
         ];
     }
 
-    private function applyEarlySplit(
+    private function handleSoonerPrincipal(
         $contract, $payment, $payer, $cash, $deal_id,
-        array $split, ?string $date, float $balanceBefore
+        float $remainingAmount, ?string $date, float $balanceBefore
     ): array {
-        $paidInterest     = $split['paid_interest'];
-        $principalForLine = $split['principal_for_line'];
-        $remainingCash    = $split['remaining_cash'];
+        $split = $this->calculateSoonerPrincipalSplit($contract, $payment, $remainingAmount, $date);
+        $paidInterest  = $split['paid_interest']  ?? 0.0;
+        $principalPart = $split['principal_part'] ?? $remainingAmount;
 
-        $contract->left            = max(0, $contract->left - $principalForLine);
-        $contract->provided_amount = max(0, $contract->provided_amount - $principalForLine);
-        //$payment->remaining        = max(0, (float) ($payment->remaining - $remainingCash));
-
-        $this->recorder->completePayment(
-            $payment, $payer, $cash, $contract->id, $deal_id,
-            $principalForLine, $paidInterest,
-            $date, $balanceBefore, (float) $contract->provided_amount,
-            $paidInterest + $principalForLine
+        // Only the interest is recorded against this row here; principalPart flows
+        // back as leftover 'amount' so the normal partial-payment path (R9) applies
+        // it — first to this row's own principal, then spills to future rows, and
+        // recalculates affected rows' interest on the reduced balance.
+        $this->recorder->partiallyCompletePayment(
+            $payment, $paidInterest, $deal_id, [],
+            0, $paidInterest, $date, $balanceBefore, $balanceBefore
         );
-
-        // Recalculate future interest on the reduced principal
-        if ((float) $payment->amount <= 0) {
-            $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
-
-            if ($timing === PaymentDateClassifier::SOONER) {
-                $now = $date
-                    ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
-                    : Carbon::now('Asia/Yerevan')->startOfDay();
-
-                $remaining = Payment::where('contract_id', $contract->id)
-                    ->where('type', 'regular')->where('status', 'initial')
-                    ->orderBy('date')->orderBy('id')
-                    ->get();
-
-                if ($remaining->isNotEmpty()) {
-                    $this->recalculateInterest($contract, $remaining, $now);
-                }
-            }
-        }
 
         return [
             'interest_amount'      => $paidInterest,
-            'principal_amount'     => $principalForLine,
+            'principal_amount'     => 0,
             'prepayment_principal' => 0,
-            'amount'               => $remainingCash,
+            'amount'               => $principalPart,
             'remaining_interest'   => 0,
         ];
     }
