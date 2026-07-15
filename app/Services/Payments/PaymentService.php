@@ -56,6 +56,8 @@ class PaymentService
         $prepayment_principal = 0;
         $initial_amount       = $amount;
 
+        $timing = $this->dateClassifier->classify($contract, $date);
+
         $contract->historyContext = [
             'deal_id'     => $deal_id,
             'date'        => $date ?? now()->toDateString(),
@@ -165,8 +167,6 @@ class PaymentService
             // follows R9/R11 (reduce upcoming principal + recalc) regardless of
             // which mechanism the request asked for.
             if ($amount > 0) {
-                $timing = $this->dateClassifier->classify($contract, $date);
-
                 if ($timing === PaymentDateClassifier::SOONER && $paymentMechanism === 'prepayment') {
                     $extra = $this->prepaymentHandler->applyRemaining(
                         $contract, $amount, $payer, $cash, $deal_id, $date, $processedPaymentIds
