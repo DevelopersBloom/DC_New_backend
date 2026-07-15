@@ -159,7 +159,7 @@ class PaymentService
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
-
+dd($result);
             // ── Handle leftover cash ─────────────────────────────────────────
             if ($amount > 0) {
                 if ($paymentMechanism === 'prepayment') {
