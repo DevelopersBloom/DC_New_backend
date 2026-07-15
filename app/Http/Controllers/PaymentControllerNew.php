@@ -70,7 +70,7 @@ class PaymentControllerNew extends Controller
             return $this->makeFullPayment($request);
         }
 
-        $earlyMode = $request->input('mode', 'prepayment');
+        $earlyMode = $request->input('payment_mechanism', 'prepayment');
 
         DB::beginTransaction();
 
