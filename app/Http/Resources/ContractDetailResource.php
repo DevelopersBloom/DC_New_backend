@@ -141,6 +141,21 @@ class ContractDetailResource extends JsonResource
                     'discount_amount' => $payment->discount_amount ?? 0
                 ];
             }),
+            'deals' => $this->deals->map(function ($deal) {
+                return [
+                    'id'               => $deal->id,
+                    'type'             => $deal->type,
+                    'amount'           => $deal->amount,
+                    'principal_amount' => $deal->principal_amount ?? 0,
+                    'prepayment'       => $deal->prepayment ?? 0,
+                    'interest_amount'  => $deal->interest_amount ?? 0,
+                    'penalty'          => $deal->penalty ?? 0,
+                    'discount'         => $deal->discount ?? 0,
+                    'delay_days'       => $deal->delay_days ?? 0,
+                    'cash'             => $deal->cash,
+                    'date'             => $deal->date ? Carbon::parse($deal->date)->format('d-m-Y') : null,
+                ];
+            }),
             'history' => $this->history->map(function ($history) {
                 return [
                     'id'   => $history->id,

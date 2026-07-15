@@ -26,6 +26,8 @@ class Deal extends Model
         'penalty',
         'discount',
         'interest_amount',
+        'prepayment',
+        'principal_amount',
         'order_id',
         'pawnshop_id',
         'contract_id',
