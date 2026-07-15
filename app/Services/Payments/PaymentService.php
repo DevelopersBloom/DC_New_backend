@@ -152,7 +152,7 @@ class PaymentService
                 if ($amount > 0) {
                     $result = $this->processSinglePayment(
                         $contract, $payment, $amount, $payer, $cash, $deal_id,
-                        $forceScheduledForSelected, $interestAmount, $date, $paymentMechanism
+                        $forceScheduledForSelected, $interestAmount, $date, $paymentMechanism, $timing
                     );
                     $processedPaymentIds[] = $payment->id;
                     $amount               = $result['amount'];
@@ -310,11 +310,15 @@ class PaymentService
     private function processSinglePayment(
         $contract, $payment, $amount, $payer, $cash, $deal_id,
         bool $forceScheduledForSelected = false, $interestAmount = 0,
-        $date = null, $paymentMechanism = null
+        $date = null, $paymentMechanism = null, $timing = null
     ): array {
         $balanceBefore = (float) $contract->provided_amount;
 
-        if ($contract->payment_type === 'amortized' && $paymentMechanism === 'prepayment') {
+        // The prepayment bucket only exists for genuinely early payments (R5/R6) —
+        // gated by the overall transaction timing, not just the requested mechanism,
+        // so a due-date/late payment never creates a Prepayment record even if a
+        // future row happens to be explicitly selected alongside it.
+        if ($contract->payment_type === 'amortized' && $paymentMechanism === 'prepayment' && $timing === PaymentDateClassifier::SOONER) {
             $result = $this->prepaymentHandler->handle(
                 $contract, $payment, $payer, $cash, $deal_id,
                 $amount, $interestAmount, $date, $balanceBefore
