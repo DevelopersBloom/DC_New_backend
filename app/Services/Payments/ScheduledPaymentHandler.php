@@ -363,6 +363,7 @@ class ScheduledPaymentHandler
         float $remainingAmount, ?string $date, float $balanceBefore
     ): array {
         $split = $this->calculateSoonerPrincipalSplit($contract, $payment, $remainingAmount, $date);
+        dd($split);
         $paidInterest  = $split['paid_interest']  ?? 0.0;
         $principalPart = $split['principal_part'] ?? $remainingAmount;
 
