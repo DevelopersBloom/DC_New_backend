@@ -167,6 +167,7 @@ class ScheduledPaymentHandler
                 $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
                 $balanceForRow      = $balance + $remainingPrincipal;
                 $principal          = $remainingPrincipal;
+                dd($remainingPrincipal,$balanceForRow,$principal);
             }
 
             $interest  = $balanceForRow * $days * ($rate / 100);
@@ -238,7 +239,6 @@ class ScheduledPaymentHandler
                 ->get();
 
             $pendingPrincipalReductions = array_column($changes, 'reduction', 'payment_id');
-dd($pendingPrincipalReductions);
             $this->recalculateInterest($contract, $affectedPayments, $now, $pendingPrincipalReductions);
         }
 
