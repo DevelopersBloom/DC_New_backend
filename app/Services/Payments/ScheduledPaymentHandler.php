@@ -160,7 +160,6 @@ class ScheduledPaymentHandler
             if ($payment->id === $payments->last()->id) {
                 $remainingPrincipal = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
                 $balanceForRow      = $balance + $remainingPrincipal;
-                dd($remainingPrincipal, $balanceForRow,$payment->id,$payment->principal_payment);
             }
 
             $interest  = $balanceForRow * $days * ($rate / 100);
