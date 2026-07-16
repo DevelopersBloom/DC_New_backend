@@ -152,6 +152,7 @@ class PaymentControllerNew extends Controller
                 $history->$field = $result[$field] ?? 0;
                 $deal->$field    = $result[$field] ?? 0;
             }
+            dd($result);
             $deal->principal_amount = $result['principal_amount'] ?? 0;
             $deal->prepayment       = $result['prepayment_principal'] ?? 0;
 
