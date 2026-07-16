@@ -152,8 +152,13 @@ class PaymentControllerNew extends Controller
                 $history->$field = $result[$field] ?? 0;
                 $deal->$field    = $result[$field] ?? 0;
             }
-            $deal->principal_amount = $result['principal_amount'] + $result['partial_amount'] ?? 0;
-            $deal->prepayment       = $result['prepayment_principal'] ?? 0;
+            $partial_amount = $result['partial_amount'] ?? 0;
+            $principal = $result['principal_amount'] ?? 0;
+            $interest             = $result['interest_amount'];
+            $prepaymentPrincipal  = $result['prepayment_principal'] ?? 0;
+
+            $deal->principal_amount = $principal + $partial_amount;
+            $deal->prepayment       = $prepaymentPrincipal;
 
             $history->save();
             $deal->save();
@@ -163,9 +168,7 @@ class PaymentControllerNew extends Controller
             $clientId = $contract->client_id;
             $docNum   = Transaction::getNextDocumentNumber();
 
-            $interest             = $result['interest_amount'];
-            $principal            = $result['principal_amount'];
-            $prepaymentPrincipal  = $result['prepayment_principal'] ?? 0;
+
             // ---- Interest ----
             if ($interest > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_interest_amount', $class, $cash));
@@ -195,7 +198,7 @@ class PaymentControllerNew extends Controller
                     $date,
                     $docNum,
                     DocumentJournal::PAY_MOTHER_AMOUNT,
-                    $principal,
+                    $principal + $partial_amount,
                     'mother_amount_payment',
                     $rule->debit_account_id,
                     $rule->credit_account_id,

@@ -1079,40 +1079,40 @@ class PaymentService
         $filter     = $cash ? 'pay_mother_amount_cash' : 'pay_mother_amount';
         $ruleMother = PostingRule::where('business_event_filter', $filter)->first();
 
-        if ($ruleMother && $partialAmount > 0) {
-            $nextDocNum = Transaction::getNextDocumentNumber();
-            $journalDoc = DocumentJournal::create([
-                'date'              => $date,
-                'document_number'   => $nextDocNum,
-                'document_type'     => DocumentJournal::PAY_MOTHER_AMOUNT,
-                'amount_amd'        => $partialAmount,
-                'debit_partner_id'  => $ruleMother->resolveDebitPartnerId($contract) ?? null,
-                'credit_partner_id' => $ruleMother->resolveCreditPartnerId($contract) ?? $clientId,
-                'comment'           => 'mother_amount_payment',
-                'debit_account_id'  => $ruleMother->debit_account_id,
-                'credit_account_id' => $ruleMother->credit_account_id,
-                'user_id'           => auth()->id(),
-                'journalable_type'  => DocumentJournal::class,
-                'journalable_id'    => $journal->id,
-                'deal_id'           => $deal_id,
-                'contract_id'       => $contract->id,
-            ]);
-            Transaction::create([
-                'date'                 => $date,
-                'document_number'      => $nextDocNum,
-                'document_type'        => DocumentJournal::PAY_MOTHER_AMOUNT,
-                'debit_account_id'     => $ruleMother->debit_account_id,
-                'credit_account_id'    => $ruleMother->credit_account_id,
-                'debit_partner_id'     => $ruleMother->resolveDebitPartnerId($contract) ?? null,
-                'credit_partner_id'    => $ruleMother->resolveCreditPartnerId($contract) ?? $clientId,
-                'amount_amd'           => $partialAmount,
-                'comment'              => 'mother_amount_payment',
-                'user_id'              => auth()->id(),
-                'transactionable_type' => DocumentJournal::class,
-                'transactionable_id'   => $journalDoc->id,
-                'contract_id'          => $contract->id,
-            ]);
-        }
+//        if ($ruleMother && $partialAmount > 0) {
+//            $nextDocNum = Transaction::getNextDocumentNumber();
+//            $journalDoc = DocumentJournal::create([
+//                'date'              => $date,
+//                'document_number'   => $nextDocNum,
+//                'document_type'     => DocumentJournal::PAY_MOTHER_AMOUNT,
+//                'amount_amd'        => $partialAmount,
+//                'debit_partner_id'  => $ruleMother->resolveDebitPartnerId($contract) ?? null,
+//                'credit_partner_id' => $ruleMother->resolveCreditPartnerId($contract) ?? $clientId,
+//                'comment'           => 'mother_amount_payment',
+//                'debit_account_id'  => $ruleMother->debit_account_id,
+//                'credit_account_id' => $ruleMother->credit_account_id,
+//                'user_id'           => auth()->id(),
+//                'journalable_type'  => DocumentJournal::class,
+//                'journalable_id'    => $journal->id,
+//                'deal_id'           => $deal_id,
+//                'contract_id'       => $contract->id,
+//            ]);
+//            Transaction::create([
+//                'date'                 => $date,
+//                'document_number'      => $nextDocNum,
+//                'document_type'        => DocumentJournal::PAY_MOTHER_AMOUNT,
+//                'debit_account_id'     => $ruleMother->debit_account_id,
+//                'credit_account_id'    => $ruleMother->credit_account_id,
+//                'debit_partner_id'     => $ruleMother->resolveDebitPartnerId($contract) ?? null,
+//                'credit_partner_id'    => $ruleMother->resolveCreditPartnerId($contract) ?? $clientId,
+//                'amount_amd'           => $partialAmount,
+//                'comment'              => 'mother_amount_payment',
+//                'user_id'              => auth()->id(),
+//                'transactionable_type' => DocumentJournal::class,
+//                'transactionable_id'   => $journalDoc->id,
+//                'contract_id'          => $contract->id,
+//            ]);
+//        }
 
         $classificationName = $contract->client->classification->name ?? 'standard';
         $eventFilter        = ($classificationName === 'standard')
