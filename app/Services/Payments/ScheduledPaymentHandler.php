@@ -135,7 +135,7 @@ class ScheduledPaymentHandler
      * into the balance for its own interest calc, since that portion hasn't
      * actually left the balance yet. Earlier rows use the balance as-is.
      */
-    public function recalculateInterest(Contract $contract, $payments, $date = null): void
+    public function recalculateInterest(Contract $contract, $payments, $date = null, array $pendingPrincipalReductions = []): void
     {
         $payments = $payments->where('status', 'initial')
             ->sortBy(fn ($p) => [$p->date, $p->id ?? 0])
@@ -155,19 +155,24 @@ class ScheduledPaymentHandler
             $days         = max(1, $paymentDate->diffInDays($selectedDate));
             $prevDate     = $paymentDate;
 
-            $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
+            // Entries for the reduction currently being applied (processAmortized)
+            // aren't persisted yet at this point, so they must be added explicitly —
+            // otherwise the last row's balance add-back below double-counts principal
+            // that's about to be paid off in this same request.
+            $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount')
+                + ($pendingPrincipalReductions[$payment->id] ?? 0);
+            $principal            = (float) $payment->principal_payment;
             $balanceForRow        = $balance;
             if ($payment->id === $payments->last()->id) {
-                $remainingPrincipal = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
+                $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
                 $balanceForRow      = $balance + $remainingPrincipal;
-                dd($remainingPrincipal, $balanceForRow,$payment->id,$payment->principal_payment);
+                $principal          = $remainingPrincipal;
             }
 
             $interest  = $balanceForRow * $days * ($rate / 100);
             $diff      = $payment->interest_payment - $interest;
             $payment->interest_payment          = $interest;
             //$payment->original_interest_payment -= $diff;
-            $principal      = (float) $payment->principal_payment;
             $payment->amount = $payment->interest_payment + $principal;
 
             if ((float) $payment->amount <= 0) {
@@ -232,7 +237,9 @@ class ScheduledPaymentHandler
                 ->orderBy('id', 'asc')
                 ->get();
 
-            $this->recalculateInterest($contract, $affectedPayments, $now);
+            $pendingPrincipalReductions = array_column($changes, 'reduction', 'payment_id');
+dd($pendingPrincipalReductions);
+            $this->recalculateInterest($contract, $affectedPayments, $now, $pendingPrincipalReductions);
         }
 
         foreach ($changes as &$change) {
