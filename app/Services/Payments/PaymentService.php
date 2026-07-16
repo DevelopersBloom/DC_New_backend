@@ -81,7 +81,7 @@ class PaymentService
         $delay_days     = $result_penalty['delay_days'];
         $parent_id      = $result_penalty['parent_id'];
         $payed_penalty  = 0;
-
+        $partial_amount = 0;
         if ($penalty > 0) {
             $penaltyResult = $this->processPenalty(
                 $contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id, $date
@@ -184,6 +184,7 @@ class PaymentService
                     $this->handleRemainingAmount(
                         $contract, $amount, $cash, $payments->last()->id, $deal_id, $date
                     );
+                    $partial_amount += $amount;
                 }
                 $amount = 0;
             }
@@ -245,6 +246,7 @@ class PaymentService
             'penalty'              => $payed_penalty,
             'delay_days'           => $delay_days,
             'discount'             => 0,
+            'partial_amount'       => $partial_amount,
         ];
     }
 
