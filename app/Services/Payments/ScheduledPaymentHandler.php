@@ -156,9 +156,9 @@ class ScheduledPaymentHandler
             $diff      = $payment->interest_payment - $interest;
             $payment->interest_payment          = $interest;
             //$payment->original_interest_payment -= $diff;
-
             $principal      = (float) $payment->principal_payment;
             $payment->amount = $payment->interest_payment + $principal;
+            dd($balance,$interest,$principal);
 
             if ((float) $payment->amount <= 0) {
                 $payment->status = 'completed';
