@@ -129,15 +129,11 @@ class ScheduledPaymentHandler
     }
 
     /**
-     * Running-balance recalculation: interest for each period = balance × days × rate,
-     * then balance -= principal_payment for that line.
+     * Running-balance recalculation: interest for each period = balance × days × rate.
      *
-     * Rows whose principal_payment has already been fully collected (via entries,
-     * e.g. an earlier partial reduction) don't reduce $balance any further here —
-     * that reduction already happened, so recalculating them on the same $balance
-     * is correct. Only a row that still has principal outstanding needs its own
-     * remaining principal added back into the balance for its own interest calc,
-     * since that portion hasn't actually left the balance yet.
+     * Only the last row in the schedule gets its still-unpaid principal added back
+     * into the balance for its own interest calc, since that portion hasn't
+     * actually left the balance yet. Earlier rows use the balance as-is.
      */
     public function recalculateInterest(Contract $contract, $payments, $date = null): void
     {
@@ -160,10 +156,13 @@ class ScheduledPaymentHandler
             $prevDate     = $paymentDate;
 
             $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
-//            $remainingPrincipal   = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
-//            $balanceForRow        = $balance + $remainingPrincipal;
+            $balanceForRow        = $balance;
+            if ($payment->id === $payments->last()->id) {
+                $remainingPrincipal = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
+                $balanceForRow      = $balance + $remainingPrincipal;
+            }
 
-            $interest  = $balance * $days * ($rate / 100);
+            $interest  = $balanceForRow * $days * ($rate / 100);
             $diff      = $payment->interest_payment - $interest;
             $payment->interest_payment          = $interest;
             //$payment->original_interest_payment -= $diff;
@@ -174,7 +173,6 @@ class ScheduledPaymentHandler
                 $payment->status = 'completed';
             }
 
-//            $balance -= $remainingPrincipal;
             if ($balance < 0) {
                 $balance = 0;
             }
