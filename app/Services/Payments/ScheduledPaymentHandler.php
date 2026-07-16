@@ -160,10 +160,10 @@ class ScheduledPaymentHandler
             $prevDate     = $paymentDate;
 
             $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
-            $remainingPrincipal   = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
-            $balanceForRow        = $balance + $remainingPrincipal;
+//            $remainingPrincipal   = max(0, (float) $payment->principal_payment - $alreadyPaidPrincipal);
+//            $balanceForRow        = $balance + $remainingPrincipal;
 
-            $interest  = $balanceForRow * $days * ($rate / 100);
+            $interest  = $balance * $days * ($rate / 100);
             $diff      = $payment->interest_payment - $interest;
             $payment->interest_payment          = $interest;
             //$payment->original_interest_payment -= $diff;
@@ -174,7 +174,7 @@ class ScheduledPaymentHandler
                 $payment->status = 'completed';
             }
 
-            $balance -= $remainingPrincipal;
+//            $balance -= $remainingPrincipal;
             if ($balance < 0) {
                 $balance = 0;
             }
