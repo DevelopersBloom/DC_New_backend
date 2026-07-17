@@ -1013,6 +1013,16 @@ class PaymentService
         $this->scheduledHandler->recalculateSchedule($contract, $date);
     }
 
+    /**
+     * Adjust interest on installments crossed by a late payment date, without
+     * actually recording a payment. Exposed for the frontend to refresh the
+     * schedule ahead of time (e.g. before the client has paid).
+     */
+    public function recalculateLatePaymentInterest(Contract $contract, string $date): void
+    {
+        $this->lateInterestRecalculator->recalculate($contract, $date);
+    }
+
     // ── Payment creation helper ──────────────────────────────────────────────
 
     public function createPayment(

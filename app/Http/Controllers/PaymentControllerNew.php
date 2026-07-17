@@ -413,6 +413,33 @@ class PaymentControllerNew extends Controller
         ));
     }
 
+    /**
+     * Recalculate late-payment interest for a contract's schedule without recording
+     * a payment — lets the frontend refresh the table ahead of an actual payment.
+     */
+    public function recalculateSchedule(Request $request): JsonResponse
+    {
+        $request->validate([
+            'contract_id' => 'required|exists:contracts,id',
+            'date'        => 'nullable|date',
+        ]);
+
+        $contract = Contract::findOrFail($request->contract_id);
+        $date     = $request->date ?? now()->toDateString();
+
+        if ($error = $this->postingDatePolicy->validate($date)) {
+            return $error;
+        }
+
+        if ($contract->payment_type === 'amortized') {
+            $this->paymentService->recalculateLatePaymentInterest($contract, $date);
+        }
+
+        return response()->json([
+            'message' => 'Schedule recalculated successfully.',
+        ]);
+    }
+
     public function makeFullPayment(Request $request): JsonResponse
     {
             $idempotencyKey = $request->header('Idempotency-Key');
