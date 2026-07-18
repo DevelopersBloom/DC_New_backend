@@ -485,9 +485,16 @@ class CreditRegistryController extends Controller
     public function importAccClassification(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls|max:20480',
+            'file' => 'required|file|max:20480',
             'password' => 'required|string',
         ]);
+
+        $extension = strtolower($request->file('file')->getClientOriginalExtension());
+        if (!in_array($extension, ['xlsx', 'xls'], true)) {
+            return response()->json([
+                'message' => 'The file must have an xlsx or xls extension.',
+            ], 422);
+        }
 
         $uploadedPath = $request->file('file')->getRealPath();
         $originalName = $request->file('file')->getClientOriginalName();
