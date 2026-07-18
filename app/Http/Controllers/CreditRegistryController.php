@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Modification;
+use App\Services\AccClassificationImportService;
 use App\Services\CreditRegistryL001Service;
 use App\Services\CreditRegistryL002Service;
 use App\Services\CreditRegistryL003Service;
@@ -29,6 +30,7 @@ class CreditRegistryController extends Controller
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
         private DegsClient                               $degsClient,
         private BankIdService                            $bankIdService,
+        private AccClassificationImportService           $accClassificationImportService,
     )
     {
     }
@@ -468,6 +470,45 @@ class CreditRegistryController extends Controller
             ->update(['is_sent' => true, 'sent_at' => now()]);
 
         return response()->download($path, $filename)->deleteFileAfterSend(true);
+    }
+
+    // ================================================================
+    // ACC — periodic credit registry classification import
+    // ================================================================
+
+    /**
+     * POST /credit-registry/import-acc-classification
+     * Body (multipart/form-data): file (password-protected xlsx), password
+     * Upgrades client classifications from the periodic ACC report — a
+     * client is only ever moved to a worse classification, never better.
+     */
+    public function importAccClassification(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls|max:20480',
+            'password' => 'required|string',
+        ]);
+
+        $uploadedPath = $request->file('file')->getRealPath();
+        $originalName = $request->file('file')->getClientOriginalName();
+
+        try {
+            $summary = $this->accClassificationImportService->import($uploadedPath, $data['password'], $originalName);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to import ACC classification file',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'file' => $originalName,
+            'updated_count' => count($summary['updated']),
+            'skipped_count' => count($summary['skipped']),
+            'unmatched_count' => count($summary['unmatched']),
+            'error_count' => count($summary['errors']),
+            'details' => $summary,
+        ]);
     }
 
     // ================================================================

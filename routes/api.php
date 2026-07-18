@@ -222,6 +222,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification'])->middleware('can:classify_client');
         Route::post('/{id}/fetch-bank-id', [CreditRegistryController::class, 'fetchBankId']);
     });
+    Route::post('/credit-registry/import-acc-classification', [CreditRegistryController::class, 'importAccClassification'])->middleware('can:classify_client');
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');
     Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index']);
 
