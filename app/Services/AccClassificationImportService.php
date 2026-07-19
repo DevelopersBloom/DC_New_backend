@@ -6,6 +6,7 @@ use App\Models\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Symfony\Component\Process\Process;
 
 /**
  * Imports the periodic Central Bank / credit registry ("ACC") export and
@@ -15,9 +16,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  * posting cascade as the automatic job runs.
  *
  * The file is delivered password-protected (MS-OFFCRYPTO). PhpSpreadsheet
- * can't read encrypted OOXML directly, so decryption goes through Excel via
- * COM automation (requires the php com_dotnet extension and Microsoft Excel
- * installed on this server).
+ * can't read encrypted OOXML directly, so decryption shells out to the
+ * `msoffcrypto-tool` Python CLI (pip install msoffcrypto-tool), which must
+ * be installed on this server and reachable on PATH.
  */
 class AccClassificationImportService
 {
@@ -80,38 +81,31 @@ class AccClassificationImportService
 
     private function decryptToTempFile(string $encryptedPath, string $password): string
     {
-        if (!class_exists(\COM::class)) {
-            throw new \RuntimeException(
-                'Decrypting password-protected ACC files requires the PHP com_dotnet extension '
-                . 'and Microsoft Excel to be installed on this server.'
-            );
-        }
-
         $tempDir = storage_path('app/tmp/acc-import');
         if (!is_dir($tempDir)) {
             mkdir($tempDir, 0775, true);
         }
         $decryptedPath = $tempDir . '/' . (string) Str::uuid() . '.xlsx';
 
-        $excel = new \COM('Excel.Application');
-        $excel->Visible = false;
-        $excel->DisplayAlerts = false;
+        $process = new Process(['msoffcrypto-tool', '-p', $password, $encryptedPath, $decryptedPath]);
+        $process->setTimeout(60);
+        $process->run();
 
-        try {
-            $workbook = $excel->Workbooks->Open($encryptedPath, false, false, null, $password);
-        } catch (\Throwable $e) {
-            $excel->Quit();
-            $excel = null;
-            throw new \RuntimeException('Failed to open the ACC file — wrong password or corrupt file.', 0, $e);
+        if (!$process->isSuccessful()) {
+            $error = trim($process->getErrorOutput()) ?: trim($process->getOutput());
+
+            if ($process->getExitCode() === 127 || stripos($error, 'not found') !== false || stripos($error, 'not recognized') !== false) {
+                throw new \RuntimeException(
+                    'Decrypting ACC files requires the "msoffcrypto-tool" command to be installed on this server '
+                    . '(pip install msoffcrypto-tool).'
+                );
+            }
+
+            throw new \RuntimeException('Failed to decrypt the ACC file — wrong password or corrupt file. ' . $error);
         }
 
-        try {
-            $workbook->Password = '';
-            $workbook->SaveAs($decryptedPath, 51); // xlOpenXMLWorkbook (.xlsx, unprotected)
-        } finally {
-            $workbook->Close(false);
-            $excel->Quit();
-            $excel = null;
+        if (!file_exists($decryptedPath) || filesize($decryptedPath) === 0) {
+            throw new \RuntimeException('Decryption produced no output — wrong password or corrupt file.');
         }
 
         return $decryptedPath;
