@@ -8,18 +8,6 @@ use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Symfony\Component\Process\Process;
 
-/**
- * Imports the periodic Central Bank / credit registry ("ACC") export and
- * upgrades client classifications based on the max overdue days reported
- * there, reusing ClientClassificationService::applyClassificationIfWorse()
- * so classification is never downgraded and the same reserve/write-off
- * posting cascade as the automatic job runs.
- *
- * The file is delivered password-protected (MS-OFFCRYPTO). PhpSpreadsheet
- * can't read encrypted OOXML directly, so decryption shells out to the
- * `msoffcrypto-tool` Python CLI (pip install msoffcrypto-tool), which must
- * be installed on this server and reachable on PATH.
- */
 class AccClassificationImportService
 {
     private const DATA_START_ROW = 4;
@@ -45,7 +33,7 @@ class AccClassificationImportService
             foreach ($this->parseRows($decryptedPath) as [$bankClientId, $maxOverdueDays]) {
                 try {
                     $client = Client::where('bank_client_id', $bankClientId)->with('classification')->first();
-
+dd($bankClientId, $maxOverdueDays);
                     if (!$client) {
                         $summary['unmatched'][] = $bankClientId;
                         continue;
