@@ -12,6 +12,7 @@ class AccClassificationImportService
 {
     private const DATA_START_ROW = 4;
     private const COL_BANK_CLIENT_ID = 3;
+    private const COL_FULL_NAME = 6;
     private const COL_MAX_OVERDUE_DAYS = 16;
 
     public function __construct(private ClientClassificationService $classificationService)
@@ -27,19 +28,28 @@ class AccClassificationImportService
         $decryptedPath = $this->decryptToTempFile($encryptedPath, $password);
 
         $classificationCounts = [];
+        $rows = [];
         $matchedCount = 0;
         $unmatched = [];
 
         try {
-            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $maxOverdueDays]) {
+            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $fullName, $maxOverdueDays]) {
                 $classification = $this->classificationService->classificationByOverdue($maxOverdueDays);
                 $classificationCounts[$classification->name] = ($classificationCounts[$classification->name] ?? 0) + 1;
 
-                if (Client::where('bank_client_id', $bankClientId)->exists()) {
+                $matched = Client::where('bank_client_id', $bankClientId)->exists();
+                if ($matched) {
                     $matchedCount++;
                 } else {
                     $unmatched[] = $bankClientId;
                 }
+
+                $rows[] = [
+                    'bank_client_id' => $bankClientId,
+                    'full_name' => $fullName,
+                    'classification' => $classification->name,
+                    'matched' => $matched,
+                ];
             }
         } finally {
             if (file_exists($decryptedPath)) {
@@ -54,6 +64,7 @@ class AccClassificationImportService
 
         return [
             'classifications' => $classifications,
+            'rows' => $rows,
             'matched_count' => $matchedCount,
             'unmatched_count' => count($unmatched),
             'unmatched' => $unmatched,
@@ -76,7 +87,7 @@ class AccClassificationImportService
         ];
 
         try {
-            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $maxOverdueDays]) {
+            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $fullName, $maxOverdueDays]) {
                 try {
                     $client = Client::where('bank_client_id', $bankClientId)->with('classification')->first();
                     if (!$client) {
@@ -93,6 +104,7 @@ class AccClassificationImportService
                     $entry = [
                         'client_id' => $client->id,
                         'bank_client_id' => $bankClientId,
+                        'full_name' => $fullName,
                         'max_overdue_days' => $maxOverdueDays,
                         'classification' => $classification->name,
                     ];
@@ -152,13 +164,14 @@ class AccClassificationImportService
 
         for ($row = self::DATA_START_ROW; $row <= $highestRow; $row++) {
             $bankClientId = trim((string) $sheet->getCellByColumnAndRow(self::COL_BANK_CLIENT_ID, $row)->getValue());
+            $fullName = trim((string) $sheet->getCellByColumnAndRow(self::COL_FULL_NAME, $row)->getValue());
             $maxOverdueRaw = $sheet->getCellByColumnAndRow(self::COL_MAX_OVERDUE_DAYS, $row)->getValue();
 
             if ($bankClientId === '' || !is_numeric($maxOverdueRaw)) {
                 continue;
             }
 
-            yield [$bankClientId, (int) $maxOverdueRaw];
+            yield [$bankClientId, $fullName, (int) $maxOverdueRaw];
         }
 
         $spreadsheet->disconnectWorksheets();
