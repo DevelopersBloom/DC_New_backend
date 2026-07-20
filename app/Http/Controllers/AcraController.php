@@ -30,6 +30,7 @@ class AcraController
             ->havingRaw('SUM(amount) > ?', [AcraExport::MIN_OVERDUE_AMD])
             ->pluck('contract_id')
             ->toArray();
+        dd($contractsWithInitialPayments);
         $mainContractJournals = DocumentJournal::where('journalable_type', Contract::class)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->select('id', 'journalable_id')
