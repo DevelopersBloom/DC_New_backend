@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use PhpParser\Comment\Doc;
 
 class AcraController
@@ -21,11 +22,11 @@ class AcraController
 
         $from = $request->from_date;
         $to = $request->to_date;
-
+        $calcDay = Carbon::parse($request->to_date)->subDay()->format('Y-m-d');
         // Match the "overdue" contract scope (Contract::scopeStatus): only count a
         // contract as overdue once its unpaid initial payments exceed 1000 AMD.
         $contractsWithInitialPayments = Payment::where('status', 'initial')
-            ->where('date', '<', $from)
+            ->where('date', '<', $calcDay)
             ->groupBy('contract_id')
             ->havingRaw('SUM(amount) > ?', [AcraExport::MIN_OVERDUE_AMD])
             ->pluck('contract_id')
