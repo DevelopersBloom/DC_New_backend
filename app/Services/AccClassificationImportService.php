@@ -33,7 +33,6 @@ class AccClassificationImportService
             foreach ($this->parseRows($decryptedPath) as [$bankClientId, $maxOverdueDays]) {
                 try {
                     $client = Client::where('bank_client_id', $bankClientId)->with('classification')->first();
-dd($bankClientId, $maxOverdueDays);
                     if (!$client) {
                         $summary['unmatched'][] = $bankClientId;
                         continue;
