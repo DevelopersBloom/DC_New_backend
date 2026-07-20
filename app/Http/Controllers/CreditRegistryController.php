@@ -477,30 +477,47 @@ class CreditRegistryController extends Controller
     // ================================================================
 
     /**
-     * POST /credit-registry/import-acc-classification
+     * POST /credit-registry/import-acc-classification/preview
+     * Body (multipart/form-data): file (password-protected xlsx), password
+     * Reads the ACC report and returns which classifications it contains,
+     * without changing anything.
+     */
+    public function previewAccClassification(Request $request): JsonResponse
+    {
+        [$uploadedPath, $originalName, $password, $error] = $this->validateAccClassificationUpload($request);
+        if ($error) {
+            return $error;
+        }
+
+        try {
+            $summary = $this->accClassificationImportService->preview($uploadedPath, $password);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to read ACC classification file',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'file' => $originalName,
+        ] + $summary);
+    }
+
+    /**
+     * POST /credit-registry/import-acc-classification/apply
      * Body (multipart/form-data): file (password-protected xlsx), password
      * Upgrades client classifications from the periodic ACC report — a
      * client is only ever moved to a worse classification, never better.
      */
-    public function importAccClassification(Request $request): JsonResponse
+    public function applyAccClassification(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'file' => 'required|file|max:20480',
-            'password' => 'required|string',
-        ]);
-
-        $extension = strtolower($request->file('file')->getClientOriginalExtension());
-        if (!in_array($extension, ['xlsx', 'xls'], true)) {
-            return response()->json([
-                'message' => 'The file must have an xlsx or xls extension.',
-            ], 422);
+        [$uploadedPath, $originalName, $password, $error] = $this->validateAccClassificationUpload($request);
+        if ($error) {
+            return $error;
         }
 
-        $uploadedPath = $request->file('file')->getRealPath();
-        $originalName = $request->file('file')->getClientOriginalName();
-
         try {
-            $summary = $this->accClassificationImportService->import($uploadedPath, $data['password'], $originalName);
+            $summary = $this->accClassificationImportService->apply($uploadedPath, $password, $originalName);
         } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Failed to import ACC classification file',
@@ -516,6 +533,32 @@ class CreditRegistryController extends Controller
             'error_count' => count($summary['errors']),
             'details' => $summary,
         ]);
+    }
+
+    /**
+     * Validates the shared upload payload for the ACC classification endpoints.
+     * Returns [uploadedPath, originalName, password, errorResponse|null].
+     */
+    private function validateAccClassificationUpload(Request $request): array
+    {
+        $data = $request->validate([
+            'file' => 'required|file|max:20480',
+            'password' => 'required|string',
+        ]);
+
+        $extension = strtolower($request->file('file')->getClientOriginalExtension());
+        if (!in_array($extension, ['xlsx', 'xls'], true)) {
+            return [null, null, null, response()->json([
+                'message' => 'The file must have an xlsx or xls extension.',
+            ], 422)];
+        }
+
+        return [
+            $request->file('file')->getRealPath(),
+            $request->file('file')->getClientOriginalName(),
+            $data['password'],
+            null,
+        ];
     }
 
     // ================================================================

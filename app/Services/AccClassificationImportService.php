@@ -18,7 +18,53 @@ class AccClassificationImportService
     {
     }
 
-    public function import(string $encryptedPath, string $password, string $sourceLabel = ''): array
+    /**
+     * Reads the encrypted ACC report and returns which classifications
+     * are present in it, without changing anything in the database.
+     */
+    public function preview(string $encryptedPath, string $password): array
+    {
+        $decryptedPath = $this->decryptToTempFile($encryptedPath, $password);
+
+        $classificationCounts = [];
+        $matchedCount = 0;
+        $unmatched = [];
+
+        try {
+            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $maxOverdueDays]) {
+                $classification = $this->classificationService->classificationByOverdue($maxOverdueDays);
+                $classificationCounts[$classification->name] = ($classificationCounts[$classification->name] ?? 0) + 1;
+
+                if (Client::where('bank_client_id', $bankClientId)->exists()) {
+                    $matchedCount++;
+                } else {
+                    $unmatched[] = $bankClientId;
+                }
+            }
+        } finally {
+            if (file_exists($decryptedPath)) {
+                @unlink($decryptedPath);
+            }
+        }
+
+        $classifications = [];
+        foreach ($classificationCounts as $name => $count) {
+            $classifications[] = ['name' => $name, 'count' => $count];
+        }
+
+        return [
+            'classifications' => $classifications,
+            'matched_count' => $matchedCount,
+            'unmatched_count' => count($unmatched),
+            'unmatched' => $unmatched,
+        ];
+    }
+
+    /**
+     * Applies the classifications from the encrypted ACC report to matching
+     * clients — a client is only ever moved to a worse classification, never better.
+     */
+    public function apply(string $encryptedPath, string $password, string $sourceLabel = ''): array
     {
         $decryptedPath = $this->decryptToTempFile($encryptedPath, $password);
 
