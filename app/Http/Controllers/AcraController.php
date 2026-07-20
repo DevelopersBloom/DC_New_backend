@@ -30,7 +30,6 @@ class AcraController
             ->havingRaw('SUM(amount) > ?', [AcraExport::MIN_OVERDUE_AMD])
             ->pluck('contract_id')
             ->toArray();
-        dd($contractsWithInitialPayments);
         $mainContractJournals = DocumentJournal::where('journalable_type', Contract::class)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->select('id', 'journalable_id')
@@ -98,9 +97,10 @@ class AcraController
 
         $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();
         $contractClientIds = $contracts->pluck('client_id')->toArray();
+        $contractIds = $contracts->pluck('id')->toArray();
         $allClientIds = array_unique(array_merge($contractClientIds, $updatedClientIds));
         $allClients = Client::whereIn('id', $allClientIds)->whereNotIn('id', $excludedClientIds)->get();
-
+dd($allClientIds,$contractIds);
         $acraExport = new AcraExport($contracts, $allClients, $from, $to);
         $fileData = $acraExport->export();
 
