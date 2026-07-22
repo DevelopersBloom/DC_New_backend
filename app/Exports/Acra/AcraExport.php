@@ -391,15 +391,21 @@ class AcraExport
                     ->latest('date')
                     ->first();
 
+
                 if ($lastMotherPayment) {
                     $lastPaymentDate = $lastMotherPayment->date;
                 }
 
-                $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                    ->where('journalable_id', $mainJournal->id)
-                    ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                    ->where('date', '<=', $this->to)
-                    ->sum('amount_amd');
+                if ($contract->status == 'completed') {
+                    $totalPaid = $contract->mother;
+                } else {
+                    $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $mainJournal->id)
+                        ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+                        ->where('date', '<=', $this->to)
+                        ->sum('amount_amd');
+                }
+
             }
             // Some closed contracts may have principal closed without detailed PAY_MOTHER_AMOUNT rows.
             // Keep I column meaningful by deriving paid principal from contract figures when needed.
