@@ -162,10 +162,11 @@ class ScheduledPaymentHandler
                 + ($pendingPrincipalReductions[$payment->id] ?? 0);
             $principal            = (float) $payment->principal_payment;
             $balanceForRow        = $balance;
-            if ($payment->id === $payments->last()->id) {
+            $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
+dd($timing);
+            if ($payment->id === $payments->last()->id && $timing === PaymentDateClassifier::SOONER  ) {
                 $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
                 $balanceForRow      = $balance + $remainingPrincipal;
-                dd($principal,$alreadyPaidPrincipal,$remainingPrincipal,$balanceForRow,$balance);
                 $principal          = $remainingPrincipal;
             }
 
