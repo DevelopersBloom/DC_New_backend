@@ -235,7 +235,6 @@ class ScheduledPaymentHandler
                 ->orderBy('to_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
-dd($timing);
             $pendingPrincipalReductions = array_column($changes, 'reduction', 'payment_id');
             $this->recalculateInterest($contract, $affectedPayments, $now, $pendingPrincipalReductions,$timing);
         }
