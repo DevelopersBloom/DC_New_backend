@@ -122,9 +122,9 @@ class LatePaymentInterestRecalculator
                 // After paymentDate the overdue installments' principals are collected,
                 // reducing the balance for the remainder of this period.
                 $balanceAtPayDate = max(0.0, $balanceAtStart - $overdueByPayDatePrincipals);
-dd($balanceAtPayDate,$balanceAtStart,$overdueByPayDatePrincipals,$payment->id,$payment->amount);
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore)
                     + self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter);
+                dd($balanceAtPayDate,$balanceAtStart,$overdueByPayDatePrincipals,$payment->id,$payment->interest_payment,$interest,self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter), self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore),);
             }
             $results[] = ['payment' => $payment, 'interest' => $interest];
         }
