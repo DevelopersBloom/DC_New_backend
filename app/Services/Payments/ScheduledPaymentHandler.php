@@ -144,7 +144,6 @@ class ScheduledPaymentHandler
         $balance  = (float) $contract->provided_amount;
         $rate     = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
-dd($balance);
         foreach ($payments as $payment) {
             $payment     = $this->normalizePaymentDates($payment, $contract);
             $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
@@ -170,6 +169,7 @@ dd($balance);
             }
 
             $interest  = $balanceForRow * $days * ($rate / 100);
+            dd($balanceForRow,$balance,$days,$interest);
             $diff      = $payment->interest_payment - $interest;
             $payment->interest_payment          = $interest;
             //$payment->original_interest_payment -= $diff;
