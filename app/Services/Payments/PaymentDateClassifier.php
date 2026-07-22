@@ -29,7 +29,7 @@ class PaymentDateClassifier
         if (!$payment) {
             return null;
         }
-
+dd($payment->to_date);
         return $this->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
     }
 
@@ -39,7 +39,6 @@ class PaymentDateClassifier
      */
     public function classifyAgainstDueDate(string $dueDate, ?string $date = null): string
     {
-        dd($dueDate);
         $now = $date
             ? Carbon::parse($date, 'Asia/Yerevan')
             : Carbon::now('Asia/Yerevan');
