@@ -154,7 +154,6 @@ class PaymentService
                         $contract, $payment, $amount, $payer, $cash, $deal_id,
                         $forceScheduledForSelected, $interestAmount, $date, $paymentMechanism, $timing
                     );
-                    dd($interestAmount,$result);
 
                     $processedPaymentIds[] = $payment->id;
                     $amount               = $result['amount'];
@@ -163,6 +162,7 @@ class PaymentService
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
                 }
             }
+            dd($result);
             // ── Handle leftover cash ─────────────────────────────────────────
             // Prepayment/future-interest mechanisms only make sense when this
             // payment is actually SOONER (R6) — a due-date/late leftover always
