@@ -160,6 +160,7 @@ class PaymentService
                     $interest_amount      += $result['interest_amount'];
                     $principal_amount     += $result['principal_amount'];
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
+                    $interestAmount -= $result['interest_amount'] ?? 0;
                 }
                 dd($result);
             }
