@@ -553,6 +553,7 @@ trait ContractTrait
                 $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
 
                 $collectedPrincipal = (float) $payment->entries()->sum('principal_amount');
+                dd($collectedPrincipal,$payment->principal_payment );
                 $carryPrincipal += max(0, (float) $payment->principal_payment - $collectedPrincipal);
             } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
