@@ -225,7 +225,7 @@ class ScheduledPaymentHandler
             $remainingPartial -= $reduction;
             $payment->save();
         }
-
+dd($changes);
         if (!empty($changes)) {
             $affectedPaymentIds = array_column($changes, 'payment_id');
 
