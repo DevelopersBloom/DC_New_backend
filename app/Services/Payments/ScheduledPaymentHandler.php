@@ -33,12 +33,12 @@ class ScheduledPaymentHandler
      */
     public function handleAmortized(
         $contract, $payment, $payer, $cash, $deal_id,
-        float $amount, float $interestAmount, ?string $date, float $balanceBefore
+        float $amount, float $interestAmount, ?string $date, float $balanceBefore,$timing
     ): array {
         $remainingAmount         = $amount;
         $remainingInterestAmount = $interestAmount;
 
-        $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
+        //$timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
         if ($timing === PaymentDateClassifier::SOONER) {
             return $this->handleSoonerPrincipal(
                 $contract, $payment, $payer, $cash, $deal_id, $remainingAmount, $date, $balanceBefore

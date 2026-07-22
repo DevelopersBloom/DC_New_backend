@@ -331,7 +331,7 @@ class PaymentService
         } elseif ($contract->payment_type === 'amortized') {
             $result = $this->scheduledHandler->handleAmortized(
                 $contract, $payment, $payer, $cash, $deal_id,
-                $amount, $interestAmount, $date, $balanceBefore
+                $amount, $interestAmount, $date, $balanceBefore,$timing
             );
         } else {
             $result = $this->scheduledHandler->handleClassic(
