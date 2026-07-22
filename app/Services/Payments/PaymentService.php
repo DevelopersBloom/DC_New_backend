@@ -154,7 +154,7 @@ class PaymentService
                         $contract, $payment, $amount, $payer, $cash, $deal_id,
                         $forceScheduledForSelected, $interestAmount, $date, $paymentMechanism, $timing
                     );
-                    dd($interestAmount);
+                    dd($interestAmount,$result);
 
                     $processedPaymentIds[] = $payment->id;
                     $amount               = $result['amount'];
