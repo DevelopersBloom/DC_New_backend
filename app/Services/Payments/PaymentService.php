@@ -917,7 +917,6 @@ class PaymentService
 
                 $contractClone->provided_amount = max(0, $contractClone->provided_amount - $paidPrincipal);
                 $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
-dd(1,$payment->to_date);
                 $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $today);
 
                 if ($timing === PaymentDateClassifier::SOONER && $paidPrincipal > 0) {
@@ -928,6 +927,8 @@ dd(1,$payment->to_date);
 
             } elseif ($contractClone->payment_type === 'amortized') {
                 // Try early split first
+                dd(1,$payment->to_date);
+
                 $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
                 $earlySplit = $timing === PaymentDateClassifier::SOONER
                     ? $this->scheduledHandler->calculateEarlySplitPreview($contractClone, $payment, $remaining, $date)
