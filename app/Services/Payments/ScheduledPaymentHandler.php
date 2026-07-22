@@ -165,7 +165,7 @@ class ScheduledPaymentHandler
             if ($payment->id === $payments->last()->id) {
                 $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
                 $balanceForRow      = $balance + $remainingPrincipal;
-                dd($principal,$alreadyPaidPrincipal,$balanceForRow,$balance);
+                dd($principal,$alreadyPaidPrincipal,$remainingPrincipal,$balanceForRow,$balance);
                 $principal          = $remainingPrincipal;
             }
 
