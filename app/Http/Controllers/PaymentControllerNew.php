@@ -131,7 +131,6 @@ class PaymentControllerNew extends Controller
             // ===== Payment Logic =====
             $old = $this->calcPaidAmount($contract);
             $paymentMechanism = $earlyMode;
-            dd($interestAmount);
             $result = $this->paymentService->processPayments(
                 $contract,
                 $amount,
