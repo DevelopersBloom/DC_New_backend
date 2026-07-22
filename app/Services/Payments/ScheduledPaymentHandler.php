@@ -135,7 +135,7 @@ class ScheduledPaymentHandler
      * into the balance for its own interest calc, since that portion hasn't
      * actually left the balance yet. Earlier rows use the balance as-is.
      */
-    public function recalculateInterest(Contract $contract, $payments, $date = null, array $pendingPrincipalReductions = []): void
+    public function recalculateInterest(Contract $contract, $payments, $date = null, array $pendingPrincipalReductions = [],$timing): void
     {
         $payments = $payments->where('status', 'initial')
             ->sortBy(fn ($p) => [$p->date, $p->id ?? 0])
@@ -162,8 +162,6 @@ class ScheduledPaymentHandler
                 + ($pendingPrincipalReductions[$payment->id] ?? 0);
             $principal            = (float) $payment->principal_payment;
             $balanceForRow        = $balance;
-            $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
-dd($timing);
             if ($payment->id === $payments->last()->id && $timing === PaymentDateClassifier::SOONER  ) {
                 $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
                 $balanceForRow      = $balance + $remainingPrincipal;
@@ -196,7 +194,7 @@ dd($timing);
      * Distribute a partial payment across amortized installments
      * (reduces principal per row, then recalculates interest on the new balances).
      */
-    public function processAmortized(Contract $contract, $payments, $remainingPartial, $now): array
+    public function processAmortized(Contract $contract, $payments, $remainingPartial, $now,$timing): array
     {
         $payments = $payments->where('status', 'initial')
             ->sortBy(fn ($p) => [$p->date, $p->id ?? 0])
@@ -237,9 +235,9 @@ dd($timing);
                 ->orderBy('to_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
-
+dd($timing);
             $pendingPrincipalReductions = array_column($changes, 'reduction', 'payment_id');
-            $this->recalculateInterest($contract, $affectedPayments, $now, $pendingPrincipalReductions);
+            $this->recalculateInterest($contract, $affectedPayments, $now, $pendingPrincipalReductions,$timing);
         }
 
         foreach ($changes as &$change) {

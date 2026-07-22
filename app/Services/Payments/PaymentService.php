@@ -182,7 +182,7 @@ class PaymentService
 //                }
                  else {
                     $this->handleRemainingAmount(
-                        $contract, $amount, $cash, $payments->last()->id, $deal_id, $date
+                        $contract, $amount, $cash, $payments->last()->id, $deal_id, $date,$timing
                     );
                     $partial_amount += $amount;
                 }
@@ -346,7 +346,7 @@ class PaymentService
     // ── Remaining-cash handler (non-prepayment) ──────────────────────────────
 
     private function handleRemainingAmount(
-        $contract, $amount, $cash, $payment_id, $deal_id = null, $date = null
+        $contract, $amount, $cash, $payment_id, $deal_id = null, $date = null,$timing = null
     ): mixed {
         $nextPayment = Payment::where('contract_id', $contract->id)
             ->where('status', 'initial')
@@ -405,7 +405,7 @@ class PaymentService
         }
 
         if ($amount >= 1) {
-            $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, true);
+            $this->payPartial($contract, $amount, false, $cash, $deal_id, $date, false, true,$timing);
         }
 
         return $decrease;
@@ -415,7 +415,7 @@ class PaymentService
 
     public function payPartial(
         $contract, $partialAmount, $payer, $cash,
-        $deal_id = null, $date = null, $is_recount = false, $is_remaining_payment = false
+        $deal_id = null, $date = null, $is_recount = false, $is_remaining_payment = false,$timing = null
     ): mixed {
         $now           = $date ?? Carbon::now();
         $balanceBefore = (float) $contract->provided_amount;
@@ -487,7 +487,7 @@ class PaymentService
                 $contract->save();
 
                 $history['payment_changes']  = $this->scheduledHandler->processAmortized(
-                    $contract, $payments, $partialAmount, $now
+                    $contract, $payments, $partialAmount, $now,$timing
                 );
                 $history['contract_changes'] = [
                     'old_left'      => $contract->left,
