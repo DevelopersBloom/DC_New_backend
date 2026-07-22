@@ -44,11 +44,11 @@ class PaymentDateClassifier
             : Carbon::now('Asia/Yerevan')->startOfDay();
 
         $due = Carbon::parse($dueDate, 'Asia/Yerevan')->startOfDay();
+        dd($now,$due,$now->eq($due));
 
         if ($now->lt($due)) {
             return self::SOONER;
         }
-
         if ($now->eq($due)) {
             return self::DUE_DATE;
         }
