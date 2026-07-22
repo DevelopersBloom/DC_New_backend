@@ -554,10 +554,8 @@ trait ContractTrait
 
                 $collectedPrincipal = (float) $payment->entries()->sum('principal_amount');
                 $carryPrincipal += max(0, (float) $payment->principal_payment - $collectedPrincipal);
-                dd($collectedPrincipal,$payment->principal_payment,$carryPrincipal );
             } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
-              dd($payment->remaining,$payment->principal_payment,$carryPrincipal,$balance,$interestAmount,$daysIntoCurrentPeriod);
                 $interestAmount += $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
