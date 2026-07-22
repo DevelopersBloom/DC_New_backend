@@ -927,7 +927,7 @@ class PaymentService
 
             } elseif ($contractClone->payment_type === 'amortized') {
                 // Try early split first
-                dd(1,$payment->to_date);
+                dd(1,$payment->to_date,$payment->id,$payment->date,$date);
 
                 $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
                 $earlySplit = $timing === PaymentDateClassifier::SOONER
