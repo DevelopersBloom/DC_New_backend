@@ -150,11 +150,12 @@ class PaymentService
                 $payment = $this->normalizePaymentDates($payment, $contract);
                 if ($payment->from_date >= $date && !$ispPaymentSelected) continue;
                 if ($amount > 0) {
-                    dd($interestAmount);
                     $result = $this->processSinglePayment(
                         $contract, $payment, $amount, $payer, $cash, $deal_id,
                         $forceScheduledForSelected, $interestAmount, $date, $paymentMechanism, $timing
                     );
+                    dd($interestAmount);
+
                     $processedPaymentIds[] = $payment->id;
                     $amount               = $result['amount'];
                     $interest_amount      += $result['interest_amount'];
