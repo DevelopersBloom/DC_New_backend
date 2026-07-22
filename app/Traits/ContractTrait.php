@@ -564,7 +564,7 @@ trait ContractTrait
                 break;
             }
         }
-
+dd($interestAmount);
         $journalId = DocumentJournal::where('journalable_id', $contract->id)
             ->where('journalable_type', 'App\Models\Contract')
             ->value('id');
