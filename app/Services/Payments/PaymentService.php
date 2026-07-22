@@ -837,6 +837,7 @@ class PaymentService
         array $paymentIds = []
     ): array {
         $contractClone   = clone $contract;
+        $balanceBeforeThisPayment = (float) $contract->provided_amount;
         $remaining       = $amount;
         $interestAmount  = 0.0;
         $principalAmount = 0.0;
@@ -929,8 +930,13 @@ class PaymentService
                 // Try early split first
 
                 $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
+                // Interest already accrued during this row's elapsed days must be based on the
+                // balance as it stood before *this* payment — not reduced by an earlier row's
+                // principal that this same simulated payment is about to collect.
+                $balanceForAccrual = clone $contractClone;
+                $balanceForAccrual->provided_amount = $balanceBeforeThisPayment;
                 $earlySplit = $timing === PaymentDateClassifier::SOONER
-                    ? $this->scheduledHandler->calculateEarlySplitPreview($contractClone, $payment, $remaining, $date)
+                    ? $this->scheduledHandler->calculateEarlySplitPreview($balanceForAccrual, $payment, $remaining, $date)
                     : null;
 
                 if ($earlySplit !== null) {
