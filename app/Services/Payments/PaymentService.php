@@ -917,7 +917,7 @@ class PaymentService
 
                 $contractClone->provided_amount = max(0, $contractClone->provided_amount - $paidPrincipal);
                 $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
-
+dd(1,$payment->to_date);
                 $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $today);
 
                 if ($timing === PaymentDateClassifier::SOONER && $paidPrincipal > 0) {
