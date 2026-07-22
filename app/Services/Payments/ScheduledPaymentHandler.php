@@ -144,7 +144,7 @@ class ScheduledPaymentHandler
         $balance  = (float) $contract->provided_amount;
         $rate     = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
-
+dd($balance);
         foreach ($payments as $payment) {
             $payment     = $this->normalizePaymentDates($payment, $contract);
             $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
@@ -225,7 +225,6 @@ class ScheduledPaymentHandler
             $remainingPartial -= $reduction;
             $payment->save();
         }
-dd($changes);
         if (!empty($changes)) {
             $affectedPaymentIds = array_column($changes, 'payment_id');
 
