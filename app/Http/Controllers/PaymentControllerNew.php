@@ -145,7 +145,6 @@ class PaymentControllerNew extends Controller
                 $date,
                 $paymentMechanism
             );
-            dd($result);
             // ===== Update History & Deal =====
             foreach (['interest_amount','penalty','discount','delay_days'] as $field) {
                 $history->$field = $result[$field] ?? 0;
