@@ -63,7 +63,6 @@ class PaymentControllerNew extends Controller
         }
         $current = $this->calculateCurrentPayment($contract, $date);
         $interestAmount = max(0.0, (float) ($current['interest_amount'] ?? 0));
-dd($current);
         $fullThreshold = $interestAmount + $current['penalty_amount'] + (float) $contract->provided_amount;
 
         if ((float) $request->amount >= $fullThreshold) {
@@ -405,7 +404,7 @@ dd($current);
             $request->input('payment_mechanism', 'early_split'),
             $request->input('payment_ids', [])
         );
-
+dd($breakdown);
         return response()->json(array_merge(
             ['total_amount' => (float) $request->amount],
             $breakdown
