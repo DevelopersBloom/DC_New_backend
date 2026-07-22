@@ -383,6 +383,7 @@ class PaymentControllerNew extends Controller
 
     public function previewPayment(Request $request): JsonResponse
     {
+        dd($request->all());
         $request->validate([
             'contract_id'       => 'required|exists:contracts,id',
             'amount'            => 'required|numeric|min:0.01',
