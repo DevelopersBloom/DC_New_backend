@@ -398,7 +398,7 @@ class PaymentControllerNew extends Controller
         if ($error = $this->postingDatePolicy->validate($date)) {
             return $error;
         }
-
+dd($request->contract_id,$contract->id)l
         $breakdown = $this->paymentService->previewPaymentBreakdown(
             $contract,
             (float) $request->amount,
