@@ -882,6 +882,7 @@ class PaymentService
 
         // ── Step 3: Current interest to cover ───────────────────────────────
         $current          = $this->calculateCurrentPayment($contract, $date);
+        dd($current,$date);
         $remainingInterest = max(0.0, (float) ($current['interest_amount'] ?? 0));
 
         $ispPaymentSelected    = $paymentIdsCollection->isNotEmpty();
