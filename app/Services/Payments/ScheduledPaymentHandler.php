@@ -169,7 +169,6 @@ class ScheduledPaymentHandler
             }
 
             $interest  = $balanceForRow * $days * ($rate / 100);
-            dd($balanceForRow,$balance,$days,$interest);
             $diff      = $payment->interest_payment - $interest;
             $payment->interest_payment          = $interest;
             //$payment->original_interest_payment -= $diff;
