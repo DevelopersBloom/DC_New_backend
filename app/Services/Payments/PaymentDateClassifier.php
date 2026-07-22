@@ -40,22 +40,24 @@ class PaymentDateClassifier
     public function classifyAgainstDueDate(string $dueDate, ?string $date = null): string
     {
         $now = $date
-            ? Carbon::parse($date, 'Asia/Yerevan')->startOfDay()
-            : Carbon::now('Asia/Yerevan')->startOfDay();
+            ? Carbon::parse($date, 'Asia/Yerevan')
+            : Carbon::now('Asia/Yerevan');
 
-        $due = Carbon::parse($dueDate, 'Asia/Yerevan')->startOfDay();
-        dd($now,$due,$now->eq($due));
+        $due = Carbon::parse($dueDate, 'Asia/Yerevan');
 
-        if ($now->lt($due)) {
+        $nowDate = $now->toDateString();
+        $dueDate = $due->toDateString();
+
+        if ($nowDate < $dueDate) {
             return self::SOONER;
         }
-        if ($now->eq($due)) {
+
+        if ($nowDate === $dueDate) {
             return self::DUE_DATE;
         }
 
         return self::LATE;
     }
-
     private function earliestOpenInstallment(Contract $contract): ?Payment
     {
         return Payment::where('contract_id', $contract->id)
