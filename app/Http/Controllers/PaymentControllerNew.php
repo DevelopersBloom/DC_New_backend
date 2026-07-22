@@ -383,7 +383,6 @@ class PaymentControllerNew extends Controller
 
     public function previewPayment(Request $request): JsonResponse
     {
-        dd($request->all());
         $request->validate([
             'contract_id'       => 'required|exists:contracts,id',
             'amount'            => 'required|numeric|min:0.01',
@@ -394,7 +393,6 @@ class PaymentControllerNew extends Controller
         ]);
 
         $contract = Contract::findOrFail($request->contract_id);
-        dd($request->all(),$request->contract_id,$contract->id);
         $date     = $request->date ?? now()->toDateString();
 
         if ($error = $this->postingDatePolicy->validate($date)) {

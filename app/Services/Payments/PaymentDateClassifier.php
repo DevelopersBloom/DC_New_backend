@@ -29,7 +29,6 @@ class PaymentDateClassifier
         if (!$payment) {
             return null;
         }
-dd($payment->to_date);
         return $this->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
     }
 
@@ -47,7 +46,6 @@ dd($payment->to_date);
 
         $nowDate = $now->toDateString();
         $dueDate = $due->toDateString();
-dd($nowDate,$dueDate);
         if ($nowDate < $dueDate) {
             return self::SOONER;
         }

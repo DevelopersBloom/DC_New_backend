@@ -166,6 +166,7 @@ class PaymentService
             // payment is actually SOONER (R6) — a due-date/late leftover always
             // follows R9/R11 (reduce upcoming principal + recalc) regardless of
             // which mechanism the request asked for.
+            dd($timing,$contract->id);
             if ($amount > 0) {
                 if ($timing === PaymentDateClassifier::SOONER && $paymentMechanism === 'prepayment') {
                     $extra = $this->prepaymentHandler->applyRemaining(
