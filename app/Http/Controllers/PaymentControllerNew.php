@@ -63,7 +63,7 @@ class PaymentControllerNew extends Controller
         }
         $current = $this->calculateCurrentPayment($contract, $date);
         $interestAmount = max(0.0, (float) ($current['interest_amount'] ?? 0));
-
+dd($current);
         $fullThreshold = $interestAmount + $current['penalty_amount'] + (float) $contract->provided_amount;
 
         if ((float) $request->amount >= $fullThreshold) {
