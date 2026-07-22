@@ -124,7 +124,7 @@ class LatePaymentInterestRecalculator
                 $balanceAtPayDate = max(0.0, $balanceAtStart - $overdueByPayDatePrincipals);
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore)
                     + self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter);
-                dd($balanceAtPayDate,$balanceAtStart,$overdueByPayDatePrincipals,$payment->id,$payment->interest_payment,$interest,self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter), self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore),);
+                dd($dailyRate,$balanceAtPayDate,$daysAfter,$balanceAtStart,$daysBefore);
             }
             $results[] = ['payment' => $payment, 'interest' => $interest];
         }
