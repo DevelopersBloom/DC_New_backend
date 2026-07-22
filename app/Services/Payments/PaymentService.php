@@ -929,7 +929,7 @@ class PaymentService
                 // Try early split first
                 dd(1,$payment->to_date,$payment->id,$payment->date,$date);
 
-                $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date);
+                $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $date,$payment->contract_id);
                 $earlySplit = $timing === PaymentDateClassifier::SOONER
                     ? $this->scheduledHandler->calculateEarlySplitPreview($contractClone, $payment, $remaining, $date)
                     : null;
