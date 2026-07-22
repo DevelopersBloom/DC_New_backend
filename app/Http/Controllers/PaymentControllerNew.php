@@ -393,12 +393,12 @@ class PaymentControllerNew extends Controller
         ]);
 
         $contract = Contract::findOrFail($request->contract_id);
+        dd($request->all(),$request->contract_id,$contract->id);
         $date     = $request->date ?? now()->toDateString();
 
         if ($error = $this->postingDatePolicy->validate($date)) {
             return $error;
         }
-dd($request->contract_id,$contract->id);
         $breakdown = $this->paymentService->previewPaymentBreakdown(
             $contract,
             (float) $request->amount,
