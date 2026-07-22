@@ -404,7 +404,7 @@ class PaymentControllerNew extends Controller
             $request->input('payment_mechanism', 'early_split'),
             $request->input('payment_ids', [])
         );
-        dd($breakdown);
+        dd($breakdown,1);
         return response()->json(array_merge(
             ['total_amount' => (float) $request->amount],
             $breakdown
