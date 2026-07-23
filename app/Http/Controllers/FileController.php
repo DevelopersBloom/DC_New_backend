@@ -803,6 +803,13 @@ class FileController extends Controller
 
         $this->contractCalculationService->calculateAllMetrics($contract, $reportEnd->copy());
 
+        // countPenalty() persists penalty_amount on the contract row as a side effect;
+        // restore the pre-statement value so printing a past-period statement can't
+        // overwrite the live cached penalty with a backdated figure.
+        $penaltyAmountBeforeStatement = $contract->penalty_amount;
+        $penaltyData = $this->contractCalculationService->countPenalty($contract->id, $reportEnd->toDateString());
+        Contract::whereKey($contract->id)->update(['penalty_amount' => $penaltyAmountBeforeStatement]);
+
         $nextPayment = $contract->payments->where('status', 'initial')->sortBy('date')->first();
 
         $balanceAtEnd = $contract->payments
@@ -841,7 +848,7 @@ class FileController extends Controller
             'overdue_fee'       => '0',
 
             'overdue_principal_penalty_rate'   => $contract->penalty,
-            'overdue_principal_penalty_amount' => $this->makeMoney((int)$contract->overdue_amount),
+            'overdue_principal_penalty_amount' => $this->makeMoney((int)$penaltyData['penalty_amount']),
             'overdue_interest_penalty_rate'    => $contract->penalty,
             'overdue_interest_penalty_amount'  => $this->makeMoney((int)$contract->overdue_amount_interest),
         ]);
