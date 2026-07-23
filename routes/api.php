@@ -61,6 +61,8 @@ Route::group(['prefix' => 'auth'], function () {
 });
 Route::group(['middleware' => 'jwt.auth'], function () {
 //    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+    Route::group(['prefix' => 'admin'], function () {
+
         //general
         Route::get('/get',[AdminControllerNew::class,'get'])->middleware('can:view_personal_information');
         Route::put('/update',[AdminControllerNew::class,'update'])->middleware('can:update_personal_information');
@@ -205,7 +207,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/inner/tx-vs-journal-diff', [DocumentJournalController::class, 'txVsJournalDiff']);
         Route::get('/inner/tx-dj-diff-ids', [DocumentJournalController::class, 'txDjDiffIds']);
 
-//    });
+    });
     Route::post('set-pawnshop', [AdminController::class, 'setPawnshop']);
     Route::get('/clients/search-partner', [ClientControllerNew::class, 'searchPartner']);
     Route::get('/clients/search', [ClientControllerNew::class, 'search']);
