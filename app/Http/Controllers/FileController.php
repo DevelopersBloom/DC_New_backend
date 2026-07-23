@@ -6,8 +6,10 @@ use App\Exports\ContractsExport;
 use App\Exports\DealsExport;
 use App\Exports\PaymentsExport;
 use App\Models\Contract;
+use App\Models\DocumentJournal;
 use App\Models\Order;
 use App\Services\ActivityService;
+use App\Services\ContractCalculationService;
 use App\Traits\CalculationTrait;
 use App\Traits\FileTrait;
 use Carbon\Carbon;
@@ -27,10 +29,12 @@ class FileController extends Controller
 {
     use CalculationTrait;
     protected ActivityService $activity;
+    protected ContractCalculationService $contractCalculationService;
 
-    public function __construct(ActivityService $activity)
+    public function __construct(ActivityService $activity, ContractCalculationService $contractCalculationService)
     {
         $this->activity = $activity;
+        $this->contractCalculationService = $contractCalculationService;
     }
     public function index()
     {
@@ -761,6 +765,144 @@ class FileController extends Controller
         $templateProcessor->saveAs($tempPath);
 
         return [$tempPath, $fileName];
+    }
+
+    public function downloadCreditStatement(Request $request, $id)
+    {
+        $contract = Contract::with(['client', 'payments'])->findOrFail($id);
+
+        $to = $request->query('to') ? Carbon::parse($request->query('to')) : now();
+        $from = $request->query('from') ? Carbon::parse($request->query('from')) : $to->copy()->startOfMonth();
+
+        [$path, $filename] = $this->generateCreditStatementDocx($contract, $from, $to);
+
+        $this->activity->log(
+            'download_credit_statement',
+            'Contract #' . $contract->num . ' վարկային քաղվածք',
+            Contract::class,
+            $contract->id
+        );
+
+        return response()->download($path, $filename)->deleteFileAfterSend(true);
+    }
+
+    private function generateCreditStatementDocx(Contract $contract, Carbon $from, Carbon $to): array
+    {
+        $templatePath = public_path('files/credit_statement_template.docx');
+        if (!file_exists($templatePath)) {
+            abort(404, 'Template not found: credit_statement_template.docx');
+        }
+
+        $client = $contract->client;
+        $clientName = $client->type === 'legal'
+            ? $client->company_name
+            : ($client->name . ' ' . $client->surname);
+
+        $reportStart = $from->copy()->startOfDay();
+        $reportEnd = $to->copy()->endOfDay();
+
+        $this->contractCalculationService->calculateAllMetrics($contract, $reportEnd->copy());
+
+        $nextPayment = $contract->payments->where('status', 'initial')->sortBy('date')->first();
+
+        $balanceAtEnd = $contract->payments
+            ->filter(fn($p) => Carbon::parse($p->date)->lte($reportEnd))
+            ->sortByDesc('date')
+            ->first()
+            ->remaining ?? $contract->provided_amount;
+
+        $yearlyRate = round($contract->interest_rate * 365, 2);
+
+        $templateProcessor = new TemplateProcessor($templatePath);
+
+        $templateProcessor->setValues([
+            'statement_num' => $contract->num . '-' . $reportEnd->format('Ymd'),
+            'client'        => $clientName,
+            'num'           => $contract->num,
+            'date'          => Carbon::parse($contract->date)->format('d.m.Y'),
+            'report_start'  => $reportStart->format('d.m.Y'),
+            'report_end'    => $reportEnd->format('d.m.Y'),
+            'report_days'   => $reportStart->diffInDays($reportEnd) + 1,
+
+            'contract_amount' => $this->makeMoney((int)$contract->contract_amount),
+            'provided_amont'  => $this->makeMoney((int)$balanceAtEnd),
+            'deadline'        => Carbon::parse($contract->deadline)->format('d.m.Y'),
+            'int_rate'        => $yearlyRate,
+
+            'next_payment_date'      => $nextPayment ? Carbon::parse($nextPayment->to_date)->format('d.m.Y') : '',
+            'next_payment_amount'    => $nextPayment ? $this->makeMoney((int)$nextPayment->amount) : '0',
+            'next_payment_principal' => $nextPayment ? $this->makeMoney((int)$nextPayment->principal_payment) : '0',
+            'next_payment_interest'  => $nextPayment ? $this->makeMoney((int)$nextPayment->interest_payment) : '0',
+            'next_payment_fee'       => $nextPayment ? $this->makeMoney((int)$nextPayment->service_fee_payment) : '0',
+
+            'overdue_total'     => $this->makeMoney((int)($contract->overdue_amount + $contract->overdue_interest)),
+            'overdue_principal' => $this->makeMoney((int)$contract->overdue_amount),
+            'overdue_interest'  => $this->makeMoney((int)$contract->overdue_interest),
+            'overdue_fee'       => '0',
+
+            'overdue_principal_penalty_rate'   => $contract->penalty,
+            'overdue_principal_penalty_amount' => $this->makeMoney((int)$contract->overdue_amount),
+            'overdue_interest_penalty_rate'    => $contract->penalty,
+            'overdue_interest_penalty_amount'  => $this->makeMoney((int)$contract->overdue_amount_interest),
+        ]);
+
+        $periodDocs = DocumentJournal::query()
+            ->where('contract_id', $contract->id)
+            ->betweenDates($reportStart->toDateString(), $reportEnd->toDateString())
+            ->orderBy('date')
+            ->get();
+
+        $sumPrincipal = (float)$periodDocs->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)->sum('amount_amd');
+        $sumInterest = (float)$periodDocs->where('document_type', DocumentJournal::PAY_INTEREST_AMOUNT)->sum('amount_amd');
+        $sumPenalty = (float)$periodDocs->where('document_type', DocumentJournal::PAY_PENALTY_AMOUNT)->sum('amount_amd');
+        $sumTotal = $sumPrincipal + $sumInterest + $sumPenalty;
+
+        $templateProcessor->setValues([
+            'sum_principal'  => $this->makeMoney((int)$sumPrincipal),
+            'sum_interest'   => $this->makeMoney((int)$sumInterest),
+            'sum_commission' => '0',
+            'sum_penalty'    => $this->makeMoney((int)$sumPenalty),
+            'sum_total'      => $this->makeMoney((int)$sumTotal),
+        ]);
+
+        $transactionTypes = [
+            DocumentJournal::PAY_MOTHER_AMOUNT,
+            DocumentJournal::PAY_INTEREST_AMOUNT,
+            DocumentJournal::PAY_PENALTY_AMOUNT,
+        ];
+        $transactionRows = [];
+        foreach ($periodDocs->whereIn('document_type', $transactionTypes) as $doc) {
+            $transactionRows[] = [
+                't_date'   => $doc->date->format('d.m.Y'),
+                't_desc'   => $doc->document_type,
+                't_amount' => $this->makeMoney((int)$doc->amount_amd),
+            ];
+        }
+        if (!empty($transactionRows)) {
+            $templateProcessor->cloneRowAndSetValues('t_date', $transactionRows);
+        }
+
+        $beforePeriodAmount = DocumentJournal::query()
+            ->where('contract_id', $contract->id)
+            ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+            ->where('date', '<', $reportStart->toDateString())
+            ->sum('amount_amd');
+
+        $templateProcessor->setValues([
+            'before_period_date'   => $reportStart->format('d.m.Y'),
+            'before_period_amount' => $this->makeMoney((int)$beforePeriodAmount),
+        ]);
+
+        $fileName = $contract->num . '_վարկային_քաղվածք_' . $reportEnd->format('Ymd') . '.docx';
+        $filePath = storage_path('app/tmp/' . $fileName);
+
+        if (!file_exists(dirname($filePath))) {
+            mkdir(dirname($filePath), 0775, true);
+        }
+
+        $templateProcessor->saveAs($filePath);
+
+        return [$filePath, $fileName];
     }
 
     public function downloadIndividualSheet($id)
