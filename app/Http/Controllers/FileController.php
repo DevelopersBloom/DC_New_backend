@@ -887,6 +887,12 @@ class FileController extends Controller
         }
         if (!empty($transactionRows)) {
             $templateProcessor->cloneRowAndSetValues('t_date', $transactionRows);
+        } else {
+            $templateProcessor->setValues([
+                't_date'   => '',
+                't_desc'   => '',
+                't_amount' => '',
+            ]);
         }
 
         $beforePeriodAmount = DocumentJournal::query()
