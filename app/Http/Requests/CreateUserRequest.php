@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CreateUserRequest extends FormRequest
 {
@@ -15,6 +16,13 @@ class CreateUserRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('role'))) {
+            $this->merge(['role' => strtolower($this->input('role'))]);
+        }
     }
 
     /**
@@ -32,7 +40,12 @@ class CreateUserRequest extends FormRequest
             'tel'         => 'nullable|string|max:20',
             'email'       => 'required|email|unique:users,email',
             'password'    => 'required|string|min:8',
-            'role'        => 'required|string|max:255',
+            'role'        => [
+                'required',
+                'string',
+                'max:255',
+                Rule::exists('roles', 'name')->where('guard_name', 'api'),
+            ],
             'start_work'  => 'nullable|date',
         ];
     }
@@ -44,6 +57,7 @@ class CreateUserRequest extends FormRequest
             'email.unique'      => 'This email is already taken.',
             'password.required' => 'The password is required.',
             'role.required'     => 'The role is required.',
+            'role.exists'       => 'The selected role does not exist.',
             'start_work.date'   => 'The start work date must be a valid date.',
         ];
     }
