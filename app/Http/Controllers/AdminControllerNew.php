@@ -16,9 +16,12 @@ use App\Models\Discount;
 use App\Models\File;
 use App\Models\LoanNdm;
 use App\Models\LumpRate;
+use App\Models\Modification;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\PaymentEntry;
+use App\Models\Prepayment;
 use App\Models\Subcategory;
 use App\Models\SubcategoryItem;
 use App\Models\User;
@@ -776,7 +779,11 @@ class AdminControllerNew extends Controller
                     return $this->handleFullPaymentDeal($deal);
                 }
 
-                if (in_array($deal->filter_type, ['payment', 'partial_payment'])) {
+                if ($deal->filter_type === 'payment') {
+                    return $this->handleRegularPaymentDeal($deal);
+                }
+
+                if ($deal->filter_type === 'partial_payment') {
                     return $this->handlePartialPaymentDeal($deal);
                 }
 
@@ -792,6 +799,108 @@ class AdminControllerNew extends Controller
             }
         });
 
+    }
+    private function handleRegularPaymentDeal(Deal $deal)
+    {
+        $laterDealExists = Deal::where('contract_id', $deal->contract_id)
+            ->where('id', '!=', $deal->id)
+            ->whereIn('filter_type', ['payment', 'partial_payment', 'full_payment'])
+            ->where(function ($q) use ($deal) {
+                $q->where('date', '>', $deal->date)
+                    ->orWhere(function ($q2) use ($deal) {
+                        $q2->where('date', $deal->date)->where('id', '>', $deal->id);
+                    });
+            })
+            ->exists();
+
+        if ($laterDealExists) {
+            return response()->json([
+                'message' => 'Cannot delete this deal — a later payment exists on this contract.',
+            ], 422);
+        }
+
+        $dealActions = DealAction::where('deal_id', $deal->id)->get();
+
+        $contract = Contract::find($deal->contract_id);
+        if ($contract) {
+            $contract->collected = max(0, (float) $contract->collected - (float) ($deal->interest_amount ?? 0));
+            $contract->save();
+        }
+
+        foreach ($dealActions as $dealAction) {
+            $history = $dealAction->history ?? [];
+
+            if ($dealAction->type === 'penalty' && $dealAction->actionable) {
+                $dealAction->actionable->delete();
+                continue;
+            }
+
+            if ($dealAction->description === 'Regular payment') {
+                foreach (($history['payment_changes'] ?? []) as $change) {
+                    Payment::where('id', $change['payment_id'])->update(['status' => 'initial']);
+                }
+                continue;
+            }
+
+            if (in_array($dealAction->description, ['Partial payment with amount reduction', 'Partial payment with schedule recount'])) {
+                foreach (($history['payment_changes'] ?? []) as $change) {
+                    Payment::where('id', $change['payment_id'])->update([
+                        'amount'            => $change['old_amount'],
+                        'paid'              => $change['old_paid'] ?? 0,
+                        'date'              => $change['old_date'],
+                        'principal_payment' => $change['old_principal'],
+                        'interest_payment'  => $change['old_interest'],
+                        'status'            => 'initial',
+                    ]);
+                }
+                if (isset($history['mother_amount']['payment_id'])) {
+                    Payment::where('id', $history['mother_amount']['payment_id'])->update([
+                        'mother' => $history['mother_amount']['old_mother'],
+                        'status' => 'initial',
+                    ]);
+                }
+                continue;
+            }
+
+            // 'Partial payment contract changes' — informational only, nothing to restore here.
+        }
+
+        PaymentEntry::where('deal_id', $deal->id)->delete();
+        Prepayment::where('deal_id', $deal->id)->delete();
+
+        $skippedModifications = [];
+        if ($contract) {
+            foreach (['PrincipalAmount', 'PercentsPaid', 'AmountsPaid'] as $fieldCode) {
+                $matches = Modification::where('subject_type', Contract::class)
+                    ->where('subject_id', $contract->id)
+                    ->where('effective_date', $deal->date)
+                    ->where('field_code', $fieldCode)
+                    ->get();
+
+                if ($matches->count() !== 1) {
+                    if ($matches->count() > 1) {
+                        $skippedModifications[] = ['field_code' => $fieldCode, 'reason' => 'ambiguous same-day match'];
+                    }
+                    continue;
+                }
+
+                $modification = $matches->first();
+                if ($modification->is_sent) {
+                    $skippedModifications[] = ['field_code' => $fieldCode, 'reason' => 'already sent to registry'];
+                    continue;
+                }
+
+                $modification->delete();
+            }
+        }
+
+        DealAction::where('deal_id', $deal->id)->delete();
+        $deal->delete();
+
+        return response()->json([
+            'message'               => 'Payment deal reverted successfully',
+            'skipped_modifications' => $skippedModifications,
+        ]);
     }
 
     private function handleFullPaymentDeal(Deal $deal)
