@@ -165,9 +165,9 @@ class ContractControllerNew extends Controller
      * Standalone payoff-quote endpoint: how much principal (mother amount) still needs
      * to be paid to close the contract, net of any prepayment bucket credit.
      */
-    public function motherAmountToPay(int $id): JsonResponse
+    public function motherAmountToPay($id): JsonResponse
     {
-        $contract = Contract::findOrFail($id);
+        $contract = Contract::findOrFail((int) $id);
 
         return response()->json($this->calculateMotherAmountToPay($contract));
     }
@@ -180,9 +180,9 @@ class ContractControllerNew extends Controller
      * payment should route to the full-payment flow, so the frontend can show
      * the same number before the client actually pays.
      */
-    public function fullPaymentAmount(int $id): JsonResponse
+    public function fullPaymentAmount($id): JsonResponse
     {
-        $contract = Contract::findOrFail($id);
+        $contract = Contract::findOrFail((int) $id);
 
         $current           = $this->calculateCurrentPayment($contract);
         $motherAmountToPay = $this->calculateMotherAmountToPay($contract);
@@ -200,9 +200,9 @@ class ContractControllerNew extends Controller
         ]);
     }
 
-    public function getHistoryDetails(int $id)
+    public function getHistoryDetails($id)
     {
-        $history = History::with('user', 'order','contract')->find($id);
+        $history = History::with('user', 'order','contract')->find((int) $id);
         if (!$history) {
             return response()->json(['message' => 'History record not found'], 404);
         }
