@@ -649,6 +649,46 @@ class PaymentService
 
         $providedAmount = $contract->provided_amount;
 
+        $journal = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->first();
+
+        // ── Penalty first, same as processPayments() — settled out of the cash
+        //    received before principal/interest are derived from what's left. ──
+        $penaltyResult = $this->countPenalty($contract->id, $date);
+        $penaltyDue    = (float) $penaltyResult['penalty_amount'];
+        $payedPenalty  = 0.0;
+        $cashAfterPenalty = $amount;
+
+        if ($penaltyDue > 0) {
+            $penaltyOutcome = $this->processPenalty(
+                $contract->id, $cashAfterPenalty, $penaltyDue, $payer, $cash,
+                $deal_id, $penaltyResult['parent_id'], false, $date
+            );
+            $payedPenalty     = (float) $penaltyOutcome['penalty'];
+            $cashAfterPenalty = (float) $penaltyOutcome['amount'];
+
+            if ($payedPenalty > 0) {
+                $classification = $contract->client->classification->name ?? '';
+                if ($classification === 'loss') {
+                    $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount_loss')->first();
+                } elseif ($cash) {
+                    $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount_cash')->first();
+                } else {
+                    $rulePenalty = PostingRule::where('business_event_filter', 'pay_penalty_amount')->first();
+                }
+                if ($rulePenalty) {
+                    $penaltyDocNum = Transaction::getNextDocumentNumber();
+                    $this->postEntry(
+                        $date ?? Carbon::now()->format('Y-m-d'), $penaltyDocNum, DocumentJournal::PAY_PENALTY_AMOUNT,
+                        $payedPenalty, 'Full payment penalty settlement for contract #' . $contract->id,
+                        $rulePenalty->debit_account_id, $rulePenalty->credit_account_id,
+                        $deal_id, $journal?->id, $contract->client_id, $contract->id, $rulePenalty, $contract
+                    );
+                }
+            }
+        }
+
         $duePrepayments = Prepayment::where('contract_id', $contract->id)
             ->where('status', 'unpaid')
             ->get();
@@ -666,7 +706,9 @@ class PaymentService
         // deposited (PrepaymentHandler::handle() adds it via processPayments()) — only
         // its GL reclassification (liability → income, below) is still pending, so it
         // must not be added to $interestAmount/collected again here.
-        $interestAmount = ($amount + $principalFromBucket) - $providedAmount;
+        // Uses $cashAfterPenalty (not $amount) so any penalty settled above is excluded
+        // from the derived interest — otherwise it would be silently folded into it.
+        $interestAmount = ($cashAfterPenalty + $principalFromBucket) - $providedAmount;
 
         $history['contract_changes'] = [
             'contract_id'   => $contract->id,
@@ -694,7 +736,7 @@ class PaymentService
             'amount'           => $amount,
             'principal_amount' => $providedAmount,
             'interest_amount'  => $interestAmount,
-            'penalty_amount'   => 0,
+            'penalty_amount'   => $payedPenalty,
             'balance_before'   => $providedAmount,
             'balance_after'    => 0,
             'document_type'    => 'full_payment',
@@ -727,9 +769,6 @@ class PaymentService
 
         // ── B4: reclassify the bucket out of the liability account, refund the rest ──
         if ($duePrepayments->isNotEmpty()) {
-            $journal = DocumentJournal::where('journalable_type', Contract::class)
-                ->where('journalable_id', $contract->id)
-                ->first();
             $docNum = Transaction::getNextDocumentNumber();
 
             if ($principalFromBucket > 0) {
@@ -817,9 +856,11 @@ class PaymentService
         }
 
         return [
-            'payment_id'           => $payment,
-            'refund_amount'        => $refundAmount,
+            'payment_id'            => $payment,
+            'refund_amount'         => $refundAmount,
             'principal_from_bucket' => $principalFromBucket,
+            'interest_amount'       => $interestAmount,
+            'penalty_amount'        => $payedPenalty,
         ];
     }
 

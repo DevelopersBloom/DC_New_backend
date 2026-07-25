@@ -448,9 +448,6 @@ class PaymentControllerNew extends Controller
             if ($error = $this->postingDatePolicy->validate($date)) {
                 return $error;
             }
-            $currentPaymentData = $this->calculateCurrentPayment($contract);
-
-            $interestAmount = is_array($currentPaymentData) ? ($currentPaymentData['current_amount'] ?? 0) : 0;
             $motherAmount = $contract->provided_amount;
 
             $type = HistoryType::where('name', 'full_payment')->first();
@@ -472,8 +469,13 @@ class PaymentControllerNew extends Controller
             $fullPaymentResult = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id,$date);
             $paymentId = $fullPaymentResult['payment_id'];
             $prepaymentRefundAmount = $fullPaymentResult['refund_amount'];
+            $interestAmount = (float) ($fullPaymentResult['interest_amount'] ?? 0);
+            $penaltyAmount  = (float) ($fullPaymentResult['penalty_amount'] ?? 0);
             $newPaymentAmount = $oldPaymentAmount + $totalAmount;
             $deal->payment_id = $paymentId;
+            $deal->principal_amount = $motherAmount;
+            $deal->interest_amount  = $interestAmount;
+            $deal->penalty          = $penaltyAmount;
             $deal->save();
             if ($motherAmount > 0) {
                 $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_amount';
