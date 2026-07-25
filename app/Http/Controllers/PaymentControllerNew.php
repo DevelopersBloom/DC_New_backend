@@ -63,7 +63,12 @@ class PaymentControllerNew extends Controller
         }
         $current = $this->calculateCurrentPayment($contract, $date);
         $interestAmount = max(0.0, (float) ($current['interest_amount'] ?? 0));
-        $fullThreshold = $interestAmount + $current['penalty_amount'] + (float) $contract->provided_amount;
+        // Principal side of the threshold must be net of whatever the prepayment bucket
+        // already covers — otherwise a client who has prepaid part of the loan would have
+        // to pay more than actually needed to trigger the full-payoff path (calculateMotherAmountToPay
+        // is the same helper the payoff-quote endpoint and processFullPayment() itself use).
+        $motherAmountToPay = $this->calculateMotherAmountToPay($contract);
+        $fullThreshold = $interestAmount + $current['penalty_amount'] + (float) $motherAmountToPay['mother_amount_to_pay'];
 
         if ((float) $request->amount >= $fullThreshold) {
             return $this->makeFullPayment($request);

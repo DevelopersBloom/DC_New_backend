@@ -172,6 +172,34 @@ class ContractControllerNew extends Controller
         return response()->json($this->calculateMotherAmountToPay($contract));
     }
 
+    /**
+     * Full payoff quote: unpaid interest-to-date + penalty + principal remaining,
+     * net of whatever the prepayment bucket already covers — the exact amount a
+     * client must pay today to fully close the contract. Mirrors the threshold
+     * PaymentControllerNew::makePayment() uses to decide whether an incoming
+     * payment should route to the full-payment flow, so the frontend can show
+     * the same number before the client actually pays.
+     */
+    public function fullPaymentAmount(int $id): JsonResponse
+    {
+        $contract = Contract::findOrFail($id);
+
+        $current           = $this->calculateCurrentPayment($contract);
+        $motherAmountToPay = $this->calculateMotherAmountToPay($contract);
+
+        $interestAmount = max(0.0, (float) ($current['interest_amount'] ?? 0));
+        $penaltyAmount  = (float) ($current['penalty_amount'] ?? 0);
+        $principalDue   = (float) ($motherAmountToPay['mother_amount_to_pay'] ?? 0);
+
+        return response()->json([
+            'interest_amount'     => $interestAmount,
+            'penalty_amount'      => $penaltyAmount,
+            'principal_amount'    => $principalDue,
+            'prepayment_credit'   => (float) ($motherAmountToPay['principal_from_bucket'] ?? 0),
+            'full_payment_amount' => $interestAmount + $penaltyAmount + $principalDue,
+        ]);
+    }
+
     public function getHistoryDetails(int $id)
     {
         $history = History::with('user', 'order','contract')->find($id);
