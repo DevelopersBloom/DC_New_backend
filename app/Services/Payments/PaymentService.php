@@ -645,8 +645,6 @@ class PaymentService
     public function processFullPayment(
         $contract, $amount, $payer, $cash, $deal_id = null, $date = null
     ): array {
-        Payment::where('contract_id', $contract->id)->where('status', 'initial')->delete();
-
         $providedAmount = $contract->provided_amount;
 
         $journal = DocumentJournal::where('journalable_type', Contract::class)
@@ -654,7 +652,9 @@ class PaymentService
             ->first();
 
         // ── Penalty first, same as processPayments() — settled out of the cash
-        //    received before principal/interest are derived from what's left. ──
+        //    received before principal/interest are derived from what's left.
+        //    Must run before the initial-payments delete below, since countPenalty()
+        //    determines overdue amounts from those same status='initial' rows. ──
         $penaltyResult = $this->countPenalty($contract->id, $date);
         $penaltyDue    = (float) $penaltyResult['penalty_amount'];
         $payedPenalty  = 0.0;
@@ -688,6 +688,8 @@ class PaymentService
                 }
             }
         }
+
+        Payment::where('contract_id', $contract->id)->where('status', 'initial')->delete();
 
         $duePrepayments = Prepayment::where('contract_id', $contract->id)
             ->where('status', 'unpaid')

@@ -472,7 +472,7 @@ class PaymentControllerNew extends Controller
             $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null, null, null, $date);
             $oldPaymentAmount = $this->calcPaidAmount($contract);
             $fullPaymentResult = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id,$date);
-            dd($fullPaymentResult);
+          dd($fullPaymentResult);
             $paymentId = $fullPaymentResult['payment_id'];
             $prepaymentRefundAmount = $fullPaymentResult['refund_amount'];
             $interestAmount = (float) ($fullPaymentResult['interest_amount'] ?? 0);
