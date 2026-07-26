@@ -634,24 +634,24 @@ class PaymentControllerNew extends Controller
                         'date' => $date,
                     ]);
                     $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a lump sum refund', 'refund_amount' => $refundAmount, 'prepayment_refund_amount' => $prepaymentRefundAmount];
-                    if ($idempotencyKey) {
-                        IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
-                    }
+//                    if ($idempotencyKey) {
+//                        IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
+//                    }
                     return response()->json($payload);
                 }
             }
             if ((isset($refundAmount) && $refundAmount > 0) || $prepaymentRefundAmount > 0) {
                 $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a refund', 'refund_amount' => $refundAmount ?? 0, 'prepayment_refund_amount' => $prepaymentRefundAmount];
-                if ($idempotencyKey) {
-                    IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
-                }
+//                if ($idempotencyKey) {
+//                    IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
+//                }
                 return response()->json($payload);
             }
 
             $payload = ['success' => 'success', 'message' => 'Full payment created successfully'];
-            if ($idempotencyKey) {
-                IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
-            }
+//            if ($idempotencyKey) {
+//                IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
+//            }
             return response()->json($payload);
 
 
