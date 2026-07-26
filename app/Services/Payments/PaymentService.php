@@ -657,7 +657,6 @@ class PaymentService
         //    determines overdue amounts from those same status='initial' rows. ──
         $penaltyResult = $this->countPenalty($contract->id, $date);
         $penaltyDue    = (float) $penaltyResult['penalty_amount'];
-        dd($penaltyResult);
         $payedPenalty  = 0.0;
         $cashAfterPenalty = $amount;
 
