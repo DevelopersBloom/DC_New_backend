@@ -248,7 +248,7 @@ trait ContractTrait
             $amount = -$amount;
         }
         $pawnshop->save();
-        return Deal::create([
+        $deal = Deal::create([
             'type' => $type,
             'amount' => $amount,
             'interest_amount' => $interest_amount,
@@ -272,7 +272,9 @@ trait ContractTrait
             'filter_type' => $filter_type,
             'history_id' => $history_id,
             'payment_id' => $payment_id,
+
         ]);
+        dd($deal->id);
     }
 
     public function setContractPenalty($id)
