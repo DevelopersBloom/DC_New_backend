@@ -376,7 +376,7 @@ class LoanNdmController extends Controller
                     null,
                     $data['cash'],
                     null,
-                    $docNum,
+                    DocumentJournal::LOAN_ATTRACTION,
                     Deal::NDM_DEAL,
                     null,
                     null,
