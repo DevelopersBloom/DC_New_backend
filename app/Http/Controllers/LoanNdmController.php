@@ -7,6 +7,7 @@ use App\Http\Requests\StoreLoanNdmRequest;
 use App\Models\BusinessEvent;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
+use App\Models\Deal;
 use App\Models\DocumentJournal;
 use App\Models\IdempotencyKey;
 use App\Models\LoanNdm;
@@ -16,6 +17,7 @@ use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Services\ActivityService;
 use App\Services\LoanNdmInterestService;
+use App\Traits\ContractTrait;
 use App\Traits\Journalable;
 use App\Traits\OrderTrait;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +29,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class LoanNdmController extends Controller
 {
-//    use OrderTrait;
+    use ContractTrait;
+
     protected $loanNdmInterestService;
 
     protected $activity;
@@ -318,8 +321,8 @@ class LoanNdmController extends Controller
                 $debitAccountId = $rule->debit_account_id;
                 $creditAccountId = $rule->credit_account_id;
 
-                $partnerId = Client::where('company_name','«Ակրեդիտ» ՎՄ ՍՊԸ')->value('id') ?? 1;
-                $creditPartnerId = $loan->client_id;
+                $partnerId = $rule->debit_partner_id;
+                $creditPartnerId = $rule->credit_partner_id;
 
                 $journalDoc = DocumentJournal::create([
                     'date'            => $date,
@@ -327,7 +330,7 @@ class LoanNdmController extends Controller
                     'document_type'   => DocumentJournal::LOAN_ATTRACTION,
                     'currency_id'     => $loan->currency_id,
                     'amount_amd'      => $amount,
-                    'debit_partner_id'      => $partnerId,
+                    'debit_partner_id' => $partnerId,
                     'credit_partner_id' => $creditPartnerId,
                     'comment'         => $data['comment'] ?? null,
                     'debit_account_id' => $debitAccountId,
@@ -360,6 +363,27 @@ class LoanNdmController extends Controller
                     'transactionable_type'=> DocumentJournal::class,
                     'transactionable_id'  => $data['document_journal_id'],
                 ]);
+
+                $this->createDeal(
+                    $amount,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::IN_DEAL,
+                    null,
+                    $creditPartnerId,
+                    null,
+                    $data['cash'],
+                    null,
+                    $docNum,
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $date
+                );
 
                 $this->activity->log(
                     action: 'loan_attraction_created',
@@ -744,6 +768,8 @@ class LoanNdmController extends Controller
                 if (!$ruleInterestPayment) {
                     throw new \RuntimeException('Posting rule for interest_payment not found');
                 }
+                $debitClient = $ruleInterestPayment->debit_client_id;
+                $creditClient = $ruleInterestPayment->credit_client_id;
 
                 $debitInterestPayment = $ruleInterestPayment->debit_account_id;
                 $creditInterestPayment = $ruleInterestPayment->credit_account_id;
@@ -753,8 +779,8 @@ class LoanNdmController extends Controller
                         'amount_amd'        => $interest,
                         'debit_account_id'  => $debitInterestPayment,
                         'credit_account_id' => $creditInterestPayment,
-                        'debit_partner_id' => $clientId,
-                        'credit_partner_id' => $lombardId,
+                        'debit_partner_id' => $debitClient,
+                        'credit_partner_id' => $creditClient,
                     ]);
 
                 $baseJournal->transactions()->create([
@@ -767,9 +793,31 @@ class LoanNdmController extends Controller
                     'amount_amd'        => $interest,
                     'amount_currency'   => $interest,
                     'comment'           => 'Տոկոսի մարում',
-                    'debit_partner_id' => $clientId,
-                    'credit_partner_id' => $lombardId,
+                    'debit_partner_id' => $debitClient,
+                    'credit_partner_id' => $creditClient,
                 ]);
+
+                $this->createDeal(
+                    $interest,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::OUT_DEAL,
+                    null,
+                    $clientId,
+                    null,
+                    $commonJ['cash'],
+                    null,
+                    'Տոկոսի մարում',
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $data['operation_date']
+                );
+
                 $documentNumber++;
                 $transactionDocumentNumber++;
             }
@@ -778,7 +826,8 @@ class LoanNdmController extends Controller
 
                 $ruleLoanPayment = PostingRule::where('business_event_filter', 'loan_payment')
                     ->first();
-
+                $principalDebitClient = $ruleLoanPayment->debit_client_id;
+                $principalCreditClient = $ruleLoanPayment->credit_client_id;
                 if (!$ruleLoanPayment) {
                     throw new \RuntimeException('Posting rule for loan_payment not found');
                 }
@@ -792,8 +841,8 @@ class LoanNdmController extends Controller
                         'amount_amd'        => $principal,
                         'debit_account_id'  => $debitLoanPayment,
                         'credit_account_id' => $creditLoanPayment,
-                        'debit_partner_id' => $clientId,
-                        'credit_partner_id' => $lombardId,
+                        'debit_partner_id' => $principalDebitClient,
+                        'credit_partner_id' => $principalCreditClient,
                     ]);
 
                 $baseJournal->transactions()->create([
@@ -806,9 +855,31 @@ class LoanNdmController extends Controller
                     'amount_amd'        => $principal,
                     'amount_currency'   => $principal,
                     'comment'           => 'loan_repayment',
-                    'debit_partner_id' => $clientId,
-                    'credit_partner_id' => $lombardId,
+                    'debit_partner_id' => $principalDebitClient,
+                    'credit_partner_id' => $principalCreditClient,
                 ]);
+
+                $this->createDeal(
+                    $principal,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::COST_OUT_DEAL,
+                    null,
+                    $clientId,
+                    null,
+                    $commonJ['cash'],
+                    null,
+                    'Վարկի մարում',
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $data['operation_date']
+                );
+
                 $documentNumber++;
                 $transactionDocumentNumber++;
             }
@@ -816,7 +887,8 @@ class LoanNdmController extends Controller
             if ($taxInt > 0) {
                 $ruleTax = PostingRule::where('business_event_filter', 'tax_collection')
                     ->first();
-
+                $taxDebitClient = $ruleTax->debit_client_id;
+                $taxCreditClient = $ruleTax->credit_client_id;
                 if (!$ruleTax) {
                     throw new \RuntimeException('Posting rule for tax_collection not found');
                 }
@@ -830,8 +902,8 @@ class LoanNdmController extends Controller
                         'amount_amd'        => $taxInt,
                         'debit_account_id'  => $debitTax,
                         'credit_account_id' => $creditTax,
-                        'debit_partner_id' => $clientId,
-                        'credit_partner_id' => $lombardId,
+                        'debit_partner_id' => $taxDebitClient,
+                        'credit_partner_id' => $taxCreditClient,
                     ]);
 
                 $baseJournal->transactions()->create([
@@ -844,9 +916,31 @@ class LoanNdmController extends Controller
                     'amount_amd'        => $taxInt,
                     'amount_currency'   => $taxInt,
                     'comment'           => 'Հարկի գանձում տոկոսի մարումից',
-                    'debit_partner_id' => $clientId,
-                    'credit_partner_id' => $lombardId,
+                    'debit_partner_id' => $taxDebitClient,
+                    'credit_partner_id' => $taxCreditClient,
                 ]);
+
+                $this->createDeal(
+                    $taxInt,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::OUT_DEAL,
+                    null,
+                    $clientId,
+                    null,
+                    $commonJ['cash'],
+                    null,
+                    'Հարկի գանձում տոկոսի մարումից',
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $data['operation_date']
+                );
+
                 $documentNumber++;
                 $transactionDocumentNumber++;
             }
