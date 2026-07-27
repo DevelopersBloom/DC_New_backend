@@ -169,7 +169,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::apiResource('business-events', BusinessEventController::class);
         Route::apiResource('reminder-orders', ReminderOrderController::class);
         Route::apiResource('loan-ndms', LoanNdmController::class);
-        Route::post('/loan-ndm/attach', [LoanNdmController::class, 'attachLoanNdm'])->middleware(['can:attach_loan_ndm', 'idempotent:loan_ndm.attach']);
+        Route::post('/loan-ndm/attach', [LoanNdmController::class, 'attachLoanNdm'])->middleware(['can:attach_loan_ndm' ]);//'idempotent:loan_ndm.attach'
         Route::get('/loan-ndm/attraction/{journalId}', [LoanNdmController::class, 'getLoanAttraction'])->middleware('can:view_loan_attraction');
         Route::put('/loan-ndm/attraction', [LoanNdmController::class, 'updateLoanAttraction'])->middleware('can:update_loan_attraction');
 
