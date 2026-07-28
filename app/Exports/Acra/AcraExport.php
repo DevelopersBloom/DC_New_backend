@@ -573,6 +573,7 @@ class AcraExport
                         $collateralCode = '01';
                         break;
                     case 'car':
+                    case 'car-purchase':
                         $collateralCode = '10';
                         break;
                     case 'other movable property':
