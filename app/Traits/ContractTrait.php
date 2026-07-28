@@ -226,6 +226,9 @@ trait ContractTrait
 
     public function createDeal($amount, $interest_amount, $delay_days, $penalty, $discount, $type, $contract_id, $client_id, $order_id = null, $cash = true, $receiver = null, $purpose = null, $filter_type = null, $history_id = null, $payment_id = null, $source = null, $pawnshop_id = null, $date = null)
     {
+        if ($cash) {
+            $amount = round($amount);
+        }
         $pawnshop = $pawnshop_id ? Pawnshop::find($pawnshop_id) : auth()->user()->pawnshop;
         if ($type === 'in') {
             if ($cash) {
@@ -270,6 +273,7 @@ trait ContractTrait
             'filter_type' => $filter_type,
             'history_id' => $history_id,
             'payment_id' => $payment_id,
+
         ]);
     }
 
@@ -531,6 +535,7 @@ trait ContractTrait
 
         $scheduledPayments = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
+            ->where('status','initial')
             ->orderBy('id','asc')
 //            ->orderBy('from_date', 'asc')
             ->get();
@@ -596,7 +601,6 @@ trait ContractTrait
                 $futureInterestDiscount = $principalBase * $futureDays * $dailyRate;
             }
         }
-
         return [
             "endDate"                  => $currentDate,
 //            "totalAccruedInterest"     => $totalAccruedInterest,
@@ -764,8 +768,8 @@ trait ContractTrait
                 'document_number' => $nextDocNum,
                 'document_type' => $ruleKey,
                 'amount_amd' => $amount,
-                'debit_partner_id' => $rule->resolveDebitPartnerId($contract) ?? $debetPartnerId,
-                'credit_partner_id' => $rule->resolveCreditPartnerId($contract) ?? $contract->client_id,
+                'debit_partner_id' => $rule->resolveDebitPartnerId($contract),
+                'credit_partner_id' => $rule->resolveCreditPartnerId($contract),
                 'comment' => $comment,
                 'debit_account_id' => $debitAccountId,
                 'credit_account_id' => $creditAccountId,
@@ -781,9 +785,9 @@ trait ContractTrait
                 'document_number' => $nextDocNum,
                 'document_type' => $ruleKey,
                 'debit_account_id' => $debitAccountId,
-                'debit_partner_id' => $rule->resolveDebitPartnerId($contract) ?? $debetPartnerId,
+                'debit_partner_id' => $rule->resolveDebitPartnerId($contract),
                 'credit_account_id' => $creditAccountId,
-                'credit_partner_id' => $rule->resolveCreditPartnerId($contract) ?? $contract->client_id,
+                'credit_partner_id' => $rule->resolveCreditPartnerId($contract),
                 'amount_amd' => $amount,
                 'comment' => $comment,
                 'user_id' => auth()->id(),
@@ -912,18 +916,37 @@ trait ContractTrait
         return $rule;
     }
 
-    private function resolveEvent(string $base, string $class, bool $cash): string
+    private function resolveEvent(string $base, string $class, bool $cash, $filter = null): string
     {
-        if ($class === 'loss') {
-            return "{$base}_loss";
-        }
+        $prefix = ($class === 'loss' && $filter === 'principal') ? 'pay_principal' : $base;
+        $suffix = ($class === 'loss' ? '_loss' : '') . ($cash ? '_cash' : '');
 
-        if ($cash) {
-            return "{$base}_cash";
-        }
-
-        return $base;
+        return $prefix . $suffix;
     }
+//    private function resolveEvent(string $base, string $class, bool $cash,$filter=null): string
+//    {
+//        if ($class === 'loss') {
+//            if ($cash) {
+//                if ($filter == 'principal') {
+//                    return 'pay_principal_loss_cash';
+//
+//                } else {
+//                    return "{$base}_loss_cash";
+//                }
+//            }
+//            if ($filter == 'principal') {
+//                return 'pay_principal_loss';
+//            } else {
+//                return "{$base}_loss";
+//            }
+//        }
+//
+//        if ($cash) {
+//            return "{$base}_cash";
+//        }
+//
+//        return $base;
+//    }
     private function postEntry(
         $date,
         &$docNum,
@@ -944,8 +967,8 @@ trait ContractTrait
             'document_number' => $docNum,
             'document_type' => $type,
             'amount_amd' => $amount,
-            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract) ?? null,
-            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract) ?? $clientId,
+            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract),
+            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract),
             'comment' => $comment,
             'debit_account_id' => $debit,
             'credit_account_id' => $credit,
@@ -962,8 +985,8 @@ trait ContractTrait
             'document_type' => $type,
             'debit_account_id' => $debit,
             'credit_account_id' => $credit,
-            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract) ?? null,
-            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract) ?? $clientId,
+            'debit_partner_id' => $rule?->resolveDebitPartnerId($contract),
+            'credit_partner_id' => $rule?->resolveCreditPartnerId($contract),
             'debit_currency_id' => 1,
             'credit_currency_id' => 1,
             'amount_amd' => $amount,

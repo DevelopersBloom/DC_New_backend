@@ -16,11 +16,12 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class V03Export
 {
-    public function export($from, $to)
+    public function export($from, $to, string $version = 'new')
     {
         // Load XLSX template
-        $path = base_path('v03.xlsx');
-        $reader = IOFactory::createReader('Xlsx');
+        $templateFile = $version === 'new' ? 'v03-2.xls' : 'v03.xlsx';
+        $path = base_path($templateFile);
+        $reader = IOFactory::createReaderForFile($path);
         $spreadsheet = $reader->load($path);
 
         // ---------------------------
@@ -28,11 +29,13 @@ class V03Export
         // ---------------------------
         $sheet1 = $spreadsheet->getSheetByName('Sheet1');
         $sheet1->setCellValueExplicit('D10', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+        $sheet1->getStyle('D10')->getFont()->setName('Sylfaen');
         $sheet1->setCellValue('D11', ExcelDate::PHPToExcel(Carbon::parse($from)->toDateTime()));
         $sheet1->setCellValue('F11', ExcelDate::PHPToExcel(Carbon::parse($to)->toDateTime()));
 
         // D16: client with largest gross loan on report end date, then risk formula on that loan
         $sheet1->setCellValue('D16', $this->computeD16Value($from, $to));
+        $sheet1->setCellValue('E16', 50.3);
 
         // ---------------------------
         // SHEET 2

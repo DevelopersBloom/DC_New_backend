@@ -195,7 +195,7 @@ class PaymentControllerNew extends Controller
 
             // ---- Principal ----
             if ($principal > 0) {
-                $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash));
+                $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash,'principal'));
 
                 $journalPrincipal = $this->postEntry(
                     $date,
@@ -322,11 +322,16 @@ class PaymentControllerNew extends Controller
                     ->whereIn('document_type', [
                         DocumentJournal::EFFECTIVE_RATE_AMOUNT,
                         DocumentJournal::INTEREST_RATE_AMOUNT,
+                        DocumentJournal::RESERVE_GENERAL_AMOUNT,
+                        DocumentJournal::RESERVE_SPECIAL_AMOUNT,
+                        DocumentJournal::PENALTY_RATE_AMOUNT,
                     ])
                     ->max('date');
 
                 if ($lastCalculatedDate && $lastCalculatedDate >= $date) {
-                    RecalculateContractRangeJob::dispatch($contract->id, $date, $lastCalculatedDate);
+                    $from = Carbon::parse($date)->addDay()->toDateString();
+                    $to   = max($lastCalculatedDate, now()->toDateString());
+                    RecalculateContractRangeJob::dispatch($contract->id, $from, $to);
                 }
             }
 
@@ -456,7 +461,7 @@ class PaymentControllerNew extends Controller
             $motherAmount = $contract->provided_amount;
 
             $type = HistoryType::where('name', 'full_payment')->first();
-            $purpose = 'Վարկի մարում՝ տոկոսագումար և մայր գումար';
+            $purpose = 'Ամբողջական մարում';
 
             $newOrder = $this->generateOrder($contract, $totalAmount, $purpose, 'in', $cash, Order::FULL_FILTER, $date);
 
@@ -510,8 +515,8 @@ class PaymentControllerNew extends Controller
                             'document_number' => $nextDocNum,
                             'document_type' => $documentType,
                             'amount_amd' => $reserveAmount,
-                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract) ?? $clientId,
-                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract) ?? null,
+                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
+                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
                             'comment' => 'reserve_payment',
                             'debit_account_id' => $ruleReserve->debit_account_id,
                             'credit_account_id' => $ruleReserve->credit_account_id,
@@ -526,9 +531,9 @@ class PaymentControllerNew extends Controller
                             'document_number' => $nextDocNum,
                             'document_type' => $documentType,
                             'debit_account_id' => $ruleReserve->debit_account_id,
-                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract) ?? $clientId,
+                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
                             'credit_account_id' => $ruleReserve->credit_account_id,
-                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract) ?? null,
+                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
                             'amount_amd' => $reserveAmount,
                             'comment' => 'reserve_amount',
                             'user_id' => auth()->id(),
@@ -709,6 +714,10 @@ class PaymentControllerNew extends Controller
 
         $payer = $request->payer;
         $cash = $request->cash;
+
+        if ($cash) {
+            $partialAmount = round($partialAmount);
+        }
 
         $history_type = HistoryType::where('name','partial_payment')->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;

@@ -41,17 +41,20 @@ class ReportController
     public function getV03Report(Request $request)
     {
         $request->validate([
-            'from' => 'required|date',
-            'to'   => 'required|date',
+            'from'    => 'required|date',
+            'to'      => 'required|date',
+            'version' => 'nullable|in:old,new',
         ]);
+
+        $version = $request->input('version', 'new');
 
         $this->activity->log(
             'export_v03',
-            "Export V03 from {$request->from} to {$request->to}"
+            "Export V03 from {$request->from} to {$request->to} (version: {$version})"
         );
         $export = new V03Export();
 
-        $path = $export->export($request->from, $request->to);
+        $path = $export->export($request->from, $request->to, $version);
 //        return $this->downloadWithPrefix($path, 'v06');
         return response()->download($path)->deleteFileAfterSend();
     }

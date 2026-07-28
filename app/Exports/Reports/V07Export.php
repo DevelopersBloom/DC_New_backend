@@ -84,6 +84,7 @@ class V07Export
             $row++;
         }
         $sheet->setCellValueExplicit('D12', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+        $sheet->getStyle('D12')->getFont()->setName('Sylfaen');
         $sheet->setCellValue('C14', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($from));
         $sheet->getStyle('C14')->getNumberFormat()->setFormatCode('dd/mm/yy');
 

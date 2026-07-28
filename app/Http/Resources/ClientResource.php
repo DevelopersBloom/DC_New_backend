@@ -85,6 +85,7 @@ class ClientResource extends JsonResource
             'bank_client_id'      => $this->bank_client_id,
             'residency_status'    => $this->residency_status,
             'residency_country'   => $this->residency_country,
+            'is_married'          => $this->is_married,
         ];
 
         $legal = [

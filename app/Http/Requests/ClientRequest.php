@@ -167,6 +167,7 @@ class ClientRequest extends FormRequest
                     'BIRTH_CERTIFICATE', 'RESIDENCE_CARD', 'TRAVEL_DOCUMENT',
                     'FOREIGN_PASSPORT', 'OTHER'
                 ])],
+                'is_married' => ['nullable', 'boolean'], // Պարտադիր ամուսնական կարգավիճակ
                 'name' => ['required', 'string', 'max:255'],
                 'surname' => ['required', 'string', 'max:255'],
                 'middle_name' => ['nullable', 'string', 'max:255'],
@@ -202,6 +203,8 @@ class ClientRequest extends FormRequest
             'gender.required' => 'Սեռը պարտադիր է։',
             'gender.in' => 'Սեռը պետք է լինի MALE կամ FEMALE։',
             'document_type.required' => 'Փաստաթղթի տեսակը պարտադիր է։',
+            'is_married.required' => 'Ամուսնական կարգավիճակը պարտադիր է։',
+            'is_married.boolean' => 'Ամուսնական կարգավիճակի արժեքը սխալ է։',
             'name.required' => 'Անունը պարտադիր է։',
             'surname.required' => 'Ազգանունը պարտադիր է։',
             'passport_series.required' => 'Փաստաթղթի սերիան պարտադիր է։',

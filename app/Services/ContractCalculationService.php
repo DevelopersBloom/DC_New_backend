@@ -139,6 +139,21 @@ class ContractCalculationService
 
     }
 
+
+    public function calculatePaidVsAccruedInterestDifference(Contract $contract, Carbon $date): float
+    {
+        $calcDay = $date->copy()->setTimezone('Asia/Yerevan')->startOfDay();
+
+        $accrued = $this->calculateAccruedByProvidedAmountHistory(
+            $contract,
+            $calcDay,
+            $contract->interest_rate
+        );
+
+        $paid = $this->calculatePaidInterestsToDate($contract, $calcDay);
+        return round($paid['nominal'] - $accrued, 2);
+    }
+
     /**
      * Calculates daily-rate accrual using only provided amount history up to calc day.
      * If no history exists, falls back to contract provided amount from contract date.
@@ -149,9 +164,9 @@ class ContractCalculationService
             return 0.0;
         }
 
-        $startDate = $contract->date
-            ? Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay()
-            : $calcDay->copy();
+        $startDate = $contract->provided_at
+            ? Carbon::parse($contract->provided_at, 'Asia/Yerevan')->startOfDay()
+            : Carbon::parse($contract->date, 'Asia/Yerevan')->startOfDay();
 
         if ($startDate->greaterThan($calcDay)) {
             return 0.0;

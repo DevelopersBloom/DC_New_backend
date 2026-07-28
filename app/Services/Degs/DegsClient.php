@@ -69,6 +69,15 @@ class DegsClient
         }
     }
 
+    public function sendP001(string $xml, bool $dryRun = false): array
+    {
+        try {
+            return ['ok' => true, 'requestId' => $this->soap->sendBankIdP001($xml, $dryRun)];
+        } catch (Throwable $e) {
+            return ['ok' => false, 'requestId' => 0, 'error' => $e->getMessage()];
+        }
+    }
+
     public function isResponsePrepared(int $requestId): array
     {
         try {

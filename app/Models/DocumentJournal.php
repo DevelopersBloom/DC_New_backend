@@ -28,6 +28,11 @@ class DocumentJournal extends Model
     const PROVIDE_CONTRACT_AMOUNT = 'Վարկի Տրամադրում-անվանական գումար';
     const PAY_MOTHER_AMOUNT = 'Վարկերի մարում անվանական արժեքով';
     const PAY_MOTHER_AMOUNT_CASH = 'pay_mother_amount_cash';
+    // Full-payment flow (createAccountingTransaction) stores the posting-rule
+    // key as document_type, so these variants exist alongside the ones above.
+    const PAY_MOTHER_AMOUNT_TRANSFER = 'pay_mother_amount';
+    const PAY_INTEREST_AMOUNT_TRANSFER = 'pay_interest_amount';
+    const PAY_INTEREST_AMOUNT_CASH = 'pay_interest_amount_cash';
     const PROVIDED_AMOUNT_CHANGE = 'Վերականգնումներ ընդհանուր պահուստին իրականացված հատկացումների մասով';
     const PROVIDE_SPECIAL_AMOUNT_CHANGE = 'Վերականգնումներ հատուկր պահուստին իրականացված հատկացումների մասով';
     const RESERVE_SPECIAL_AMOUNT = 'Հատկացումներ հատուկ պահուստին';

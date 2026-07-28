@@ -432,8 +432,8 @@ class ContractControllerNew extends Controller
                 'document_number'    => $nextDocNum,
                 'document_type'      => $document_type,
                 'amount_amd'         => $contract->provided_amount,
-                'debit_partner_id'   => $ruleContractAmount->resolveDebitPartnerId($contract) ?? $clientId,
-                'credit_partner_id'  => $ruleContractAmount->resolveCreditPartnerId($contract) ?? null,
+                'debit_partner_id'   => $ruleContractAmount->resolveDebitPartnerId($contract),
+                'credit_partner_id'  => $ruleContractAmount->resolveCreditPartnerId($contract),
                 'comment'            => 'contract_payment',
                 'debit_account_id'   => $debitContractAmount,
                 'credit_account_id'  => $creditContractAmount,
@@ -450,11 +450,11 @@ class ContractControllerNew extends Controller
                 'document_type'      => $document_type,
 
                 'debit_account_id'   => $debitContractAmount,
-                'debit_partner_id'   => $ruleContractAmount->resolveDebitPartnerId($contract) ?? $clientId,
+                'debit_partner_id'   => $ruleContractAmount->resolveDebitPartnerId($contract),
                 'debit_currency_id'  => 1,
 
                 'credit_account_id'  => $creditContractAmount,
-                'credit_partner_id'  => $ruleContractAmount->resolveCreditPartnerId($contract) ?? null,
+                'credit_partner_id'  => $ruleContractAmount->resolveCreditPartnerId($contract),
                 'credit_currency_id' => 1,
 
                 'amount_amd'         => $contract->provided_amount,
@@ -505,8 +505,8 @@ class ContractControllerNew extends Controller
                         'document_number'    => $nextDocNum,
                         'document_type'      => $reserveDocumentType,
                         'amount_amd'         => $reserveAmount,
-                        'debit_partner_id'   => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
-                        'credit_partner_id'  => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+                        'debit_partner_id'   => $ruleReserve->resolveDebitPartnerId($contract),
+                        'credit_partner_id'  => $ruleReserve->resolveCreditPartnerId($contract),
                         'comment'            => "General reserve for contract #{$contract->id} on disbursement",
                         'debit_account_id'   => $debitReserve,
                         'credit_account_id'  => $creditReserve,
@@ -522,12 +522,12 @@ class ContractControllerNew extends Controller
                     'document_type'      => $reserveDocumentType,
 
                     'debit_account_id'   => $debitReserve,
-                    'debit_partner_id'   => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
+                    'debit_partner_id'   => $ruleReserve->resolveDebitPartnerId($contract),
                     'debit_currency_id'  => 1,
 
                     'credit_account_id'  => $creditReserve,
                     'credit_currency_id' => 1,
-                    'credit_partner_id'  => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+                    'credit_partner_id'  => $ruleReserve->resolveCreditPartnerId($contract),
 
                     'amount_amd'         => $reserveAmount,
 
@@ -604,8 +604,8 @@ class ContractControllerNew extends Controller
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
                         'amount_amd'        => abs($diff),
-                        'debit_partner_id'  => $ruleStep1->resolveDebitPartnerId($contract) ?? $clientId,
-                        'credit_partner_id' => $ruleStep1->resolveCreditPartnerId($contract) ?? $clientId,
+                        'debit_partner_id'  => $ruleStep1->resolveDebitPartnerId($contract),
+                        'credit_partner_id' => $ruleStep1->resolveCreditPartnerId($contract),
                         'comment'           => "Loss write-off net balance transfer for contract #{$contract->id}",
                         'debit_account_id'  => $debitAcc,
                         'credit_account_id' => $creditAcc,
@@ -619,11 +619,11 @@ class ContractControllerNew extends Controller
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
                         'debit_account_id'     => $debitAcc,
-                        'debit_partner_id'     => $ruleStep1->resolveDebitPartnerId($contract) ?? $clientId,
+                        'debit_partner_id'     => $ruleStep1->resolveDebitPartnerId($contract),
                         'debit_currency_id'    => 1,
                         'credit_account_id'    => $creditAcc,
                         'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $ruleStep1->resolveCreditPartnerId($contract) ?? $clientId,
+                        'credit_partner_id'    => $ruleStep1->resolveCreditPartnerId($contract),
                         'amount_amd'           => abs($diff),
                         'comment'              => "Loss write-off net balance transfer for contract #{$contract->id}",
                         'user_id'              => auth()->id(),
@@ -727,8 +727,8 @@ class ContractControllerNew extends Controller
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
                         'amount_amd'        => abs($amount86000),
-                        'debit_partner_id'  => $rule86000->resolveDebitPartnerId($contract) ?? $clientId,
-                        'credit_partner_id' => $rule86000->resolveCreditPartnerId($contract) ?? $clientId,
+                        'debit_partner_id'  => $rule86000->resolveDebitPartnerId($contract),
+                        'credit_partner_id' => $rule86000->resolveCreditPartnerId($contract),
                         'comment'           => "Loss write-off expense 86000 for contract #{$contract->id} - loss client disbursement",
                         'debit_account_id'  => $dAcc86000,
                         'credit_account_id' => $cAcc86000,
@@ -742,11 +742,11 @@ class ContractControllerNew extends Controller
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
                         'debit_account_id'     => $dAcc86000,
-                        'debit_partner_id'     => $rule86000->resolveDebitPartnerId($contract) ?? $clientId,
+                        'debit_partner_id'     => $rule86000->resolveDebitPartnerId($contract),
                         'debit_currency_id'    => 1,
                         'credit_account_id'    => $cAcc86000,
                         'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $rule86000->resolveCreditPartnerId($contract) ?? $clientId,
+                        'credit_partner_id'    => $rule86000->resolveCreditPartnerId($contract),
                         'amount_amd'           => abs($amount86000),
                         'comment'              => "Loss write-off expense 86000 for contract #{$contract->id} - loss client disbursement",
                         'user_id'              => auth()->id(),
@@ -806,8 +806,8 @@ class ContractControllerNew extends Controller
                         'document_number'   => $nextDocNum,
                         'document_type'     => DocumentJournal::LOSS_RESERVE,
                         'amount_amd'        => abs($net16201NI),
-                        'debit_partner_id'  => $rule86001->resolveDebitPartnerId($contract) ?? $clientId,
-                        'credit_partner_id' => $rule86001->resolveCreditPartnerId($contract) ?? $clientId,
+                        'debit_partner_id'  => $rule86001->resolveDebitPartnerId($contract),
+                        'credit_partner_id' => $rule86001->resolveCreditPartnerId($contract),
                         'comment'           => "Loss write-off expense 86001 for contract #{$contract->id} - loss client disbursement",
                         'debit_account_id'  => $dAcc86001,
                         'credit_account_id' => $cAcc86001,
@@ -821,11 +821,11 @@ class ContractControllerNew extends Controller
                         'document_number'      => $nextDocNum,
                         'document_type'        => DocumentJournal::LOSS_RESERVE,
                         'debit_account_id'     => $dAcc86001,
-                        'debit_partner_id'     => $rule86001->resolveDebitPartnerId($contract) ?? $clientId,
+                        'debit_partner_id'     => $rule86001->resolveDebitPartnerId($contract),
                         'debit_currency_id'    => 1,
                         'credit_account_id'    => $cAcc86001,
                         'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $rule86001->resolveCreditPartnerId($contract) ?? $clientId,
+                        'credit_partner_id'    => $rule86001->resolveCreditPartnerId($contract),
                         'amount_amd'           => abs($net16201NI),
                         'comment'              => "Loss write-off expense 86001 for contract #{$contract->id} - loss client disbursement",
                         'user_id'              => auth()->id(),
@@ -858,6 +858,7 @@ class ContractControllerNew extends Controller
             'contract_id'     => 'required|integer|exists:contracts,id',
             'amount'          => 'nullable|numeric|min:0.01',
             'reprovide_date'  => 'required|date',
+            'months'          => 'nullable|integer|min:1|max:360',
         ]);
 
         $contract = Contract::findOrFail($validatedData['contract_id']);
@@ -926,6 +927,22 @@ class ContractControllerNew extends Controller
                 'message' => 'Re-provide date is outside the allowed range.',
             ], 422);
         }
+        // Outstanding interest check (must pass before touching the DB)
+        $interestAmount = $this->calculateCurrentPayment($contract)['interest_amount'];
+
+
+        if ($interestAmount > 20000) {
+            return response()->json([
+                'message' => 'Interest (' . number_format($interestAmount, 2) . ' AMD) exceeds the 20,000 AMD limit for re-provide.',
+            ], 422);
+        }
+
+        $penaltyResult = $this->countPenalty($contract->id, $reprovideDate);
+        if ($penaltyResult['penalty_amount'] > 0) {
+            return response()->json([
+                'message' => 'Contract has outstanding penalties. Please clear them before re-providing.',
+            ], 422);
+        }
 
         DB::beginTransaction();
         try {
@@ -956,6 +973,14 @@ class ContractControllerNew extends Controller
                 $contract->closed_at = null;
             }
 
+            if (!empty($validatedData['months'])) {
+                $newMonths = (int) $validatedData['months'];
+                $contract->deadline_days = (string) $newMonths;
+                $contract->deadline = Carbon::parse($reprovideDate, 'Asia/Yerevan')
+                    ->addMonths($newMonths)
+                    ->format('Y-m-d');
+            }
+
             $contract->save();
 
             $journalDoc = $this->postReprovideDisbursementJournal(
@@ -972,8 +997,10 @@ class ContractControllerNew extends Controller
                 $this->processLossClientDisbursement($contract, $client, $journalDoc, $reprovideDate);
             }
 
-            $this->contractService->rebuildScheduleFromDate($contract->fresh(), $reprovideDate);
-
+            $freshContract = $contract->fresh();
+            $overpaid = $this->contractCalculationService
+                ->calculatePaidVsAccruedInterestDifference($freshContract, Carbon::parse($reprovideDate));
+            $this->contractService->rebuildScheduleFromDate($freshContract, $reprovideDate, $deal_id, $overpaid, max(0.0, $interestAmount));
             Modification::create([
                 'subject_type'      => Contract::class,
                 'subject_id'        => $contract->id,
@@ -1079,8 +1106,8 @@ class ContractControllerNew extends Controller
             'document_number'    => $nextDocNum,
             'document_type'      => $document_type,
             'amount_amd'         => $amount,
-            'debit_partner_id'   => $ruleContractAmount->resolveDebitPartnerId($contract) ?? $clientId,
-            'credit_partner_id'  => $ruleContractAmount->resolveCreditPartnerId($contract) ?? null,
+            'debit_partner_id'   => $ruleContractAmount->resolveDebitPartnerId($contract),
+            'credit_partner_id'  => $ruleContractAmount->resolveCreditPartnerId($contract),
             'comment'            => 'contract_reprovide',
             'debit_account_id'   => $ruleContractAmount->debit_account_id,
             'credit_account_id'  => $ruleContractAmount->credit_account_id,
@@ -1096,10 +1123,10 @@ class ContractControllerNew extends Controller
             'document_number'      => $nextDocNum,
             'document_type'        => $document_type,
             'debit_account_id'     => $ruleContractAmount->debit_account_id,
-            'debit_partner_id'     => $ruleContractAmount->resolveDebitPartnerId($contract) ?? $clientId,
+            'debit_partner_id'     => $ruleContractAmount->resolveDebitPartnerId($contract),
             'debit_currency_id'    => 1,
             'credit_account_id'    => $ruleContractAmount->credit_account_id,
-            'credit_partner_id'    => $ruleContractAmount->resolveCreditPartnerId($contract) ?? null,
+            'credit_partner_id'    => $ruleContractAmount->resolveCreditPartnerId($contract),
             'credit_currency_id'   => 1,
             'amount_amd'           => $amount,
             'comment'              => 'contract_reprovide',
@@ -1150,8 +1177,8 @@ class ContractControllerNew extends Controller
             'document_number'    => $nextDocNum,
             'document_type'      => $reserveDocumentType,
             'amount_amd'         => $reserveAmount,
-            'debit_partner_id'   => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
-            'credit_partner_id'  => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+            'debit_partner_id'   => $ruleReserve->resolveDebitPartnerId($contract),
+            'credit_partner_id'  => $ruleReserve->resolveCreditPartnerId($contract),
             'comment'            => "Reserve for contract #{$contract->id} on re-provide",
             'debit_account_id'   => $ruleReserve->debit_account_id,
             'credit_account_id'  => $ruleReserve->credit_account_id,
@@ -1166,11 +1193,11 @@ class ContractControllerNew extends Controller
             'document_number'      => $nextDocNum,
             'document_type'        => $reserveDocumentType,
             'debit_account_id'     => $ruleReserve->debit_account_id,
-            'debit_partner_id'     => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
+            'debit_partner_id'     => $ruleReserve->resolveDebitPartnerId($contract),
             'debit_currency_id'    => 1,
             'credit_account_id'    => $ruleReserve->credit_account_id,
             'credit_currency_id'   => 1,
-            'credit_partner_id'    => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+            'credit_partner_id'    => $ruleReserve->resolveCreditPartnerId($contract),
             'amount_amd'           => $reserveAmount,
             'comment'              => "Reserve for contract #{$contract->id} on re-provide",
             'user_id'              => auth()->id(),
@@ -1213,8 +1240,8 @@ class ContractControllerNew extends Controller
                 'document_number'   => $nextDocNum,
                 'document_type'     => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
                 'amount_amd'        => abs($diff),
-                'debit_partner_id'  => $ruleStep1->resolveDebitPartnerId($contract) ?? $clientId,
-                'credit_partner_id' => $ruleStep1->resolveCreditPartnerId($contract) ?? $clientId,
+                'debit_partner_id'  => $ruleStep1->resolveDebitPartnerId($contract),
+                'credit_partner_id' => $ruleStep1->resolveCreditPartnerId($contract),
                 'comment'           => "Loss write-off net balance transfer for contract #{$contract->id} (re-provide)",
                 'debit_account_id'  => $debitAcc,
                 'credit_account_id' => $creditAcc,
@@ -1228,11 +1255,11 @@ class ContractControllerNew extends Controller
                 'document_number'      => $nextDocNum,
                 'document_type'        => DocumentJournal::LOSS_WRITEOFF_NET_TRANSFER,
                 'debit_account_id'     => $debitAcc,
-                'debit_partner_id'     => $ruleStep1->resolveDebitPartnerId($contract) ?? $clientId,
+                'debit_partner_id'     => $ruleStep1->resolveDebitPartnerId($contract),
                 'debit_currency_id'    => 1,
                 'credit_account_id'    => $creditAcc,
                 'credit_currency_id'   => 1,
-                'credit_partner_id'    => $ruleStep1->resolveCreditPartnerId($contract) ?? $clientId,
+                'credit_partner_id'    => $ruleStep1->resolveCreditPartnerId($contract),
                 'amount_amd'           => abs($diff),
                 'comment'              => "Loss write-off net balance transfer for contract #{$contract->id} (re-provide)",
                 'user_id'              => auth()->id(),
@@ -1335,8 +1362,8 @@ class ContractControllerNew extends Controller
                 'document_number'   => $nextDocNum,
                 'document_type'     => DocumentJournal::LOSS_RESERVE_AMOUNT,
                 'amount_amd'        => abs($amount86000),
-                'debit_partner_id'  => $rule86000->resolveDebitPartnerId($contract) ?? $clientId,
-                'credit_partner_id' => $rule86000->resolveCreditPartnerId($contract) ?? $clientId,
+                'debit_partner_id'  => $rule86000->resolveDebitPartnerId($contract),
+                'credit_partner_id' => $rule86000->resolveCreditPartnerId($contract),
                 'comment'           => "Loss write-off expense 86000 for contract #{$contract->id} - loss client re-provide",
                 'debit_account_id'  => $dAcc86000,
                 'credit_account_id' => $cAcc86000,
@@ -1350,11 +1377,11 @@ class ContractControllerNew extends Controller
                 'document_number'      => $nextDocNum,
                 'document_type'        => DocumentJournal::LOSS_RESERVE_AMOUNT,
                 'debit_account_id'     => $dAcc86000,
-                'debit_partner_id'     => $rule86000->resolveDebitPartnerId($contract) ?? $clientId,
+                'debit_partner_id'     => $rule86000->resolveDebitPartnerId($contract),
                 'debit_currency_id'    => 1,
                 'credit_account_id'    => $cAcc86000,
                 'credit_currency_id'   => 1,
-                'credit_partner_id'    => $rule86000->resolveCreditPartnerId($contract) ?? $clientId,
+                'credit_partner_id'    => $rule86000->resolveCreditPartnerId($contract),
                 'amount_amd'           => abs($amount86000),
                 'comment'              => "Loss write-off expense 86000 for contract #{$contract->id} - loss client re-provide",
                 'user_id'              => auth()->id(),
@@ -1414,8 +1441,8 @@ class ContractControllerNew extends Controller
                 'document_number'   => $nextDocNum,
                 'document_type'     => DocumentJournal::LOSS_RESERVE,
                 'amount_amd'        => abs($net16201NI),
-                'debit_partner_id'  => $rule86001->resolveDebitPartnerId($contract) ?? $clientId,
-                'credit_partner_id' => $rule86001->resolveCreditPartnerId($contract) ?? $clientId,
+                'debit_partner_id'  => $rule86001->resolveDebitPartnerId($contract),
+                'credit_partner_id' => $rule86001->resolveCreditPartnerId($contract),
                 'comment'           => "Loss write-off expense 86001 for contract #{$contract->id} - loss client re-provide",
                 'debit_account_id'  => $dAcc86001,
                 'credit_account_id' => $cAcc86001,
@@ -1429,11 +1456,11 @@ class ContractControllerNew extends Controller
                 'document_number'      => $nextDocNum,
                 'document_type'        => DocumentJournal::LOSS_RESERVE,
                 'debit_account_id'     => $dAcc86001,
-                'debit_partner_id'     => $rule86001->resolveDebitPartnerId($contract) ?? $clientId,
+                'debit_partner_id'     => $rule86001->resolveDebitPartnerId($contract),
                 'debit_currency_id'    => 1,
                 'credit_account_id'    => $cAcc86001,
                 'credit_currency_id'   => 1,
-                'credit_partner_id'    => $rule86001->resolveCreditPartnerId($contract) ?? $clientId,
+                'credit_partner_id'    => $rule86001->resolveCreditPartnerId($contract),
                 'amount_amd'           => abs($net16201NI),
                 'comment'              => "Loss write-off expense 86001 for contract #{$contract->id} - loss client re-provide",
                 'user_id'              => auth()->id(),
@@ -1582,6 +1609,24 @@ class ContractControllerNew extends Controller
         ]);
     }
 
+    public function getInterestBalance(Request $request): JsonResponse
+    {
+        $request->validate([
+            'contract_id' => 'required|integer|exists:contracts,id',
+            'date'        => 'required|date',
+        ]);
+
+        $contract = Contract::findOrFail($request->contract_id);
+        $date     = Carbon::parse($request->date, 'Asia/Yerevan')->startOfDay();
+
+        $difference = $this->contractCalculationService
+            ->calculatePaidVsAccruedInterestDifference($contract, $date);
+
+        return response()->json([
+            'interest_balance' => $difference,
+        ]);
+    }
+
     public function confirmCalculatedInterest(Request $request)
     {
         $request->validate([
@@ -1634,8 +1679,8 @@ class ContractControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeInterest,
                     'amount_amd' => $request->calculated_interest,
-                    'debit_partner_id' => $ruleInterest->resolveDebitPartnerId($contract) ?? $debetPartnerId,
-                    'credit_partner_id' => $ruleInterest->resolveCreditPartnerId($contract) ?? $debetPartnerId,
+                    'debit_partner_id' => $ruleInterest->resolveDebitPartnerId($contract),
+                    'credit_partner_id' => $ruleInterest->resolveCreditPartnerId($contract),
                     'comment' => 'Confirmed interest for contract #' . $contract->id,
                     'debit_account_id' => $debitInterest,
                     'credit_account_id' => $creditInterest,
@@ -1650,11 +1695,11 @@ class ContractControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeInterest,
                     'debit_account_id' => $debitInterest,
-                    'debit_partner_id' => $ruleInterest->resolveDebitPartnerId($contract) ?? $debetPartnerId,
+                    'debit_partner_id' => $ruleInterest->resolveDebitPartnerId($contract),
                     'debit_currency_id' => 1,
                     'credit_account_id' => $creditInterest,
                     'credit_currency_id' => 1,
-                    'credit_partner_id' => $ruleInterest->resolveCreditPartnerId($contract) ?? $debetPartnerId,
+                    'credit_partner_id' => $ruleInterest->resolveCreditPartnerId($contract),
                     'amount_amd' => $request->calculated_interest,
                     'comment' => 'Confirmed interest for contract #' . $contract->id,
                     'user_id' => $systemUserId,
@@ -1674,8 +1719,8 @@ class ContractControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeEffective,
                     'amount_amd' => $request->calculated_effective_interest,
-                    'debit_partner_id' => $ruleEffective->resolveDebitPartnerId($contract) ?? $debetPartnerId,
-                    'credit_partner_id' => $ruleEffective->resolveCreditPartnerId($contract) ?? $creditPartnerId,
+                    'debit_partner_id' => $ruleEffective->resolveDebitPartnerId($contract),
+                    'credit_partner_id' => $ruleEffective->resolveCreditPartnerId($contract),
                     'comment' => 'Confirmed effective interest for contract #' . $contract->id,
                     'debit_account_id' => $debitEffective,
                     'credit_account_id' => $creditEffective,
@@ -1690,11 +1735,11 @@ class ContractControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeEffective,
                     'debit_account_id' => $debitEffective,
-                    'debit_partner_id' => $ruleEffective->resolveDebitPartnerId($contract) ?? $debetPartnerId,
+                    'debit_partner_id' => $ruleEffective->resolveDebitPartnerId($contract),
                     'debit_currency_id' => 1,
                     'credit_account_id' => $creditEffective,
                     'credit_currency_id' => 1,
-                    'credit_partner_id' => $ruleEffective->resolveCreditPartnerId($contract) ?? $creditPartnerId,
+                    'credit_partner_id' => $ruleEffective->resolveCreditPartnerId($contract),
                     'amount_amd' => $request->calculated_effective_interest,
                     'comment' => 'Confirmed effective interest for contract #' . $contract->id,
                     'user_id' => $systemUserId,
@@ -1750,8 +1795,8 @@ class ContractControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeReserve,
                     'amount_amd' => $reserveAmount,
-                    'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
-                    'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+                    'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
+                    'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
                     'comment' => "Old reserve for contract #{$contract->id} due to classification change",
                     'debit_account_id' => $debitReserve,
                     'credit_account_id' => $creditReserve,
@@ -1766,11 +1811,11 @@ class ContractControllerNew extends Controller
                     'document_number' => $nextDocNum,
                     'document_type' => $documentTypeReserve,
                     'debit_account_id' => $debitReserve,
-                    'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract) ?? null,
+                    'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
                     'debit_currency_id' => 1,
                     'credit_account_id' => $creditReserve,
                     'credit_currency_id' => 1,
-                    'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract) ?? $clientId,
+                    'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
                     'amount_amd' => $reserveAmount,
                     'comment' => "Old reserve for contract #{$contract->id}",
                     'user_id' => auth()->check() ? auth()->id() : 1,

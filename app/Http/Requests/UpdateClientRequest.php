@@ -35,6 +35,7 @@ class UpdateClientRequest extends FormRequest
 
             'gender' => 'nullable|string|in:MALE,FEMALE',
             'document_type' => 'nullable|string|in:NON_BIOMETRIC_PASSPORT,ID_CARD,BIOMETRIC_PASSPORT,BIRTH_CERTIFICATE,RESIDENCE_CARD,TRAVEL_DOCUMENT,FOREIGN_PASSPORT,OTHER',
+            'is_married' => 'nullable|boolean',
             'legal_country' => 'nullable|string',
             'legal_province' => 'nullable|string',
             'legal_community' => 'nullable|string',

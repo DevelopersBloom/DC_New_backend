@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 class RolePermissionController extends Controller
 {
     public function __construct(
-        private readonly RolePermissionService $rolePermissionService
+        private RolePermissionService $rolePermissionService
     ) {
     }
 

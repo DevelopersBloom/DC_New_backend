@@ -2,9 +2,14 @@
 
 namespace App\Exports\Acra;
 
+use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -18,9 +23,18 @@ class AcraExport
     protected $allClients;
     protected $from;
     protected $to;
+    /** Report generation time; PackageInfo B4 and the file name's package id. */
+    protected Carbon $createdAt;
     protected $customerCode = 'ACC';
     private const DATE_FORMAT = 'dd/mm/yyyy';
     private const INTEGER_FORMAT = '0';
+    // Overdue totals below this (AMD) should not be reported as overdue.
+    public const MIN_OVERDUE_AMD = 1000;
+
+    /** Blocking issues found before the file is finalized. */
+    protected array $validationErrors = [];
+    /** Non-blocking issues, logged for review. */
+    protected array $validationWarnings = [];
 
     public function __construct($contracts, $allClients, $from, $to)
     {
@@ -32,6 +46,8 @@ class AcraExport
 
     public function export()
     {
+        $this->createdAt = now();
+
         $path = base_path('acra_template.xlsx');
         if (!file_exists($path)) {
             throw new \Exception("Template file not found at: " . $path);
@@ -47,9 +63,24 @@ class AcraExport
         $this->fillCollateral($spreadsheet->getSheetByName('Collateral'));
         $this->fillGuarantor($spreadsheet->getSheetByName('Guarantor'));
 
+        $this->normalizeTextColumns($spreadsheet);
+
+        $this->trimStyleOnlyColumns($spreadsheet);
+
         $this->applyGlobalStyles($spreadsheet);
 
-        $packageId = now()->format('YmdHis');
+        $this->validateSheets($spreadsheet);
+
+        if (!empty($this->validationWarnings)) {
+            Log::warning('ACRA export validation warnings:', $this->validationWarnings);
+        }
+        if (!empty($this->validationErrors)) {
+            Log::error('ACRA export validation failed, file was not generated:', $this->validationErrors);
+            throw ValidationException::withMessages(['acra' => $this->validationErrors]);
+        }
+
+        // Package id is the CreatedDateTime (same timestamp as PackageInfo B4).
+        $packageId = $this->createdAt->format('YmdHis');
         $fileName = "{$this->customerCode}_01_01_{$packageId}.xlsx";
         $filePath = storage_path('app/public/' . $fileName);
 
@@ -60,6 +91,74 @@ class AcraExport
             'path' => $filePath,
             'name' => $fileName
         ];
+    }
+
+    /**
+     * The registry's checker reads every column the template formats as text
+     * ("@") with a typed String accessor, and crashes ("System.Double" ->
+     * "System.String") or mismatches cross-sheet ids when a numeric cell shows
+     * up there. Convert numeric cells in template-text columns to strings; the
+     * template's column formats are the registry's schema.
+     */
+    private function normalizeTextColumns($spreadsheet): void
+    {
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            $textColumns = [];
+            foreach ($sheet->getColumnDimensions() as $column => $dimension) {
+                $format = $spreadsheet->getCellXfByIndex($dimension->getXfIndex())
+                    ->getNumberFormat()->getFormatCode();
+                if ($format === '@') {
+                    $textColumns[$column] = true;
+                }
+            }
+            if (!$textColumns) {
+                continue;
+            }
+
+            foreach ($sheet->getCellCollection()->getCoordinates() as $coordinate) {
+                [$column, $rowNumber] = Coordinate::coordinateFromString($coordinate);
+                if ($rowNumber < 2 || !isset($textColumns[$column])) {
+                    continue;
+                }
+                $cell = $sheet->getCell($coordinate);
+                if ($cell->getDataType() === DataType::TYPE_NUMERIC) {
+                    $cell->setValueExplicit((string) $cell->getValue(), DataType::TYPE_STRING);
+                }
+            }
+        }
+    }
+
+    /**
+     * The template carries a style-only (empty) column after the last real
+     * column on every sheet. Excel drops it on re-save, but PhpSpreadsheet
+     * keeps it, and the registry then rejects the file for having one column
+     * too many. Remove trailing columns that contain no values.
+     */
+    private function trimStyleOnlyColumns($spreadsheet): void
+    {
+        foreach ($spreadsheet->getAllSheets() as $sheet) {
+            $lastDataColumn = 1;
+            foreach ($sheet->getCellCollection()->getCoordinates() as $coordinate) {
+                $value = $sheet->getCell($coordinate)->getValue();
+                if ($value === null || $value === '') {
+                    continue;
+                }
+                [$column] = Coordinate::coordinateFromString($coordinate);
+                $lastDataColumn = max($lastDataColumn, Coordinate::columnIndexFromString($column));
+            }
+
+            $highestColumn = Coordinate::columnIndexFromString($sheet->getHighestColumn());
+            for ($i = $highestColumn; $i > $lastDataColumn; $i--) {
+                $column = Coordinate::stringFromColumnIndex($i);
+                // Drops the column dimension (width/style definition)...
+                $sheet->removeColumn($column);
+                // ...and the style-only empty cells removeColumn leaves behind.
+                $sheet->getCellCollection()->removeColumn($column);
+            }
+            // Recalculate the cached highest column so the writer does not pad
+            // rows (and the dimension ref) back out to the phantom column.
+            $sheet->garbageCollect();
+        }
     }
 
     private function applyGlobalStyles($spreadsheet)
@@ -74,6 +173,30 @@ class AcraExport
                 ->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_LEFT)
                 ->setVertical(Alignment::VERTICAL_CENTER);
+        }
+
+        // PackageInfo values (dates, counts) are right-aligned in the ACRA sample file.
+        $packageInfo = $spreadsheet->getSheetByName('PackageInfo');
+        if ($packageInfo) {
+            $packageInfo->getStyle('B1:B6')
+                ->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+
+        // Date columns are right-aligned in the ACRA sample file.
+        $dateColumns = [
+            'Debtor' => ['E', 'F'],
+            'Credit' => ['C', 'D', 'E', 'M', 'U', 'X'],
+        ];
+        foreach ($dateColumns as $sheetName => $columns) {
+            $sheet = $spreadsheet->getSheetByName($sheetName);
+            if (!$sheet) continue;
+            $highestRow = $sheet->getHighestRow();
+            foreach ($columns as $column) {
+                $sheet->getStyle("{$column}2:{$column}{$highestRow}")
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            }
         }
     }
 
@@ -90,7 +213,7 @@ class AcraExport
         }
     }
 
-    private function setDateCellValue($sheet, string $coordinate, $date): void
+    private function setDateCellValue($sheet, string $coordinate, $date, string $format = self::DATE_FORMAT): void
     {
         if (!$date) {
             $sheet->setCellValue($coordinate, '');
@@ -100,7 +223,7 @@ class AcraExport
         try {
             $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
             $sheet->setCellValue($coordinate, ExcelDate::PHPToExcel($carbon));
-            $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode(self::DATE_FORMAT);
+            $sheet->getStyle($coordinate)->getNumberFormat()->setFormatCode($format);
         } catch (\Exception $e) {
             $sheet->setCellValue($coordinate, '');
         }
@@ -116,9 +239,9 @@ class AcraExport
     {
         if (!$sheet) return;
         $sheet->setCellValue('B1', $this->customerCode);
-        $sheet->setCellValue('B2', $this->formatDate($this->from, 'Y-m-d'));
-        $sheet->setCellValue('B3', $this->formatDate($this->to, 'Y-m-d'));
-        $sheet->setCellValue('B4', now()->format('Y-m-d H:i:s'));
+        $this->setDateCellValue($sheet, 'B2', $this->from, 'd/mm/yyyy');
+        $this->setDateCellValue($sheet, 'B3', $this->to, 'd/mm/yyyy');
+        $this->setDateCellValue($sheet, 'B4', $this->createdAt, 'dd/mm/yyyy hh:mm:ss');
         $sheet->setCellValue('B5', 1);
         $sheet->setCellValue('B6', 1);
     }
@@ -231,6 +354,15 @@ class AcraExport
     {
         if (!$sheet) return;
         $row = 2;
+        // Snapshot cutoff for classification lookups: the last day the period covers.
+        // The nightly classification job runs at 00:00 Yerevan time and stamps its
+        // ClassificationHistory row with the moment it actually executes (a few
+        // seconds after midnight), even though it computes that day's state. A
+        // pure whereDate() cutoff would exclude that row, so extend the cutoff
+        // with a grace window past midnight to still catch it.
+//        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->subMinutes(10);
+        $classificationAsOf = Carbon::parse($this->from)->endOfDay();
+
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
@@ -259,15 +391,21 @@ class AcraExport
                     ->latest('date')
                     ->first();
 
+
                 if ($lastMotherPayment) {
                     $lastPaymentDate = $lastMotherPayment->date;
                 }
 
-                $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                    ->where('journalable_id', $mainJournal->id)
-                    ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                    ->where('date', '<=', $this->to)
-                    ->sum('amount_amd');
+                if ($contract->status == 'completed') {
+                    $totalPaid = $contract->mother;
+                } else {
+                    $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
+                        ->where('journalable_id', $mainJournal->id)
+                        ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+                        ->where('date', '<=', $this->to)
+                        ->sum('amount_amd');
+                }
+
             }
             // Some closed contracts may have principal closed without detailed PAY_MOTHER_AMOUNT rows.
             // Keep I column meaningful by deriving paid principal from contract figures when needed.
@@ -325,6 +463,13 @@ class AcraExport
                     ->sum('amount');
             }
 
+            // Match the "overdue" contract scope (Contract::scopeStatus): a debt
+            // is only reported as overdue when it exceeds MIN_OVERDUE_AMD.
+            if (($overdueMother + $overdueInterest) <= self::MIN_OVERDUE_AMD) {
+                $overdueMother = 0;
+                $overdueInterest = 0;
+            }
+
             $this->setIntegerCellValue($sheet, 'K' . $row, $overdueMother);
             $this->setIntegerCellValue($sheet, 'L' . $row, $overdueInterest);
 
@@ -347,7 +492,7 @@ class AcraExport
             // N, O, P, Q, U
             $sheet->setCellValue('N' . $row, 'AMD');
 
-            $riskClassTitle = $contract->client->classification->name;
+            $riskClassTitle = $contract->client->classification->name ?? '';
 
             $riskClassCode = match (strtolower($riskClassTitle)) {
                 'standard'    => '01',
@@ -360,6 +505,32 @@ class AcraExport
 
             $sheet->setCellValue('O' . $row, $riskClassCode);
 
+            // X: last risk classification date ("Վարկի վերջին դասակարգման ամսաթիվ").
+            // Left blank when the client has no risk class, and also for "standard"
+            // (01) — only non-standard classes (02-05) carry a classification date.
+            $requiresClassificationDate = !in_array($riskClassCode, ['', '01'], true);
+            $lastClassificationDate = null;
+            if ($requiresClassificationDate && $contract->client->classification_id) {
+                $lastClassificationDate = ClassificationHistory::query()
+                    ->where('client_id', $contract->client_id)
+                    //->where('classification_id', $contract->client->classification_id)
+                    ->where('date', '<=', $classificationAsOf)
+                    ->orderByDesc('date')
+                    ->orderByDesc('id')
+                    ->value('date');
+            }
+            if ($lastClassificationDate) {
+                $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
+            } elseif ($requiresClassificationDate) {
+                $this->validationErrors[] = sprintf(
+                    'Credit row %d (contract %s, client %s): risk class "%s" is set but the last classification date (X) is missing.',
+                    $row,
+                    $contract->num,
+                    $contract->client_id,
+                    $riskClassTitle
+                );
+                continue;
+            }
 
             if ($contract->status) {
                 $contractStatusCode = ($contract->status === 'completed') ? 1 : 0;
@@ -402,11 +573,15 @@ class AcraExport
                         $collateralCode = '01';
                         break;
                     case 'car':
+                    case 'car-purchase':
                         $collateralCode = '10';
                         break;
                     case 'other movable property':
                         $collateralCode = '11';
                         break;
+                    // Real estate is stored under the legacy category name
+                    // "electronics" (title: Անշարժ գույք).
+                    case 'electronics':
                     case 'real estate':
                         $collateralCode = '12';
                         break;
@@ -433,12 +608,160 @@ class AcraExport
 
                 $gName = ($g->type === 'legal')
                     ? ($g->company_name . ' ' . $g->legal_form)
-                    : trim($g->name . ' ' . $g->surname . ($g->middle_name ? ' ' . $g->middle_name : ''));
+                    : trim($g->name . '^' . $g->surname . ($g->middle_name ? '^' . $g->middle_name : ''));
 
                 $sheet->setCellValue('D' . $row, $gName);
                 $sheet->setCellValue('E' . $row, ($g->type === 'legal' ? $g->tax_number : $g->passport_series));
-                $sheet->setCellValue('T' . $row, '001');
+                if ($g->residency_status) {
+                    $sheet->setCellValue('K' . $row, $g->residency_status === 'resident' ? 1 : 2);
+                }
+                $sheet->setCellValue('T' . $row, 'AMD');
                 $row++;
+            }
+        }
+    }
+
+    /**
+     * Pre-export QA: checks every filled row against the ACRA rules and
+     * collects a summary. Errors block the file; warnings are only logged.
+     */
+    private function validateSheets($spreadsheet): void
+    {
+        $this->validateDebtorSheet($spreadsheet->getSheetByName('Debtor'));
+        $this->validateCreditSheet($spreadsheet->getSheetByName('Credit'));
+        $this->validateCollateralSheet($spreadsheet->getSheetByName('Collateral'));
+        $this->validateGuarantorSheet($spreadsheet->getSheetByName('Guarantor'));
+    }
+
+    private function cellValue($sheet, string $column, int $row)
+    {
+        return $sheet->getCell($column . $row)->getValue();
+    }
+
+    private function isBlank($value): bool
+    {
+        return $value === null || trim((string) $value) === '';
+    }
+
+    /**
+     * FirstName^LastName or FirstName^LastName^Patronymic,
+     * caret-separated with no spaces around the carets.
+     */
+    private function isCaretName($name): bool
+    {
+        $name = (string) $name;
+        if (!str_contains($name, '^') || preg_match('/\s\^|\^\s/u', $name)) {
+            return false;
+        }
+        $parts = explode('^', $name);
+        if (count($parts) < 2 || count($parts) > 3) {
+            return false;
+        }
+        foreach ($parts as $part) {
+            if (trim($part) === '') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function validateDebtorSheet($sheet): void
+    {
+        if (!$sheet) return;
+        for ($row = 2; $row <= $sheet->getHighestDataRow(); $row++) {
+            $clientId = $this->cellValue($sheet, 'A', $row);
+            if ($this->isBlank($clientId)) continue;
+            $label = "Debtor row {$row} (client {$clientId})";
+
+            $typeCode = $this->cellValue($sheet, 'B', $row);
+            $name = $this->cellValue($sheet, 'C', $row);
+            $isIndividual = in_array((int) $typeCode, [21, 22], true);
+
+            if ($this->isBlank($typeCode)) {
+                $this->validationErrors[] = "{$label}: debtor type code (B) is missing.";
+            }
+            if ($this->isBlank($name)) {
+                $this->validationErrors[] = "{$label}: name (C) is missing.";
+            } elseif ($isIndividual && !$this->isCaretName($name)) {
+                $this->validationErrors[] = "{$label}: name (C) must be FirstName^LastName^Patronymic, got \"{$name}\".";
+            }
+            if ($this->isBlank($this->cellValue($sheet, 'D', $row))) {
+                $this->validationErrors[] = "{$label}: passport/tax number (D) is missing.";
+            }
+            if ($isIndividual && $this->isBlank($this->cellValue($sheet, 'E', $row))) {
+                $this->validationErrors[] = "{$label}: date of birth (E) is missing.";
+            }
+        }
+    }
+
+    private function validateCreditSheet($sheet): void
+    {
+        if (!$sheet) return;
+        for ($row = 2; $row <= $sheet->getHighestDataRow(); $row++) {
+            $clientId = $this->cellValue($sheet, 'A', $row);
+            $num = $this->cellValue($sheet, 'B', $row);
+            if ($this->isBlank($clientId) && $this->isBlank($num)) continue;
+            $label = "Credit row {$row} (contract {$num})";
+
+            $required = [
+                'A' => 'client id',
+                'B' => 'contract number',
+                'C' => 'contract date',
+                'D' => 'deadline',
+                'N' => 'currency',
+                'O' => 'risk class',
+            ];
+            foreach ($required as $column => $field) {
+                if ($this->isBlank($this->cellValue($sheet, $column, $row))) {
+                    $this->validationErrors[] = "{$label}: {$field} ({$column}) is missing.";
+                }
+            }
+
+            $overdueTotal = (float) $this->cellValue($sheet, 'K', $row)
+                + (float) $this->cellValue($sheet, 'L', $row);
+            if ($overdueTotal > 0 && $this->isBlank($this->cellValue($sheet, 'M', $row))) {
+                $this->validationErrors[] = "{$label}: overdue amounts (K/L) are set but the overdue start date (M) is empty.";
+            }
+        }
+    }
+
+    private function validateCollateralSheet($sheet): void
+    {
+        if (!$sheet) return;
+        for ($row = 2; $row <= $sheet->getHighestDataRow(); $row++) {
+            $num = $this->cellValue($sheet, 'A', $row);
+            if ($this->isBlank($num)) continue;
+            $label = "Collateral row {$row} (contract {$num})";
+
+            $amount = $this->cellValue($sheet, 'B', $row);
+            if ($this->isBlank($amount) || (float) $amount <= 0) {
+                $this->validationErrors[] = "{$label}: collateral value (B) must be a positive amount.";
+            }
+            if ($this->isBlank($this->cellValue($sheet, 'C', $row))) {
+                $this->validationErrors[] = "{$label}: currency (C) is missing.";
+            }
+            if ($this->isBlank($this->cellValue($sheet, 'D', $row))) {
+                $this->validationErrors[] = "{$label}: property code (D) is missing — unmapped collateral category.";
+            }
+        }
+    }
+
+    private function validateGuarantorSheet($sheet): void
+    {
+        if (!$sheet) return;
+        for ($row = 2; $row <= $sheet->getHighestDataRow(); $row++) {
+            $num = $this->cellValue($sheet, 'A', $row);
+            $name = $this->cellValue($sheet, 'D', $row);
+            if ($this->isBlank($num) && $this->isBlank($name)) continue;
+            $label = "Guarantor row {$row} (contract {$num})";
+
+            if ($this->isBlank($name)) {
+                $this->validationErrors[] = "{$label}: guarantor name (D) is missing.";
+            } elseif ($this->cellValue($sheet, 'C', $row) === 'ֆիզիկական անձ' && !$this->isCaretName($name)) {
+                $this->validationErrors[] = "{$label}: name (D) must be FirstName^LastName^Patronymic, got \"{$name}\".";
+            }
+            if ($this->isBlank($this->cellValue($sheet, 'E', $row))) {
+                $this->validationErrors[] = "{$label}: passport/tax number (E) is missing.";
             }
         }
     }

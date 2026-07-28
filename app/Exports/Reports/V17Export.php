@@ -391,8 +391,13 @@ class V17Export
         $start = Carbon::parse($from)->startOfDay();
         $end = Carbon::parse($to)->endOfDay();
 
-        $loanDocs = DocumentJournal::with(['parentDoc.journalable'])
+        // journalable_type may point to a parent DocumentJournal or directly to a LoanNdm,
+        // so the nested journalable can only be eager-loaded for DocumentJournal parents.
+        $loanDocs = DocumentJournal::with(['parentDoc' => function ($morphTo) {
+                $morphTo->morphWith([DocumentJournal::class => ['journalable']]);
+            }])
             ->where('document_type', DocumentJournal::LOAN_ATTRACTION)
+            ->whereBetween('date', [$start, $end])
             ->get();
 
         $contractDocs = DocumentJournal::with(['journalable'])
@@ -413,7 +418,10 @@ class V17Export
         $groups3 = $this->initGroup(['C', 'E', 'G', 'I', 'K', 'M', 'O', 'Q', 'S']);
 
         foreach ($docs as $doc) {
-            $ndm = $doc->parentDoc->journalable;
+            $ndm = $doc->parentDoc instanceof DocumentJournal
+                ? $doc->parentDoc->journalable
+                : $doc->parentDoc;
+            if (!$ndm) continue;
             $endDate = $ndm->repayment_end_date ?? $ndm->maturity_date;
 
             // For Ցպահանջ buckets we use remaining days as of report download date ($to).
@@ -521,6 +529,7 @@ class V17Export
     {
         if ($from && $to) {
             $sheet->setCellValueExplicit('C9', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+            $sheet->getStyle('C9')->getFont()->setName('Sylfaen');
             $sheet->setCellValue('C10', Date::PHPToExcel($from));
             $sheet->setCellValue('E10', Date::PHPToExcel($to));
             $sheet->getStyle('C10:E10')->getNumberFormat()->setFormatCode('dd/mm/yy');

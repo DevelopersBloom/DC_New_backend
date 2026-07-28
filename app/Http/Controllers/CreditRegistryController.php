@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Modification;
+use App\Services\AccClassificationImportService;
 use App\Services\CreditRegistryL001Service;
 use App\Services\CreditRegistryL002Service;
 use App\Services\CreditRegistryL003Service;
 use App\Services\CreditRegistryL005Service;
 use App\Services\CreditRegistryL006Service;
+use App\Services\BankIdService;
 use App\Services\CreditRegistryRiskModificationXmlService;
 use App\Services\Degs\DegsClient;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +29,8 @@ class CreditRegistryController extends Controller
         private CreditRegistryL006Service                $l006Service,
         private CreditRegistryRiskModificationXmlService $riskModXmlService,
         private DegsClient                               $degsClient,
+        private BankIdService                            $bankIdService,
+        private AccClassificationImportService           $accClassificationImportService,
     )
     {
     }
@@ -56,6 +60,34 @@ class CreditRegistryController extends Controller
             'alive' => $result['alive'] ?? false,
             'raw' => $result['raw'] ?? null,
         ]);
+    }
+
+    // ================================================================
+    // BankID — P001
+    // ================================================================
+
+    /**
+     * POST /clients/{id}/fetch-bank-id
+     * Fetches BankID from CB and saves to client.bank_client_id.
+     * Pass ?dry_run=1 to test without hitting DEGS.
+     */
+    public function fetchBankId(int $id, Request $request): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        $dryRun = $request->boolean('dry_run');
+
+        try {
+            $bankId = $this->bankIdService->fetchAndSave($client, $dryRun);
+            return response()->json([
+                'ok'        => true,
+                'bank_id'   => $bankId,
+                'client_id' => $client->id,
+                'dry_run'   => $dryRun,
+            ]);
+        } catch (\Throwable $e) {
+            $errorMsg = mb_convert_encoding($e->getMessage(), 'UTF-8', 'UTF-8');
+            return response()->json(['ok' => false, 'error' => $errorMsg], 500);
+        }
     }
 
     // ================================================================
@@ -241,6 +273,77 @@ class CreditRegistryController extends Controller
     }
 
     // ================================================================
+    // Preview — unified XML preview for any code (L001, L002, L003, L005, L006)
+    // ================================================================
+
+    /**
+     * GET /{id}/credit-registry/preview/{code}
+     * Returns the XML that would be sent for the given code, without sending it to DEGS.
+     * Extra params depend on the code:
+     *   L003: reason (optional, default "Սխալ գրանցում")
+     *   L005: field_type, new_value (required), old_value (optional)
+     *   L006: data_to_delete (required)
+     */
+    public function previewXml(Request $request, string $id, string $code): JsonResponse
+    {
+        $contract = Contract::find($id);
+        if (!$contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $code = strtoupper($code);
+
+        try {
+            $xml = match ($code) {
+                'L001' => $this->l001Service->generateL001Xml($contract),
+                'L002' => $this->l002Service->generateL002Xml((int)$contract->id),
+                'L003' => $this->l003Service->generateL003Xml(
+                    (int)$contract->id,
+                    $request->input('reason', 'Սխալ գրանցում'),
+                ),
+                'L005' => $this->generateL005FromRequest($request, $contract),
+                'L006' => $this->generateL006FromRequest($request, $contract),
+                default => throw new \InvalidArgumentException("Unknown code: {$code}. Expected one of L001, L002, L003, L005, L006."),
+            };
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'code' => $code,
+            'contract_id' => $contract->id,
+            'xml' => $xml,
+        ]);
+    }
+
+    private function generateL005FromRequest(Request $request, Contract $contract): string
+    {
+        $fieldType = $request->input('field_type');
+        $newValue = $request->input('new_value');
+
+        if (!$fieldType || !$newValue) {
+            throw new \InvalidArgumentException('field_type and new_value are required for L005');
+        }
+
+        return $this->l005Service->generateL005Xml(
+            contractId: (int)$contract->id,
+            fieldType: $fieldType,
+            newValue: $newValue,
+            oldValue: $request->input('old_value'),
+        );
+    }
+
+    private function generateL006FromRequest(Request $request, Contract $contract): string
+    {
+        $dataToDelete = $request->input('data_to_delete');
+        if (!$dataToDelete) {
+            throw new \InvalidArgumentException('data_to_delete is required for L006');
+        }
+
+        return $this->l006Service->generateL006Xml((int)$contract->id, $dataToDelete);
+    }
+
+    // ================================================================
     // Response polling
     // ================================================================
 
@@ -367,6 +470,95 @@ class CreditRegistryController extends Controller
             ->update(['is_sent' => true, 'sent_at' => now()]);
 
         return response()->download($path, $filename)->deleteFileAfterSend(true);
+    }
+
+    // ================================================================
+    // ACC — periodic credit registry classification import
+    // ================================================================
+
+    /**
+     * POST /credit-registry/import-acc-classification/preview
+     * Body (multipart/form-data): file (password-protected xlsx), password
+     * Reads the ACC report and returns which classifications it contains,
+     * without changing anything.
+     */
+    public function previewAccClassification(Request $request): JsonResponse
+    {
+        [$uploadedPath, $originalName, $password, $error] = $this->validateAccClassificationUpload($request);
+        if ($error) {
+            return $error;
+        }
+
+        try {
+            $summary = $this->accClassificationImportService->preview($uploadedPath, $password);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to read ACC classification file',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'file' => $originalName,
+        ] + $summary);
+    }
+
+    /**
+     * POST /credit-registry/import-acc-classification/apply
+     * Body (multipart/form-data): file (password-protected xlsx), password
+     * Upgrades client classifications from the periodic ACC report — a
+     * client is only ever moved to a worse classification, never better.
+     */
+    public function applyAccClassification(Request $request): JsonResponse
+    {
+        [$uploadedPath, $originalName, $password, $error] = $this->validateAccClassificationUpload($request);
+        if ($error) {
+            return $error;
+        }
+
+        try {
+            $summary = $this->accClassificationImportService->apply($uploadedPath, $password, $originalName);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to import ACC classification file',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'file' => $originalName,
+            'updated_count' => count($summary['updated']),
+            'skipped_count' => count($summary['skipped']),
+            'unmatched_count' => count($summary['unmatched']),
+            'error_count' => count($summary['errors']),
+            'details' => $summary,
+        ]);
+    }
+
+    /**
+     * Validates the shared upload payload for the ACC classification endpoints.
+     * Returns [uploadedPath, originalName, password, errorResponse|null].
+     */
+    private function validateAccClassificationUpload(Request $request): array
+    {
+        $data = $request->validate([
+            'file' => 'required|file|max:20480',
+            'password' => 'required|string',
+        ]);
+
+        $extension = strtolower($request->file('file')->getClientOriginalExtension());
+        if (!in_array($extension, ['xlsx', 'xls'], true)) {
+            return [null, null, null, response()->json([
+                'message' => 'The file must have an xlsx or xls extension.',
+            ], 422)];
+        }
+
+        return [
+            $request->file('file')->getRealPath(),
+            $request->file('file')->getClientOriginalName(),
+            $data['password'],
+            null,
+        ];
     }
 
     // ================================================================

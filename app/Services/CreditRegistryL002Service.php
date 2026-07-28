@@ -13,6 +13,7 @@ use RuntimeException;
 
 class CreditRegistryL002Service
 {
+    use CreditRegistryCodeTrait;
     private const NS = 'urn:cba-am:lnreg3';
 
     private const MODIFIED_DATA_ALLOWED_FIELDS = [
@@ -52,7 +53,7 @@ class CreditRegistryL002Service
     ];
 
     private const ORGANISATION_CODE = '66100';
-    private const ORGANISATION_BRANCH_CODE = '0001';
+    private const ORGANISATION_BRANCH_CODE = '00001';
     private const ORGANIZATION_STATUS = 1;
 
     public function generateL002Xml(int $contractId): string
@@ -81,11 +82,7 @@ class CreditRegistryL002Service
         $root->appendChild($this->createCreditCode($dom, $contract));
         $root->appendChild($this->createModificationDateTime($dom));
 
-        $dataToModify = $this->createDataToModifyFromMods($dom, $mods,$contract);
-
-        if ($dataToModify) {
-            $root->appendChild($dataToModify);
-        }
+        $root->appendChild($this->createDataToModifyFromMods($dom, $mods, $contract));
 
         return $dom->saveXML();
     }
@@ -93,6 +90,13 @@ class CreditRegistryL002Service
     private function createDataToModifyFromMods(DOMDocument $dom, $mods, Contract $contract): ?DOMElement
     {
         $dataToModify = $dom->createElement('DataToModify');
+
+        // CBA ER0025: Collaterals must always be present in DataToModify
+        $collaterals = $dom->createElement('Collaterals');
+        $collaterals->appendChild(
+            $dom->createElement('Collateral', (string)(int)($contract->security_type ?? 0))
+        );
+        $dataToModify->appendChild($collaterals);
 
         foreach ($mods as $mod) {
 
@@ -140,7 +144,7 @@ class CreditRegistryL002Service
             $dataToModify->appendChild($modifiedData);
         }
 
-        return $dataToModify->hasChildNodes() ? $dataToModify : null;
+        return $dataToModify;
     }
     /**
      * Universal ctModificator builder
@@ -187,7 +191,7 @@ class CreditRegistryL002Service
         $now = Carbon::now();
 
         $sendDateTime = $dom->createElement('SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
 
         $header->appendChild($sendDateTime);
@@ -197,7 +201,7 @@ class CreditRegistryL002Service
 
     private function createCreditCode(DOMDocument $dom, Contract $contract): DOMElement
     {
-        return $dom->createElement('CreditCode', $contract->num ?? $contract->id);
+        return $dom->createElement('CreditCode', $this->buildCreditCode($contract));
     }
 
     private function createModificationDateTime(DOMDocument $dom): DOMElement
@@ -205,7 +209,7 @@ class CreditRegistryL002Service
         $now = Carbon::now();
 
         $el = $dom->createElement('ModificationDateTime');
-        $el->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $el->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $el->appendChild($dom->createElement('Time', $now->format('H:i:s')));
 
         return $el;

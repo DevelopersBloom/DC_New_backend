@@ -60,7 +60,9 @@ Route::group(['prefix' => 'auth'], function () {
     });
 });
 Route::group(['middleware' => 'jwt.auth'], function () {
-    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+//    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
+    Route::group(['prefix' => 'admin'], function () {
+
         //general
         Route::get('/get',[AdminControllerNew::class,'get'])->middleware('can:view_personal_information');
         Route::put('/update',[AdminControllerNew::class,'update'])->middleware('can:update_personal_information');
@@ -220,7 +222,10 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/store-client', [ClientControllerNew::class, 'storeClient'])->middleware('can:create_client');
         Route::post('/store-non-client', [ClientControllerNew::class, 'storeNonClient'])->middleware('can:create_client');
         Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification'])->middleware('can:classify_client');
+        Route::post('/{id}/fetch-bank-id', [CreditRegistryController::class, 'fetchBankId']);
     });
+    Route::post('/credit-registry/import-acc-classification/preview', [CreditRegistryController::class, 'previewAccClassification'])->middleware('can:classify_client');
+    Route::post('/credit-registry/import-acc-classification', [CreditRegistryController::class, 'applyAccClassification'])->middleware('can:classify_client');
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');
     Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index']);
     Route::get('/preview-payment', [PaymentControllerNew::class, 'previewPayment']);
@@ -230,11 +235,17 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/', [ContractControllerNew::class, 'get'])->middleware('can:view_contracts');
         Route::post('/', [ContractControllerNew::class, 'store'])->middleware('can:create_contract');
         Route::get('/calculate-interest', [ContractControllerNew::class, 'calculateContractInterest'])->middleware('can:calculate_contract_interest');
+        Route::get('/interest-balance', [ContractControllerNew::class, 'getInterestBalance']);
         Route::get('/calc-export', [ContractControllerNew::class, 'exportContractsCalc'])->middleware('can:export_contracts');
         Route::post('/confirm-interest', [ContractControllerNew::class, 'confirmCalculatedInterest'])->middleware('can:confirm_calculated_interest');
         Route::get('/download/{id}', [FileController::class, 'downloadContract'])->middleware('can:download_contract_file');
         Route::get('/download-schedule/{id}', [FileController::class, 'downloadSchedule']);
+        Route::get('/download-credit-statement/{id}', [FileController::class, 'downloadCreditStatement'])->middleware('can:download_contract_file');
         Route::get('/download-individual/{id}', [FileController::class, 'downloadIndividualSheet'])->middleware('can:download_contract_file');
+        Route::get('/download-main/{id}', [FileController::class, 'downloadContractDoc'])->middleware('can:download_contract_file');
+        Route::get('/download-car-application/{id}', [FileController::class, 'downloadCarApplicationDoc'])->middleware('can:download_contract_file');
+        Route::get('/download-guarantor/{id}/{guarantorId}', [FileController::class, 'downloadGuarantorDoc'])->middleware('can:download_contract_file');
+        Route::get('/download-marital-status/{id}', [FileController::class, 'downloadMaritalStatusDoc'])->middleware('can:download_contract_file');
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles'])->middleware('can:download_all_contract_files');
         Route::get('/export', [FileController::class, 'exportZip'])->middleware('can:export_contracts_zip');
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts'])->middleware('can:export_contracts');
@@ -243,9 +254,12 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/{id}/credit-registry/l003', [CreditRegistryController::class, 'downloadL003'])->middleware('can:download_contract_file');
         Route::get('/{id}/credit-registry/l005', [CreditRegistryController::class, 'downloadL005'])->middleware('can:download_contract_file');
         Route::get('/{id}/credit-registry/l006', [CreditRegistryController::class, 'downloadL006'])->middleware('can:download_contract_file');
+        Route::get('/{id}/credit-registry/preview/{code}', [CreditRegistryController::class, 'previewXml'])->middleware('can:download_contract_file');
         Route::get('/credit-registry/risk-modifications', [CreditRegistryController::class, 'downloadUnsentRiskModifications'])->middleware('can:download_contract_file');
         Route::get('/credit-registry/test', [CreditRegistryController::class, 'testConnection']);
         Route::post('/{id}/credit-registry/l001/send', [CreditRegistryController::class, 'sendL001']);
+        Route::post('/{id}/credit-registry/l002/send', [CreditRegistryController::class, 'sendL002']);
+        Route::post('/{id}/credit-registry/l003/send', [CreditRegistryController::class, 'sendL003']);
         Route::post('/{id}/credit-registry/l005/send', [CreditRegistryController::class, 'sendL005']);
         Route::post('/{id}/credit-registry/l006/send', [CreditRegistryController::class, 'sendL006']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
@@ -259,8 +273,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::match('put', '/payments/bulk-update', [PaymentControllerNew::class, 'bulkUpdate']);
         Route::get('/history-detail/{id}',[ContractControllerNew::class,'getHistoryDetails'])->middleware('can:view_contract_history_details');
         Route::post('/pay-amount',[ContractControllerNew::class,'payContractAmount'])->middleware('can:pay_contract_amount');
-        Route::post('/reprovide-amount', [ContractControllerNew::class, 'reprovideContractAmount'])
-            ->middleware(['can:reprovide_contract_amount', 'idempotent:contracts.reprovide-amount']);
+        Route::post('/reprovide-amount', [ContractControllerNew::class, 'reprovideContractAmount']);//            ->middleware(['can:reprovide_contract_amount', 'idempotent:contracts.reprovide-amount']);
         Route::post('/regenerate-schedule', [ContractControllerNew::class, 'regenerateSchedule']);
         Route::post('/request-discount', [DiscountController::class, 'requestDiscount'])->middleware('can:request_contract_discount');
         Route::put('/update-number/{id}',[ContractControllerNew::class,'updateContractNumber'])->middleware('can:update_contract_number');

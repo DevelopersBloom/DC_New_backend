@@ -25,12 +25,21 @@ class V20Export
         $toDate = Carbon::parse($to);
 
         $sheet->setCellValueExplicit('C5','«Ակրեդիտ» ՎՄ ՍՊԸ',DataType::TYPE_STRING);
+        $sheet->getStyle('C5')->getFont()->setName('Sylfaen');
         $sheet->setCellValue('C6', Date::PHPToExcel($toDate));
 
         $bankAccounts = ['102101', '102102', '102103'];
 
-        $count = ChartOfAccount::whereIn('code', $bankAccounts)->count();
-        $sheet->setCellValue('D11', $count);
+        $bankAccountIds = ChartOfAccount::where(function ($q) use ($bankAccounts) {
+            foreach ($bankAccounts as $code) {
+                $q->orWhere('code', 'like', $code . '%');
+            }
+        })->pluck('id')->toArray();
+
+        $sheet->setCellValue('C11', count($bankAccountIds));
+        $sheet->setCellValue('D11', 0);
+        $sheet->setCellValue('E11', 0);
+        $sheet->setCellValue('F11', 0);
 
 
         $legalCount = Contract::whereHas('client', function ($q) {
@@ -73,23 +82,21 @@ class V20Export
         $sheet->setCellValue('D23', $cashDebitCount);
 
 
-        $acc102101s = ChartOfAccount::where('code', 'like', '102101%')->pluck('id')->toArray();
-
         $bankQuery = DocumentJournal::whereDate('date', '<=', $toDate)->whereDate('date', '>=', $fromDate);
         $bankDebitSum = (clone $bankQuery)
-            ->whereIn('debit_account_id', $acc102101s)
+            ->whereIn('debit_account_id', $bankAccountIds)
             ->sum('amount_amd');
 
         $bankCreditSum = (clone $bankQuery)
-            ->whereIn('credit_account_id', $acc102101s)
+            ->whereIn('credit_account_id', $bankAccountIds)
             ->sum('amount_amd');
 
         $bankDebitCount = (clone $bankQuery)
-            ->whereIn('debit_account_id', $acc102101s)
+            ->whereIn('debit_account_id', $bankAccountIds)
             ->count();
 
         $bankCreditCount = (clone $bankQuery)
-            ->whereIn('credit_account_id', $acc102101s)
+            ->whereIn('credit_account_id', $bankAccountIds)
             ->count();
 
         $sheet->setCellValue('E22', $bankCreditSum / 1000);

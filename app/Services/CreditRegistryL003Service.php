@@ -15,9 +15,10 @@ use RuntimeException;
  */
 class CreditRegistryL003Service
 {
+    use CreditRegistryCodeTrait;
     private const NS = 'urn:cba-am:lnreg3';
     private const ORGANISATION_CODE = '66100';
-    private const ORGANISATION_BRANCH_CODE = '0001';
+    private const ORGANISATION_BRANCH_CODE = '00001';
     private const ORGANIZATION_STATUS = 1;
 
     public function generateL003Xml(int $contractId, string $deleteReason): string
@@ -37,15 +38,14 @@ class CreditRegistryL003Service
         $root->appendChild($this->createReportHeader($dom));
 
         // 2. CreditCode
-        $creditCode = $dom->createElement('CreditCode');
-        $creditCode->appendChild($dom->createTextNode($contract->num ?? (string) $contract->id));
+        $creditCode = $dom->createElement('CreditCode', $this->buildCreditCode($contract));
         $root->appendChild($creditCode);
 
         // 3. DeleteReason (max length 512 per XSD)
-//        $reason = mb_substr($deleteReason, 0, 512);
-//        $deleteReasonEl = $dom->createElement('DeleteReason');
-//        $deleteReasonEl->appendChild($dom->createTextNode($reason));
-//        $root->appendChild($deleteReasonEl);
+        $reason = mb_substr($deleteReason, 0, 512);
+        $deleteReasonEl = $dom->createElement('DeleteReason');
+        $deleteReasonEl->appendChild($dom->createTextNode($reason));
+        $root->appendChild($deleteReasonEl);
 
         return $dom->saveXML();
     }
@@ -60,7 +60,7 @@ class CreditRegistryL003Service
 
         $now = Carbon::now();
         $sendDateTime = $dom->createElement('SendDateTime');
-        $sendDateTime->appendChild($dom->createElement('Date', $now->format('Y-m-d')));
+        $sendDateTime->appendChild($dom->createElement('Date', $now->format('d/m/Y')));
         $sendDateTime->appendChild($dom->createElement('Time', $now->format('H:i:s')));
         $header->appendChild($sendDateTime);
 

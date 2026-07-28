@@ -33,6 +33,7 @@ use App\Services\DealsTableOnlyUpdateService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class AdminControllerNew extends Controller
 {
@@ -150,7 +151,8 @@ class AdminControllerNew extends Controller
         $validated['password'] = bcrypt($validated['password']);
         $validated['pawnshop_id'] = auth()->user()->pawnshop_id;
 
-        User::create($validated);
+        $user = User::create($validated);
+        $user->syncRoles([$validated['role']]);
 
         return response()->json([
             'message' => 'User created successfully'
@@ -160,10 +162,23 @@ class AdminControllerNew extends Controller
 
     public function updateUsers(Request $request)
     {
+        $usersInput = $request->input('users', []);
+        foreach ($usersInput as $index => $userData) {
+            if (isset($userData['role']) && is_string($userData['role'])) {
+                $usersInput[$index]['role'] = strtolower($userData['role']);
+            }
+        }
+        $request->merge(['users' => $usersInput]);
+
         $validated  = $request->validate([
             'users' => 'required|array',
             'users.*.id' => 'required|integer|exists:users,id',
-            'users.*.role' => 'nullable|string|max:255',
+            'users.*.role' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::exists('roles', 'name')->where('guard_name', 'api'),
+            ],
             'users.*.position' => 'nullable|string|max:255',
             'deleted_user_ids' => 'nullable|array',
             'deleted_user_ids.*' => 'integer|exists:users,id',
@@ -178,6 +193,7 @@ class AdminControllerNew extends Controller
                     'role' => $userData['role'],
                     'position' => $userData['position'],
                 ]);
+                $user->syncRoles($userData['role'] ? [$userData['role']] : []);
             }
 
             if (!empty($validated['deleted_user_ids'])) {
@@ -209,8 +225,17 @@ class AdminControllerNew extends Controller
     {
         $user = User::findOrFail($id);
 
+        if (is_string($request->input('role'))) {
+            $request->merge(['role' => strtolower($request->input('role'))]);
+        }
+
         $validated = $request->validate([
-            'role' => 'nullable|string|max:255',
+            'role' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::exists('roles', 'name')->where('guard_name', 'api'),
+            ],
             'position' => 'nullable|string|max:255',
         ]);
 
@@ -218,6 +243,7 @@ class AdminControllerNew extends Controller
             'role' => $validated['role'],
             'position' => $validated['position'],
         ]);
+        $user->syncRoles($validated['role'] ? [$validated['role']] : []);
 
         return response()->json([
             'message' => 'User updated successfully.',
