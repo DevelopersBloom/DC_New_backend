@@ -669,7 +669,9 @@ trait ContractTrait
                         max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
                     );
                 }
-                $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
+                $interestAmount += max($payment->paid, (float) $payment->interest_payment - $alreadyPaidInterest);
+
+//                $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
 dd($payment->interest_payment , $alreadyPaidInterest,$payment->interest_payment - $alreadyPaidInterest);
                 $collectedPrincipal = (float) $entries->sum('principal_amount');
                 if ($entries->isEmpty()) {
@@ -679,25 +681,34 @@ dd($payment->interest_payment , $alreadyPaidInterest,$payment->interest_payment 
                     );
                 }
                 $carryPrincipal += max(0, (float) $payment->principal_payment - $collectedPrincipal);
-            } else {
+//            }            else {
+//                $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
+//                $accruedInterest = $this->calcAmount(
+//                    $balance,
+//                    $daysIntoCurrentPeriod,
+//                    $contract->interest_rate
+//                );
+//
+//                $entries = $payment->entries()->get();
+//                $alreadyPaidInterest = (float) $entries->sum('interest_amount');
+//                if ($entries->isEmpty()) {
+//                    $alreadyPaidInterest = min(
+//                        (float) $payment->paid,
+//                        max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
+//                    );
+//                }
+//                $interestAmount += max(0, $accruedInterest - $alreadyPaidInterest);
+//                break;
+//            }
+                } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
-                $accruedInterest = $this->calcAmount(
+                $interestAmount += $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
                     $contract->interest_rate
                 );
-
-                $entries = $payment->entries()->get();
-                $alreadyPaidInterest = (float) $entries->sum('interest_amount');
-                if ($entries->isEmpty()) {
-                    $alreadyPaidInterest = min(
-                        (float) $payment->paid,
-                        max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
-                    );
-                }
-                $interestAmount += max(0, $accruedInterest - $alreadyPaidInterest);
-                break;
-            }
+        break;
+    }
         }
         $journalId = DocumentJournal::where('journalable_id', $contract->id)
             ->where('journalable_type', 'App\Models\Contract')
