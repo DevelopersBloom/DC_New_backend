@@ -117,6 +117,17 @@ class ContractDetailResource extends JsonResource
                 $paidTotal      = (float) $entries->sum('amount');
                 $paidInterest   = (float) $entries->sum('interest_amount');
                 $paidPrincipal  = (float) $entries->sum('principal_amount');
+                $interestRemaining =  max(0, (float) $payment->interest_payment - $paidInterest);
+                $principalRemaining =  max(0, (float) $payment->principal_payment - $paidPrincipal);
+                $amountRemaining = max(0, (float) $payment->amount - $paidTotal);
+                if ($entries->isEmpty() && $payment->status === 'completed') {
+                    $paidInterest  = max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment);
+                    $paidPrincipal = max(0, (float) $payment->original_principal_payment - (float) $payment->principal_payment);
+                    $paidTotal     = $paidInterest + $paidPrincipal;
+                    $interestRemaining = $payment->interest_payment;
+                    $principalRemaining = $payment->principal_payment;
+                    $amountRemaining = $payment->amount;
+                }
 
                 return [
                     'id'      => $payment->id,
@@ -131,9 +142,9 @@ class ContractDetailResource extends JsonResource
                     'original_interest_payment'  => $payment->original_interest_payment,
                     'interest_paid'              => $paidInterest,
                     'principal_paid'             => $paidPrincipal,
-                    'interest_remaining'         => max(0, (float) $payment->interest_payment - $paidInterest),
-                    'principal_remaining'        => max(0, (float) $payment->principal_payment - $paidPrincipal),
-                    'amount_remaining'           => max(0, (float) $payment->amount - $paidTotal),
+                    'interest_remaining'         => $interestRemaining,
+                    'principal_remaining'        => $principalRemaining,
+                    'amount_remaining'           => $amountRemaining,
                     'remaining' => $payment->remaining,
                     'status'  => $payment->status,
                     'type'    => $payment->type,
