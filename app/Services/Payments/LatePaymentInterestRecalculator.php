@@ -58,7 +58,6 @@ class LatePaymentInterestRecalculator
                 }
         //        $payment->original_interest_payment = $recalc_interest;
                 $payment->interest_payment           = max(0, round($recalc_interest - $alreadyPaidInterest, 2));
-             dd($payment->id,$recalc_interest,$alreadyPaidInterest);
                 $payment->amount                     = round((float) $payment->principal_payment + $payment->interest_payment, 2);
                 $payment->save();
             }
@@ -115,17 +114,19 @@ class LatePaymentInterestRecalculator
             // Balance at the start of this period:
             // original amount minus principals that were historically collected on or before from_date.
             $collectedBeforeFrom = 0.0;
-            foreach ($historicalEntries as $entry) {
-                if ($entry['date'] <= $fromDate->toDateString()) {
-                    $collectedBeforeFrom += $entry['principal_amount'];
-                }
-            }
-            $balanceAtStart = $originalBalance - $collectedBeforeFrom;
+//            foreach ($historicalEntries as $entry) {
+//                if ($entry['date'] <= $fromDate->toDateString()) {
+//                    $collectedBeforeFrom += $entry['principal_amount'];
+//                }
+//            }
+//            $balanceAtStart = $originalBalance - $collectedBeforeFrom;
+            $balanceAtStart = $originalBalance;
 
             if ($payDate->gte($toDate)) {
                 // Fully crossed: the entire period elapsed before the client paid.
                 // No principal was collected during this period → constant balance.
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $totalDays);
+                dd($originalBalance,$interest,$balanceAtStart,$dailyRate,$totalDays);
             } else {
                 // Partially crossed: split at paymentDate.
                 $daysBefore = (int) $fromDate->diffInDays($payDate);
