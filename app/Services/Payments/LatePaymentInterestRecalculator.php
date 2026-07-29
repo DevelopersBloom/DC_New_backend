@@ -32,7 +32,8 @@ class LatePaymentInterestRecalculator
 
             $totalCollected  = (float) PaymentEntry::where('contract_id', $contract->id)
                 ->sum('principal_amount');
-            $originalBalance = (float) $contract->mother;
+//            $originalBalance = (float) $contract->mother;
+            $originalBalance = (float) $contract->provided_amount;
 
             $historicalEntries = PaymentEntry::where('contract_id', $contract->id)
                 ->where('principal_amount', '>', 0)
@@ -44,6 +45,7 @@ class LatePaymentInterestRecalculator
             $dailyRate = (float) $contract->interest_rate / 100.0;
 
             $updates = $this->computeUpdates($allPayments, $originalBalance, $dailyRate, $paymentDate, $historicalEntries);
+            dd($updates);
             foreach ($updates as ['payment' => $payment, 'interest' => $recalc_interest]) {
                 $recalc_interest = round($recalc_interest, 2);
 
