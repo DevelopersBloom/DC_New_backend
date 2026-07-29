@@ -101,7 +101,7 @@ class PaymentControllerNew extends Controller
                 ->orderBy('date')
                 ->orderBy('id')
                 ->get();
-
+dd($payments,$contract->id,$paymentIds);
             if ($payments->isEmpty()) {
                 throw new \RuntimeException('No payable rows found');
             }
