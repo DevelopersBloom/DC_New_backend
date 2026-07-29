@@ -695,7 +695,11 @@ trait ContractTrait
                         max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
                     );
                 }
-dd($accruedInterest,$alreadyPaidInterest, $payment->original_interest_payment,$payment->interest_payment,$payment->paid,$payment->id);
+                if ($payment->id == 1974) {
+                    dd($accruedInterest,$alreadyPaidInterest, $payment->original_interest_payment,$payment->interest_payment,$payment->paid,$payment->id);
+
+                }
+
                 $interestAmount += max(0, $accruedInterest - $alreadyPaidInterest);
                 break;
             }
