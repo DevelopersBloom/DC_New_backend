@@ -58,6 +58,7 @@ class LatePaymentInterestRecalculator
                 }
                 //        $payment->original_interest_payment = $recalc_interest;
                 $payment->interest_payment           = max(0, round($recalc_interest - $alreadyPaidInterest, 2));
+                dd($recalc_interest,$alreadyPaidInterest);
                 $payment->amount                     = round((float) $payment->principal_payment + $payment->interest_payment, 2);
                 $payment->save();
             }
@@ -126,6 +127,7 @@ class LatePaymentInterestRecalculator
                 // Fully crossed: the entire period elapsed before the client paid.
                 // No principal was collected during this period → constant balance.
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $totalDays);
+                dd($payment->id,$interest,$balanceAtStart,$totalDays,$dailyRate);
 
             } else {
                 // Partially crossed: split at paymentDate.
@@ -137,6 +139,7 @@ class LatePaymentInterestRecalculator
                 $balanceAtPayDate = max(0.0, $balanceAtStart - $overdueByPayDatePrincipals);
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $daysBefore)
                     + self::segmentInterest($balanceAtPayDate, $dailyRate, $daysAfter);
+dd($payment->id,$interest,$balanceAtStart,$balanceAtPayDate,$dailyRate,$daysAfter,$daysBefore);
             }
             $results[] = ['payment' => $payment, 'interest' => $interest];
         }
