@@ -45,8 +45,20 @@ class LatePaymentInterestRecalculator
 
             $updates = $this->computeUpdates($allPayments, $originalBalance, $dailyRate, $paymentDate, $historicalEntries);
             foreach ($updates as ['payment' => $payment, 'interest' => $recalc_interest]) {
-                $payment->interest_payment = round($recalc_interest, 2);
-                $payment->amount           = round((float) $payment->principal_payment + $recalc_interest, 2);
+                $recalc_interest = round($recalc_interest, 2);
+
+                $entries             = $payment->entries()->get();
+                $alreadyPaidInterest = (float) $entries->sum('interest_amount');
+                if ($entries->isEmpty()) {
+                    $alreadyPaidInterest = min(
+                        (float) $payment->paid,
+                        max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
+                    );
+                }
+dd($alreadyPaidInterest,$recalc_interest,$recalc_interest);
+                $payment->original_interest_payment = $recalc_interest;
+                $payment->interest_payment           = max(0, round($recalc_interest - $alreadyPaidInterest, 2));
+                $payment->amount                     = round((float) $payment->principal_payment + $payment->interest_payment, 2);
                 $payment->save();
             }
         });
