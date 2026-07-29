@@ -271,7 +271,7 @@ class PaymentControllerNew extends Controller
                         $date,
                         $docNum,
                         DocumentJournal::RECOVERY_PRINCIPAL,
-                        $principal,
+                        $principal + $partial_amount,
                         'principal_recovery',
                         $lossRules['recovery_principal']->debit_account_id,
                         $lossRules['recovery_principal']->credit_account_id,
