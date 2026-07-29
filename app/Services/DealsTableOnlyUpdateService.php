@@ -14,6 +14,7 @@ class DealsTableOnlyUpdateService
         'amount',
         'interest_amount',
         'penalty',
+        'principal_amount',
         'cash',
         'date',
     ];

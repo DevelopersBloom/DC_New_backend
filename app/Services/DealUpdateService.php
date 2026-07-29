@@ -67,12 +67,15 @@ class DealUpdateService
     $newDate = (string) ($dealData['date'] ?? $oldDate);
 
     $oldPrincipal = $this->resolvePrincipal($deal, $oldAmount, $oldInterest, $oldPenalty);
-    $newPrincipal = $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
+    $newPrincipal = array_key_exists('principal_amount', $dealData) && $dealData['principal_amount'] !== null
+      ? (float) $dealData['principal_amount']
+      : $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
 
     Deal::query()->whereKey($deal->id)->update([
       'amount' => $newAmount,
       'interest_amount' => $newInterest,
       'penalty' => $newPenalty,
+      'principal_amount' => $newPrincipal,
       'cash' => $newCash,
       'date' => $newDate,
     ]);
@@ -613,7 +616,9 @@ class DealUpdateService
     $newDate = (string) ($proposed['date'] ?? $oldDate);
 
     $oldPrincipal = $this->resolvePrincipal($deal, $oldAmount, $oldInterest, $oldPenalty);
-    $newPrincipal = $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
+    $newPrincipal = array_key_exists('principal_amount', $proposed) && $proposed['principal_amount'] !== null
+      ? (float) $proposed['principal_amount']
+      : $this->resolvePrincipal($deal, $newAmount, $newInterest, $newPenalty);
 
     $availableScopes = [];
     $diffs = [
@@ -621,12 +626,14 @@ class DealUpdateService
         'amount' => $oldAmount,
         'interest_amount' => $oldInterest,
         'penalty' => $oldPenalty,
+        'principal_amount' => $oldPrincipal,
         'cash' => $oldCash,
         'date' => $oldDate,
       ], [
         'amount' => $newAmount,
         'interest_amount' => $newInterest,
         'penalty' => $newPenalty,
+        'principal_amount' => $newPrincipal,
         'cash' => $newCash,
         'date' => $newDate,
       ]),

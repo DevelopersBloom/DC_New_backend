@@ -754,6 +754,7 @@ class AdminControllerNew extends Controller
             'deals.*.amount' => 'nullable|numeric|min:0',
             'deals.*.interest_amount' => 'nullable|numeric|min:0',
             'deals.*.penalty' => 'nullable|numeric|min:0',
+            'deals.*.principal_amount' => 'nullable|numeric|min:0',
             'deals.*.cash' => 'nullable|boolean',
             'scopes' => 'sometimes|array',
             'scopes.pawnshop' => 'sometimes|boolean',
