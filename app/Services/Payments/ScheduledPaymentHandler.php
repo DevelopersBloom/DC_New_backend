@@ -169,7 +169,6 @@ class ScheduledPaymentHandler
             }
 
             $interest = $balanceForRow * $days * ($rate / 100);
-dd($payment->id,$interest);
             $interestEntries     = $payment->entries()->get();
             $alreadyPaidInterest = (float) $interestEntries->sum('interest_amount');
             if ($interestEntries->isEmpty()) {
