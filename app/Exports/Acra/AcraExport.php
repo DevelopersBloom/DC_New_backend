@@ -312,10 +312,10 @@ class AcraExport
                 $sheet->setCellValue('H' . $row, $client->social_card_number);
             }
 
-            if ($client->gender) {
-                $genderCode = ($client->gender === 'F') ? 'իգական' : 'արական';
-                $sheet->setCellValue('I' . $row, $genderCode);
-            }
+//            if ($client->gender) {
+//                $genderCode = ($client->gender === 'F') ? 'իգական' : 'արական';
+//                $sheet->setCellValue('I' . $row, $genderCode);
+//            }
             if ($client->residency_status) {
                 $residencyStatusCode = ($client->residency_status === 'resident') ? 1 : 2;
                 $sheet->setCellValue('J' . $row, $residencyStatusCode);
