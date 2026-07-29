@@ -507,6 +507,112 @@ trait ContractTrait
 //            "future_interest_discount" => round($futureInterestDiscount, 2),
 //        ];
 //    }
+//    public function calculateCurrentPayment($contract, $date = null)
+//    {
+//        $calculationDate = $date ? Carbon::parse($date)->endOfDay() : Carbon::now();
+//
+//        if ($contract->closed_at && Carbon::parse($contract->closed_at)->lte($calculationDate)) {
+//            return [
+//                "current_amount" => 0,
+//                "penalty_amount" => 0,
+//                "future_interest_discount" => 0,
+//                'interest_amount' => 0,
+//            ];
+//        }
+//
+//        $penaltyAmount = $this->countPenalty($contract->id, $calculationDate);
+//        $penalty = $penaltyAmount['penalty_amount'];
+//        $contractEndDateRecord = Payment::where('last_payment', 1)
+//            ->where('contract_id', $contract->id)
+//            ->first();
+//
+//        if ($contractEndDateRecord) {
+//            $endDate = Carbon::parse($contractEndDateRecord->date);
+//            $currentDate = $endDate->lt($calculationDate) ? $endDate : $calculationDate;
+//        } else {
+//            $currentDate = $calculationDate;
+//        }
+//
+//        $scheduledPayments = Payment::where('contract_id', $contract->id)
+//            ->where('type', 'regular')
+//            ->where('status','initial')
+//            ->orderBy('id','asc')
+////            ->orderBy('from_date', 'asc')
+//            ->get();
+//
+//        $interestAmount = 0.0;
+//        $count = 0;
+//        $carryPrincipal = 0.0; // unpaid principal from earlier elapsed periods, still accruing interest
+//        foreach ($scheduledPayments as $payment) {
+//            $payment = $this->normalizePaymentDates($payment, $contract);
+//            $fromDate = Carbon::parse($payment->from_date)->startOfDay();
+//            $toDate   = Carbon::parse($payment->date)->startOfDay(); // payment date = period end
+//            if ($fromDate->gte($currentDate)) {
+//                break;
+//            }
+//            $count++;
+//            $balance = (float) ($payment->remaining + $payment->principal_payment) + $carryPrincipal;
+//
+//            if ($toDate->lte($currentDate)) {
+//                $alreadyPaidInterest = (float) $payment->entries()->sum('interest_amount');
+//                $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
+//
+//                $collectedPrincipal = (float) $payment->entries()->sum('principal_amount');
+//                $carryPrincipal += max(0, (float) $payment->principal_payment - $collectedPrincipal);
+//            } else {
+//                $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
+//                $interestAmount += $this->calcAmount(
+//                    $balance,
+//                    $daysIntoCurrentPeriod,
+//                    $contract->interest_rate
+//                );
+//                break;
+//            }
+//        }
+//        $journalId = DocumentJournal::where('journalable_id', $contract->id)
+//            ->where('journalable_type', 'App\Models\Contract')
+//            ->value('id');
+//
+////        $totalPaid = DocumentJournal::where('journalable_id', $journalId)
+////            ->where('journalable_type', 'App\Models\DocumentJournal')
+////            ->where('document_type', DocumentJournal::PAY_INTEREST_AMOUNT)
+////            ->where('date', '<=', $currentDate)
+////            ->sum('amount_amd');
+//
+////        $interestAmount = $totalAccruedInterest - $totalPaid;
+//
+//        // Future interest discount
+//        $futureInterestDiscount = 0.0;
+//        $nextInitialRegularPayment = Payment::where('contract_id', $contract->id)
+//            ->where('type', 'regular')
+//            ->where('status', 'initial')
+//            ->where('to_date', '>', $calculationDate)
+//            ->orderBy('to_date')
+//            ->orderBy('id')
+//            ->first();
+//
+//        if ($nextInitialRegularPayment) {
+//            $dueDate    = Carbon::parse($nextInitialRegularPayment->to_date ?? $nextInitialRegularPayment->date)->startOfDay();
+//            $futureDays = $calculationDate->diffInDays($dueDate, false);
+//
+//            if ($futureDays > 0) {
+//                $principalBase = max(0, (float) ($contract->provided_amount ?? 0));
+//                $dailyRate     = (float) ($contract->interest_rate ?? 0) / 100;
+//                $futureInterestDiscount = $principalBase * $futureDays * $dailyRate;
+//            }
+//        }
+//        return [
+//            "endDate"                  => $currentDate,
+////            "totalAccruedInterest"     => $totalAccruedInterest,
+////            "totalPaid"                => $totalPaid,
+//            "penaltyAmount"            => $penaltyAmount,
+//            "current_amount"           => $interestAmount + $penalty,
+//            'interest_amount'          => $interestAmount,
+//            "penalty_amount"           => $penalty,
+//            "delay_days"               => $penaltyAmount['delay_days'],
+//            "future_interest_discount" => round($futureInterestDiscount, 2),
+//        ];
+//    }
     public function calculateCurrentPayment($contract, $date = null)
     {
         $calculationDate = $date ? Carbon::parse($date)->endOfDay() : Carbon::now();
@@ -554,18 +660,43 @@ trait ContractTrait
             $balance = (float) ($payment->remaining + $payment->principal_payment) + $carryPrincipal;
 
             if ($toDate->lte($currentDate)) {
-                $alreadyPaidInterest = (float) $payment->entries()->sum('interest_amount');
+                $entries = $payment->entries()->get();
+
+                $alreadyPaidInterest = (float) $entries->sum('interest_amount');
+                if ($entries->isEmpty()) {
+                    $alreadyPaidInterest = min(
+                        (float) $payment->paid,
+                        max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
+                    );
+                }
                 $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
 
-                $collectedPrincipal = (float) $payment->entries()->sum('principal_amount');
+                $collectedPrincipal = (float) $entries->sum('principal_amount');
+                if ($entries->isEmpty()) {
+                    $collectedPrincipal = min(
+                        (float) $payment->paid,
+                        max(0, (float) $payment->original_principal_payment - (float) $payment->principal_payment)
+                    );
+                }
                 $carryPrincipal += max(0, (float) $payment->principal_payment - $collectedPrincipal);
             } else {
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
-                $interestAmount += $this->calcAmount(
+                $accruedInterest = $this->calcAmount(
                     $balance,
                     $daysIntoCurrentPeriod,
                     $contract->interest_rate
                 );
+
+                $entries = $payment->entries()->get();
+                $alreadyPaidInterest = (float) $entries->sum('interest_amount');
+                if ($entries->isEmpty()) {
+                    $alreadyPaidInterest = min(
+                        (float) $payment->paid,
+                        max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
+                    );
+                }
+
+                $interestAmount += max(0, $accruedInterest - $alreadyPaidInterest);
                 break;
             }
         }
