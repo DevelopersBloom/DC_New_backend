@@ -672,7 +672,7 @@ trait ContractTrait
                 $interestAmount += max($payment->paid, (float) $payment->interest_payment - $alreadyPaidInterest);
 
 //                $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
-dd($payment->interest_payment , $alreadyPaidInterest,$payment->interest_payment - $alreadyPaidInterest);
+dd($interestAmount,$payment->interest_payment , $alreadyPaidInterest,$payment->interest_payment - $alreadyPaidInterest);
                 $collectedPrincipal = (float) $entries->sum('principal_amount');
                 if ($entries->isEmpty()) {
                     $collectedPrincipal = min(
