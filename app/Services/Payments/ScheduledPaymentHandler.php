@@ -168,10 +168,19 @@ class ScheduledPaymentHandler
                 $principal          = $remainingPrincipal;
             }
 
-            $interest  = $balanceForRow * $days * ($rate / 100);
-            $diff      = $payment->interest_payment - $interest;
-            $payment->interest_payment          = $interest;
-            //$payment->original_interest_payment -= $diff;
+            $interest = $balanceForRow * $days * ($rate / 100);
+
+            $interestEntries     = $payment->entries()->get();
+            $alreadyPaidInterest = (float) $interestEntries->sum('interest_amount');
+            if ($interestEntries->isEmpty()) {
+                $alreadyPaidInterest = min(
+                    (float) $payment->paid,
+                    max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
+                );
+            }
+
+            $payment->original_interest_payment = $interest;
+            $payment->interest_payment          = max(0, $interest - $alreadyPaidInterest);
             $payment->amount = $payment->interest_payment + $principal;
 
             if ((float) $payment->amount <= 0) {
