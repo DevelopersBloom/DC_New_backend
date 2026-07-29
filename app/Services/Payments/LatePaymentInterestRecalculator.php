@@ -127,7 +127,6 @@ class LatePaymentInterestRecalculator
                 // Fully crossed: the entire period elapsed before the client paid.
                 // No principal was collected during this period → constant balance.
                 $interest = self::segmentInterest($balanceAtStart, $dailyRate, $totalDays);
-                dd($payment->id,$interest,$balanceAtStart,$totalDays,$dailyRate);
 
             } else {
                 // Partially crossed: split at paymentDate.
