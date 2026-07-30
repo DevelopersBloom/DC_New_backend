@@ -227,7 +227,7 @@ trait ContractTrait
     public function createDeal($amount, $interest_amount, $delay_days, $penalty, $discount, $type, $contract_id, $client_id, $order_id = null, $cash = true, $receiver = null, $purpose = null, $filter_type = null, $history_id = null, $payment_id = null, $source = null, $pawnshop_id = null, $date = null)
     {
         if ($cash) {
-            $amount = round($amount);
+            $amount = round($amount, 2);
         }
         $pawnshop = $pawnshop_id ? Pawnshop::find($pawnshop_id) : auth()->user()->pawnshop;
         if ($type === 'in') {

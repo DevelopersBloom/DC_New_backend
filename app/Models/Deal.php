@@ -54,7 +54,19 @@ class Deal extends Model
     ];
     protected $casts = [
         'cash' => 'boolean',
-        'is_recount' => 'boolean'
+        'is_recount' => 'boolean',
+        'amount' => 'decimal:2',
+        'interest_amount' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'penalty' => 'decimal:2',
+        'cashbox' => 'decimal:2',
+        'bank_cashbox' => 'decimal:2',
+        'worth' => 'decimal:2',
+        'given' => 'decimal:2',
+        'insurance' => 'decimal:2',
+        'funds' => 'decimal:2',
+        'prepayment' => 'decimal:2',
+        'principal_amount' => 'decimal:2',
     ];
     protected static function boot()
     {
