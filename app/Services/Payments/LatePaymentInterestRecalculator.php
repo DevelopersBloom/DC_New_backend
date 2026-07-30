@@ -55,6 +55,7 @@ class LatePaymentInterestRecalculator
                         (float) $payment->paid,
                         max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
                     );
+                    dd($payment->original_interest_payment,$payment->interest_payment,$alreadyPaidInterest);
                 }
                 dd($alreadyPaidInterest,$payment->id,$recalc_interest);
                 //        $payment->original_interest_payment = $recalc_interest;
