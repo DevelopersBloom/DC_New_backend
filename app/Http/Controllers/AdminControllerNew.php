@@ -646,7 +646,6 @@ class AdminControllerNew extends Controller
             'created_by',
             'principal_amount',
             'prepayment',
-            //DB::raw("(CASE WHEN purpose IN ('Ամբողջական վճարում', 'Հերթական վճարում', 'Մասնակի վճարում') THEN amount - COALESCE(interest_amount, 0) - COALESCE(penalty, 0) ELSE NULL END) as principal_payment")
         )
             ->with('client:id,name,surname')
             ->with('contract:id,mother,num')
@@ -673,6 +672,15 @@ class AdminControllerNew extends Controller
         $dealsQuery->orderBy('date', 'desc')->orderBy('id', 'desc');
 
         $deals = $dealsQuery->paginate($perPage);
+
+        $paymentPurposes = ['Ամբողջական վճարում', 'Հերթական վճարում', 'Մասնակի վճարում'];
+        $deals->getCollection()->transform(function ($deal) use ($paymentPurposes) {
+            if ($deal->principal_amount === null && in_array($deal->purpose, $paymentPurposes, true)) {
+                $deal->principal_amount = $deal->amount - ($deal->interest_amount ?? 0) - ($deal->penalty ?? 0);
+            }
+
+            return $deal;
+        });
 
         return response()->json([
             'deals' => $deals
