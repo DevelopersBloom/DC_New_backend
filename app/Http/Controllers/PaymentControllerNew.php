@@ -715,7 +715,7 @@ class PaymentControllerNew extends Controller
         $cash = $request->cash;
 
         if ($cash) {
-            $partialAmount = round($partialAmount);
+            $partialAmount = round($partialAmount, 2);
         }
 
         $history_type = HistoryType::where('name','partial_payment')->first();
