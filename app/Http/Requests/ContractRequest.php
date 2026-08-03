@@ -40,6 +40,7 @@ class ContractRequest extends FormRequest
             'guarantors' => 'nullable|array',
             'guarantors.*.id' => 'nullable|exists:clients,id',
             'seller_id' => 'nullable|exists:clients,id',
+            'pledgee_id' => 'nullable|exists:clients,id',
             'category_id' => 'required|exists:categories,id',
             'currency_id' => 'nullable|exists:currencies,id',
             'contract_kind'      => 'nullable|integer',

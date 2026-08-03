@@ -414,6 +414,7 @@ class   ContractService
             'category_id' => $categoryId ,
             'payment_type' => $data['payment_type'],
             'seller_id' => $data['seller_id'] ?? null,
+            'pledgee_id' => $data['pledgee_id'] ?? null,
             'currency_id' => $data['currency_id'] ?? 1,
             'contract_kind'      => $data['contract_kind'] ?? 1,
             'loan_type'          => $data['loan_type'] ?? null,

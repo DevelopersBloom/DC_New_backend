@@ -114,6 +114,7 @@ class Contract extends Model
         'effective_rate_annual_kasko',
         'fee_annual_rate',
         'seller_id',
+        'pledgee_id',
         'currency_id',
         'contract_kind',
         'loan_type',
@@ -168,6 +169,10 @@ class Contract extends Model
     public function seller(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'seller_id');
+    }
+    public function pledgee(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'pledgee_id');
     }
     public function history(): HasMany
     {

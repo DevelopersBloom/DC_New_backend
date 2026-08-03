@@ -129,6 +129,10 @@ class Client extends Model
     {
         return $this->hasMany(Contract::class, 'seller_id');
     }
+    public function pledgedContracts(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'pledgee_id');
+    }
     public function files(){
         return $this->morphMany(File::class,'fileable');
     }

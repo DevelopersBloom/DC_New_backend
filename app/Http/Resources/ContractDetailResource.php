@@ -111,6 +111,11 @@ class ContractDetailResource extends JsonResource
                 'name'            => $this->seller->name,
                 'surname'         => $this->seller->surname,
             ] : null,
+            'pledgee' => $this->pledgee ? [
+                'id'              => $this->pledgee->id,
+                'name'            => $this->pledgee->name,
+                'surname'         => $this->pledgee->surname,
+            ] : null,
 
             'payments' => $this->payments->map(function ($payment) {
                 $entries        = $payment->relationLoaded('entries') ? $payment->entries : $payment->entries()->get();
