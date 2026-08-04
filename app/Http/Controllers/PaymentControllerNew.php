@@ -169,7 +169,6 @@ class PaymentControllerNew extends Controller
             $class    = $contract->client->classification->name;
             $clientId = $contract->client_id;
             $docNum   = Transaction::getNextDocumentNumber();
-dd($principal,$interest,$result);
 
             // ---- Interest ----
             if ($interest > 0) {
@@ -193,7 +192,7 @@ dd($principal,$interest,$result);
             }
 
             // ---- Principal ----
-            if ($principal > 0) {
+            if ($principal > 0 || $partial_amount > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash,'principal'));
 
                 $journalPrincipal = $this->postEntry(
