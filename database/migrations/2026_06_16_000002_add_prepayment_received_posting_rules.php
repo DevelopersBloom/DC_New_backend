@@ -10,20 +10,20 @@ return new class extends Migration
     {
         $acc102101 = ChartOfAccount::idByCode('102101');
         $acc10000  = ChartOfAccount::idByCode('10000');
-        $acc39920  = ChartOfAccount::idByCode('39920');
+        $acc39220  = ChartOfAccount::idByCode('39220');
 
         DB::table('posting_rules')->insert([
             [
                 'business_event_filter' => 'prepayment_received',
                 'debit_account_id'      => $acc102101,
-                'credit_account_id'     => $acc39920,
+                'credit_account_id'     => $acc39220,
                 'created_at'            => now(),
                 'updated_at'            => now(),
             ],
             [
                 'business_event_filter' => 'prepayment_received_cash',
                 'debit_account_id'      => $acc10000,
-                'credit_account_id'     => $acc39920,
+                'credit_account_id'     => $acc39220,
                 'created_at'            => now(),
                 'updated_at'            => now(),
             ],
