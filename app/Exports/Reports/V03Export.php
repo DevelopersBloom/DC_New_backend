@@ -107,8 +107,8 @@ class V03Export
 
         $riskColumns = [
             0   => 'B', 10  => 'D', 20  => 'F', 30  => 'H',
-            50  => 'J', 75  => 'L', 100 => 'N', 110 => 'P',
-            150 => 'R', 225 => 'T',
+            50  => 'J', 75  => 'L', 85 => 'N', 100 => 'P',
+            110 => 'R', 125 => 'T', 150 => 'V', 225 => 'X',
         ];
 
         $activeAccountsWithRisk = ChartOfAccount::where('type', 'active')
