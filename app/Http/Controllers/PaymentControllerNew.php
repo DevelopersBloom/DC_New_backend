@@ -169,7 +169,7 @@ class PaymentControllerNew extends Controller
             $class    = $contract->client->classification->name;
             $clientId = $contract->client_id;
             $docNum   = Transaction::getNextDocumentNumber();
-
+dd($principal,$interest,$result);
 
             // ---- Interest ----
             if ($interest > 0) {
