@@ -19,7 +19,7 @@ class V03Export
     public function export($from, $to, string $version = 'new')
     {
         // Load XLSX template
-        $templateFile = $version === 'new' ? 'v03-2.xls' : 'v03.xlsx';
+        $templateFile = $version === 'new' ? 'v03-04.xlsx' : 'v03.xlsx';
         $path = base_path($templateFile);
         $reader = IOFactory::createReaderForFile($path);
         $spreadsheet = $reader->load($path);
