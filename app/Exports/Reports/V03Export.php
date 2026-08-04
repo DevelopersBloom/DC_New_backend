@@ -260,9 +260,15 @@ class V03Export
             }
             foreach ($dailyData as $risk => $values) {
                 $col = $riskColumns[$risk];
-                $sheet3->setCellValue($col . $row, $values['amount'] / 1000);
+                $amount = $values['amount'] / 1000;
+                if ($amount != 0) {
+                    $sheet3->setCellValue($col . $row, $amount);
+                }
                 $nextCol = ++$col;
-                $sheet3->setCellValue($nextCol . $row, $values['reserve'] / 1000);
+                $reserve = $values['reserve'] / 1000;
+                if ($reserve != 0) {
+                    $sheet3->setCellValue($nextCol . $row, $reserve);
+                }
             }
 
             $current->addDay();
