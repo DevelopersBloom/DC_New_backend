@@ -211,7 +211,6 @@ class PaymentControllerNew extends Controller
                     $contract
                 );
             }
-            dd($prepaymentPrincipal,$result);
             // ---- Prepayment principal (before due date) → Dr 10000/102101 / Cr 39920 ----
             if ($prepaymentPrincipal > 0) {
                 $prepaymentEvent = $cash ? 'prepayment_received_cash' : 'prepayment_received';
