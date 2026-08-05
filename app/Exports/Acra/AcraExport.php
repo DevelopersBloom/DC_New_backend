@@ -4,6 +4,7 @@ namespace App\Exports\Acra;
 
 use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
+use App\Models\Prepayment;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -443,7 +444,12 @@ class AcraExport
 
             $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid);
 
-            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount));
+            $unpaidPrepayments = Prepayment::where('contract_id', $contract->id)
+                ->where('status', 'unpaid')
+                ->selectRaw('SUM(principal_amount + partial_amount) as total')
+                ->value('total') ?? 0;
+
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount - $unpaidPrepayments));
 
             $overdueMother = 0;
             $overdueInterest = 0;
