@@ -838,10 +838,11 @@ trait ContractTrait
                         ->sum('paid') ?? 0;
 
                     $total_penalty_amount += ($current_penalty - $penalty_paid);
+                    dd($total_penalty_amount,$current_penalty,$penalty_paid,$payment->id);
+
                 }
             }
         }
-dd($total_penalty_amount,$current_penalty,$penalty_paid);
         $contract->penalty_amount = max(0, $total_penalty_amount);
         $contract->save();
 
