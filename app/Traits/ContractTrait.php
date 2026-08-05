@@ -839,7 +839,6 @@ trait ContractTrait
 
 //                    $total_penalty_amount += ($current_penalty - $penalty_paid);
                     $total_penalty_amount += ($current_penalty);
-dd($total_penalty_amount);
 
                 }
             }
