@@ -441,13 +441,14 @@ class AcraExport
             $sheet->setCellValue('F' . $row, '001');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
-
-            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid);
-
             $unpaidPrepayments = Prepayment::where('contract_id', $contract->id)
                 ->where('status', 'unpaid')
                 ->selectRaw('SUM(principal_amount + partial_amount) as total')
                 ->value('total') ?? 0;
+
+            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $unpaidPrepayments);
+
+
 
             $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount - $unpaidPrepayments));
 
