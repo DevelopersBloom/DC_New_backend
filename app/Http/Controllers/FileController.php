@@ -258,7 +258,7 @@ class FileController extends Controller
     }
     public function downloadContract($id)
     {
-        $contract = Contract::with(['category', 'client', 'items.category', 'pawnshop', 'payments', 'user','seller','guarantors'])->findOrFail($id);
+        $contract = Contract::with(['category', 'client', 'items.category', 'pawnshop', 'payments', 'user','seller','guarantors','pledgee'])->findOrFail($id);
 
         $client = $contract->client;
         $firstItem = $contract->items->first();
@@ -315,7 +315,7 @@ class FileController extends Controller
 
     public function downloadContractDoc($id)
     {
-        $contract = Contract::with(['category', 'client', 'items.category', 'payments', 'user', 'seller'])->findOrFail($id);
+        $contract = Contract::with(['category', 'client', 'items.category', 'payments', 'user', 'seller', 'pledgee'])->findOrFail($id);
 
         [$path, $filename] = $this->generateMainContractDocx($contract);
 
@@ -381,7 +381,7 @@ class FileController extends Controller
         $categoryName = $firstItem->category->name ?? 'gold';
 
         if ($categoryName == 'car') {
-            $templateFileName = 'contract_car_template.docx';
+            $templateFileName = $contract->pledgee ? 'contract_car_template_pledgee.docx' : 'contract_car_template.docx';
         } elseif ($categoryName == 'gold') {
             $templateFileName = 'contract_gold_template.docx';
         } elseif ($categoryName == 'car-purchase') {
@@ -441,6 +441,24 @@ class FileController extends Controller
             'seller_address' => $seller?->city . ',' . $seller?->street,
             'seller_code' => $sellerCode,
         ]);
+
+        if ($categoryName == 'car' && $contract->pledgee) {
+            $pledgee = $contract->pledgee;
+            $pledgeeName = $pledgee->name . ' ' . $pledgee->surname . ($pledgee->middle_name ? ' ' . $pledgee->middle_name : '');
+            $pledgeeCity = $pledgee->actual_province ?? $pledgee->city;
+            $pledgeeStreet = $pledgee->actual_street_building ?? $pledgee->street;
+
+            $templateProcessor->setValues([
+                'pledgee' => $pledgeeName,
+                'pl_passport_series' => $pledgee->passport_series,
+                'pl_passport_validity' => \Carbon\Carbon::parse($pledgee->passport_validity)->format('d.m.Y'),
+                'pl_passport_issued' => $pledgee->passport_issued,
+                'pl_social_card_number' => $pledgee->social_card_number ?? $pledgee->tax_number ?? '',
+                'pl_city' => $pledgeeCity,
+                'pl_street' => $pledgeeStreet,
+                'pl_phone' => $pledgee->phone ?? '',
+            ]);
+        }
 
         $paymentRows = [];
         foreach ($contract->payments as $p) {
