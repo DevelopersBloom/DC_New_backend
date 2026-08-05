@@ -470,7 +470,7 @@ class FileController extends Controller
                 'p_r' => $this->makeMoney((int)$p->remaining),
             ];
         }
-        if (!empty($paymentRows)) {
+        if (!empty($paymentRows) && in_array('p_d', $templateProcessor->getVariables(), true)) {
             $templateProcessor->cloneRowAndSetValues('p_d', $paymentRows);
         }
 
