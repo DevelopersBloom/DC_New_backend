@@ -368,10 +368,15 @@ class AcraExport
             $sheet->setCellValue('B' . $row, $contract->num);
 
             $this->setDateCellValue($sheet, 'C' . $row, $contract->date);
+            $lastRegularPayment = $contract->payments()
+                ->where('type', 'regular')
+                ->orderByDesc('to_date')
+                ->first();
+
             $this->setDateCellValue(
                 $sheet,
                 'D' . $row,
-                $contract->deadline ? $contract->deadline : '2999-01-01'
+                $lastRegularPayment?->to_date ?? ($contract->deadline ? $contract->deadline : '2999-01-01')
             );
 
             $lastPaymentDate = null;
