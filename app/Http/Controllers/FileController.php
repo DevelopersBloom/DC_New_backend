@@ -412,7 +412,7 @@ class FileController extends Controller
         $deadline = \Carbon\Carbon::parse($contract->deadline)->format('d.m.Y');
         $city = $client->actual_province ?? $client->city;
         $street = $client->actual_street_building ?? $client->street;
-
+        $cardNumber = $client->account_number ? '' : $client->card_number;
         $templateProcessor->setValues([
             'num' => $contract->num,
             'date' => \Carbon\Carbon::parse($contract->date)->format('d.m.Y'),
@@ -431,7 +431,7 @@ class FileController extends Controller
             'deadline' => $deadline,
             'bank_name' => $client->bank_name,
             'account_card_number' => $client->account_number,
-            'card_number' => $client->card_number,
+            'card_number' => $cardNumber,
             'user_name' => $userName,
             'lump_rate' => $lumpRate,
             'seller' => $sellerName,
