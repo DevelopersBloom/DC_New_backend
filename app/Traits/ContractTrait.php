@@ -841,7 +841,7 @@ trait ContractTrait
                 }
             }
         }
-
+dd($total_penalty_amount,$current_penalty,$penalty_paid);
         $contract->penalty_amount = max(0, $total_penalty_amount);
         $contract->save();
 
