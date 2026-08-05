@@ -838,7 +838,6 @@ trait ContractTrait
                         ->sum('paid') ?? 0;
 
                     $total_penalty_amount += ($current_penalty - $penalty_paid);
-                    dd($total_penalty_amount,$current_penalty,$penalty_paid,$payment->id,$payment->amount,$current_delay_days,$contract->penalty);
 
                 }
             }
