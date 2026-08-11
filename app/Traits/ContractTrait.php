@@ -542,7 +542,6 @@ trait ContractTrait
 
         $interestAmount = 0.0;
         $count = 0;
-        $carryPrincipal = 0.0; // unpaid principal from earlier elapsed periods, still accruing interest
         foreach ($scheduledPayments as $payment) {
             $payment = $this->normalizePaymentDates($payment, $contract);
             $fromDate = Carbon::parse($payment->from_date)->startOfDay();
@@ -551,18 +550,18 @@ trait ContractTrait
                 break;
             }
             $count++;
-            $balance = (float) ($payment->remaining + $payment->principal_payment) + $carryPrincipal;
 
             if ($toDate->lte($currentDate)) {
                 $alreadyPaidInterest = (float) $payment->entries()->sum('interest_amount');
                 $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
-
-                $collectedPrincipal = (float) $payment->entries()->sum('principal_amount');
-                $carryPrincipal += max(0, (float) $payment->principal_payment - $collectedPrincipal);
             } else {
+                // Balance comes from contract->provided_amount (kept live on every principal
+                // reduction) rather than payment->remaining, which is only ever written by
+                // ScheduledPaymentHandler::recalculateInterest() and goes stale the moment a
+                // payment sweeps through without touching every pending row.
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
                 $interestAmount += $this->calcAmount(
-                    $balance,
+                    (float) $contract->provided_amount,
                     $daysIntoCurrentPeriod,
                     $contract->interest_rate
                 );
