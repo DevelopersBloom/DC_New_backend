@@ -812,6 +812,13 @@ class PaymentService
         }
 
         $nowDate = $date ?? now()->toDateString();
+        // Use the pre-mutation snapshot from $history['contract_changes'] (captured
+        // above, before $contract->collected/provided_amount were incremented/zeroed
+        // for the save at :761-770) — reading $contract directly here would report
+        // already-mutated values as "old", double-counting this payment's interest
+        // and reporting principal as already zero.
+        $oldProvidedAmount = $history['contract_changes']['old_provided'];
+        $oldCollected      = $history['contract_changes']['old_collected'];
         Modification::insert([
             [
                 'subject_type'      => Contract::class,
@@ -819,7 +826,7 @@ class PaymentService
                 'modification_type' => 'Modificator',
                 'field_code'        => 'PrincipalAmount',
                 'element_code'      => 'Amount',
-                'old_value'         => $contract->provided_amount !== null ? (string) $contract->provided_amount : null,
+                'old_value'         => $oldProvidedAmount !== null ? (string) $oldProvidedAmount : null,
                 'new_value'         => '0',
                 'effective_date'    => $nowDate,
             ],
@@ -829,8 +836,8 @@ class PaymentService
                 'modification_type' => 'Modificator',
                 'field_code'        => 'PercentsPaid',
                 'element_code'      => 'Amount',
-                'old_value'         => $contract->collected !== null ? (string) $contract->collected : null,
-                'new_value'         => (string) ($contract->collected + $interestAmount),
+                'old_value'         => $oldCollected !== null ? (string) $oldCollected : null,
+                'new_value'         => (string) ($oldCollected + $interestAmount),
                 'effective_date'    => $nowDate,
             ],
             [
