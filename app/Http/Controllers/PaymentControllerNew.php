@@ -520,6 +520,7 @@ class PaymentControllerNew extends Controller
                             'user_id' => auth()->id(),
                             'journalable_type' => DocumentJournal::class,
                             'journalable_id' => $docId,
+                            'deal_id' => $deal->id,
                             'contract_id' => $contract->id,
                         ]);
 

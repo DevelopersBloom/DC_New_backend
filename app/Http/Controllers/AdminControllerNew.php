@@ -16,7 +16,6 @@ use App\Models\Discount;
 use App\Models\File;
 use App\Models\LoanNdm;
 use App\Models\LumpRate;
-use App\Models\Modification;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
@@ -30,6 +29,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\DealUpdateService;
 use App\Services\DealsTableOnlyUpdateService;
+use App\Services\FullPaymentDealReversalService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -802,20 +802,20 @@ class AdminControllerNew extends Controller
         return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
     }
 
-    public function deleteDeal($id)
+    public function deleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService)
     {
         $deal = Deal::find($id);
         if (!$deal) {
             return response()->json(['message' => 'Deal not found'], 404);
         }
-        return DB::transaction(function () use ($deal) {
+        return DB::transaction(function () use ($deal, $fullPaymentDealReversalService) {
             try {
                 if ($deal->filter_type === 'full_payment') {
-                    return $this->handleFullPaymentDeal($deal);
+                    return $this->handleFullPaymentDeal($deal, $fullPaymentDealReversalService);
                 }
 
                 if ($deal->filter_type === 'payment') {
-                    return $this->handleRegularPaymentDeal($deal);
+                    return $this->handleRegularPaymentDeal($deal, $fullPaymentDealReversalService);
                 }
 
                 if ($deal->filter_type === 'partial_payment') {
@@ -835,7 +835,44 @@ class AdminControllerNew extends Controller
         });
 
     }
-    private function handleRegularPaymentDeal(Deal $deal)
+
+    /**
+     * Dry-run of handleFullPaymentDeal()'s reversal: runs the exact same
+     * FullPaymentDealReversalService::reverse() call inside a transaction that
+     * gets rolled back instead of committed, so the returned diff is guaranteed
+     * to match what a real delete would do.
+     */
+    public function previewDeleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService)
+    {
+        $deal = Deal::find($id);
+        if (!$deal) {
+            return response()->json(['message' => 'Deal not found'], 404);
+        }
+
+        if ($deal->filter_type !== 'full_payment') {
+            return response()->json([
+                'message'  => 'Preview not supported for this deal type',
+                'sections' => [],
+                'warnings' => [],
+            ]);
+        }
+
+        DB::beginTransaction();
+        try {
+            $diff = $fullPaymentDealReversalService->reverse($deal);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error while building deletion preview',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+        DB::rollBack();
+
+        return response()->json($diff);
+    }
+
+    private function handleRegularPaymentDeal(Deal $deal, FullPaymentDealReversalService $fullPaymentDealReversalService)
     {
         $laterDealExists = Deal::where('contract_id', $deal->contract_id)
             ->where('id', '!=', $deal->id)
@@ -905,28 +942,12 @@ class AdminControllerNew extends Controller
 
         $skippedModifications = [];
         if ($contract) {
-            foreach (['PrincipalAmount', 'PercentsPaid', 'AmountsPaid'] as $fieldCode) {
-                $matches = Modification::where('subject_type', Contract::class)
-                    ->where('subject_id', $contract->id)
-                    ->where('effective_date', $deal->date)
-                    ->where('field_code', $fieldCode)
-                    ->get();
-
-                if ($matches->count() !== 1) {
-                    if ($matches->count() > 1) {
-                        $skippedModifications[] = ['field_code' => $fieldCode, 'reason' => 'ambiguous same-day match'];
-                    }
-                    continue;
-                }
-
-                $modification = $matches->first();
-                if ($modification->is_sent) {
-                    $skippedModifications[] = ['field_code' => $fieldCode, 'reason' => 'already sent to registry'];
-                    continue;
-                }
-
-                $modification->delete();
-            }
+            $result = $fullPaymentDealReversalService->deleteModificationsForContract(
+                $contract,
+                (string) $deal->date,
+                ['PrincipalAmount', 'PercentsPaid', 'AmountsPaid']
+            );
+            $skippedModifications = $result['skipped'];
         }
 
         DealAction::where('deal_id', $deal->id)->delete();
@@ -938,37 +959,15 @@ class AdminControllerNew extends Controller
         ]);
     }
 
-    private function handleFullPaymentDeal(Deal $deal)
+    private function handleFullPaymentDeal(Deal $deal, FullPaymentDealReversalService $fullPaymentDealReversalService)
     {
-        return DB::transaction(function () use ($deal) {
-            if ($deal->filter_type === 'full_payment') {
-                Payment::where('contract_id', $deal->contract_id)
-                    ->where('status', 'initial')
-                    ->whereNotNull('deleted_at')
-                    ->restore();
+        $diff = $fullPaymentDealReversalService->reverse($deal);
 
-                $action = DealAction::where('deal_id', $deal->id)->first();
-                if ($action && $action->history) {
-                    $this->restoreHistory($action->history);
-                    $action->delete();
-                }
-            }
-
-            ContractAmountHistory::where('deal_id', $deal->id)->delete();
-
-            $paymentIdToDelete = $deal->payment_id;
-            if ($paymentIdToDelete) {
-                $deal->update(['payment_id' => null]);
-            }
-
-            $deal->delete();
-
-            if ($paymentIdToDelete) {
-                Payment::where('id', $paymentIdToDelete)->forceDelete();
-            }
-
-            return response()->json(['message' => 'Full payment deal fully reverted successfully'], 200);
-        });
+        return response()->json([
+            'message'  => 'Full payment deal fully reverted successfully',
+            'diff'     => $diff['sections'],
+            'warnings' => $diff['warnings'],
+        ], 200);
     }
 
     private function handlePartialPaymentDeal(Deal $deal)
