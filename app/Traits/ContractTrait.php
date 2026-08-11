@@ -836,11 +836,12 @@ trait ContractTrait
                         ->where('parent_id', $payment->id)
                         ->sum('paid') ?? 0;
 
-                    $total_penalty_amount += ($current_penalty - $penalty_paid);
+//                    $total_penalty_amount += ($current_penalty - $penalty_paid);
+                    $total_penalty_amount += ($current_penalty);
+
                 }
             }
         }
-
         $contract->penalty_amount = max(0, $total_penalty_amount);
         $contract->save();
 

@@ -152,6 +152,10 @@ class Contract extends Model
     {
         return $this->hasMany(Deal::class, 'contract_id');
     }
+    public function prepayments(): HasMany
+    {
+        return $this->hasMany(Prepayment::class, 'contract_id');
+    }
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class);

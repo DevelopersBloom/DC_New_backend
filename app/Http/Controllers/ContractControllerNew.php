@@ -141,6 +141,7 @@ class ContractControllerNew extends Controller
             'items.category',
             'files',
             'deals',
+            'prepayments',
         ])
             ->withMax('payments', 'to_date')
             ->withMin('payments', 'to_date')

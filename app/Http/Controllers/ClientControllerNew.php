@@ -487,6 +487,23 @@ class ClientControllerNew extends Controller
                     : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
 
                 if (!$journal) {
+                    ClassificationHistory::create([
+                        'client_id'        => $client->id,
+                        'classification_id'=> $classification->id,
+                        'risk_weight'      => $newRiskWeight,
+                        'reserve_percent'  => $client->classification?->reserve_percent ?? 0,
+                        'comment'          => 'Client classification update manually',
+                        'actionable_type'  => Contract::class,
+                        'actionable_id'    => $contract->id,
+                        'user_id'          => auth()->id() ?? 1,
+                        'meta'             => [
+                            'old_classification_id'   => $oldClassificationId,
+                            'old_classification_name' => $oldClassificationName,
+                            'old_reserve_percent'     => $oldReservePercent,
+                            'old_reserve_amount'      => $oldReserveAmount,
+                        ],
+                        'date' => now(),
+                    ]);
                     continue;
                 }
 

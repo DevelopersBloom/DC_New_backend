@@ -4,6 +4,7 @@ namespace App\Exports\Acra;
 
 use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
+use App\Models\Prepayment;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -368,10 +369,15 @@ class AcraExport
             $sheet->setCellValue('B' . $row, $contract->num);
 
             $this->setDateCellValue($sheet, 'C' . $row, $contract->date);
+            $lastRegularPayment = $contract->payments()
+                ->where('type', 'regular')
+                ->orderByDesc('to_date')
+                ->first();
+
             $this->setDateCellValue(
                 $sheet,
                 'D' . $row,
-                $contract->deadline ? $contract->deadline : '2999-01-01'
+                $lastRegularPayment?->to_date ?? ($contract->deadline ? $contract->deadline : '2999-01-01')
             );
 
             $lastPaymentDate = null;
@@ -435,10 +441,16 @@ class AcraExport
             $sheet->setCellValue('F' . $row, '001');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
+            $unpaidPrepayments = Prepayment::where('contract_id', $contract->id)
+                ->where('status', 'unpaid')
+                ->selectRaw('SUM(principal_amount + partial_amount) as total')
+                ->value('total') ?? 0;
 
-            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid);
+            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $unpaidPrepayments);
 
-            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount));
+
+
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount - $unpaidPrepayments));
 
             $overdueMother = 0;
             $overdueInterest = 0;

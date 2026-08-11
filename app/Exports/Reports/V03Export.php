@@ -19,7 +19,7 @@ class V03Export
     public function export($from, $to, string $version = 'new')
     {
         // Load XLSX template
-        $templateFile = $version === 'new' ? 'v03-2.xls' : 'v03.xlsx';
+        $templateFile = $version === 'new' ? 'v03-04.xlsx' : 'v03.xlsx';
         $path = base_path($templateFile);
         $reader = IOFactory::createReaderForFile($path);
         $spreadsheet = $reader->load($path);
@@ -107,8 +107,8 @@ class V03Export
 
         $riskColumns = [
             0   => 'B', 10  => 'D', 20  => 'F', 30  => 'H',
-            50  => 'J', 75  => 'L', 100 => 'N', 110 => 'P',
-            150 => 'R', 225 => 'T',
+            50  => 'J', 75  => 'L', 85 => 'N', 100 => 'P',
+            110 => 'R', 125 => 'T', 150 => 'V', 225 => 'X',
         ];
 
         $activeAccountsWithRisk = ChartOfAccount::where('type', 'active')
@@ -260,9 +260,15 @@ class V03Export
             }
             foreach ($dailyData as $risk => $values) {
                 $col = $riskColumns[$risk];
-                $sheet3->setCellValue($col . $row, $values['amount'] / 1000);
+                $amount = $values['amount'] / 1000;
+                if ($amount != 0) {
+                    $sheet3->setCellValue($col . $row, $amount);
+                }
                 $nextCol = ++$col;
-                $sheet3->setCellValue($nextCol . $row, $values['reserve'] / 1000);
+                $reserve = $values['reserve'] / 1000;
+                if ($reserve != 0) {
+                    $sheet3->setCellValue($nextCol . $row, $reserve);
+                }
             }
 
             $current->addDay();

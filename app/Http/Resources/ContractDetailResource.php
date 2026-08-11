@@ -172,6 +172,18 @@ class ContractDetailResource extends JsonResource
                     'date'             => $deal->date ? Carbon::parse($deal->date)->format('d-m-Y') : null,
                 ];
             }),
+            'prepayments' => $this->prepayments->map(function ($prepayment) {
+                return [
+                    'id'               => $prepayment->id,
+                    'amount'           => $prepayment->amount,
+                    'principal_amount' => $prepayment->principal_amount ?? 0,
+                    'interest_amount'  => $prepayment->interest_amount ?? 0,
+                    'partial_amount'   => $prepayment->partial_amount ?? 0,
+                    'status'           => $prepayment->status,
+                    'due_date'         => $prepayment->due_date ? Carbon::parse($prepayment->due_date)->format('d-m-Y') : null,
+                    'paid_at'          => $prepayment->paid_at ? Carbon::parse($prepayment->paid_at)->format('d-m-Y') : null,
+                ];
+            }),
             'history' => $this->history->map(function ($history) {
                 return [
                     'id'   => $history->id,
@@ -264,6 +276,10 @@ class ContractDetailResource extends JsonResource
 //            'mother_amount_to_pay' => $this->mother_amount_to_pay,
 //            'prepayment_credit' => $this->prepayment_credit,
             'prepayment_balance' => $this->prepayment_balance,
+            'prepayments_total_interest' => $this->prepayments->where('status', 'unpaid')->sum('interest_amount'),
+            'prepayments_total_principal' => $this->prepayments->where('status', 'unpaid')->sum(function ($prepayment) {
+                return $prepayment->principal_amount + $prepayment->partial_amount;
+            }),
         ];
     }
 }

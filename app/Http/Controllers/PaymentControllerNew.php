@@ -170,7 +170,6 @@ class PaymentControllerNew extends Controller
             $clientId = $contract->client_id;
             $docNum   = Transaction::getNextDocumentNumber();
 
-
             // ---- Interest ----
             if ($interest > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_interest_amount', $class, $cash));
@@ -193,7 +192,7 @@ class PaymentControllerNew extends Controller
             }
 
             // ---- Principal ----
-            if ($principal > 0) {
+            if ($principal > 0 || $partial_amount > 0) {
                 $rule = $this->getPostingRule($this->resolveEvent('pay_mother_amount', $class, $cash,'principal'));
 
                 $journalPrincipal = $this->postEntry(
@@ -212,7 +211,6 @@ class PaymentControllerNew extends Controller
                     $contract
                 );
             }
-
             // ---- Prepayment principal (before due date) → Dr 10000/102101 / Cr 39920 ----
             if ($prepaymentPrincipal > 0) {
                 $prepaymentEvent = $cash ? 'prepayment_received_cash' : 'prepayment_received';

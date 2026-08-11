@@ -226,8 +226,29 @@ class ClientClassificationService
                     ? DocumentJournal::RESERVE_GENERAL_AMOUNT
                     : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
 
-                // require a base journal to attach DocumentJournal -> if none, skip (controller did similar)
+                // No base journal yet (contract not disbursed): can't post reserve
+                // entries, but the classification change itself still happened and
+                // must be recorded, or the audit trail silently loses it forever —
+                // once $journal exists later, $oldClassification is no longer null
+                // so nothing backfills this. Point actionable at the contract instead.
                 if (!$journal) {
+                    ClassificationHistory::create([
+                        'client_id' => $client->id,
+                        'classification_id' => $classification->id,
+                        'risk_weight' => $newRiskWeight,
+                        'reserve_percent' => $client->classification?->reserve_percent ?? 0,
+                        'comment' => $comment,
+                        'actionable_type' => Contract::class,
+                        'actionable_id' => $contract->id,
+                        'user_id' => auth()->check() ? auth()->id() : 1,
+                        'meta' => [
+                            'old_classification_id' => $oldClassificationId,
+                            'old_classification_name' => $oldClassificationName,
+                            'old_reserve_percent' => $oldReservePercent,
+                            'old_reserve_amount' => $oldReserveAmount,
+                        ],
+                        'date' => now(),
+                    ]);
                     continue;
                 }
 

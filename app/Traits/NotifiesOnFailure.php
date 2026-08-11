@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Models\User;
 use App\Notifications\JobFailedNotification;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Notification;
 use Throwable;
 
 trait NotifiesOnFailure
@@ -23,5 +24,9 @@ trait NotifiesOnFailure
         );
 
         User::role('admin')->get()->each->notify($notification);
+
+        if ($chatId = config('services.telegram.chat_id')) {
+            Notification::route('telegram', $chatId)->notify($notification);
+        }
     }
 }
