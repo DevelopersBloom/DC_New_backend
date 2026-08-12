@@ -79,6 +79,7 @@ class PrepaymentHandler
             : Carbon::now('Asia/Yerevan')->startOfDay();
 
         $prepaymentPrincipal = 0;
+        $deferredInterest    = 0;
         if ($timing === PaymentDateClassifier::SOONER) {
             $from        = Carbon::parse($payment->from_date)->startOfDay();
             $elapsedDays = max(0, $from->diffInDays($now));
@@ -109,6 +110,10 @@ class PrepaymentHandler
             'interest_amount'      => $paidInterest,
             'principal_amount'     => $paidPrincipal,
             'prepayment_principal' => $prepaymentPrincipal,
+            // Interest-only slice of prepayment_principal above (the rest is principal + partial),
+            // kept separate so callers can record the deal's own principal/interest split without
+            // touching prepayment_principal, which still carries the full bucket total posted to 39920.
+            'prepayment_interest'  => $deferredInterest,
             'amount'               => $remainingAmount,
         ];
     }

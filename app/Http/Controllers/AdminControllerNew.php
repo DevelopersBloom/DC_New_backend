@@ -645,7 +645,8 @@ class AdminControllerNew extends Controller
             'discount',
             'created_by',
             'principal_amount',
-            'prepayment',
+            'prepayment_principal',
+            'prepayment_interest',
         )
             ->with('client:id,name,surname')
             ->with('contract:id,mother,num')

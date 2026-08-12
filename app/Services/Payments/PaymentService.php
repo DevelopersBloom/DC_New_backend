@@ -54,6 +54,7 @@ class PaymentService
         $interest_amount      = 0;
         $principal_amount     = 0;
         $prepayment_principal = 0;
+        $prepayment_interest  = 0;
         $initial_amount       = $amount;
 
         $timing = $this->dateClassifier->classify($contract, $date);
@@ -160,6 +161,7 @@ class PaymentService
                     $interest_amount      += $result['interest_amount'];
                     $principal_amount     += $result['principal_amount'];
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
+                    $prepayment_interest  += $result['prepayment_interest'] ?? 0;
                     $interestAmount -= $result['interest_amount'] ?? 0;
                 }
             }
@@ -245,6 +247,7 @@ class PaymentService
             'interest_amount'      => $interest_amount,
             'principal_amount'     => $principal_amount,
             'prepayment_principal' => $prepayment_principal,
+            'prepayment_interest'  => $prepayment_interest,
             'penalty'              => $payed_penalty,
             'delay_days'           => $delay_days,
             'discount'             => 0,

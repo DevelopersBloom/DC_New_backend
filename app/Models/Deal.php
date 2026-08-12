@@ -26,7 +26,8 @@ class Deal extends Model
         'penalty',
         'discount',
         'interest_amount',
-        'prepayment',
+        'prepayment_principal',
+        'prepayment_interest',
         'principal_amount',
         'order_id',
         'pawnshop_id',
@@ -65,7 +66,8 @@ class Deal extends Model
         'given' => 'decimal:2',
         'insurance' => 'decimal:2',
         'funds' => 'decimal:2',
-        'prepayment' => 'decimal:2',
+        'prepayment_principal' => 'decimal:2',
+        'prepayment_interest' => 'decimal:2',
         'principal_amount' => 'decimal:2',
     ];
     // Guards against Deal::deleting <-> DocumentJournal::deleting mutual recursion:

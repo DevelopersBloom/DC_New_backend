@@ -158,9 +158,14 @@ class PaymentControllerNew extends Controller
             $principal = $result['principal_amount'] ?? 0;
             $interest             = $result['interest_amount'];
             $prepaymentPrincipal  = $result['prepayment_principal'] ?? 0;
+            $prepaymentInterest   = $result['prepayment_interest'] ?? 0;
 
-            $deal->principal_amount = $principal + $partial_amount;
-            $deal->prepayment       = $prepaymentPrincipal;
+            $deal->principal_amount     = $principal + $partial_amount;
+            // $prepaymentPrincipal is the full bucket total (principal + deferred interest +
+            // partial) — used below, unchanged, for the 39920 posting entry. The deal's own
+            // two display columns split it back out using the interest-only slice.
+            $deal->prepayment_principal = $prepaymentPrincipal - $prepaymentInterest;
+            $deal->prepayment_interest  = $prepaymentInterest;
 
             $history->save();
             $deal->save();
