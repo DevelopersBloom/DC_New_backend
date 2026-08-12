@@ -393,7 +393,7 @@ class AcraExport
                     ->where('journalable_id', $mainJournal->id)
                     ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
                     ->where('date', '>=', $this->from)
-                    ->where('date', '<=', $this->to)
+                    ->where('date', '<', $this->to)
                     ->latest('date')
                     ->first();
 
@@ -408,7 +408,7 @@ class AcraExport
                     $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
                         ->where('journalable_id', $mainJournal->id)
                         ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                        ->where('date', '<=', $this->to)
+                        ->where('date', '<', $this->to)
                         ->sum('amount_amd');
                 }
 
@@ -456,23 +456,38 @@ class AcraExport
             $overdueInterest = 0;
 
             if ($contract->payment_type == 'amortized') {
-                $overdueMother = $contract->payments()
+                // Net out payment_entries: a status='initial' row can already be
+                // mostly settled by a partial payment (which never flips status to
+                // completed), so the raw principal_payment/interest_payment columns
+                // alone overstate what's still due. Rows with no entries
+                // (legacy/imported payments) net to their full amount, same as
+                // before this change.
+                $openAmortizedPayments = $contract->payments()
                     ->where('status', 'initial')
                     ->where('date', '<', $this->to)
-                    ->sum('principal_payment');
+                    ->withSum('entries as paid_principal', 'principal_amount')
+                    ->withSum('entries as paid_interest', 'interest_amount')
+                    ->get(['id', 'principal_payment', 'interest_payment']);
 
-                $overdueInterest = $contract->payments()
-                    ->where('status', 'initial')
-                    ->where('date', '<', $this->to)
-                    ->sum('interest_payment');
+                $overdueMother = $openAmortizedPayments->sum(
+                    fn ($p) => max(0, (float) $p->principal_payment - (float) ($p->paid_principal ?? 0))
+                );
+                $overdueInterest = $openAmortizedPayments->sum(
+                    fn ($p) => max(0, (float) $p->interest_payment - (float) ($p->paid_interest ?? 0))
+                );
             } else {
                 if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->to))) {
                     $overdueMother = max(0, $contract->provided_amount);
                 }
-                $overdueInterest = $contract->payments()
+                $openClassicPayments = $contract->payments()
                     ->where('status', 'initial')
                     ->where('date', '<', $this->from)
-                    ->sum('amount');
+                    ->withSum('entries as paid_amount', 'amount')
+                    ->get(['id', 'amount']);
+
+                $overdueInterest = $openClassicPayments->sum(
+                    fn ($p) => max(0, (float) $p->amount - (float) ($p->paid_amount ?? 0))
+                );
             }
 
             // Match the "overdue" contract scope (Contract::scopeStatus): a debt

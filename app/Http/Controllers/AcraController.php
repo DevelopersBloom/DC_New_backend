@@ -25,11 +25,21 @@ class AcraController
         $calcDay = Carbon::parse($request->to_date)->subDay()->format('Y-m-d');
         // Match the "overdue" contract scope (Contract::scopeStatus): only count a
         // contract as overdue once its unpaid initial payments exceed 1000 AMD.
+        // "Unpaid" is net of payment_entries: a status='initial' row can already be
+        // mostly settled by a partial payment (which never flips status to
+        // completed), so the raw `amount` column alone overstates what's still due.
+        // Rows with no entries (legacy/imported payments) net to their full amount,
+        // same as before this change.
         $contractsWithInitialPayments = Payment::where('status', 'initial')
             ->where('date', '<', $calcDay)
+            ->withSum('entries as paid_amount', 'amount')
+            ->get(['id', 'contract_id', 'amount'])
             ->groupBy('contract_id')
-            ->havingRaw('SUM(amount) > ?', [AcraExport::MIN_OVERDUE_AMD])
-            ->pluck('contract_id')
+            ->filter(function ($payments) {
+                $remaining = $payments->sum(fn ($p) => max(0, (float) $p->amount - (float) ($p->paid_amount ?? 0)));
+                return $remaining > AcraExport::MIN_OVERDUE_AMD;
+            })
+            ->keys()
             ->toArray();
         $mainContractJournals = DocumentJournal::where('journalable_type', Contract::class)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
