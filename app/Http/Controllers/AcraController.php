@@ -29,10 +29,12 @@ class AcraController
         // mostly settled by a partial payment (which never flips status to
         // completed), so the raw `amount` column alone overstates what's still due.
         // Rows with no entries (legacy/imported payments) net to their full amount,
-        // same as before this change.
+        // same as before this change. Entries are scoped to date < $to so a payment
+        // recorded after the report's cutoff doesn't retroactively clear a contract
+        // out of a report window that's supposed to stop before it.
         $contractsWithInitialPayments = Payment::where('status', 'initial')
             ->where('date', '<', $calcDay)
-            ->withSum('entries as paid_amount', 'amount')
+            ->withSum(['entries as paid_amount' => fn ($q) => $q->where('date', '<', $to)], 'amount')
             ->get(['id', 'contract_id', 'amount'])
             ->groupBy('contract_id')
             ->filter(function ($payments) {

@@ -461,12 +461,16 @@ class AcraExport
                 // completed), so the raw principal_payment/interest_payment columns
                 // alone overstate what's still due. Rows with no entries
                 // (legacy/imported payments) net to their full amount, same as
-                // before this change.
+                // before this change. Entries are scoped to date < $to so a payment
+                // recorded after the report's cutoff doesn't retroactively reduce
+                // overdue for a window that's supposed to stop before it — same
+                // point-in-time convention as the E/I column date filters above.
+                $to = $this->to;
                 $openAmortizedPayments = $contract->payments()
                     ->where('status', 'initial')
-                    ->where('date', '<', $this->to)
-                    ->withSum('entries as paid_principal', 'principal_amount')
-                    ->withSum('entries as paid_interest', 'interest_amount')
+                    ->where('date', '<', $to)
+                    ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
+                    ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
                     ->get(['id', 'principal_payment', 'interest_payment']);
 
                 $overdueMother = $openAmortizedPayments->sum(
@@ -479,10 +483,11 @@ class AcraExport
                 if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->to))) {
                     $overdueMother = max(0, $contract->provided_amount);
                 }
+                $from = $this->from;
                 $openClassicPayments = $contract->payments()
                     ->where('status', 'initial')
-                    ->where('date', '<', $this->from)
-                    ->withSum('entries as paid_amount', 'amount')
+                    ->where('date', '<', $from)
+                    ->withSum(['entries as paid_amount' => fn ($q) => $q->where('date', '<', $from)], 'amount')
                     ->get(['id', 'amount']);
 
                 $overdueInterest = $openClassicPayments->sum(
