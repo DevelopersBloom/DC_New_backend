@@ -32,13 +32,26 @@ class AcraController
         // same as before this change. Entries are scoped to date < $to so a payment
         // recorded after the report's cutoff doesn't retroactively clear a contract
         // out of a report window that's supposed to stop before it.
+        // Net against principal_payment/interest_payment (not the aggregate `amount`
+        // column): `amount` is a schedule-time snapshot that can drift out of sync
+        // with the split fields after recalculation, while principal_payment/
+        // interest_payment are the figures kept authoritative everywhere else
+        // (fillCredit's own K/L overdue calc, ContractDetailResource, etc). Using
+        // `amount` here let a contract in past its 1000 AMD threshold pull the
+        // whole client into the report while K/L displayed 0, because the two
+        // checks disagreed about what "still owed" means.
         $contractsWithInitialPayments = Payment::where('status', 'initial')
             ->where('date', '<', $calcDay)
-            ->withSum(['entries as paid_amount' => fn ($q) => $q->where('date', '<', $to)], 'amount')
-            ->get(['id', 'contract_id', 'amount'])
+            ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
+            ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
+            ->get(['id', 'contract_id', 'principal_payment', 'interest_payment'])
             ->groupBy('contract_id')
             ->filter(function ($payments) {
-                $remaining = $payments->sum(fn ($p) => max(0, (float) $p->amount - (float) ($p->paid_amount ?? 0)));
+                $remaining = $payments->sum(function ($p) {
+                    $principalDue = max(0, (float) $p->principal_payment - (float) ($p->paid_principal ?? 0));
+                    $interestDue  = max(0, (float) $p->interest_payment - (float) ($p->paid_interest ?? 0));
+                    return $principalDue + $interestDue;
+                });
                 return $remaining > AcraExport::MIN_OVERDUE_AMD;
             })
             ->keys()

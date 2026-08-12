@@ -415,11 +415,20 @@ class AcraExport
             }
             // Some closed contracts may have principal closed without detailed PAY_MOTHER_AMOUNT rows.
             // Keep I column meaningful by deriving paid principal from contract figures when needed.
+            // Only do this when the contract has no PAY_MOTHER_AMOUNT history at all: a $totalPaid
+            // of 0 can also mean the contract's only repayment(s) fall on/after $to and were
+            // correctly excluded by the date filter above. Falling back to contract->provided_amount
+            // (a live balance, already reduced by those excluded payments) in that case would leak
+            // them back in through this fallback, defeating the date scoping.
+            $hasMotherPaymentHistory = $mainJournal && DocumentJournal::where('journalable_type', DocumentJournal::class)
+                ->where('journalable_id', $mainJournal->id)
+                ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
+                ->exists();
             $derivedPaidFromBalance = max(
                 0,
                 (float)($contract->contract_amount ?? 0) - max(0, (float)($contract->provided_amount ?? 0))
             );
-            if ((float)$totalPaid <= 0 && $derivedPaidFromBalance > 0) {
+            if ((float)$totalPaid <= 0 && $derivedPaidFromBalance > 0 && !$hasMotherPaymentHistory) {
                 $totalPaid = $derivedPaidFromBalance;
             }
 
@@ -448,9 +457,15 @@ class AcraExport
 
             $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $unpaidPrepayments);
 
-
-
-            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount - $unpaidPrepayments));
+            // J must be the balance as of $to, not the live balance: contract->provided_amount
+            // is decremented in place the moment a principal payment posts (PaymentService),
+            // permanently, regardless of which report window is later requested. A payment
+            // dated on/after $to would then already be baked into provided_amount by the time
+            // this export runs, silently pulling a later period's repayment into this one.
+            // contract_amount is the fixed original principal (never mutated post-disbursement),
+            // so netting it against $totalPaid (already scoped to date < $to, same as column I)
+            // reconstructs the true point-in-time balance instead of reading today's live figure.
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->contract_amount - $totalPaid - $unpaidPrepayments));
 
             $overdueMother = 0;
             $overdueInterest = 0;
