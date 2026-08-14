@@ -437,6 +437,27 @@ class AcraExport
             } elseif ($contract->status === 'completed' || $contract->status === 'executed') {
                 $lastPaymentDate = $contract->closed_at;
             }
+
+            // A prepayment (principal and/or partial portion) never posts a
+            // PAY_MOTHER_AMOUNT row - it's recorded in `prepayments` instead
+            // (see column I below). Without this, a prepayment received inside
+            // the report window is invisible here even though it's a real
+            // repayment event. Scoped by created_at (the receipt date), not
+            // status, so a prepayment keeps showing on the period it was
+            // received in even after it's later applied/paid.
+            $lastPrepaymentReceived = Prepayment::where('contract_id', $contract->id)
+                ->where('created_at', '>=', $this->from)
+                ->where('created_at', '<', $this->to)
+                ->where(function ($q) {
+                    $q->where('principal_amount', '>', 0)->orWhere('partial_amount', '>', 0);
+                })
+                ->latest('created_at')
+                ->first();
+
+            if ($lastPrepaymentReceived && (!$lastPaymentDate || Carbon::parse($lastPrepaymentReceived->created_at)->gt(Carbon::parse($lastPaymentDate)))) {
+                $lastPaymentDate = $lastPrepaymentReceived->created_at;
+            }
+
             $this->setDateCellValue($sheet, 'E' . $row, $lastPaymentDate);
 //            $categoryName = $contract->category->name ?? '';
 //
