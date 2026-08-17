@@ -471,27 +471,19 @@ class AcraExport
             $sheet->setCellValue('F' . $row, '001');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
-            $unpaidPrepayments = Prepayment::where('contract_id', $contract->id)
-                ->where('status', 'unpaid')
+            // A prepayment counts as paid from the date the client's money was
+            // actually received (created_at), not the date MarkDuePrepaymentsPaid
+            // later applies it to principal - that can happen days after receipt,
+            // but the cash was already in hand on the receipt date. Same anchor as
+            // column E above, and deliberately status-agnostic ('unpaid' = still
+            // bucketed, 'paid' = applied) so a prepayment doesn't move between
+            // report periods depending on when the daily job happened to run.
+            $prepaymentsReceived = Prepayment::where('contract_id', $contract->id)
+                ->where('created_at', '<', $this->to)
                 ->selectRaw('SUM(principal_amount + partial_amount) as total')
                 ->value('total') ?? 0;
 
-            // A prepayment stops being counted by $unpaidPrepayments the moment
-            // MarkDuePrepaymentsPaid applies it (status flips to 'paid'), but it also
-            // never posts a PAY_MOTHER_AMOUNT row, so $totalPaid never picks it up
-            // either - it silently vanished from both terms. PrepaymentApplicationService
-            // posts the applied amount (principal_amount + partial_amount) as its own
-            // PREPAYMENT_APPLY_PRINCIPAL journal type, scoped the same way as
-            // PAY_MOTHER_AMOUNT above, so it can be summed the same way.
-            $appliedPrepayments = $mainJournal
-                ? DocumentJournal::where('journalable_type', DocumentJournal::class)
-                    ->where('journalable_id', $mainJournal->id)
-                    ->where('document_type', DocumentJournal::PREPAYMENT_APPLY_PRINCIPAL)
-                    ->where('date', '<', $this->to)
-                    ->sum('amount_amd')
-                : 0;
-
-            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $appliedPrepayments + $unpaidPrepayments);
+            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $prepaymentsReceived);
 
             // J must be the balance as of $to, not the live balance: contract->provided_amount
             // is decremented in place the moment a principal payment posts (PaymentService),
@@ -501,7 +493,7 @@ class AcraExport
             // contract_amount is the fixed original principal (never mutated post-disbursement),
             // so netting it against $totalPaid (already scoped to date < $to, same as column I)
             // reconstructs the true point-in-time balance instead of reading today's live figure.
-            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->contract_amount - $totalPaid - $appliedPrepayments - $unpaidPrepayments));
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->contract_amount - $totalPaid - $prepaymentsReceived));
 
             $overdueMother = 0;
             $overdueInterest = 0;

@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\Payment;
+use App\Models\Prepayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use PhpParser\Comment\Doc;
@@ -85,11 +86,6 @@ class AcraController
                 DocumentJournal::PAY_MOTHER_AMOUNT_TRANSFER,
                 DocumentJournal::PAY_INTEREST_AMOUNT_TRANSFER,
                 DocumentJournal::PAY_INTEREST_AMOUNT_CASH,
-                // A prepayment application posts this type instead of PAY_MOTHER_AMOUNT
-                // (see AcraExport::fillCredit's $appliedPrepayments) - without it, a
-                // contract whose only activity this period is a prepayment application
-                // never reaches the report at all.
-                DocumentJournal::PREPAYMENT_APPLY_PRINCIPAL,
             ])
             ->where('date', '>=', $from)
             ->where('date', '<', $to)
@@ -109,13 +105,24 @@ class AcraController
             ->unique()
             ->toArray();
 
+        // A prepayment counts from the date it was received (created_at), not the
+        // date MarkDuePrepaymentsPaid later applies it (see AcraExport::fillCredit's
+        // $prepaymentsReceived) - so a contract whose only activity this period is a
+        // prepayment receipt must be pulled in by that receipt date, regardless of
+        // when (or whether yet) it gets applied.
+        $contractsWithPrepayments = Prepayment::where('created_at', '>=', $from)
+            ->where('created_at', '<', $to)
+            ->pluck('contract_id')
+            ->unique()
+            ->toArray();
+
         // Manual exclusion: client 4 (Գրիշա Հունեյան) must not appear in the ACRA export.
         $excludedClientIds = [4];
 
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
             ->whereNotIn('client_id', $excludedClientIds)
-            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions) {
+            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions, $contractsWithPrepayments) {
                 // Upper bound is exclusive: the classification snapshot (see
                 // AcraExport::fillCredit) is taken as of $to - 1 day, so a
                 // contract dated exactly on $to has no classification history
@@ -123,7 +130,8 @@ class AcraController
                 $query->where('date', '>=', $from)
                     ->where('date', '<', $to)
                     ->orWhereIn('id', $contractsWithInitialPayments)
-                    ->orWhereIn('id', $contractsWithJournalActions);
+                    ->orWhereIn('id', $contractsWithJournalActions)
+                    ->orWhereIn('id', $contractsWithPrepayments);
             })->get();
 
         $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();
