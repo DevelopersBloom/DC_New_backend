@@ -33,7 +33,6 @@ class BankIdService
 
         $xml = $this->buildP001Xml($client);
         $result = $this->degs->sendP001($xml, $dryRun);
-        dd($result);
         if (! $result['ok']) {
             throw new RuntimeException('BankID P001 send failed: ' . ($result['error'] ?? 'unknown'));
         }
