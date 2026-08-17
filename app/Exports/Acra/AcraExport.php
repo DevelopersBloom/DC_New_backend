@@ -476,7 +476,22 @@ class AcraExport
                 ->selectRaw('SUM(principal_amount + partial_amount) as total')
                 ->value('total') ?? 0;
 
-            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $unpaidPrepayments);
+            // A prepayment stops being counted by $unpaidPrepayments the moment
+            // MarkDuePrepaymentsPaid applies it (status flips to 'paid'), but it also
+            // never posts a PAY_MOTHER_AMOUNT row, so $totalPaid never picks it up
+            // either - it silently vanished from both terms. PrepaymentApplicationService
+            // posts the applied amount (principal_amount + partial_amount) as its own
+            // PREPAYMENT_APPLY_PRINCIPAL journal type, scoped the same way as
+            // PAY_MOTHER_AMOUNT above, so it can be summed the same way.
+            $appliedPrepayments = $mainJournal
+                ? DocumentJournal::where('journalable_type', DocumentJournal::class)
+                    ->where('journalable_id', $mainJournal->id)
+                    ->where('document_type', DocumentJournal::PREPAYMENT_APPLY_PRINCIPAL)
+                    ->where('date', '<', $this->to)
+                    ->sum('amount_amd')
+                : 0;
+
+            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $appliedPrepayments + $unpaidPrepayments);
 
             // J must be the balance as of $to, not the live balance: contract->provided_amount
             // is decremented in place the moment a principal payment posts (PaymentService),
@@ -486,7 +501,7 @@ class AcraExport
             // contract_amount is the fixed original principal (never mutated post-disbursement),
             // so netting it against $totalPaid (already scoped to date < $to, same as column I)
             // reconstructs the true point-in-time balance instead of reading today's live figure.
-            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->contract_amount - $totalPaid - $unpaidPrepayments));
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->contract_amount - $totalPaid - $appliedPrepayments - $unpaidPrepayments));
 
             $overdueMother = 0;
             $overdueInterest = 0;
