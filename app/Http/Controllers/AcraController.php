@@ -85,6 +85,11 @@ class AcraController
                 DocumentJournal::PAY_MOTHER_AMOUNT_TRANSFER,
                 DocumentJournal::PAY_INTEREST_AMOUNT_TRANSFER,
                 DocumentJournal::PAY_INTEREST_AMOUNT_CASH,
+                // A prepayment application posts this type instead of PAY_MOTHER_AMOUNT
+                // (see AcraExport::fillCredit's $appliedPrepayments) - without it, a
+                // contract whose only activity this period is a prepayment application
+                // never reaches the report at all.
+                DocumentJournal::PREPAYMENT_APPLY_PRINCIPAL,
             ])
             ->where('date', '>=', $from)
             ->where('date', '<', $to)
