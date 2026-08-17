@@ -179,11 +179,15 @@ class Transaction extends Model
     }
     public static function getNextDocumentNumber(): int
     {
-        return DB::transaction(function () {
-            $row = DB::selectOne(
-                'SELECT COALESCE(MAX(CAST(document_number AS UNSIGNED)), 0) + 1 AS next FROM transactions FOR UPDATE'
-            );
-            return (int) $row->next;
-        });
+        // Auto-increment on a dedicated table hands out a unique number via
+        // MySQL's own lightweight auto-inc lock, released as soon as this insert
+        // finishes — unlike the old `SELECT MAX(...) FOR UPDATE` over the whole
+        // transactions table, it doesn't hold a table-wide lock for the rest of
+        // whatever caller transaction it's nested in.
+        $id = DB::table('document_number_sequence')->insertGetId([]);
+
+        DB::table('document_number_sequence')->where('id', '<', $id)->delete();
+
+        return (int) $id;
     }
 }
