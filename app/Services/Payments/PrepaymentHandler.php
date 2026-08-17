@@ -104,6 +104,11 @@ class PrepaymentHandler
                 // (accrued) is posted separately as a normal interest payment.
                 $prepaymentPrincipal = $paidPrincipal + $deferredInterest + $partialAmount;
                 $paidPrincipal       = 0;
+                // $partialAmount (== $remainingAmount) was just booked into the Prepayment
+                // record above. It must not also be reported back as still-unspent cash —
+                // otherwise the caller's post-loop leftover handling (applyRemaining) applies
+                // this same cash a second time, double-counting it into prepayment_principal.
+                $remainingAmount     = 0;
             }
         }
         return [
