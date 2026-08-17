@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\Payment;
+use App\Models\Prepayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use PhpParser\Comment\Doc;
@@ -25,11 +26,36 @@ class AcraController
         $calcDay = Carbon::parse($request->to_date)->subDay()->format('Y-m-d');
         // Match the "overdue" contract scope (Contract::scopeStatus): only count a
         // contract as overdue once its unpaid initial payments exceed 1000 AMD.
+        // "Unpaid" is net of payment_entries: a status='initial' row can already be
+        // mostly settled by a partial payment (which never flips status to
+        // completed), so the raw `amount` column alone overstates what's still due.
+        // Rows with no entries (legacy/imported payments) net to their full amount,
+        // same as before this change. Entries are scoped to date < $to so a payment
+        // recorded after the report's cutoff doesn't retroactively clear a contract
+        // out of a report window that's supposed to stop before it.
+        // Net against principal_payment/interest_payment (not the aggregate `amount`
+        // column): `amount` is a schedule-time snapshot that can drift out of sync
+        // with the split fields after recalculation, while principal_payment/
+        // interest_payment are the figures kept authoritative everywhere else
+        // (fillCredit's own K/L overdue calc, ContractDetailResource, etc). Using
+        // `amount` here let a contract in past its 1000 AMD threshold pull the
+        // whole client into the report while K/L displayed 0, because the two
+        // checks disagreed about what "still owed" means.
         $contractsWithInitialPayments = Payment::where('status', 'initial')
             ->where('date', '<', $calcDay)
+            ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
+            ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
+            ->get(['id', 'contract_id', 'principal_payment', 'interest_payment'])
             ->groupBy('contract_id')
-            ->havingRaw('SUM(amount) > ?', [AcraExport::MIN_OVERDUE_AMD])
-            ->pluck('contract_id')
+            ->filter(function ($payments) {
+                $remaining = $payments->sum(function ($p) {
+                    $principalDue = max(0, (float) $p->principal_payment - (float) ($p->paid_principal ?? 0));
+                    $interestDue  = max(0, (float) $p->interest_payment - (float) ($p->paid_interest ?? 0));
+                    return $principalDue + $interestDue;
+                });
+                return $remaining > AcraExport::MIN_OVERDUE_AMD;
+            })
+            ->keys()
             ->toArray();
         $mainContractJournals = DocumentJournal::where('journalable_type', Contract::class)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
@@ -79,13 +105,24 @@ class AcraController
             ->unique()
             ->toArray();
 
+        // A prepayment counts from the date it was received (created_at), not the
+        // date MarkDuePrepaymentsPaid later applies it (see AcraExport::fillCredit's
+        // $prepaymentsReceived) - so a contract whose only activity this period is a
+        // prepayment receipt must be pulled in by that receipt date, regardless of
+        // when (or whether yet) it gets applied.
+        $contractsWithPrepayments = Prepayment::where('created_at', '>=', $from)
+            ->where('created_at', '<', $to)
+            ->pluck('contract_id')
+            ->unique()
+            ->toArray();
+
         // Manual exclusion: client 4 (Գրիշա Հունեյան) must not appear in the ACRA export.
         $excludedClientIds = [4];
 
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
             ->whereNotIn('client_id', $excludedClientIds)
-            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions) {
+            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions, $contractsWithPrepayments) {
                 // Upper bound is exclusive: the classification snapshot (see
                 // AcraExport::fillCredit) is taken as of $to - 1 day, so a
                 // contract dated exactly on $to has no classification history
@@ -93,7 +130,8 @@ class AcraController
                 $query->where('date', '>=', $from)
                     ->where('date', '<', $to)
                     ->orWhereIn('id', $contractsWithInitialPayments)
-                    ->orWhereIn('id', $contractsWithJournalActions);
+                    ->orWhereIn('id', $contractsWithJournalActions)
+                    ->orWhereIn('id', $contractsWithPrepayments);
             })->get();
 
         $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();

@@ -59,12 +59,20 @@ class DealUpdateService
     $oldPenalty = (float) ($deal->penalty ?? 0);
     $oldCash = (bool) $deal->cash;
     $oldDate = (string) $deal->date;
+    $oldPrepaymentPrincipal = $deal->prepayment_principal;
+    $oldPrepaymentInterest = $deal->prepayment_interest;
 
     $newAmount = (float) ($dealData['amount'] ?? $oldAmount);
     $newInterest = (float) ($dealData['interest_amount'] ?? $oldInterest);
     $newPenalty = (float) ($dealData['penalty'] ?? $oldPenalty);
     $newCash = array_key_exists('cash', $dealData) ? (bool) $dealData['cash'] : $oldCash;
     $newDate = (string) ($dealData['date'] ?? $oldDate);
+    $newPrepaymentPrincipal = array_key_exists('prepayment_principal', $dealData)
+      ? $dealData['prepayment_principal']
+      : $oldPrepaymentPrincipal;
+    $newPrepaymentInterest = array_key_exists('prepayment_interest', $dealData)
+      ? $dealData['prepayment_interest']
+      : $oldPrepaymentInterest;
 
     $oldPrincipal = $this->resolvePrincipal($deal, $oldAmount, $oldInterest, $oldPenalty);
     $newPrincipal = array_key_exists('principal_amount', $dealData) && $dealData['principal_amount'] !== null
@@ -78,6 +86,8 @@ class DealUpdateService
       'principal_amount' => $newPrincipal,
       'cash' => $newCash,
       'date' => $newDate,
+      'prepayment_principal' => $newPrepaymentPrincipal,
+      'prepayment_interest' => $newPrepaymentInterest,
     ]);
 
     $deal->refresh();

@@ -15,6 +15,8 @@ class DealsTableOnlyUpdateService
         'interest_amount',
         'penalty',
         'principal_amount',
+        'prepayment_principal',
+        'prepayment_interest',
         'cash',
         'date',
     ];

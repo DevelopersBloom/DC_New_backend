@@ -120,6 +120,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('get-deals',[AdminControllerNew::class,'getDeals'])->middleware('can:view_deals');
         Route::put('update-deals',[AdminControllerNew::class,'updateDeals'])->middleware('can:update_deals');
         Route::delete('delete-deal/{id}',[AdminControllerNew::class,'deleteDeal'])->middleware('can:delete_deal');
+        Route::get('delete-deal/{id}/preview',[AdminControllerNew::class,'previewDeleteDeal'])->middleware('can:delete_deal');
 //        Route::get('/reports/monthly-income-expense', MonthlyIncomeExpenseController::class);
 
         //Discount

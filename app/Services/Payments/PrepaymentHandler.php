@@ -79,6 +79,7 @@ class PrepaymentHandler
             : Carbon::now('Asia/Yerevan')->startOfDay();
 
         $prepaymentPrincipal = 0;
+        $deferredInterest    = 0;
         if ($timing === PaymentDateClassifier::SOONER) {
             $from        = Carbon::parse($payment->from_date)->startOfDay();
             $elapsedDays = max(0, $from->diffInDays($now));
@@ -103,12 +104,21 @@ class PrepaymentHandler
                 // (accrued) is posted separately as a normal interest payment.
                 $prepaymentPrincipal = $paidPrincipal + $deferredInterest + $partialAmount;
                 $paidPrincipal       = 0;
+                // $partialAmount (== $remainingAmount) was just booked into the Prepayment
+                // record above. It must not also be reported back as still-unspent cash —
+                // otherwise the caller's post-loop leftover handling (applyRemaining) applies
+                // this same cash a second time, double-counting it into prepayment_principal.
+                $remainingAmount     = 0;
             }
         }
         return [
             'interest_amount'      => $paidInterest,
             'principal_amount'     => $paidPrincipal,
             'prepayment_principal' => $prepaymentPrincipal,
+            // Interest-only slice of prepayment_principal above (the rest is principal + partial),
+            // kept separate so callers can record the deal's own principal/interest split without
+            // touching prepayment_principal, which still carries the full bucket total posted to 39920.
+            'prepayment_interest'  => $deferredInterest,
             'amount'               => $remainingAmount,
         ];
     }

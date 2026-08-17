@@ -26,7 +26,8 @@ class Deal extends Model
         'penalty',
         'discount',
         'interest_amount',
-        'prepayment',
+        'prepayment_principal',
+        'prepayment_interest',
         'principal_amount',
         'order_id',
         'pawnshop_id',
@@ -65,9 +66,15 @@ class Deal extends Model
         'given' => 'decimal:2',
         'insurance' => 'decimal:2',
         'funds' => 'decimal:2',
-        'prepayment' => 'decimal:2',
+        'prepayment_principal' => 'decimal:2',
+        'prepayment_interest' => 'decimal:2',
         'principal_amount' => 'decimal:2',
     ];
+    // Guards against Deal::deleting <-> DocumentJournal::deleting mutual recursion:
+    // deleting a deal cascades to its documents, but deleting a Contract-journalable
+    // document calls back into $document->deal->delete() for the same deal id.
+    protected static array $deletingIds = [];
+
     protected static function boot()
     {
         parent::boot();
@@ -87,17 +94,51 @@ class Deal extends Model
             }
         });
         static::deleting(function ($deal) {
-            if ($deal->history) {
-                $deal->history->delete();
+            if (in_array($deal->id, self::$deletingIds, true)) {
+                return;
             }
 
-            if ($deal->order) {
-                $deal->order->delete();
-            }
+            self::$deletingIds[] = $deal->id;
+            try {
+                if ($deal->history) {
+                    $deal->history->delete();
+                }
 
-            $deal->documents()->get()->each(fn ($document) => $document->delete());
+                if ($deal->order) {
+                    $deal->order->delete();
+                }
+
+                $deal->documents()->get()->each(fn ($document) => $document->delete());
+            } finally {
+                self::$deletingIds = array_diff(self::$deletingIds, [$deal->id]);
+            }
         });
     }
+
+    /**
+     * Runs $callback with $dealId marked as "currently being deleted", so any
+     * DocumentJournal::deleting()-triggered $document->deal->delete() call for
+     * this same deal (see DocumentJournal.php's journalable_type!==self check)
+     * is a no-op for the duration — used by callers that delete a deal's
+     * DocumentJournal rows directly and don't want that recursive callback
+     * re-querying/re-deleting the same rows out from under the in-progress loop.
+     */
+    public static function withDeletionGuard(int $dealId, callable $callback)
+    {
+        $alreadyGuarded = in_array($dealId, self::$deletingIds, true);
+        if (!$alreadyGuarded) {
+            self::$deletingIds[] = $dealId;
+        }
+
+        try {
+            return $callback();
+        } finally {
+            if (!$alreadyGuarded) {
+                self::$deletingIds = array_diff(self::$deletingIds, [$dealId]);
+            }
+        }
+    }
+
     public function documents(): HasMany
     {
         return $this->hasMany(DocumentJournal::class, 'deal_id');

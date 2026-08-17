@@ -54,6 +54,7 @@ class PaymentService
         $interest_amount      = 0;
         $principal_amount     = 0;
         $prepayment_principal = 0;
+        $prepayment_interest  = 0;
         $initial_amount       = $amount;
 
         $timing = $this->dateClassifier->classify($contract, $date);
@@ -160,6 +161,7 @@ class PaymentService
                     $interest_amount      += $result['interest_amount'];
                     $principal_amount     += $result['principal_amount'];
                     $prepayment_principal += $result['prepayment_principal'] ?? 0;
+                    $prepayment_interest  += $result['prepayment_interest'] ?? 0;
                     $interestAmount -= $result['interest_amount'] ?? 0;
                 }
             }
@@ -245,6 +247,7 @@ class PaymentService
             'interest_amount'      => $interest_amount,
             'principal_amount'     => $principal_amount,
             'prepayment_principal' => $prepayment_principal,
+            'prepayment_interest'  => $prepayment_interest,
             'penalty'              => $payed_penalty,
             'delay_days'           => $delay_days,
             'discount'             => 0,
@@ -812,6 +815,13 @@ class PaymentService
         }
 
         $nowDate = $date ?? now()->toDateString();
+        // Use the pre-mutation snapshot from $history['contract_changes'] (captured
+        // above, before $contract->collected/provided_amount were incremented/zeroed
+        // for the save at :761-770) — reading $contract directly here would report
+        // already-mutated values as "old", double-counting this payment's interest
+        // and reporting principal as already zero.
+        $oldProvidedAmount = $history['contract_changes']['old_provided'];
+        $oldCollected      = $history['contract_changes']['old_collected'];
         Modification::insert([
             [
                 'subject_type'      => Contract::class,
@@ -819,7 +829,7 @@ class PaymentService
                 'modification_type' => 'Modificator',
                 'field_code'        => 'PrincipalAmount',
                 'element_code'      => 'Amount',
-                'old_value'         => $contract->provided_amount !== null ? (string) $contract->provided_amount : null,
+                'old_value'         => $oldProvidedAmount !== null ? (string) $oldProvidedAmount : null,
                 'new_value'         => '0',
                 'effective_date'    => $nowDate,
             ],
@@ -829,8 +839,8 @@ class PaymentService
                 'modification_type' => 'Modificator',
                 'field_code'        => 'PercentsPaid',
                 'element_code'      => 'Amount',
-                'old_value'         => $contract->collected !== null ? (string) $contract->collected : null,
-                'new_value'         => (string) ($contract->collected + $interestAmount),
+                'old_value'         => $oldCollected !== null ? (string) $oldCollected : null,
+                'new_value'         => (string) ($oldCollected + $interestAmount),
                 'effective_date'    => $nowDate,
             ],
             [
@@ -887,6 +897,7 @@ class PaymentService
         $interestAmount  = 0.0;
         $principalAmount = 0.0;
         $prepayPrincipal = 0.0;
+        $prepayInterest  = 0.0;
         $penaltyPaid     = 0.0;
 
         // ── Step 1: Penalty deduction ────────────────────────────────────────
@@ -904,6 +915,7 @@ class PaymentService
                 'interest_amount'      => 0.0,
                 'principal_amount'     => 0.0,
                 'prepayment_principal' => 0.0,
+                'prepayment_interest'  => 0.0,
             ];
         }
 
@@ -954,7 +966,6 @@ class PaymentService
                 $paidInterest          = min($remainingInterestPlan, $remaining);
                 $remaining            -= $paidInterest;
                 $remainingInterest    -= $paidInterest;
-                $interestAmount       += $paidInterest;
 
                 $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount');
                 $remainingPrincipal   = max(0, (float) ($payment->principal_payment ?? 0) - $alreadyPaidPrincipal);
@@ -965,9 +976,24 @@ class PaymentService
                 $contractClone->left            = max(0, $contractClone->left - $paidPrincipal);
                 $timing = $this->dateClassifier->classifyAgainstDueDate($payment->to_date ?? $payment->date, $today);
 
-                if ($timing === PaymentDateClassifier::SOONER && $paidPrincipal > 0) {
+                if ($timing === PaymentDateClassifier::SOONER) {
+                    // Before the due date, only the interest actually accrued so far
+                    // (balance × elapsed days × daily rate) is a real interest payment —
+                    // the rest of this row's scheduled interest, plus its principal, is
+                    // deferred into the Prepayment bucket. Mirrors PrepaymentHandler::handle().
+                    $from        = Carbon::parse($payment->from_date)->startOfDay();
+                    $now         = Carbon::parse($today, 'Asia/Yerevan')->startOfDay();
+                    $elapsedDays = max(0, $from->diffInDays($now));
+                    $rate        = (float) $contract->interest_rate;
+
+                    $accruedInterest  = min($paidInterest, $balanceBeforeThisPayment * $elapsedDays * $rate / 100);
+                    $deferredInterest = $paidInterest - $accruedInterest;
+
+                    $interestAmount  += $accruedInterest;
+                    $prepayInterest  += $deferredInterest;
                     $prepayPrincipal += $paidPrincipal;
                 } else {
+                    $interestAmount  += $paidInterest;
                     $principalAmount += $paidPrincipal;
                 }
 
@@ -1054,6 +1080,7 @@ class PaymentService
             'interest_amount'      => round($interestAmount, 2),
             'principal_amount'     => round($principalAmount, 2),
             'prepayment_principal' => round($prepayPrincipal, 2),
+            'prepayment_interest'  => round($prepayInterest, 2),
         ];
     }
 
