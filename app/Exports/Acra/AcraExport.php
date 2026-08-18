@@ -485,15 +485,7 @@ class AcraExport
 
             $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $prepaymentsReceived);
 
-            // J must be the balance as of $to, not the live balance: contract->provided_amount
-            // is decremented in place the moment a principal payment posts (PaymentService),
-            // permanently, regardless of which report window is later requested. A payment
-            // dated on/after $to would then already be baked into provided_amount by the time
-            // this export runs, silently pulling a later period's repayment into this one.
-            // contract_amount is the fixed original principal (never mutated post-disbursement),
-            // so netting it against $totalPaid (already scoped to date < $to, same as column I)
-            // reconstructs the true point-in-time balance instead of reading today's live figure.
-            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->contract_amount - $totalPaid - $prepaymentsReceived));
+            $this->setIntegerCellValue($sheet, 'J' . $row, $contract->provided_amount);
 
             $overdueMother = 0;
             $overdueInterest = 0;

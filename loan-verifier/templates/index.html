@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Loan Verifier — Home{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>1. Data source</h2>
+  {% if loaded %}
+    <p>Loaded <strong>{{ filename }}</strong> — {{ counts.contracts }} contracts,
+       {{ counts.payments }} payments, {{ counts.deals }} deals,
+       {{ counts.documents_journal }} journal rows, {{ counts.transactions }} transactions.</p>
+  {% else %}
+    <p class="muted">No SQL dump loaded yet.</p>
+  {% endif %}
+  <form class="inline" method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+    <input type="file" name="sqlfile" accept=".sql" required>
+    <button type="submit">Upload &amp; parse</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>2. Validate a contract's schedule &amp; debt</h2>
+  <p class="section-note">Rebuilds the initial amortization schedule two ways, replays the real payment
+    trail from <code>deals</code> → <code>documents_journal</code>, and checks it against
+    <code>contracts.left</code> / <code>provided_amount</code> and the current penalty figure.</p>
+  <form class="inline" method="get" action="{{ url_for('schedule_page', contract_id=0) }}" onsubmit="event.preventDefault(); window.location = '{{ url_for('schedule_page', contract_id=0) }}'.replace('/0', '/' + document.getElementById('cid').value);">
+    <label for="cid">Contract ID</label>
+    <input type="number" id="cid" name="contract_id" min="1" required {% if not loaded %}disabled{% endif %}>
+    <button type="submit" {% if not loaded %}disabled{% endif %}>Validate</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>3. Interest verifier (nominal / effective)</h2>
+  <p class="section-note">Runs the existing verify_loans.py checks — recalculated interest vs. what the
+    software stored — for all active contracts, or one contract.</p>
+  <form class="inline" method="get" action="{{ url_for('interest_page') }}">
+    <label for="cid2">Contract ID (optional)</label>
+    <input type="number" id="cid2" name="contract_id" min="1">
+    <button type="submit" {% if not loaded %}disabled{% endif %}>Run</button>
+  </form>
+</div>
+
+{% endblock %}
