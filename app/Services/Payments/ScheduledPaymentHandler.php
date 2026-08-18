@@ -162,12 +162,24 @@ class ScheduledPaymentHandler
                 + ($pendingPrincipalReductions[$payment->id] ?? 0);
             $principal            = (float) $payment->principal_payment;
             $balanceForRow        = $balance;
+//            if ($payment->id === $payments->last()->id && $timing === PaymentDateClassifier::SOONER  ) {
+//                $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
+//                $balanceForRow      = $balance + $remainingPrincipal;
+//                $principal          = $remainingPrincipal;
+//            }
             if ($payment->id === $payments->last()->id && $timing === PaymentDateClassifier::SOONER  ) {
                 $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
-                $balanceForRow      = $balance + $remainingPrincipal;
-                $principal          = $remainingPrincipal;
-            }
 
+                if ($remainingPrincipal <= 0.01) {
+                    $payment->status    = 'completed';
+                 //   $payment->remaining = round(max(0, $balance), 10);
+                    $payment->save();
+                    continue;
+                }
+
+                $balanceForRow = $balance + $remainingPrincipal;
+                $principal     = $remainingPrincipal;
+            }
             $interest = $balanceForRow * $days * ($rate / 100);
             $interestEntries     = $payment->entries()->get();
             $alreadyPaidInterest = (float) $interestEntries->sum('interest_amount');
