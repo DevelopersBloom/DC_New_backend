@@ -530,6 +530,7 @@ class CreditRegistryController extends Controller
             'updated_count' => count($summary['updated']),
             'skipped_count' => count($summary['skipped']),
             'unmatched_count' => count($summary['unmatched']),
+            'ambiguous_count' => count($summary['ambiguous']),
             'error_count' => count($summary['errors']),
             'details' => $summary,
         ]);

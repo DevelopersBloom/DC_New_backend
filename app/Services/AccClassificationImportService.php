@@ -27,6 +27,8 @@ class AccClassificationImportService
     {
         $decryptedPath = $this->decryptToTempFile($encryptedPath, $password);
 
+        $nameIndex = $this->buildClientNameIndex();
+
         $classificationCounts = [];
         $rows = [];
         $matchedCount = 0;
@@ -37,18 +39,19 @@ class AccClassificationImportService
                 $classification = $this->classificationService->classificationByOverdue($maxOverdueDays);
                 $classificationCounts[$classification->name] = ($classificationCounts[$classification->name] ?? 0) + 1;
 
-                $matched = Client::where('bank_client_id', $bankClientId)->exists();
-                if ($matched) {
+                $match = $this->resolveClientMatch($fullName, $nameIndex);
+                if ($match['status'] === 'matched') {
                     $matchedCount++;
                 } else {
-                    $unmatched[] = $bankClientId;
+                    $unmatched[] = $fullName;
                 }
 
                 $rows[] = [
                     'bank_client_id' => $bankClientId,
                     'full_name' => $fullName,
                     'classification' => $classification->name,
-                    'matched' => $matched,
+                    'matched' => $match['status'] === 'matched',
+                    'match_status' => $match['status'], // matched | unmatched | ambiguous
                 ];
             }
         } finally {
@@ -74,24 +77,43 @@ class AccClassificationImportService
     /**
      * Applies the classifications from the encrypted ACC report to matching
      * clients — a client is only ever moved to a worse classification, never better.
+     *
+     * Clients are matched by normalized full name (name+surname, either order),
+     * not bank_client_id — that column isn't populated on our Client records.
+     * A name that matches more than one client is treated as ambiguous and
+     * skipped, rather than guessing which one is meant.
      */
     public function apply(string $encryptedPath, string $password, string $sourceLabel = ''): array
     {
         $decryptedPath = $this->decryptToTempFile($encryptedPath, $password);
 
+        $nameIndex = $this->buildClientNameIndex();
+
         $summary = [
             'updated' => [],
             'skipped' => [],
             'unmatched' => [],
+            'ambiguous' => [],
             'errors' => [],
         ];
 
         try {
             foreach ($this->parseRows($decryptedPath) as [$bankClientId, $fullName, $maxOverdueDays]) {
                 try {
-                    $client = Client::where('bank_client_id', $bankClientId)->with('classification')->first();
+                    $match = $this->resolveClientMatch($fullName, $nameIndex);
+
+                    if ($match['status'] === 'unmatched') {
+                        $summary['unmatched'][] = $fullName;
+                        continue;
+                    }
+                    if ($match['status'] === 'ambiguous') {
+                        $summary['ambiguous'][] = $fullName;
+                        continue;
+                    }
+
+                    $client = Client::with('classification')->find($match['client_id']);
                     if (!$client) {
-                        $summary['unmatched'][] = $bankClientId;
+                        $summary['unmatched'][] = $fullName;
                         continue;
                     }
 
@@ -103,7 +125,6 @@ class AccClassificationImportService
 
                     $entry = [
                         'client_id' => $client->id,
-                        'bank_client_id' => $bankClientId,
                         'full_name' => $fullName,
                         'max_overdue_days' => $maxOverdueDays,
                         'classification' => $classification->name,
@@ -111,8 +132,8 @@ class AccClassificationImportService
 
                     $summary[$applied ? 'updated' : 'skipped'][] = $entry;
                 } catch (\Throwable $e) {
-                    Log::error("ACC import: failed processing bank_client_id {$bankClientId}: " . $e->getMessage());
-                    $summary['errors'][] = ['bank_client_id' => $bankClientId, 'error' => $e->getMessage()];
+                    Log::error("ACC import: failed processing \"{$fullName}\": " . $e->getMessage());
+                    $summary['errors'][] = ['full_name' => $fullName, 'error' => $e->getMessage()];
                 }
             }
         } finally {
@@ -122,6 +143,81 @@ class AccClassificationImportService
         }
 
         return $summary;
+    }
+
+    /**
+     * Maps every normalized client-name variant to the client id(s) that
+     * produce it, so each ACC row can be resolved with a single array lookup
+     * instead of a query per row. A name shared by more than one client ends
+     * up with 2+ ids under the same key, which resolveClientMatch() below
+     * reads as "ambiguous" rather than picking one arbitrarily.
+     */
+    private function buildClientNameIndex(): array
+    {
+        $index = [];
+
+        Client::query()
+            ->whereNull('deleted_at')
+            ->select(['id', 'type', 'name', 'surname', 'company_name'])
+            ->chunk(1000, function ($clients) use (&$index) {
+                foreach ($clients as $client) {
+                    foreach ($this->nameKeysFor($client) as $key) {
+                        $index[$key][] = $client->id;
+                    }
+                }
+            });
+
+        return $index;
+    }
+
+    private function nameKeysFor(Client $client): array
+    {
+        if ($client->type === 'legal') {
+            $key = $this->normalizeName((string) $client->company_name);
+
+            return $key !== '' ? [$key] : [];
+        }
+
+        $name    = trim((string) $client->name);
+        $surname = trim((string) $client->surname);
+        if ($name === '' || $surname === '') {
+            return [];
+        }
+
+        // The ACC report's name order isn't guaranteed, so index both.
+        return array_unique([
+            $this->normalizeName($name . ' ' . $surname),
+            $this->normalizeName($surname . ' ' . $name),
+        ]);
+    }
+
+    /**
+     * @return array{status: 'matched'|'unmatched'|'ambiguous', client_id: int|null}
+     */
+    private function resolveClientMatch(string $fullName, array $nameIndex): array
+    {
+        $key = $this->normalizeName($fullName);
+        if ($key === '') {
+            return ['status' => 'unmatched', 'client_id' => null];
+        }
+
+        $ids = array_unique($nameIndex[$key] ?? []);
+
+        if (count($ids) === 1) {
+            return ['status' => 'matched', 'client_id' => (int) reset($ids)];
+        }
+        if (count($ids) > 1) {
+            return ['status' => 'ambiguous', 'client_id' => null];
+        }
+
+        return ['status' => 'unmatched', 'client_id' => null];
+    }
+
+    private function normalizeName(string $value): string
+    {
+        $value = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
+
+        return mb_strtolower($value, 'UTF-8');
     }
 
     private function decryptToTempFile(string $encryptedPath, string $password): string
@@ -167,7 +263,7 @@ class AccClassificationImportService
             $fullName = trim((string) $sheet->getCellByColumnAndRow(self::COL_FULL_NAME, $row)->getValue());
             $maxOverdueRaw = $sheet->getCellByColumnAndRow(self::COL_MAX_OVERDUE_DAYS, $row)->getValue();
 
-            if ($bankClientId === '' || !is_numeric($maxOverdueRaw)) {
+            if ($fullName === '' || !is_numeric($maxOverdueRaw)) {
                 continue;
             }
 
