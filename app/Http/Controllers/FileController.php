@@ -430,6 +430,7 @@ class FileController extends Controller
             'effective_annual_rate' => $effectiveRate . ' %',
             'deadline' => $deadline,
             'bank_name' => $client->bank_name,
+            'provided_type' => $client->account_number ?? $client->car_number,
             'account_card_number' => $client->account_number,
             'card_number' => $cardNumber,
             'user_name' => $userName,
