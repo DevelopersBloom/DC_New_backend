@@ -12,6 +12,7 @@ class AccClassificationImportService
 {
     private const DATA_START_ROW = 4;
     private const COL_BANK_CLIENT_ID = 3;
+    private const COL_SOCIAL_CARD_NUMBER = 5;
     private const COL_FULL_NAME = 6;
     private const COL_MAX_OVERDUE_DAYS = 16;
 
@@ -27,7 +28,7 @@ class AccClassificationImportService
     {
         $decryptedPath = $this->decryptToTempFile($encryptedPath, $password);
 
-        $nameIndex = $this->buildClientNameIndex();
+        [$nameIndex, $socialCardById, $classificationIdById] = $this->buildClientDirectory();
 
         $classificationCounts = [];
         $rows = [];
@@ -35,7 +36,7 @@ class AccClassificationImportService
         $unmatched = [];
 
         try {
-            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $fullName, $maxOverdueDays]) {
+            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $socialCardNumber, $fullName, $maxOverdueDays]) {
                 $classification = $this->classificationService->classificationByOverdue($maxOverdueDays);
                 $classificationCounts[$classification->name] = ($classificationCounts[$classification->name] ?? 0) + 1;
 
@@ -48,10 +49,20 @@ class AccClassificationImportService
 
                 $rows[] = [
                     'bank_client_id' => $bankClientId,
+                    'social_card_number' => $socialCardNumber,
                     'full_name' => $fullName,
                     'classification' => $classification->name,
                     'matched' => $match['status'] === 'matched',
                     'match_status' => $match['status'], // matched | unmatched | ambiguous
+                    // Informational only — doesn't affect matching/status, just flags
+                    // a matched client whose recorded social card number differs.
+                    'social_card_number_mismatch' => $match['status'] === 'matched'
+                        && $this->socialCardMismatch($socialCardById[$match['client_id']] ?? null, $socialCardNumber),
+                    // True when this row wouldn't actually change anything — the
+                    // client's current classification already equals what the ACC
+                    // overdue figure computes to.
+                    'classification_matches_current' => $match['status'] === 'matched'
+                        && ($classificationIdById[$match['client_id']] ?? null) === $classification->id,
                 ];
             }
         } finally {
@@ -87,7 +98,7 @@ class AccClassificationImportService
     {
         $decryptedPath = $this->decryptToTempFile($encryptedPath, $password);
 
-        $nameIndex = $this->buildClientNameIndex();
+        [$nameIndex, $socialCardById, $classificationIdById] = $this->buildClientDirectory();
 
         $summary = [
             'updated' => [],
@@ -98,7 +109,7 @@ class AccClassificationImportService
         ];
 
         try {
-            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $fullName, $maxOverdueDays]) {
+            foreach ($this->parseRows($decryptedPath) as [$bankClientId, $socialCardNumber, $fullName, $maxOverdueDays]) {
                 try {
                     $match = $this->resolveClientMatch($fullName, $nameIndex);
 
@@ -128,6 +139,10 @@ class AccClassificationImportService
                         'full_name' => $fullName,
                         'max_overdue_days' => $maxOverdueDays,
                         'classification' => $classification->name,
+                        // Informational only — doesn't block/undo the classification update.
+                        'social_card_number_mismatch' => $this->socialCardMismatch(
+                            $socialCardById[$client->id] ?? null, $socialCardNumber
+                        ),
                     ];
 
                     $summary[$applied ? 'updated' : 'skipped'][] = $entry;
@@ -146,28 +161,40 @@ class AccClassificationImportService
     }
 
     /**
-     * Maps every normalized client-name variant to the client id(s) that
-     * produce it, so each ACC row can be resolved with a single array lookup
-     * instead of a query per row. A name shared by more than one client ends
-     * up with 2+ ids under the same key, which resolveClientMatch() below
-     * reads as "ambiguous" rather than picking one arbitrarily.
+     * Builds the lookups apply()/preview() need, in one pass over Client:
+     *  - a name index: every normalized name variant → the client id(s) that
+     *    produce it, so each ACC row resolves with a single array lookup
+     *    instead of a query per row. A name shared by more than one client
+     *    ends up with 2+ ids under the same key, which resolveClientMatch()
+     *    reads as "ambiguous" rather than picking one arbitrarily.
+     *  - a client id → social_card_number map, for the (name-match-only)
+     *    social card number cross-check.
+     *  - a client id → current classification_id map, so preview() can flag
+     *    rows where the ACC-derived classification already matches what the
+     *    client currently has on our site (nothing would actually change).
+     *
+     * @return array{0: array<string, int[]>, 1: array<int, ?string>, 2: array<int, ?int>}
      */
-    private function buildClientNameIndex(): array
+    private function buildClientDirectory(): array
     {
-        $index = [];
+        $nameIndex = [];
+        $socialCardById = [];
+        $classificationIdById = [];
 
         Client::query()
             ->whereNull('deleted_at')
-            ->select(['id', 'type', 'name', 'surname', 'company_name'])
-            ->chunk(1000, function ($clients) use (&$index) {
+            ->select(['id', 'type', 'name', 'surname', 'company_name', 'social_card_number', 'classification_id'])
+            ->chunk(1000, function ($clients) use (&$nameIndex, &$socialCardById, &$classificationIdById) {
                 foreach ($clients as $client) {
                     foreach ($this->nameKeysFor($client) as $key) {
-                        $index[$key][] = $client->id;
+                        $nameIndex[$key][] = $client->id;
                     }
+                    $socialCardById[$client->id] = $client->social_card_number;
+                    $classificationIdById[$client->id] = $client->classification_id;
                 }
             });
 
-        return $index;
+        return [$nameIndex, $socialCardById, $classificationIdById];
     }
 
     private function nameKeysFor(Client $client): array
@@ -211,6 +238,31 @@ class AccClassificationImportService
         }
 
         return ['status' => 'unmatched', 'client_id' => null];
+    }
+
+    /**
+     * Cross-check only — matching is still done by name. Returns true when
+     * both sides have a value and they disagree, so the caller can surface a
+     * warning without it affecting matched/unmatched status.
+     */
+    private function socialCardMismatch(?string $clientValue, string $accValue): bool
+    {
+        $acc = $this->normalizeIdentifier($accValue);
+        if ($acc === '') {
+            return false;
+        }
+
+        $client = $this->normalizeIdentifier((string) $clientValue);
+        if ($client === '') {
+            return false;
+        }
+
+        return $client !== $acc;
+    }
+
+    private function normalizeIdentifier(string $value): string
+    {
+        return mb_strtoupper(preg_replace('/\s+/u', '', trim($value)) ?? '', 'UTF-8');
     }
 
     private function normalizeName(string $value): string
@@ -271,6 +323,7 @@ class AccClassificationImportService
 
         for ($row = self::DATA_START_ROW; $row <= $highestRow; $row++) {
             $bankClientId = trim((string) $sheet->getCellByColumnAndRow(self::COL_BANK_CLIENT_ID, $row)->getValue());
+            $socialCardNumber = trim((string) $sheet->getCellByColumnAndRow(self::COL_SOCIAL_CARD_NUMBER, $row)->getValue());
             $fullName = trim((string) $sheet->getCellByColumnAndRow(self::COL_FULL_NAME, $row)->getValue());
             $maxOverdueRaw = $sheet->getCellByColumnAndRow(self::COL_MAX_OVERDUE_DAYS, $row)->getValue();
 
@@ -278,7 +331,7 @@ class AccClassificationImportService
                 continue;
             }
 
-            yield [$bankClientId, $fullName, (int) $maxOverdueRaw];
+            yield [$bankClientId, $socialCardNumber, $fullName, (int) $maxOverdueRaw];
         }
 
         $spreadsheet->disconnectWorksheets();
