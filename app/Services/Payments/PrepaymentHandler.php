@@ -120,6 +120,7 @@ class PrepaymentHandler
                 // overpaid cash reduces the loan right now: contract balance shrinks and
                 // upcoming installments' principal is cut with interest recalculated on
                 // the smaller balance, same as an ordinary partial payment (R9).
+                dd($partialAmount);
                 if ($partialAmount > 0) {
                     $contract->left            = max(0, $contract->left - $partialAmount);
                     $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
