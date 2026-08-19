@@ -215,9 +215,20 @@ class AccClassificationImportService
 
     private function normalizeName(string $value): string
     {
+        // PCRE's \s only covers ASCII whitespace, even under /u — bank/Excel
+        // exports commonly use U+00A0 (no-break space) between name parts,
+        // which would otherwise silently defeat the match. Fold it (and other
+        // Unicode space separators) to a regular space before collapsing.
+        $value = preg_replace('/[\x{00A0}\x{2000}-\x{200B}\x{202F}\x{FEFF}]/u', ' ', $value) ?? $value;
         $value = trim(preg_replace('/\s+/u', ' ', $value) ?? '');
+        $value = mb_strtolower($value, 'UTF-8');
 
-        return mb_strtolower($value, 'UTF-8');
+        // Uppercase ACC reports spell "և" as the two letters "ԵՎ" (it has no
+        // uppercase form of its own), which lowercases to "ևv"-as-two-letters —
+        // while our own records normally use the single ligature "և". Fold both
+        // that ligature and the old-orthography "եւ" spelling to the same
+        // two-letter form so a client stored either way still matches.
+        return str_replace(['և', 'եւ'], 'եվ', $value);
     }
 
     private function decryptToTempFile(string $encryptedPath, string $password): string
