@@ -40,11 +40,26 @@ class AccClassificationImportService
                 $classification = $this->classificationService->classificationByOverdue($maxOverdueDays);
                 $classificationCounts[$classification->name] = ($classificationCounts[$classification->name] ?? 0) + 1;
 
-                $match = $this->resolveClientMatch($fullName, $nameIndex);
-                if ($fullName == 'ՄԱՐՏԻՆ ՎԱՐԴԱՆՅԱՆ') {
-                    dd($match);
+                // Identity resolution stays name-only (apply() relies on this same
+                // logic to actually find and update the client — a classification
+                // difference is normal and expected there, it's the whole reason to
+                // apply()). Display-level "matched" below is stricter, on top of it.
+                $identity = $this->resolveClientMatch($fullName, $nameIndex);
+
+                $classificationMatchesCurrent = $identity['status'] === 'matched'
+                    && ($classificationIdById[$identity['client_id']] ?? null) === $classification->id;
+
+                if ($identity['status'] === 'matched' && $classificationMatchesCurrent) {
+                    $matchStatus = 'matched';
+                } elseif ($identity['status'] === 'matched') {
+                    // Name resolved to exactly one client, but their classification
+                    // on our site differs from what this ACC row computes to.
+                    $matchStatus = 'classification_mismatch';
+                } else {
+                    $matchStatus = $identity['status']; // unmatched | ambiguous
                 }
-                if ($match['status'] === 'matched') {
+
+                if ($matchStatus === 'matched') {
                     $matchedCount++;
                 } else {
                     $unmatched[] = $fullName;
@@ -55,17 +70,18 @@ class AccClassificationImportService
                     'social_card_number' => $socialCardNumber,
                     'full_name' => $fullName,
                     'classification' => $classification->name,
-                    'matched' => $match['status'] === 'matched',
-                    'match_status' => $match['status'], // matched | unmatched | ambiguous
+                    'matched' => $matchStatus === 'matched',
+                    'match_status' => $matchStatus, // matched | classification_mismatch | unmatched | ambiguous
                     // Informational only — doesn't affect matching/status, just flags
                     // a matched client whose recorded social card number differs.
-                    'social_card_number_mismatch' => $match['status'] === 'matched'
-                        && $this->socialCardMismatch($socialCardById[$match['client_id']] ?? null, $socialCardNumber),
+                    'social_card_number_mismatch' => $identity['status'] === 'matched'
+                        && $this->socialCardMismatch($socialCardById[$identity['client_id']] ?? null, $socialCardNumber),
                     // True when this row wouldn't actually change anything — the
                     // client's current classification already equals what the ACC
-                    // overdue figure computes to.
-                    'classification_matches_current' => $match['status'] === 'matched'
-                        && ($classificationIdById[$match['client_id']] ?? null) === $classification->id,
+                    // overdue figure computes to. (Same condition "matched" above
+                    // requires, kept as its own field for callers that want it
+                    // independent of match_status.)
+                    'classification_matches_current' => $classificationMatchesCurrent,
                 ];
             }
         } finally {
