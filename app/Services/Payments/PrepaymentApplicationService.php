@@ -65,7 +65,7 @@ class PrepaymentApplicationService
         }
 
         $contract->save();
-
+dd($partialAmount);
         if ($partialAmount > 0) {
             $futurePayments = Payment::where('contract_id', $contract->id)
                 ->where('type', 'regular')
@@ -75,7 +75,6 @@ class PrepaymentApplicationService
 
             if ($futurePayments->isNotEmpty()) {
                 $timing = $this->dateClassifier->classify($contract, $date);
-                dd($partialAmount);
                 $this->scheduledHandler->processAmortized($contract, $futurePayments, $partialAmount, $date, $timing);
             }
         }
