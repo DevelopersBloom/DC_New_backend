@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChartOfAccount;
-use App\Models\Transaction;
+use App\Models\DocumentJournal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,7 +13,7 @@ class TAccountReportController extends Controller
      * GET /api/admin/reports/t-account
      *
      * T-account (Տ հաշվային) for a single chart-of-accounts code.
-     * Data source: transactions table only.
+     * Data source: documents_journal table only.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -60,13 +60,13 @@ class TAccountReportController extends Controller
 
         $accountId = $account->id;
 
-        $openingDebitRaw  = (float) Transaction::query()
+        $openingDebitRaw  = (float) DocumentJournal::query()
             ->whereNull('deleted_at')
             ->where('debit_account_id', $accountId)
             ->whereDate('date', '<', $startDate)
             ->sum('amount_amd');
 
-        $openingCreditRaw = (float) Transaction::query()
+        $openingCreditRaw = (float) DocumentJournal::query()
             ->whereNull('deleted_at')
             ->where('credit_account_id', $accountId)
             ->whereDate('date', '<', $startDate)
@@ -74,7 +74,7 @@ class TAccountReportController extends Controller
 
         $opening = $this->splitNetBalance($openingDebitRaw - $openingCreditRaw);
 
-        $transactions = Transaction::query()
+        $transactions = DocumentJournal::query()
             ->whereNull('deleted_at')
             ->where(function ($q) use ($accountId) {
                 $q->where('debit_account_id', $accountId)

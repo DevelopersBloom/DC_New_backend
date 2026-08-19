@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
-use App\Models\Transaction;
+use App\Models\DocumentJournal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,7 +13,7 @@ class TPartnerReportController extends Controller
      * GET /api/admin/reports/t-partner
      *
      * T-account (Տ գործընկեր) for a single partner (client).
-     * Data source: transactions table only.
+     * Data source: documents_journal table only.
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -55,13 +55,13 @@ class TPartnerReportController extends Controller
 
         $partnerId = (int) $partner->id;
 
-        $openingDebitRaw = (float) Transaction::query()
+        $openingDebitRaw = (float) DocumentJournal::query()
             ->whereNull('deleted_at')
             ->where('debit_partner_id', $partnerId)
             ->whereDate('date', '<', $startDate)
             ->sum('amount_amd');
 
-        $openingCreditRaw = (float) Transaction::query()
+        $openingCreditRaw = (float) DocumentJournal::query()
             ->whereNull('deleted_at')
             ->where('credit_partner_id', $partnerId)
             ->whereDate('date', '<', $startDate)
@@ -69,7 +69,7 @@ class TPartnerReportController extends Controller
 
         $opening = $this->splitNetBalance($openingDebitRaw - $openingCreditRaw);
 
-        $transactions = Transaction::query()
+        $transactions = DocumentJournal::query()
             ->whereNull('deleted_at')
             ->where(function ($q) use ($partnerId) {
                 $q->where('debit_partner_id', $partnerId)
