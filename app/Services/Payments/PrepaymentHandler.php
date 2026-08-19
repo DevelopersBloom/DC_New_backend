@@ -12,9 +12,10 @@ use Illuminate\Support\Str;
 class PrepaymentHandler
 {
     public function __construct(
-        protected PrepaymentService     $prepaymentService,
-        protected PaymentEntryRecorder  $recorder,
-        protected PaymentDateClassifier $dateClassifier,
+        protected PrepaymentService      $prepaymentService,
+        protected PaymentEntryRecorder   $recorder,
+        protected PaymentDateClassifier  $dateClassifier,
+        protected ScheduledPaymentHandler $scheduledHandler,
     ) {}
 
     /**
@@ -27,8 +28,11 @@ class PrepaymentHandler
      * this row, plus the principal, go into the Prepayment record instead of posting
      * to the interest/loan accounts (→ liability account 39920). Any cash left over
      * beyond what this row needs is folded into the same record as partial_amount —
-     * an undifferentiated amount not yet tied to a future installment, to be applied
-     * (in full or in part) whenever that installment becomes due.
+     * an undifferentiated amount not yet tied to a future installment — for the 39920
+     * bookkeeping/registration side (unchanged). Unlike principal/deferred interest
+     * above, though, that overpaid cash isn't tied to this row's due date: it reduces
+     * the contract balance and upcoming installments' principal (with interest
+     * recalculated) immediately, right here at payment time.
      */
     public function handle(
         $contract, $payment, $payer, $cash, $deal_id,
@@ -109,6 +113,28 @@ class PrepaymentHandler
                 // otherwise the caller's post-loop leftover handling (applyRemaining) applies
                 // this same cash a second time, double-counting it into prepayment_principal.
                 $remainingAmount     = 0;
+
+                // Overpayment (partial_amount) isn't tied to this row's own due date the
+                // way principal/deferred interest above are — those stay parked in the
+                // liability account until this installment falls due (unchanged), but the
+                // overpaid cash reduces the loan right now: contract balance shrinks and
+                // upcoming installments' principal is cut with interest recalculated on
+                // the smaller balance, same as an ordinary partial payment (R9).
+                if ($partialAmount > 0) {
+                    $contract->left            = max(0, $contract->left - $partialAmount);
+                    $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+
+                    $futurePayments = Payment::where('contract_id', $contract->id)
+                        ->where('type', 'regular')
+                        ->where('status', 'initial')
+                        ->where('id', '!=', $payment->id)
+                        ->orderBy('date', 'asc')
+                        ->get();
+
+                    if ($futurePayments->isNotEmpty()) {
+                        $this->scheduledHandler->processAmortized($contract, $futurePayments, $partialAmount, $date, $timing);
+                    }
+                }
             }
         }
         return [
