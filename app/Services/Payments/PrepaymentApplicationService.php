@@ -4,28 +4,20 @@ namespace App\Services\Payments;
 
 use App\Models\Contract;
 use App\Models\DocumentJournal;
+use App\Models\Payment;
 use App\Models\Prepayment;
 use App\Models\Transaction;
 use App\Traits\ContractTrait;
 use Illuminate\Support\Carbon;
 
-/**
- * B3: applies a due Prepayment bucket entry.
- *
- * The row's own principal_amount + interest_amount were already reflected in
- * payment_entries at deposit time (via PrepaymentHandler::handle()); what's still
- * pending is the accounting side — reclassifying that money from the liability
- * account (39920) into the real loan/interest accounts, and actually reducing the
- * contract balance by principal_amount (deliberately deferred until now). Any
- * partial_amount (cash beyond what the row needed) reduces upcoming installments'
- * principal per R9, reusing PaymentService::payPartial().
- */
 class PrepaymentApplicationService
 {
     use ContractTrait;
 
     public function __construct(
         protected PaymentService $paymentService,
+        protected ScheduledPaymentHandler $scheduledHandler,
+        protected PaymentDateClassifier $dateClassifier,
     ) {}
 
     public function apply(Contract $contract, Prepayment $prepayment, ?string $date = null): void
@@ -73,6 +65,19 @@ class PrepaymentApplicationService
         }
 
         $contract->save();
+
+        if ($partialAmount > 0) {
+            $futurePayments = Payment::where('contract_id', $contract->id)
+                ->where('type', 'regular')
+                ->where('status', 'initial')
+                ->orderBy('date', 'asc')
+                ->get();
+
+            if ($futurePayments->isNotEmpty()) {
+                $timing = $this->dateClassifier->classify($contract, $date);
+                $this->scheduledHandler->processAmortized($contract, $futurePayments, $partialAmount, $date, $timing);
+            }
+        }
 
         $prepayment->status  = 'paid';
         $prepayment->paid_at = Carbon::parse($date)->startOfDay();
