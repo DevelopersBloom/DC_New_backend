@@ -114,16 +114,15 @@ class PrepaymentHandler
                 // this same cash a second time, double-counting it into prepayment_principal.
                 $remainingAmount     = 0;
 
-                // Overpayment (partial_amount) isn't tied to this row's own due date the
-                // way principal/deferred interest above are — those stay parked in the
-                // liability account until this installment falls due (unchanged), but the
-                // overpaid cash reduces the loan right now: contract balance shrinks and
-                // upcoming installments' principal is cut with interest recalculated on
-                // the smaller balance, same as an ordinary partial payment (R9).
-                dd($partialAmount);
+
                 if ($partialAmount > 0) {
                     $contract->left            = max(0, $contract->left - $partialAmount);
                     $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
+
+
+                    $this->applyRemaining(
+                        $contract, $partialAmount, $payer, $cash, $deal_id, $date, [$payment->id]
+                    );
 
                     $futurePayments = Payment::where('contract_id', $contract->id)
                         ->where('type', 'regular')
@@ -133,7 +132,7 @@ class PrepaymentHandler
                         ->get();
 
                     if ($futurePayments->isNotEmpty()) {
-                        $this->scheduledHandler->processAmortized($contract, $futurePayments, $partialAmount, $date, $timing);
+                        $this->scheduledHandler->recalculateInterest($contract, $futurePayments, $date, [], $timing);
                     }
                 }
             }
