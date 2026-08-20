@@ -43,8 +43,10 @@ class ClientClassificationService
     /**
      * Applies $classification to $client and runs the full reserve/write-off
      * posting cascade, but only if $classification is worse (higher order)
-     * than the client's current classification. Mirrors the per-client body
-     * that previously lived inline in UpdateClientClassificationsNew::handle().
+     * than the client's actual current classification — computed live from
+     * their max overdue days, not read off the (possibly stale)
+     * classification_id on file. Mirrors the per-client body that previously
+     * lived inline in UpdateClientClassificationsNew::handle().
      *
      * Returns true if the classification was applied, false if skipped
      * (unchanged, or current classification is already equal-or-worse).
@@ -61,7 +63,14 @@ class ClientClassificationService
 
         DB::beginTransaction();
         try {
-            if (($client->classification_id === $classification->id) || ($client->classification?->order > $classification->order)) {
+            $currentOverdueDays = $this->maxOverdueDaysForClient($client);
+            $currentClassification = $this->classificationByOverdue($currentOverdueDays);
+
+
+            if ($client->id == 55) {
+                dd($classification,$currentOverdueDays,$currentClassification);
+            }
+            if (($client->classification_id === $classification->id) || ($currentClassification->order > $classification->order)) {
                 DB::commit();
                 return false;
             }
