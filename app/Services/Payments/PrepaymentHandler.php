@@ -116,6 +116,7 @@ class PrepaymentHandler
 
 
                 if ($partialAmount > 0) {
+                    dd($partialAmount);
 //                    $contract->left            = max(0, $contract->left - $partialAmount);
 //                    $contract->provided_amount = max(0, $contract->provided_amount - $partialAmount);
 
