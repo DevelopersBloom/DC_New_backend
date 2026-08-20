@@ -412,6 +412,12 @@ class DocumentJournal extends Model
         if ($to)   return $query->where('date', '<=', $to);
         return $query;
     }
+    public function scopeByDocument($query, ?string $type = null, ?string $number = null)
+    {
+        if ($type)   $query->where('document_type', 'LIKE', '%' . $type . '%');
+        if ($number) $query->where('document_number', 'LIKE', $number . '%');
+        return $query;
+    }
     public function remainingCapacity(?string $toDate = null): float
     {
         $totalAttraction = Transaction::where('transactionable_id', $this->id)

@@ -7,6 +7,7 @@ use App\Exports\AccountsBalancesExport;
 use App\Exports\TransactionsExport;
 use App\Models\ChartOfAccount;
 use App\Models\Client;
+use App\Models\DocumentJournal;
 use App\Models\Transaction;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Illuminate\Http\JsonResponse;
@@ -25,29 +26,24 @@ class TransactionController
         $partnerName    = $request->query('partner_name');
         $partnerIds     = $request->query('partner_ids', []);
 
-        $query = Transaction::select([
+        $query = DocumentJournal::select([
             'id',
             'date',
             'document_number',
             'document_type',
             'amount_amd',
             'amount_currency',
-            'amount_currency_id',
+            'currency_id',
             'debit_account_id',
             'credit_account_id',
             'user_id',
-            'debit_currency_id',
-            'credit_currency_id',
-            'is_system',
             'debit_partner_id',
             'credit_partner_id',
         ])
             ->with([
                 'debitAccount:id,code,name',
-                'debitCurrency:id,code',
                 'creditAccount:id,code,name',
-                'creditCurrency:id,code',
-                'amountCurrencyRelation:id,code',
+                'currency:id,code',
                 'user:id,name,surname',
                 'debitPartner:id,type,name,surname,company_name,tax_number,social_card_number',
                 'creditPartner:id,type,name,surname,company_name,tax_number,social_card_number',
