@@ -485,7 +485,24 @@ class AcraExport
 
             $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $prepaymentsReceived);
 
-            $this->setIntegerCellValue($sheet, 'J' . $row, $contract->provided_amount);
+            // J must be the balance as of $to. contract->provided_amount already nets out
+            // partial_amount immediately at receipt (PrepaymentHandler) and applied
+            // principal_amount (PrepaymentApplicationService), so it's the right base -
+            // except for a prepayment's principal_amount that was received by $to but not
+            // yet applied by $to: column I above already counts that as paid via
+            // $prepaymentsReceived, but provided_amount hasn't been reduced for it yet.
+            // Subtract that pending principal to keep I and J consistent. Scoped by
+            // paid_at (not status) so an already-applied prepayment isn't double-subtracted,
+            // and one applied after $to (but before this report happens to run) is still
+            // treated as pending as of $to.
+            $pendingPrepaymentPrincipal = Prepayment::where('contract_id', $contract->id)
+                ->where('created_at', '<', $this->to)
+                ->where(function ($q) {
+                    $q->whereNull('paid_at')->orWhere('paid_at', '>=', $this->to);
+                })
+                ->sum('principal_amount');
+
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $contract->provided_amount - $pendingPrepaymentPrincipal));
 
             $overdueMother = 0;
             $overdueInterest = 0;
