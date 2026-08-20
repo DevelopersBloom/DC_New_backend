@@ -823,7 +823,6 @@ trait ContractTrait
 
                 $paidEntriesAmount = PaymentEntry::where('payment_id', $payment->id)->sum('amount');
                 $debt = $payment->amount - $paidEntriesAmount;
-dd($debt);
                 if ($now->gt($penalty_start_date) && $debt > 1000) {
                     $current_delay_days = $now->diffInDays($penalty_start_date);
 
