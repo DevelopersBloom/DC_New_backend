@@ -11,6 +11,7 @@ use App\Models\HistoryType;
 use App\Models\Order;
 use App\Models\Pawnshop;
 use App\Models\Payment;
+use App\Models\PaymentEntry;
 use App\Models\Prepayment;
 use App\Models\PostingRule;
 use App\Models\Transaction;
@@ -820,7 +821,10 @@ trait ContractTrait
                     }
                 }
 
-                if ($now->gt($penalty_start_date)) {
+                $paidEntriesAmount = PaymentEntry::where('payment_id', $payment->id)->sum('amount');
+                $debt = $payment->amount - $paidEntriesAmount;
+dd($debt);
+                if ($now->gt($penalty_start_date) && $debt > 1000) {
                     $current_delay_days = $now->diffInDays($penalty_start_date);
 
                     if ($current_delay_days > $max_delay_days) {
