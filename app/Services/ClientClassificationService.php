@@ -65,10 +65,7 @@ class ClientClassificationService
         try {
             $currentOverdueDays = $this->maxOverdueDaysForClient($client);
             $currentClassification = $this->classificationByOverdue($currentOverdueDays);
-            if ($client->id == 55) {
 
-                dd($client->name,$currentOverdueDays,$currentClassification->order ,$classification->order);
-            }
             if (($client->classification_id === $classification->id) || ($currentClassification->order > $classification->order)) {
                 DB::commit();
                 return false;
