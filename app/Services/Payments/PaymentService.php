@@ -165,7 +165,6 @@ class PaymentService
                     $interestAmount -= $result['interest_amount'] ?? 0;
                 }
             }
-            dd($timing,$paymentMechanism,$amount);
             // ── Handle leftover cash ─────────────────────────────────────────
             // Prepayment/future-interest mechanisms only make sense when this
             // payment is actually SOONER (R6) — a due-date/late leftover always
