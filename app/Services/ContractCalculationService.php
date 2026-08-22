@@ -253,14 +253,21 @@ class ContractCalculationService
         $paidNominal = Deal::query()
             ->where('contract_id', $contract->id)
             ->whereIn('purpose', $paymentPurposes)
-            ->get(['date', 'interest_amount'])
+            ->get(['date', 'interest_amount', 'prepayment_interest'])
             ->sum(function ($deal) use ($calcDay) {
                 $dealDate = $this->parseDealDate($deal->date);
                 if (!$dealDate || $dealDate->greaterThan($calcDay)) {
                     return 0.0;
                 }
 
-                return (float)($deal->interest_amount ?? 0);
+                // prepayment_interest is interest cash already collected ahead of its
+                // accrual (paid early, before the installment's due date) — it's real
+                // money in hand from that deal's date, not contingent on whether the
+                // Prepayment bucket has since been reclassified out of the liability
+                // account. Omitting it here understates paid interest for any contract
+                // with an early payment, which then shows as a false "underpaid" figure
+                // to callers like the re-provide schedule rebuild.
+                return (float)($deal->interest_amount ?? 0) + (float)($deal->prepayment_interest ?? 0);
             });
 
         return [
