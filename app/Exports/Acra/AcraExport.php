@@ -2,8 +2,8 @@
 
 namespace App\Exports\Acra;
 
-use App\Models\ChartOfAccount;
 use App\Models\ClassificationHistory;
+use App\Models\ContractAmountHistory;
 use App\Models\DocumentJournal;
 use App\Models\Prepayment;
 use App\Models\Transaction;
@@ -365,19 +365,6 @@ class AcraExport
 //        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->subMinutes(10);
         $classificationAsOf = Carbon::parse($this->from)->endOfDay();
 
-        // Principal ledger accounts for column J (see fillCredit's J block below):
-        // 16200NV carries a contract's on-balance principal (debited by every
-        // PROVIDE_CONTRACT_AMOUNT disbursement - a contract can have more than one -
-        // and credited by pay_mother_amount(_cash) and prepayment_apply_principal).
-        // Once a contract is classified 'loss', ClientClassificationService zeroes
-        // 16200NV out and moves the same balance to off-balance account 86000, so a
-        // written-off loan must be read from there instead (recovery_principal then
-        // credits 86000 back down as it's collected). Same pattern as
-        // V09Export::getSpecificBalance, resolved once here rather than per row.
-        $acc16200NV = ChartOfAccount::idByCode('16200NV');
-        $acc86000 = ChartOfAccount::idByCode('86000');
-        $principalAccountIds = array_values(array_filter([$acc16200NV, $acc86000]));
-
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
@@ -424,18 +411,25 @@ class AcraExport
             // the report window is invisible here even though it's a real
             // repayment event. Scoped by created_at (the receipt date), not
             // status, so a prepayment keeps showing on the period it was
-            // received in even after it's later applied/paid.
+            // received in even after it's later applied/paid. The *value*
+            // written to the cell, however, is paid_at - the date it was
+            // actually applied/posted (set by PrepaymentApplicationService::apply()),
+            // matching the other E sources which are all ledger-posting dates,
+            // not receipt dates. A prepayment still unapplied as of report time
+            // (paid_at null) has no payment day yet, so it's excluded entirely
+            // rather than falling back to its receipt date.
             $lastPrepaymentReceived = Prepayment::where('contract_id', $contract->id)
                 ->where('created_at', '>=', $this->from)
                 ->where('created_at', '<', $this->to)
+                ->whereNotNull('paid_at')
                 ->where(function ($q) {
                     $q->where('principal_amount', '>', 0)->orWhere('partial_amount', '>', 0);
                 })
-                ->latest('created_at')
+                ->latest('paid_at')
                 ->first();
 
-            if ($lastPrepaymentReceived && (!$lastPaymentDate || Carbon::parse($lastPrepaymentReceived->created_at)->gt(Carbon::parse($lastPaymentDate)))) {
-                $lastPaymentDate = $lastPrepaymentReceived->created_at;
+            if ($lastPrepaymentReceived && (!$lastPaymentDate || Carbon::parse($lastPrepaymentReceived->paid_at)->gt(Carbon::parse($lastPaymentDate)))) {
+                $lastPaymentDate = $lastPrepaymentReceived->paid_at;
             }
 
             $this->setDateCellValue($sheet, 'E' . $row, $lastPaymentDate);
@@ -452,71 +446,43 @@ class AcraExport
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
 
-            // I and J share one ledger reconstruction of this contract's principal -
-            // disbursed, repaid, and still outstanding - as of $to.
+            // I and J share one reconstruction of this contract's principal -
+            // disbursed, repaid, and still outstanding - as of $to, sourced from
+            // contract_amount_histories rather than documents_journal.
             //
-            // documents_journal.contract_id is NOT reliably populated (only ~48% of rows
-            // system-wide) - many rows, including some contracts' own disbursement journal,
-            // are only linkable via deal_id (-> deals.contract_id) or via the main journal's
-            // journalable_type=Contract/journalable_id pairing (the $mainJournal lookup
-            // above, which the old I calculation also used but only followed one level via
-            // ->first() - a second, re-provided disbursement's own payments were invisible
-            // to it). All three paths are combined below, and unlike ->first(), every
-            // matching disbursement journal is summed, not just one.
-            $dealIds = \App\Models\Deal::where('contract_id', $contract->id)->pluck('id');
-            $contractJournalScope = function ($query) use ($contract, $dealIds) {
-                $query->where(function ($q) use ($contract, $dealIds) {
-                    $q->where('contract_id', $contract->id)
-                        ->orWhere(function ($qq) use ($contract) {
-                            $qq->where('journalable_type', Contract::class)
-                                ->where('journalable_id', $contract->id);
-                        });
-                    if ($dealIds->isNotEmpty()) {
-                        $q->orWhereIn('deal_id', $dealIds);
-                    }
-                });
-            };
-
-            // Legacy/imported contracts (ContractImportNew, ContractsImportNewData) set
-            // mother/provided_amount straight from spreadsheet data and never went through
-            // postReprovideDisbursementJournal() or the initial disbursement posting - so
-            // they carry no PROVIDE_CONTRACT_AMOUNT journal at all (via any of the three
-            // paths above), and the debit side would wrongly read 0. A contract that was
-            // ever re-provided through the app always gets one, so "no journal ever"
-            // reliably means pure legacy import; fall back to contract->mother (the
-            // original/imported disbursed principal, only ever adjusted by a re-provide -
-            // which would have created a journal, putting the contract back on the ledger
-            // path) as the debit side in that case, still netted against whatever credits
-            // the ledger does have.
-            $hasDisbursementJournal = DocumentJournal::where($contractJournalScope)
-                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
-                ->exists();
-
-            if ($hasDisbursementJournal) {
-                $principalDebit = DocumentJournal::where($contractJournalScope)
-                    ->where('date', '<', $this->to)
-                    ->whereIn('debit_account_id', $principalAccountIds)
-                    ->sum('amount_amd');
-            } else {
-                $principalDebit = (float) $contract->mother;
-            }
+            // This sidesteps two problems the old journal-based reconstruction had
+            // to work around: (1) documents_journal.contract_id is only ~48%
+            // populated, requiring a three-path contract match, while
+            // contract_amount_histories always carries contract_id directly
+            // (written by Contract::updated()'s boot hook whenever provided_amount
+            // changes, correctly deal_id-scoped per disbursement/re-provide); and
+            // (2) a write-off (ClientClassificationService loss reclassification)
+            // only moves the balance between GL accounts 16200NV and 86000 and
+            // never touches provided_amount, so unlike the journal it needs no
+            // netting of two accounts to keep showing a written-off contract's
+            // true outstanding balance.
+            $principalIn = ContractAmountHistory::where('contract_id', $contract->id)
+                ->where('amount_type', 'provided_amount')
+                ->where('type', 'in')
+                ->where('date', '<', $this->to)
+                ->sum('amount');
 
             // A fully closed contract's last installment absorbs a rounding residual (see
-            // the loan-calc conventions), so summing ledger credits can land a few cents off
-            // contract->mother, the true payoff amount. Read mother directly for a completed
-            // contract instead - the same carve-out the old I calculation had
-            // (`if ($contract->status == 'completed') { $totalPaid = $contract->mother; }`),
-            // applied once here so both I and J inherit it and stay at 0 remaining / fully
+            // the loan-calc conventions), so summing history 'out' rows can land a few AMD
+            // off from contract->mother, the true payoff amount (confirmed with real data:
+            // contracts #23 and #53 showed ~60-69 AMD residuals). Read mother directly for
+            // a completed contract instead, so both I and J stay at 0 remaining / fully
             // paid together.
             if ($contract->status === 'completed') {
-                $principalCredit = (float) $contract->mother;
+                $principalOut = (float) $contract->mother;
             } else {
-                $principalCredit = DocumentJournal::where($contractJournalScope)
+                $principalOut = ContractAmountHistory::where('contract_id', $contract->id)
+                    ->where('amount_type', 'provided_amount')
+                    ->where('type', 'out')
                     ->where('date', '<', $this->to)
-                    ->whereIn('credit_account_id', $principalAccountIds)
-                    ->sum('amount_amd');
+                    ->sum('amount');
             }
-            $principalLedgerBalance = (float) $principalDebit - (float) $principalCredit;
+            $principalLedgerBalance = (float) $principalIn - (float) $principalOut;
 
             // A prepayment's principal_amount AND partial_amount both stay out of the
             // ledger until PrepaymentApplicationService::apply() posts prepayment_apply_principal
@@ -526,7 +492,7 @@ class AcraExport
             // until application. I and J both need this: I counts it as paid on receipt, J
             // subtracts it from the outstanding balance. Scoped by paid_at (not status) so an
             // already-applied prepayment isn't double-counted (it's already inside
-            // $principalCredit above), and one applied after $to (but before this report
+            // $principalOut above), and one applied after $to (but before this report
             // happens to run) is still treated as pending as of $to.
             $pendingPrepayment = Prepayment::where('contract_id', $contract->id)
                 ->where('created_at', '<', $this->to)
@@ -536,7 +502,7 @@ class AcraExport
                 ->selectRaw('SUM(principal_amount + partial_amount) as total')
                 ->value('total') ?? 0;
 
-            $this->setIntegerCellValue($sheet, 'I' . $row, $principalCredit + $pendingPrepayment);
+            $this->setIntegerCellValue($sheet, 'I' . $row, $principalOut + $pendingPrepayment);
             $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $principalLedgerBalance - $pendingPrepayment));
 
             $overdueMother = 0;

@@ -924,12 +924,11 @@ class ContractControllerNew extends Controller
         }
 
         $reprovideCarbon = Carbon::parse($reprovideDate, 'Asia/Yerevan')->startOfDay();
-        // TEMPORARY BYPASS for contract #26 one-off re-provide dated 2026-08-21 — REVERT after use.
-        // if ($reprovideCarbon->lt($minDate) || $reprovideCarbon->gt($maxDate)) {
-        //     return response()->json([
-        //         'message' => 'Re-provide date is outside the allowed range.',
-        //     ], 422);
-        // }
+        if ($reprovideCarbon->lt($minDate) || $reprovideCarbon->gt($maxDate)) {
+            return response()->json([
+                'message' => 'Re-provide date is outside the allowed range.',
+            ], 422);
+        }
         // Outstanding interest check (must pass before touching the DB)
         $interestAmount = $this->calculateCurrentPayment($contract)['interest_amount'];
 
