@@ -46,6 +46,55 @@ class AcraExport
         $this->to = $to;
     }
 
+    /**
+     * Shared with AcraController (report-inclusion check for "has overdue
+     * interest") so the two stay consistent with what column L reports.
+     * Returns [overdueMother, overdueInterest].
+     */
+    public static function overdueAmounts($contract, $from, $to): array
+    {
+        $overdueMother = 0;
+        $overdueInterest = 0;
+
+        if ($contract->payment_type == 'amortized') {
+            $openAmortizedPayments = $contract->payments()
+                ->where('status', 'initial')
+                ->where('date', '<', $to)
+                ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
+                ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
+                ->get(['id', 'principal_payment', 'interest_payment']);
+
+            $overdueMother = $openAmortizedPayments->sum(
+                fn ($p) => max(0, (float) $p->principal_payment - (float) ($p->paid_principal ?? 0))
+            );
+            $overdueInterest = $openAmortizedPayments->sum(
+                fn ($p) => max(0, (float) $p->interest_payment - (float) ($p->paid_interest ?? 0))
+            );
+        } else {
+            if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($to))) {
+                $overdueMother = max(0, $contract->provided_amount);
+            }
+            $openClassicPayments = $contract->payments()
+                ->where('status', 'initial')
+                ->where('date', '<', $from)
+                ->withSum(['entries as paid_amount' => fn ($q) => $q->where('date', '<', $from)], 'amount')
+                ->get(['id', 'amount']);
+
+            $overdueInterest = $openClassicPayments->sum(
+                fn ($p) => max(0, (float) $p->amount - (float) ($p->paid_amount ?? 0))
+            );
+        }
+
+        // Match the "overdue" contract scope (Contract::scopeStatus): a debt
+        // is only reported as overdue when it exceeds MIN_OVERDUE_AMD.
+        if (($overdueMother + $overdueInterest) <= self::MIN_OVERDUE_AMD) {
+            $overdueMother = 0;
+            $overdueInterest = 0;
+        }
+
+        return [$overdueMother, $overdueInterest];
+    }
+
     public function export()
     {
         $this->createdAt = now();
@@ -505,55 +554,17 @@ class AcraExport
             $this->setIntegerCellValue($sheet, 'I' . $row, $principalOut + $pendingPrepayment);
             $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $principalLedgerBalance - $pendingPrepayment));
 
-            $overdueMother = 0;
-            $overdueInterest = 0;
-
-            if ($contract->payment_type == 'amortized') {
-                // Net out payment_entries: a status='initial' row can already be
-                // mostly settled by a partial payment (which never flips status to
-                // completed), so the raw principal_payment/interest_payment columns
-                // alone overstate what's still due. Rows with no entries
-                // (legacy/imported payments) net to their full amount, same as
-                // before this change. Entries are scoped to date < $to so a payment
-                // recorded after the report's cutoff doesn't retroactively reduce
-                // overdue for a window that's supposed to stop before it — same
-                // point-in-time convention as the E/I column date filters above.
-                $to = $this->to;
-                $openAmortizedPayments = $contract->payments()
-                    ->where('status', 'initial')
-                    ->where('date', '<', $to)
-                    ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
-                    ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
-                    ->get(['id', 'principal_payment', 'interest_payment']);
-
-                $overdueMother = $openAmortizedPayments->sum(
-                    fn ($p) => max(0, (float) $p->principal_payment - (float) ($p->paid_principal ?? 0))
-                );
-                $overdueInterest = $openAmortizedPayments->sum(
-                    fn ($p) => max(0, (float) $p->interest_payment - (float) ($p->paid_interest ?? 0))
-                );
-            } else {
-                if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->to))) {
-                    $overdueMother = max(0, $contract->provided_amount);
-                }
-                $from = $this->from;
-                $openClassicPayments = $contract->payments()
-                    ->where('status', 'initial')
-                    ->where('date', '<', $from)
-                    ->withSum(['entries as paid_amount' => fn ($q) => $q->where('date', '<', $from)], 'amount')
-                    ->get(['id', 'amount']);
-
-                $overdueInterest = $openClassicPayments->sum(
-                    fn ($p) => max(0, (float) $p->amount - (float) ($p->paid_amount ?? 0))
-                );
-            }
-
-            // Match the "overdue" contract scope (Contract::scopeStatus): a debt
-            // is only reported as overdue when it exceeds MIN_OVERDUE_AMD.
-            if (($overdueMother + $overdueInterest) <= self::MIN_OVERDUE_AMD) {
-                $overdueMother = 0;
-                $overdueInterest = 0;
-            }
+            // Net out payment_entries: a status='initial' row can already be mostly
+            // settled by a partial payment (which never flips status to completed), so
+            // the raw principal_payment/interest_payment columns alone overstate what's
+            // still due. Rows with no entries (legacy/imported payments) net to their
+            // full amount. Entries are scoped to date < $to/$from so a payment recorded
+            // after the report's cutoff doesn't retroactively reduce overdue for a
+            // window that's supposed to stop before it — same point-in-time convention
+            // as the E/I column date filters above. Shared with AcraController, which
+            // uses the same calc to decide whether a contract belongs in the report at
+            // all when its only activity this period was an on-time interest payment.
+            [$overdueMother, $overdueInterest] = self::overdueAmounts($contract, $this->from, $this->to);
 
             $this->setIntegerCellValue($sheet, 'K' . $row, $overdueMother);
             $this->setIntegerCellValue($sheet, 'L' . $row, $overdueInterest);
