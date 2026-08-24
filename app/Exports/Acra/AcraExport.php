@@ -418,7 +418,20 @@ class AcraExport
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
 
-            $this->setDateCellValue($sheet, 'C' . $row, $contract->date);
+            // A re-provide (additional disbursement) posts its own
+            // PROVIDE_CONTRACT_AMOUNT journal entry but never changes contract.date,
+            // so a contract disbursed more than once needs its most recent
+            // disbursement date here instead of the original one - capped at $to,
+            // matching every other "as of the report cutoff" column. Falls back to
+            // contract->date for the (normal) single-disbursement case, and as a
+            // safety net if no journal is found at all.
+            $lastDisbursementDate = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contract->id)
+                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+                ->where('date', '<', $this->to)
+                ->latest('date')
+                ->value('date') ?? $contract->date;
+            $this->setDateCellValue($sheet, 'C' . $row, $lastDisbursementDate);
             $lastRegularPayment = $contract->payments()
                 ->where('type', 'regular')
                 ->orderByDesc('to_date')
