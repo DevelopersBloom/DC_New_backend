@@ -57,6 +57,24 @@ class AcraController
             })
             ->keys()
             ->toArray();
+        // Manual exclusion: client 4 (Գրիշա Հունեյան) must not appear in the ACRA export.
+        $excludedClientIds = [4];
+
+        // A contract whose only activity this period was an on-time interest payment
+        // doesn't belong in the report on that basis alone (see the journal-type list
+        // below); but one currently carrying overdue interest still needs to be pulled
+        // in even without a matching journal action this period. Reuses AcraExport's
+        // column-L calc so this inclusion check and what fillCredit prints stay in sync.
+        $contractsWithOverdueInterest = Contract::whereNotNull('provided_at')
+            ->whereNotIn('client_id', $excludedClientIds)
+            ->get(['id', 'client_id', 'payment_type', 'deadline', 'provided_amount'])
+            ->filter(function ($contract) use ($from, $to) {
+                [, $overdueInterest] = AcraExport::overdueAmounts($contract, $from, $to);
+                return $overdueInterest > 0;
+            })
+            ->pluck('id')
+            ->toArray();
+
         $mainContractJournals = DocumentJournal::where('journalable_type', Contract::class)
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->select('id', 'journalable_id')
@@ -78,14 +96,20 @@ class AcraController
 
         })
             ->whereIn('document_type', [
+                // Principal repayments only — an on-time interest payment alone
+                // shouldn't pull a contract into the report (see
+                // $contractsWithOverdueInterest above for the overdue-interest case).
                 DocumentJournal::PAY_MOTHER_AMOUNT,
-                DocumentJournal::INTEREST_REPAYMENT,
                 DocumentJournal::PAY_MOTHER_AMOUNT_CASH,
                 // Full repayments write the posting-rule key as document_type,
-                // so without these a fully repaid loan disappears from the export.
+                // so without this a fully repaid loan disappears from the export.
                 DocumentJournal::PAY_MOTHER_AMOUNT_TRANSFER,
-                DocumentJournal::PAY_INTEREST_AMOUNT_TRANSFER,
-                DocumentJournal::PAY_INTEREST_AMOUNT_CASH,
+                // A re-provide (additional disbursement on an already-existing
+                // contract) posts another PROVIDE_CONTRACT_AMOUNT journal but
+                // never changes contract.date, so without this a contract
+                // re-provided inside the window - its own row untouched - was
+                // invisible to every other trigger here.
+                DocumentJournal::PROVIDE_CONTRACT_AMOUNT,
             ])
             ->where('date', '>=', $from)
             ->where('date', '<', $to)
@@ -105,24 +129,24 @@ class AcraController
             ->unique()
             ->toArray();
 
-        // A prepayment counts from the date it was received (created_at), not the
-        // date MarkDuePrepaymentsPaid later applies it (see AcraExport::fillCredit's
-        // $prepaymentsReceived) - so a contract whose only activity this period is a
-        // prepayment receipt must be pulled in by that receipt date, regardless of
-        // when (or whether yet) it gets applied.
+        // A prepayment counts from the date it was received (created_at) but only
+        // once it's actually been applied (paid_at set) - same convention column E
+        // already uses (see AcraExport::fillCredit's $lastPrepaymentReceived). A
+        // contract whose only activity this period is a still-unpaid prepayment
+        // receipt doesn't belong in the report yet; it's pulled in once
+        // MarkDuePrepaymentsPaid applies it, whether that happens inside this
+        // window or later.
         $contractsWithPrepayments = Prepayment::where('created_at', '>=', $from)
             ->where('created_at', '<', $to)
+            ->whereNotNull('paid_at')
             ->pluck('contract_id')
             ->unique()
             ->toArray();
 
-        // Manual exclusion: client 4 (Գրիշա Հունեյան) must not appear in the ACRA export.
-        $excludedClientIds = [4];
-
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
             ->whereNotIn('client_id', $excludedClientIds)
-            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions, $contractsWithPrepayments) {
+            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions, $contractsWithPrepayments, $contractsWithOverdueInterest) {
                 // Upper bound is exclusive: the classification snapshot (see
                 // AcraExport::fillCredit) is taken as of $to - 1 day, so a
                 // contract dated exactly on $to has no classification history
@@ -131,7 +155,8 @@ class AcraController
                     ->where('date', '<', $to)
                     ->orWhereIn('id', $contractsWithInitialPayments)
                     ->orWhereIn('id', $contractsWithJournalActions)
-                    ->orWhereIn('id', $contractsWithPrepayments);
+                    ->orWhereIn('id', $contractsWithPrepayments)
+                    ->orWhereIn('id', $contractsWithOverdueInterest);
             })->get();
 
         $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();

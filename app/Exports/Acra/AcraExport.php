@@ -3,6 +3,7 @@
 namespace App\Exports\Acra;
 
 use App\Models\ClassificationHistory;
+use App\Models\ContractAmountHistory;
 use App\Models\DocumentJournal;
 use App\Models\Prepayment;
 use App\Models\Transaction;
@@ -43,6 +44,55 @@ class AcraExport
         $this->allClients = $allClients;
         $this->from = $from;
         $this->to = $to;
+    }
+
+    /**
+     * Shared with AcraController (report-inclusion check for "has overdue
+     * interest") so the two stay consistent with what column L reports.
+     * Returns [overdueMother, overdueInterest].
+     */
+    public static function overdueAmounts($contract, $from, $to): array
+    {
+        $overdueMother = 0;
+        $overdueInterest = 0;
+
+        if ($contract->payment_type == 'amortized') {
+            $openAmortizedPayments = $contract->payments()
+                ->where('status', 'initial')
+                ->where('date', '<', $to)
+                ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
+                ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
+                ->get(['id', 'principal_payment', 'interest_payment']);
+
+            $overdueMother = $openAmortizedPayments->sum(
+                fn ($p) => max(0, (float) $p->principal_payment - (float) ($p->paid_principal ?? 0))
+            );
+            $overdueInterest = $openAmortizedPayments->sum(
+                fn ($p) => max(0, (float) $p->interest_payment - (float) ($p->paid_interest ?? 0))
+            );
+        } else {
+            if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($to))) {
+                $overdueMother = max(0, $contract->provided_amount);
+            }
+            $openClassicPayments = $contract->payments()
+                ->where('status', 'initial')
+                ->where('date', '<', $from)
+                ->withSum(['entries as paid_amount' => fn ($q) => $q->where('date', '<', $from)], 'amount')
+                ->get(['id', 'amount']);
+
+            $overdueInterest = $openClassicPayments->sum(
+                fn ($p) => max(0, (float) $p->amount - (float) ($p->paid_amount ?? 0))
+            );
+        }
+
+        // Match the "overdue" contract scope (Contract::scopeStatus): a debt
+        // is only reported as overdue when it exceeds MIN_OVERDUE_AMD.
+        if (($overdueMother + $overdueInterest) <= self::MIN_OVERDUE_AMD) {
+            $overdueMother = 0;
+            $overdueInterest = 0;
+        }
+
+        return [$overdueMother, $overdueInterest];
     }
 
     public function export()
@@ -368,7 +418,20 @@ class AcraExport
             $sheet->setCellValue('A' . $row, $contract->client_id);
             $sheet->setCellValue('B' . $row, $contract->num);
 
-            $this->setDateCellValue($sheet, 'C' . $row, $contract->date);
+            // A re-provide (additional disbursement) posts its own
+            // PROVIDE_CONTRACT_AMOUNT journal entry but never changes contract.date,
+            // so a contract disbursed more than once needs its most recent
+            // disbursement date here instead of the original one - capped at $to,
+            // matching every other "as of the report cutoff" column. Falls back to
+            // contract->date for the (normal) single-disbursement case, and as a
+            // safety net if no journal is found at all.
+            $lastDisbursementDate = DocumentJournal::where('journalable_type', Contract::class)
+                ->where('journalable_id', $contract->id)
+                ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+                ->where('date', '<', $this->to)
+                ->latest('date')
+                ->value('date') ?? $contract->date;
+            $this->setDateCellValue($sheet, 'C' . $row, $lastDisbursementDate);
             $lastRegularPayment = $contract->payments()
                 ->where('type', 'regular')
                 ->orderByDesc('to_date')
@@ -381,13 +444,13 @@ class AcraExport
             );
 
             $lastPaymentDate = null;
-            $totalPaid = 0;
             $mainJournal = DocumentJournal::where('journalable_type', Contract::class)
                 ->where('journalable_id', $contract->id)
                 ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
                 ->select('id')
                 ->first();
 
+            $lastMotherPayment = null;
             if ($mainJournal) {
                 $lastMotherPayment = DocumentJournal::where('journalable_type', DocumentJournal::class)
                     ->where('journalable_id', $mainJournal->id)
@@ -396,40 +459,6 @@ class AcraExport
                     ->where('date', '<', $this->to)
                     ->latest('date')
                     ->first();
-
-
-                if ($lastMotherPayment) {
-                    $lastPaymentDate = $lastMotherPayment->date;
-                }
-
-                if ($contract->status == 'completed') {
-                    $totalPaid = $contract->mother;
-                } else {
-                    $totalPaid = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                        ->where('journalable_id', $mainJournal->id)
-                        ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                        ->where('date', '<', $this->to)
-                        ->sum('amount_amd');
-                }
-
-            }
-            // Some closed contracts may have principal closed without detailed PAY_MOTHER_AMOUNT rows.
-            // Keep I column meaningful by deriving paid principal from contract figures when needed.
-            // Only do this when the contract has no PAY_MOTHER_AMOUNT history at all: a $totalPaid
-            // of 0 can also mean the contract's only repayment(s) fall on/after $to and were
-            // correctly excluded by the date filter above. Falling back to contract->provided_amount
-            // (a live balance, already reduced by those excluded payments) in that case would leak
-            // them back in through this fallback, defeating the date scoping.
-            $hasMotherPaymentHistory = $mainJournal && DocumentJournal::where('journalable_type', DocumentJournal::class)
-                ->where('journalable_id', $mainJournal->id)
-                ->where('document_type', DocumentJournal::PAY_MOTHER_AMOUNT)
-                ->exists();
-            $derivedPaidFromBalance = max(
-                0,
-                (float)($contract->contract_amount ?? 0) - max(0, (float)($contract->provided_amount ?? 0))
-            );
-            if ((float)$totalPaid <= 0 && $derivedPaidFromBalance > 0 && !$hasMotherPaymentHistory) {
-                $totalPaid = $derivedPaidFromBalance;
             }
 
             if ($lastMotherPayment) {
@@ -444,18 +473,25 @@ class AcraExport
             // the report window is invisible here even though it's a real
             // repayment event. Scoped by created_at (the receipt date), not
             // status, so a prepayment keeps showing on the period it was
-            // received in even after it's later applied/paid.
+            // received in even after it's later applied/paid. The *value*
+            // written to the cell, however, is paid_at - the date it was
+            // actually applied/posted (set by PrepaymentApplicationService::apply()),
+            // matching the other E sources which are all ledger-posting dates,
+            // not receipt dates. A prepayment still unapplied as of report time
+            // (paid_at null) has no payment day yet, so it's excluded entirely
+            // rather than falling back to its receipt date.
             $lastPrepaymentReceived = Prepayment::where('contract_id', $contract->id)
                 ->where('created_at', '>=', $this->from)
                 ->where('created_at', '<', $this->to)
+                ->whereNotNull('paid_at')
                 ->where(function ($q) {
                     $q->where('principal_amount', '>', 0)->orWhere('partial_amount', '>', 0);
                 })
-                ->latest('created_at')
+                ->latest('paid_at')
                 ->first();
 
-            if ($lastPrepaymentReceived && (!$lastPaymentDate || Carbon::parse($lastPrepaymentReceived->created_at)->gt(Carbon::parse($lastPaymentDate)))) {
-                $lastPaymentDate = $lastPrepaymentReceived->created_at;
+            if ($lastPrepaymentReceived && (!$lastPaymentDate || Carbon::parse($lastPrepaymentReceived->paid_at)->gt(Carbon::parse($lastPaymentDate)))) {
+                $lastPaymentDate = $lastPrepaymentReceived->paid_at;
             }
 
             $this->setDateCellValue($sheet, 'E' . $row, $lastPaymentDate);
@@ -471,71 +507,77 @@ class AcraExport
             $sheet->setCellValue('F' . $row, '001');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
             $sheet->setCellValue('H' . $row, $contract->mother);
-            // A prepayment counts as paid from the date the client's money was
-            // actually received (created_at), not the date MarkDuePrepaymentsPaid
-            // later applies it to principal - that can happen days after receipt,
-            // but the cash was already in hand on the receipt date. Same anchor as
-            // column E above, and deliberately status-agnostic ('unpaid' = still
-            // bucketed, 'paid' = applied) so a prepayment doesn't move between
-            // report periods depending on when the daily job happened to run.
-            $prepaymentsReceived = Prepayment::where('contract_id', $contract->id)
+
+            // I and J share one reconstruction of this contract's principal -
+            // disbursed, repaid, and still outstanding - as of $to, sourced from
+            // contract_amount_histories rather than documents_journal.
+            //
+            // This sidesteps two problems the old journal-based reconstruction had
+            // to work around: (1) documents_journal.contract_id is only ~48%
+            // populated, requiring a three-path contract match, while
+            // contract_amount_histories always carries contract_id directly
+            // (written by Contract::updated()'s boot hook whenever provided_amount
+            // changes, correctly deal_id-scoped per disbursement/re-provide); and
+            // (2) a write-off (ClientClassificationService loss reclassification)
+            // only moves the balance between GL accounts 16200NV and 86000 and
+            // never touches provided_amount, so unlike the journal it needs no
+            // netting of two accounts to keep showing a written-off contract's
+            // true outstanding balance.
+            $principalIn = ContractAmountHistory::where('contract_id', $contract->id)
+                ->where('amount_type', 'provided_amount')
+                ->where('type', 'in')
+                ->where('date', '<', $this->to)
+                ->sum('amount');
+
+            // A fully closed contract's last installment absorbs a rounding residual (see
+            // the loan-calc conventions), so summing history 'out' rows can land a few AMD
+            // off from contract->mother, the true payoff amount (confirmed with real data:
+            // contracts #23 and #53 showed ~60-69 AMD residuals). Read mother directly for
+            // a completed contract instead, so both I and J stay at 0 remaining / fully
+            // paid together.
+            if ($contract->status === 'completed') {
+                $principalOut = (float) $contract->mother;
+            } else {
+                $principalOut = ContractAmountHistory::where('contract_id', $contract->id)
+                    ->where('amount_type', 'provided_amount')
+                    ->where('type', 'out')
+                    ->where('date', '<', $this->to)
+                    ->sum('amount');
+            }
+            $principalLedgerBalance = (float) $principalIn - (float) $principalOut;
+
+            // A prepayment's principal_amount AND partial_amount both stay out of the
+            // ledger until PrepaymentApplicationService::apply() posts prepayment_apply_principal
+            // for their combined total (see PrepaymentApplicationService::$principalLegAmount) -
+            // unlike contract->provided_amount, which used to get partial_amount subtracted
+            // immediately at receipt, the ledger balance above doesn't reflect either piece
+            // until application. I and J both need this: I counts it as paid on receipt, J
+            // subtracts it from the outstanding balance. Scoped by paid_at (not status) so an
+            // already-applied prepayment isn't double-counted (it's already inside
+            // $principalOut above), and one applied after $to (but before this report
+            // happens to run) is still treated as pending as of $to.
+            $pendingPrepayment = Prepayment::where('contract_id', $contract->id)
                 ->where('created_at', '<', $this->to)
+                ->where(function ($q) {
+                    $q->whereNull('paid_at')->orWhere('paid_at', '>=', $this->to);
+                })
                 ->selectRaw('SUM(principal_amount + partial_amount) as total')
                 ->value('total') ?? 0;
 
-            $this->setIntegerCellValue($sheet, 'I' . $row, $totalPaid + $prepaymentsReceived);
+            $this->setIntegerCellValue($sheet, 'I' . $row, $principalOut + $pendingPrepayment);
+            $this->setIntegerCellValue($sheet, 'J' . $row, max(0, $principalLedgerBalance - $pendingPrepayment));
 
-            $this->setIntegerCellValue($sheet, 'J' . $row, $contract->provided_amount);
-
-            $overdueMother = 0;
-            $overdueInterest = 0;
-
-            if ($contract->payment_type == 'amortized') {
-                // Net out payment_entries: a status='initial' row can already be
-                // mostly settled by a partial payment (which never flips status to
-                // completed), so the raw principal_payment/interest_payment columns
-                // alone overstate what's still due. Rows with no entries
-                // (legacy/imported payments) net to their full amount, same as
-                // before this change. Entries are scoped to date < $to so a payment
-                // recorded after the report's cutoff doesn't retroactively reduce
-                // overdue for a window that's supposed to stop before it — same
-                // point-in-time convention as the E/I column date filters above.
-                $to = $this->to;
-                $openAmortizedPayments = $contract->payments()
-                    ->where('status', 'initial')
-                    ->where('date', '<', $to)
-                    ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
-                    ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
-                    ->get(['id', 'principal_payment', 'interest_payment']);
-
-                $overdueMother = $openAmortizedPayments->sum(
-                    fn ($p) => max(0, (float) $p->principal_payment - (float) ($p->paid_principal ?? 0))
-                );
-                $overdueInterest = $openAmortizedPayments->sum(
-                    fn ($p) => max(0, (float) $p->interest_payment - (float) ($p->paid_interest ?? 0))
-                );
-            } else {
-                if ($contract->deadline && Carbon::parse($contract->deadline)->lt(Carbon::parse($this->to))) {
-                    $overdueMother = max(0, $contract->provided_amount);
-                }
-                $from = $this->from;
-                $openClassicPayments = $contract->payments()
-                    ->where('status', 'initial')
-                    ->where('date', '<', $from)
-                    ->withSum(['entries as paid_amount' => fn ($q) => $q->where('date', '<', $from)], 'amount')
-                    ->get(['id', 'amount']);
-
-                $overdueInterest = $openClassicPayments->sum(
-                    fn ($p) => max(0, (float) $p->amount - (float) ($p->paid_amount ?? 0))
-                );
-            }
-
-            // Match the "overdue" contract scope (Contract::scopeStatus): a debt
-            // is only reported as overdue when it exceeds MIN_OVERDUE_AMD.
-            if (($overdueMother + $overdueInterest) <= self::MIN_OVERDUE_AMD) {
-                $overdueMother = 0;
-                $overdueInterest = 0;
-            }
+            // Net out payment_entries: a status='initial' row can already be mostly
+            // settled by a partial payment (which never flips status to completed), so
+            // the raw principal_payment/interest_payment columns alone overstate what's
+            // still due. Rows with no entries (legacy/imported payments) net to their
+            // full amount. Entries are scoped to date < $to/$from so a payment recorded
+            // after the report's cutoff doesn't retroactively reduce overdue for a
+            // window that's supposed to stop before it — same point-in-time convention
+            // as the E/I column date filters above. Shared with AcraController, which
+            // uses the same calc to decide whether a contract belongs in the report at
+            // all when its only activity this period was an on-time interest payment.
+            [$overdueMother, $overdueInterest] = self::overdueAmounts($contract, $this->from, $this->to);
 
             $this->setIntegerCellValue($sheet, 'K' . $row, $overdueMother);
             $this->setIntegerCellValue($sheet, 'L' . $row, $overdueInterest);
