@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\ChartOfAccount;
 use App\Models\PostingRule;
 use App\Models\Client;
+use App\Models\ClassificationHistory;
 use App\Services\EffectiveRateService;
 use App\Traits\ContractTrait;
 use Illuminate\Queue\SerializesModels;
@@ -86,7 +87,13 @@ class ProcessContractDailyRate implements ShouldQueue
                     continue;
                 }
 
-                if ($contract->client->classification->name === 'loss') {
+                $lastClassificationHistory = ClassificationHistory::where('client_id', $contract->client_id)
+                    ->orderBy('date', 'desc')
+                    ->with('classification')
+                    ->first();
+                $currentClassificationName = $lastClassificationHistory?->classification->name ?? $contract->client->classification->name;
+
+                if ($currentClassificationName === 'loss') {
                     $this->processLossInterest($contract, $journal, $date, $systemUserId);
                     DB::commit();
                     continue;
