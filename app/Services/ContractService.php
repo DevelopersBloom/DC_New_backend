@@ -31,7 +31,7 @@ class   ContractService
             ]);
         $query->orderByRaw('CAST(RIGHT(num, 5) AS UNSIGNED) DESC');
         // Apply filters
-        $query->filterStatus($filters['status'] ?? 'all')
+        $query->filterStatus($filters['status'] ?? 'all', $filters['overdue_date'] ?? null)
             ->filterByDate('date', $filters['date_from'] ?? null, $filters['date_to'] ?? null)
             ->filterByRange('provided_amount', $filters['provided_amount_from'] ?? null, $filters['provided_amount_to'] ?? null)
             ->filterByRange('estimated_amount', $filters['estimated_amount_from'] ?? null, $filters['estimated_amount_to'] ?? null)

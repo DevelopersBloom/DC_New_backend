@@ -55,11 +55,15 @@ class AcraExport
     {
         $overdueMother = 0;
         $overdueInterest = 0;
+        // Same cutoff as AcraController's $contractsWithInitialPayments: a
+        // payment due on the report's own boundary day ($to) isn't overdue
+        // yet, so it's excluded until the following report window.
+        $calcDay = Carbon::parse($to)->subDay()->format('Y-m-d');
 
         if ($contract->payment_type == 'amortized') {
             $openAmortizedPayments = $contract->payments()
                 ->where('status', 'initial')
-                ->where('date', '<', $to)
+                ->where('date', '<', $calcDay)
                 ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
                 ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
                 ->get(['id', 'principal_payment', 'interest_payment']);
@@ -598,10 +602,21 @@ class AcraExport
                 $sheet->setCellValue('W' . $row, 0);
             }
 
-            // N, O, P, Q, U
+            // N, O, P, Q, U — O and X both come from the client's classification
+            // history as of the report cutoff, not their live/current
+            // classification, since a client can be reclassified after the
+            // period being reported.
             $sheet->setCellValue('N' . $row, 'AMD');
 
-            $riskClassTitle = $contract->client->classification->name ?? '';
+            $classificationHistory = ClassificationHistory::query()
+                ->where('client_id', $contract->client_id)
+                ->where('date', '<=', $classificationAsOf)
+                ->with('classification')
+                ->orderByDesc('date')
+                ->orderByDesc('id')
+                ->first();
+
+            $riskClassTitle = $classificationHistory?->classification?->name ?? '';
 
             $riskClassCode = match (strtolower($riskClassTitle)) {
                 'standard'    => '01',
@@ -618,16 +633,7 @@ class AcraExport
             // Left blank when the client has no risk class, and also for "standard"
             // (01) — only non-standard classes (02-05) carry a classification date.
             $requiresClassificationDate = !in_array($riskClassCode, ['', '01'], true);
-            $lastClassificationDate = null;
-            if ($requiresClassificationDate && $contract->client->classification_id) {
-                $lastClassificationDate = ClassificationHistory::query()
-                    ->where('client_id', $contract->client_id)
-                    //->where('classification_id', $contract->client->classification_id)
-                    ->where('date', '<=', $classificationAsOf)
-                    ->orderByDesc('date')
-                    ->orderByDesc('id')
-                    ->value('date');
-            }
+            $lastClassificationDate = $requiresClassificationDate ? $classificationHistory?->date : null;
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
             } elseif ($requiresClassificationDate) {

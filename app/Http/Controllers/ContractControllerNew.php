@@ -74,7 +74,7 @@ class ContractControllerNew extends Controller
             'provided_amount_from', 'provided_amount_to',
             'estimated_amount_from', 'estimated_amount_to',
             'name', 'surname', 'patronymic','passport','phone',
-            'type','subspecies','model','delay'
+            'type','subspecies','model','delay','overdue_date'
 
         ]);
 
