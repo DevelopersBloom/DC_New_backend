@@ -217,7 +217,7 @@ class Contract extends Model
     {
         return $this->hasMany(Note::class);
     }
-    public function scopeFilterStatus($query, $status)
+    public function scopeFilterStatus($query, $status, $overdueDate = null)
     {
         switch ($status) {
             case 'ակտիվ':
@@ -231,6 +231,7 @@ class Contract extends Model
                 return $query->where('status', 'executed');
             case 'Ժամկետնանց':
             case 'overdue':
+                $cutoff = $overdueDate ?: today()->toDateString();
                 return $query->where('status', 'initial')
                     ->whereRaw(
                         '(SELECT COALESCE(SUM(p.amount - COALESCE(pe.paid, 0)), 0)
@@ -238,7 +239,7 @@ class Contract extends Model
                           LEFT JOIN (SELECT payment_id, SUM(amount) as paid FROM payment_entries GROUP BY payment_id) pe
                             ON pe.payment_id = p.id
                           WHERE p.contract_id = contracts.id AND p.deleted_at IS NULL AND DATE(p.date) < ? AND p.status = ?) >= 1000',
-                        [today()->toDateString(), 'initial']
+                        [$cutoff, 'initial']
                     );
             case 'todays':
                 return $query->whereHas('payments', function ($q) {
