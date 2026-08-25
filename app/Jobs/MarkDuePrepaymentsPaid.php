@@ -47,10 +47,13 @@ class MarkDuePrepaymentsPaid implements ShouldQueue
 
         if ($contractIds->isEmpty()) {
             Log::info("MarkDuePrepaymentsPaid: no due unpaid prepayments for {$this->forDate}");
+            $this->notifySuccess("No due unpaid prepayments for {$this->forDate}.");
             return;
         }
 
         Log::info("MarkDuePrepaymentsPaid: found {$contractIds->count()} contract(s) with due prepayments");
+
+        $errors = [];
 
         foreach ($contractIds as $contractId) {
             try {
@@ -74,10 +77,18 @@ class MarkDuePrepaymentsPaid implements ShouldQueue
                 });
             } catch (\Throwable $e) {
                 Log::error("MarkDuePrepaymentsPaid: failed for contract #{$contractId}: " . $e->getMessage());
-                $this->notifyAdmins($e);
+                $errors[] = "Contract #{$contractId}: " . $e->getMessage();
             }
         }
 
         Log::info("MarkDuePrepaymentsPaid: finished for {$this->forDate}");
+
+        if (empty($errors)) {
+            $this->notifySuccess("{$contractIds->count()} contract(s) with due prepayments processed successfully for {$this->forDate}.");
+        } else {
+            $this->notifyAdmins(new \RuntimeException(
+                count($errors) . " of {$contractIds->count()} contract(s) failed:\n" . implode("\n", $errors)
+            ));
+        }
     }
 }

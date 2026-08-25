@@ -72,6 +72,7 @@ class ProcessDailyBankProvision implements ShouldQueue
         // Use a small epsilon for float comparison to avoid precision issues
         if (abs($diff) < 0.01) {
             Log::info("Provision is already at 1%. Skipping.");
+            $this->notifySuccess("Provision already at target for {$toDay}. No change needed.");
             return;
         }
 
@@ -85,6 +86,7 @@ class ProcessDailyBankProvision implements ShouldQueue
                 $this->createEntry($date, abs($diff), 'Ապապահուստավորում', '15300PC', '63102');
             }
             DB::commit();
+            $this->notifySuccess("Bank provision adjusted by {$diff} for {$toDay}.");
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error("BankProvision failed: " . $e->getMessage());

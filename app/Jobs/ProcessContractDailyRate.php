@@ -74,6 +74,7 @@ class ProcessContractDailyRate implements ShouldQueue
 
         $date = Carbon::now()->format('Y-m-d');
         $systemUserId = 1;
+        $errors = [];
 
         foreach ($activeContracts as $contract) {
             DB::beginTransaction();
@@ -287,11 +288,19 @@ class ProcessContractDailyRate implements ShouldQueue
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('ProcessContractDailyRate failed for contract ' . $contract->id . ': ' . $e->getMessage());
-                $this->notifyAdmins($e);
+                $errors[] = "Contract #{$contract->id}: " . $e->getMessage();
             }
         }
 
         Log::info('Finished processing all active contracts.');
+
+        if (empty($errors)) {
+            $this->notifySuccess("{$activeContracts->count()} contract(s) processed successfully.");
+        } else {
+            $this->notifyAdmins(new \RuntimeException(
+                count($errors) . " of {$activeContracts->count()} contract(s) failed:\n" . implode("\n", $errors)
+            ));
+        }
     }
 
     private function processLossInterest(Contract $contract, DocumentJournal $journal, string $date, int $systemUserId): void
