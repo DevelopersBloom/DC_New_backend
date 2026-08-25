@@ -55,11 +55,15 @@ class AcraExport
     {
         $overdueMother = 0;
         $overdueInterest = 0;
+        // Same cutoff as AcraController's $contractsWithInitialPayments: a
+        // payment due on the report's own boundary day ($to) isn't overdue
+        // yet, so it's excluded until the following report window.
+        $calcDay = Carbon::parse($to)->subDay()->format('Y-m-d');
 
         if ($contract->payment_type == 'amortized') {
             $openAmortizedPayments = $contract->payments()
                 ->where('status', 'initial')
-                ->where('date', '<', $to)
+                ->where('date', '<', $calcDay)
                 ->withSum(['entries as paid_principal' => fn ($q) => $q->where('date', '<', $to)], 'principal_amount')
                 ->withSum(['entries as paid_interest' => fn ($q) => $q->where('date', '<', $to)], 'interest_amount')
                 ->get(['id', 'principal_payment', 'interest_payment']);
