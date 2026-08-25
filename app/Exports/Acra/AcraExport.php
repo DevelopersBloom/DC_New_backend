@@ -598,10 +598,21 @@ class AcraExport
                 $sheet->setCellValue('W' . $row, 0);
             }
 
-            // N, O, P, Q, U
+            // N, O, P, Q, U — O and X both come from the client's classification
+            // history as of the report cutoff, not their live/current
+            // classification, since a client can be reclassified after the
+            // period being reported.
             $sheet->setCellValue('N' . $row, 'AMD');
 
-            $riskClassTitle = $contract->client->classification->name ?? '';
+            $classificationHistory = ClassificationHistory::query()
+                ->where('client_id', $contract->client_id)
+                ->where('date', '<=', $classificationAsOf)
+                ->with('classification')
+                ->orderByDesc('date')
+                ->orderByDesc('id')
+                ->first();
+
+            $riskClassTitle = $classificationHistory?->classification?->name ?? '';
 
             $riskClassCode = match (strtolower($riskClassTitle)) {
                 'standard'    => '01',
@@ -618,16 +629,7 @@ class AcraExport
             // Left blank when the client has no risk class, and also for "standard"
             // (01) — only non-standard classes (02-05) carry a classification date.
             $requiresClassificationDate = !in_array($riskClassCode, ['', '01'], true);
-            $lastClassificationDate = null;
-            if ($requiresClassificationDate && $contract->client->classification_id) {
-                $lastClassificationDate = ClassificationHistory::query()
-                    ->where('client_id', $contract->client_id)
-                    //->where('classification_id', $contract->client->classification_id)
-                    ->where('date', '<=', $classificationAsOf)
-                    ->orderByDesc('date')
-                    ->orderByDesc('id')
-                    ->value('date');
-            }
+            $lastClassificationDate = $requiresClassificationDate ? $classificationHistory?->date : null;
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
             } elseif ($requiresClassificationDate) {
