@@ -28,14 +28,18 @@ class UpdateClientClassificationsNew implements ShouldQueue
     {
         Log::info('Client classification job started...');
 
+        $errors = [];
+        $processedCount = 0;
+
         Client::whereHas('contracts', function (Builder $q) {
             $q->where('status', 'initial');
         })->with(['contracts' => function ($q) {
             $q->where('status', 'initial');
         }, 'classification'])
-            ->chunkById(200, function ($clients) use ($service) {
+            ->chunkById(200, function ($clients) use ($service, &$errors, &$processedCount) {
 
                 foreach ($clients as $client) {
+                    $processedCount++;
 
                     try {
                         Log::info('Processing client', ['id' => $client->id]);
@@ -53,11 +57,19 @@ class UpdateClientClassificationsNew implements ShouldQueue
                         );
                     } catch (\Throwable $e) {
                         Log::error("Failed to update client #{$client->id}: " . $e->getMessage());
-                        $this->notifyAdmins($e);
+                        $errors[] = "Client #{$client->id}: " . $e->getMessage();
                     }
                 }
             });
 
         Log::info('Client classification job finished.');
+
+        if (empty($errors)) {
+            $this->notifySuccess("{$processedCount} client(s) processed successfully.");
+        } else {
+            $this->notifyAdmins(new \RuntimeException(
+                count($errors) . " of {$processedCount} client(s) failed:\n" . implode("\n", $errors)
+            ));
+        }
     }
 }

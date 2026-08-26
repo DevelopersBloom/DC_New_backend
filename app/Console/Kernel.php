@@ -32,19 +32,19 @@ class Kernel extends ConsoleKernel
             ->appendOutputTo(storage_path('logs/schedule.log'));
 
         $schedule->job(new ProcessContractDailyRate)
-            ->dailyAt('00:05')
+            ->dailyAt('01:00')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/schedule.log'));
 
         $schedule->job(new ProcessDailyNdmInterest)
-            ->dailyAt('00:10')
+            ->dailyAt('02:00')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/schedule.log'));
 
         $schedule->job(new MarkDuePrepaymentsPaid)
-            ->dailyAt('00:15')
+            ->dailyAt('03:00')
             ->timezone('Asia/Yerevan')
             ->withoutOverlapping(10)
             ->appendOutputTo(storage_path('logs/schedule.log'));

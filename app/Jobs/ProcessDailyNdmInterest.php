@@ -46,8 +46,12 @@ class ProcessDailyNdmInterest implements ShouldQueue
         $interestDebit  = $ruleInterest->debit_account_id;
         $interestCredit = $ruleInterest->credit_account_id;
 
-        LoanNdm::chunkById(200, function ($loans) use ($today, $effectiveDebit, $effectiveCredit, $interestDebit, $interestCredit) {
+        $errors = [];
+        $processedCount = 0;
+
+        LoanNdm::chunkById(200, function ($loans) use ($today, $effectiveDebit, $effectiveCredit, $interestDebit, $interestCredit, &$errors, &$processedCount) {
             foreach ($loans as $loan) {
+                $processedCount++;
 
                 Log::info("Processing LoanNdm #{$loan->id}");
 
@@ -157,11 +161,19 @@ class ProcessDailyNdmInterest implements ShouldQueue
                         'loan_id' => $loan->id,
                         'trace'   => $e->getTraceAsString(),
                     ]);
-                    $this->notifyAdmins($e);
+                    $errors[] = "LoanNdm #{$loan->id}: " . $e->getMessage();
                 }
             }
         });
 
         Log::info("NdmInterestJob finished for date: {$today}");
+
+        if (empty($errors)) {
+            $this->notifySuccess("{$processedCount} loan(s) processed successfully for {$today}.");
+        } else {
+            $this->notifyAdmins(new \RuntimeException(
+                count($errors) . " of {$processedCount} loan(s) failed:\n" . implode("\n", $errors)
+            ));
+        }
     }
 }
