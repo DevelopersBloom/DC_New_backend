@@ -1069,7 +1069,7 @@ class FileController extends Controller
             'purpose' => $order->purpose,
             'amount1_text' => $this->numberToText((float) str_replace([' ', ',','.'], ['', '',''], $amount1)),
             'amount2_text' => $this->numberToText($order->amount),
-            'phone' => $contract?->client->phone,
+            'phone' => $client?->phone,
             'executor' => $user ? $user->name . ' ' . $user->surname : null,
             'basis' => $basis ?: null,
 
