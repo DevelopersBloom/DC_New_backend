@@ -473,21 +473,22 @@ class AcraExport
 
             // A prepayment (principal and/or partial portion) never posts a
             // PAY_MOTHER_AMOUNT row - it's recorded in `prepayments` instead
-            // (see column I below). Without this, a prepayment received inside
+            // (see column I below). Without this, a prepayment applied inside
             // the report window is invisible here even though it's a real
-            // repayment event. Scoped by created_at (the receipt date), not
-            // status, so a prepayment keeps showing on the period it was
-            // received in even after it's later applied/paid. The *value*
-            // written to the cell, however, is paid_at - the date it was
-            // actually applied/posted (set by PrepaymentApplicationService::apply()),
+            // repayment event. Scoped by paid_at - the date it was actually
+            // applied/posted (set by PrepaymentApplicationService::apply()),
             // matching the other E sources which are all ledger-posting dates,
-            // not receipt dates. A prepayment still unapplied as of report time
-            // (paid_at null) has no payment day yet, so it's excluded entirely
-            // rather than falling back to its receipt date.
+            // not receipt dates. This can be days after created_at (the receipt
+            // date) when payment happens ahead of the installment's due date, so
+            // windowing on created_at instead would drop the prepayment out of
+            // every report once its receipt date falls outside the window being
+            // run, even though it's since been applied. A prepayment still
+            // unapplied as of report time (paid_at null) has no payment day yet,
+            // so it's excluded entirely rather than falling back to its receipt
+            // date.
             $lastPrepaymentReceived = Prepayment::where('contract_id', $contract->id)
-                ->where('created_at', '>=', $this->from)
-                ->where('created_at', '<', $this->to)
-                ->whereNotNull('paid_at')
+                ->where('paid_at', '>=', $this->from)
+                ->where('paid_at', '<', $this->to)
                 ->where(function ($q) {
                     $q->where('principal_amount', '>', 0)->orWhere('partial_amount', '>', 0);
                 })

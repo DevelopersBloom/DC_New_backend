@@ -129,16 +129,17 @@ class AcraController
             ->unique()
             ->toArray();
 
-        // A prepayment counts from the date it was received (created_at) but only
-        // once it's actually been applied (paid_at set) - same convention column E
-        // already uses (see AcraExport::fillCredit's $lastPrepaymentReceived). A
-        // contract whose only activity this period is a still-unpaid prepayment
-        // receipt doesn't belong in the report yet; it's pulled in once
-        // MarkDuePrepaymentsPaid applies it, whether that happens inside this
-        // window or later.
-        $contractsWithPrepayments = Prepayment::where('created_at', '>=', $from)
-            ->where('created_at', '<', $to)
-            ->whereNotNull('paid_at')
+        // A prepayment belongs to the report period it was actually applied in
+        // (paid_at, set by MarkDuePrepaymentsPaid), not the period it was received
+        // in (created_at) - same convention column E uses (see
+        // AcraExport::fillCredit's $lastPrepaymentReceived). Those two dates can
+        // land in different report windows whenever payment happens ahead of the
+        // installment's due date, so windowing on created_at could exclude a
+        // prepayment from every report forever once its receipt date falls
+        // outside the window being run. A still-unpaid prepayment (paid_at null)
+        // doesn't belong in the report yet; it's pulled in once applied.
+        $contractsWithPrepayments = Prepayment::where('paid_at', '>=', $from)
+            ->where('paid_at', '<', $to)
             ->pluck('contract_id')
             ->unique()
             ->toArray();
