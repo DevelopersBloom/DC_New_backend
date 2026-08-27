@@ -1072,11 +1072,11 @@ class FileController extends Controller
             'basis' => $basis ?: null,
 
         ]);
+        dd(3);
         $filename = time() . 'order_in.docx';
         $pathToSave = public_path('/files/download/' . $filename);
         $templateProcessor->saveAs($pathToSave);
         $downloadName = $order->order . 'Մուտքի Օրդեր.docx';
-dd(34);
         $headers = [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename=' . $downloadName,
