@@ -1043,7 +1043,6 @@ class FileController extends Controller
         } else {
             $amount1 = $this->makeMoney($order->amount);
         }
-dd($order->filter);
         $user = $order->user ?? \App\Models\User::first();
         $client = $contract?->client;
         $passportDate = $client?->passport_validity
@@ -1077,7 +1076,7 @@ dd($order->filter);
         $pathToSave = public_path('/files/download/' . $filename);
         $templateProcessor->saveAs($pathToSave);
         $downloadName = $order->order . 'Մուտքի Օրդեր.docx';
-
+dd(34);
         $headers = [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition' => 'attachment; filename=' . $downloadName,
