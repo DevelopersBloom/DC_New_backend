@@ -1009,7 +1009,6 @@ class FileController extends Controller
                 Order::class,
                 $order->id,
             );
-            dd($order->type);
             switch ($order->type) {
                 case 'in':
                     return $this->downloadOrderIn($id);
@@ -1032,6 +1031,7 @@ class FileController extends Controller
         } else {
             $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_template.docx'));
         }
+        dd(2);
         $contract = Contract::where('id', $order->contract_id)->first();
 
         if ($order->filter == Order::FULL_FILTER) {
