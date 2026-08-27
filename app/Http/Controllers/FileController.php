@@ -1072,9 +1072,9 @@ class FileController extends Controller
             'basis' => $basis ?: null,
 
         ]);
-        dd(3);
         $filename = time() . 'order_in.docx';
         $pathToSave = public_path('/files/download/' . $filename);
+dd(34);
         $templateProcessor->saveAs($pathToSave);
         $downloadName = $order->order . 'Մուտքի Օրդեր.docx';
         $headers = [
