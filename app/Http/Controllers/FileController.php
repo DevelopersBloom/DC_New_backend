@@ -1002,7 +1002,7 @@ class FileController extends Controller
             ]);
         }
         $order = Order::where('id', $id)->first();
-
+dd($order,$id);
         if ($order) {
             $this->activity->log(
                 'download_order',
