@@ -1031,7 +1031,6 @@ class FileController extends Controller
         } else {
             $templateProcessor = new TemplateProcessor(public_path('/files/contract_order_in_template.docx'));
         }
-        dd(2);
         $contract = Contract::where('id', $order->contract_id)->first();
 
         if ($order->filter == Order::FULL_FILTER) {
@@ -1044,7 +1043,7 @@ class FileController extends Controller
         } else {
             $amount1 = $this->makeMoney($order->amount);
         }
-
+dd($order->filter);
         $user = $order->user ?? \App\Models\User::first();
         $client = $contract?->client;
         $passportDate = $client?->passport_validity
