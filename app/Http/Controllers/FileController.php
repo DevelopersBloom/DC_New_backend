@@ -1003,13 +1003,13 @@ class FileController extends Controller
         }
         $order = Order::where('id', $id)->first();
 
-        $this->activity->log(
-            'download_order',
-            'User downloaded order #' . $order->id,
-            Order::class,
-            $order->id,
-        );
         if ($order) {
+            $this->activity->log(
+                'download_order',
+                'User downloaded order #' . $order->id,
+                Order::class,
+                $order->id,
+            );
             switch ($order->type) {
                 case 'in':
                     return $this->downloadOrderIn($id);
