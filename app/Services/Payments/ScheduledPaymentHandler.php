@@ -181,8 +181,14 @@ class ScheduledPaymentHandler
                 $principal     = $remainingPrincipal;
             }
             $interest = $balanceForRow * $days * ($rate / 100);
-            $interestEntries     = $payment->entries()->get();
-            $alreadyPaidInterest = (float) $interestEntries->sum('interest_amount');
+            $interestEntries = $payment->entries()->get();
+
+            // Real cash already collected (entries) is netted out downstream by every other
+            // consumer of interest_payment (previewPaymentBreakdown, calculateCurrentPayment,
+            // PaymentEntryRecorder) — subtracting it here too would double-count it. Only the
+            // legacy non-cash paid credit (rows that have never received a real entry) needs
+            // to be netted at write time.
+            $alreadyPaidInterest = 0.0;
             if ($interestEntries->isEmpty()) {
                 $alreadyPaidInterest = min(
                     (float) $payment->paid,
@@ -191,7 +197,7 @@ class ScheduledPaymentHandler
             }
 
             $payment->original_interest_payment = $interest;
-            $payment->interest_payment          = max(0, $interest - $alreadyPaidInterest);
+            $payment->interest_payment          = $interest;//max(0, $interest - $alreadyPaidInterest);
             $payment->amount = $payment->interest_payment + $principal;
 
             if ((float) $payment->amount <= 0) {

@@ -970,7 +970,7 @@ trait ContractTrait
         $payment->save();
         return $payment;
     }
-    protected function calculateCurrentAmortizedBalance(Contract $contract): float
+    protected function calculateCurrentAmortizedBalance(Contract $contract, ?string $asOfDate = null): float
     {
         $initialProvided = (float)$contract->mother;
         $fees = $initialProvided * ($contract->lump_rate / 100);
@@ -986,6 +986,7 @@ trait ContractTrait
             ->where('journalable_type', DocumentJournal::class)
             ->where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
             ->sum('amount_amd');
+        $asOfCutoff = fn ($q) => $q->when($asOfDate, fn ($q) => $q->where('date', '<', $asOfDate));
 
         $nominalAccrualsSum = DocumentJournal::where('journalable_id', $journal->id)
             ->where('journalable_type', DocumentJournal::class)
@@ -993,6 +994,7 @@ trait ContractTrait
                 DocumentJournal::INTEREST_REPAYMENT,
                 DocumentJournal::PREPAYMENT_APPLY_INTEREST,
             ])
+            ->tap($asOfCutoff)
             ->sum('amount_amd');
 
         $motherPaymentsSum = DocumentJournal::where('journalable_id', $journal->id)
@@ -1001,10 +1003,10 @@ trait ContractTrait
                 DocumentJournal::PAY_MOTHER_AMOUNT,
                 DocumentJournal::PREPAYMENT_APPLY_PRINCIPAL,
             ])
+            ->tap($asOfCutoff)
             ->sum('amount_amd');
-        return $netAmount - $nominalAccrualsSum - $motherPaymentsSum;
 
-//        return $netAmount + $effectiveAccrualsSum - $nominalAccrualsSum - $motherPaymentsSum;
+        return $netAmount - $nominalAccrualsSum - $motherPaymentsSum;
     }
     private function createJournalAndTransaction(
         $date,

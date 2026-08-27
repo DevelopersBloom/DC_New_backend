@@ -31,7 +31,7 @@ class ProcessContractDailyRate implements ShouldQueue
     {
     }
 
-    private function calculateCurrentAmortizedBalance(Contract $contract): float
+    private function calculateCurrentAmortizedBalance(Contract $contract, ?string $asOfDate = null): float
     {
         $initialProvided = (float)$contract->mother;
 
@@ -48,6 +48,7 @@ class ProcessContractDailyRate implements ShouldQueue
             ->where('journalable_type', DocumentJournal::class)
             ->where('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT)
             ->sum('amount_amd');
+        $asOfCutoff = fn ($q) => $q->when($asOfDate, fn ($q) => $q->where('date', '<', $asOfDate));
 
         $nominalAccrualsSum = DocumentJournal::where('journalable_id', $journal->id)
             ->where('journalable_type', DocumentJournal::class)
@@ -55,6 +56,7 @@ class ProcessContractDailyRate implements ShouldQueue
                 DocumentJournal::INTEREST_REPAYMENT,
                 DocumentJournal::PREPAYMENT_APPLY_INTEREST,
             ])
+            ->tap($asOfCutoff)
             ->sum('amount_amd');
 
         $motherPaymentsSum = DocumentJournal::where('journalable_id', $journal->id)
@@ -63,11 +65,10 @@ class ProcessContractDailyRate implements ShouldQueue
                 DocumentJournal::PAY_MOTHER_AMOUNT,
                 DocumentJournal::PREPAYMENT_APPLY_PRINCIPAL,
             ])
+            ->tap($asOfCutoff)
             ->sum('amount_amd');
 
         return $netAmount - $nominalAccrualsSum - $motherPaymentsSum;
-
-//        return $netAmount + $effectiveAccrualsSum - $nominalAccrualsSum - $motherPaymentsSum;
     }
 
     public function handle(EffectiveRateService $effectiveRateService)
@@ -110,7 +111,7 @@ class ProcessContractDailyRate implements ShouldQueue
 
                 $nextDocNum = Transaction::getNextDocumentNumber();
 
-                $openingAmount = $this->calculateCurrentAmortizedBalance($contract);
+                $openingAmount = $this->calculateCurrentAmortizedBalance($contract, $date);
                 $dailyEffectiveRate = $contract->effective_daily_rate ?? 0;
                 $effectiveAmount = ($openingAmount > 0 && $dailyEffectiveRate > 0) ? ($openingAmount * $dailyEffectiveRate / 100) : 0;
 
@@ -313,7 +314,7 @@ class ProcessContractDailyRate implements ShouldQueue
 
     private function processLossInterest(Contract $contract, DocumentJournal $journal, string $date, int $systemUserId): void
     {
-        $openingAmount    = $this->calculateCurrentAmortizedBalance($contract);
+        $openingAmount    = $this->calculateCurrentAmortizedBalance($contract, $date);
         $dailyEffectiveRate = $contract->effective_daily_rate ?? 0;
 
         $effectiveTotalAmount = ($openingAmount > 0 && $dailyEffectiveRate > 0)

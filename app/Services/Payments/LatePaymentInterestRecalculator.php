@@ -48,8 +48,14 @@ class LatePaymentInterestRecalculator
             foreach ($updates as ['payment' => $payment, 'interest' => $recalc_interest]) {
                 $recalc_interest = round($recalc_interest, 2);
 
-                $entries             = $payment->entries()->get();
-                $alreadyPaidInterest = (float) $entries->sum('interest_amount');
+                $entries = $payment->entries()->get();
+
+                // Real cash already collected (entries) is netted out downstream by every other
+                // consumer of interest_payment (previewPaymentBreakdown, ScheduledPaymentHandler,
+                // calculateCurrentPayment, PaymentEntryRecorder) — subtracting it here too would
+                // double-count it. Only the legacy non-cash paid credit (rows that have never
+                // received a real entry) needs to be netted at write time.
+                $alreadyPaidInterest = 0.0;
                 if ($entries->isEmpty()) {
                     $alreadyPaidInterest = min(
                         (float) $payment->paid,
@@ -57,7 +63,7 @@ class LatePaymentInterestRecalculator
                     );
                 }
                 //        $payment->original_interest_payment = $recalc_interest;
-                $payment->interest_payment           = max(0, round($recalc_interest - $alreadyPaidInterest, 2));
+                $payment->interest_payment           = $recalc_interest ; //max(0, round($recalc_interest - $alreadyPaidInterest, 2));
                 $payment->amount                     = round((float) $payment->principal_payment + $payment->interest_payment, 2);
                 $payment->save();
             }

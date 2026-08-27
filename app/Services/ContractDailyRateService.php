@@ -20,7 +20,7 @@ class ContractDailyRateService
 
         $rules = $this->getPostingRules();
 
-        $openingAmount = $this->calculateOpeningBalance($contract);
+        $openingAmount = $this->calculateOpeningBalance($contract, $date);
         $dailyRate     = $contract->effective_daily_rate ?? 0;
 
         if ($openingAmount <= 0 || $dailyRate <= 0) return;
@@ -157,8 +157,8 @@ class ContractDailyRateService
             ->first();
     }
 
-    private function calculateOpeningBalance(Contract $contract): float
+    private function calculateOpeningBalance(Contract $contract, string $date): float
     {
-        return $this->calculateCurrentAmortizedBalance($contract);
+        return $this->calculateCurrentAmortizedBalance($contract, $date);
     }
 }
