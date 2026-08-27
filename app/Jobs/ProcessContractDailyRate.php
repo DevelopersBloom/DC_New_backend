@@ -67,8 +67,9 @@ class ProcessContractDailyRate implements ShouldQueue
             ])
             ->tap($asOfCutoff)
             ->sum('amount_amd');
+        return $netAmount + $effectiveAccrualsSum - $nominalAccrualsSum - $motherPaymentsSum;
 
-        return $netAmount - $nominalAccrualsSum - $motherPaymentsSum;
+//        return $netAmount - $nominalAccrualsSum - $motherPaymentsSum;
     }
 
     public function handle(EffectiveRateService $effectiveRateService)

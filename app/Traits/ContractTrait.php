@@ -1006,7 +1006,7 @@ trait ContractTrait
             ->tap($asOfCutoff)
             ->sum('amount_amd');
 
-        return $netAmount - $nominalAccrualsSum - $motherPaymentsSum;
+        return $netAmount + $effectiveAccrualsSum - $nominalAccrualsSum - $motherPaymentsSum;
     }
     private function createJournalAndTransaction(
         $date,
