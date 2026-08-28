@@ -685,9 +685,10 @@ class   ContractService
      *                    for 18 % annual (= 18/365).  interest = balance × (rate/100) × days.
      *   $feeAnnualPct  — annual fee percentage, e.g. 1.0 for 1 %.
      *
-     * Broken-period interest uses actual day-count (daily rate × days).
-     * Regular installment interest uses the nominal monthly rate (annual / 12)
-     * so that the PMT formula and individual rows are fully consistent.
+     * Both the broken period and the regular installments accrue interest on the
+     * actual day-count of each period (daily rate × days), consistent with
+     * buildAnnuitySchedule() and the day-by-day accrual ledger. The nominal
+     * monthly rate (annual / 12) is used only to size the level annuity payment.
      *
      * @return array<int, array{
      *   is_broken_period: bool,
@@ -717,6 +718,9 @@ class   ContractService
         $allMonthly    = $monthlyRate + $feeMonthly;
         $pmt           = -$this->excelPmt($allMonthly, $months, $loanAmount);
 
+        $dailyRate    = $interestRate / 100.0;
+        $feeDailyRate = $feeAnnualPct > 0 ? ($feeAnnualPct / 365 / 100.0) : 0.0;
+
         // First calendar payment date: next occurrence of $paymentDay strictly after disbursement.
         if ($disbursementDate->day < $paymentDay) {
             $firstCalendar = $disbursementDate->copy()->day($paymentDay);
@@ -730,7 +734,6 @@ class   ContractService
 
         // Row #0 — broken period (interest only, balance unchanged).
         if ($brokenDays > 0) {
-            $dailyRate      = $interestRate / 100.0;
             $brokenInterest = round($loanAmount * $dailyRate * $brokenDays, 2);
             $bizDate        = $this->getNextWorkingDay($firstCalendar->copy());
 
@@ -758,8 +761,10 @@ class   ContractService
             $prevCalendar = $firstCalendar->copy()->addMonthsNoOverflow($i - 1);
             $fromDate     = $i === 1 ? $firstCalendar->copy() : $this->getNextWorkingDay($prevCalendar->copy());
 
-            $interest   = round($balance * $monthlyRate, 2);
-            $serviceFee = $feeAnnualPct > 0 ? round($balance * $feeMonthly, 2) : 0.0;
+            $daysInPeriod = (int) $fromDate->diffInDays($bizDate);
+
+            $interest   = round($balance * $dailyRate * $daysInPeriod, 2);
+            $serviceFee = $feeAnnualPct > 0 ? round($balance * $feeDailyRate * $daysInPeriod, 2) : 0.0;
 
             if ($isLast) {
                 $principal = $balance;
@@ -776,7 +781,7 @@ class   ContractService
                 'calendar_due_date' => $calendarDate->toDateString(),
                 'business_due_date' => $bizDate->toDateString(),
                 'from_date'         => $fromDate->toDateString(),
-                'days'              => (int) $fromDate->diffInDays($bizDate),
+                'days'              => $daysInPeriod,
                 'principal'         => $principal,
                 'interest'          => $interest,
                 'service_fee'       => $serviceFee,

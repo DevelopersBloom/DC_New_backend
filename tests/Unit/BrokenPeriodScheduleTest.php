@@ -102,12 +102,14 @@ class BrokenPeriodScheduleTest extends TestCase
         $this->assertCount(25, $schedule);
     }
 
-    public function test_installment_1_interest_is_exactly_1_5_percent_of_principal(): void
+    public function test_installment_1_interest_is_daily_accrued_over_the_period(): void
     {
         $schedule = $this->compute(self::LOAN_AMOUNT, self::INTEREST_RATE, 0.0, self::MONTHS, '2025-06-20', 5);
 
-        // 10,000,000 × 0.015 = 150,000
-        $this->assertEqualsWithDelta(150_000.0, $schedule[1]['interest'], 0.01);
+        // Row 1 spans Jul 5 → Aug 5 2025 = 31 days.
+        // 10,000,000 × (18/100/365) × 31 = 152,876.71
+        $this->assertEquals(31, $schedule[1]['days']);
+        $this->assertEqualsWithDelta(152_876.71, $schedule[1]['interest'], 0.01);
     }
 
     public function test_installment_1_calendar_date_is_august_5(): void
@@ -160,22 +162,24 @@ class BrokenPeriodScheduleTest extends TestCase
         $this->assertEqualsWithDelta(self::LOAN_AMOUNT, $sumPrincipal, 1.0);
     }
 
-    public function test_installment_2_interest_is_1_5_percent_of_balance_after_row_1(): void
+    public function test_installment_2_interest_is_daily_accrued_on_balance_after_row_1(): void
     {
         $schedule = $this->compute(self::LOAN_AMOUNT, self::INTEREST_RATE, 0.0, self::MONTHS, '2025-06-20', 5);
 
-        $balanceAfter1 = $schedule[1]['balance_after'];
-        $expectedInterest2 = round($balanceAfter1 * self::MONTHLY_RATE, 2);
+        $balanceAfter1     = $schedule[1]['balance_after'];
+        $dailyRate         = self::INTEREST_RATE / 100;
+        $expectedInterest2 = round($balanceAfter1 * $dailyRate * $schedule[2]['days'], 2);
 
         $this->assertEqualsWithDelta($expectedInterest2, $schedule[2]['interest'], 0.02);
     }
 
-    public function test_installment_3_interest_is_1_5_percent_of_balance_after_row_2(): void
+    public function test_installment_3_interest_is_daily_accrued_on_balance_after_row_2(): void
     {
         $schedule = $this->compute(self::LOAN_AMOUNT, self::INTEREST_RATE, 0.0, self::MONTHS, '2025-06-20', 5);
 
-        $balanceAfter2 = $schedule[2]['balance_after'];
-        $expectedInterest3 = round($balanceAfter2 * self::MONTHLY_RATE, 2);
+        $balanceAfter2     = $schedule[2]['balance_after'];
+        $dailyRate         = self::INTEREST_RATE / 100;
+        $expectedInterest3 = round($balanceAfter2 * $dailyRate * $schedule[3]['days'], 2);
 
         $this->assertEqualsWithDelta($expectedInterest3, $schedule[3]['interest'], 0.02);
     }
