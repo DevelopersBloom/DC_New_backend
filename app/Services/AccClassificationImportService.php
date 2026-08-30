@@ -151,7 +151,12 @@ class AccClassificationImportService
                     $comment = 'Client classification update from ACC periodic report'
                         . ($sourceLabel !== '' ? " ({$sourceLabel})" : '');
 
-                    $applied = $this->classificationService->applyClassificationIfWorse($client, $classification, $comment);
+                    $applied = $this->classificationService->applyClassificationIfWorse(
+                        $client,
+                        $classification,
+                        $comment,
+                        acraClassification: $classification
+                    );
 
                     $entry = [
                         'client_id' => $client->id,

@@ -15,6 +15,8 @@ class ClassificationHistory extends Model
     protected $fillable = [
         'client_id',
         'classification_id',
+        'acra_classification_id',
+        'internal_classification_id',
         'risk_weight',
         'reserve_percent',
         'comment',
@@ -41,6 +43,24 @@ class ClassificationHistory extends Model
     public function classification(): BelongsTo
     {
         return $this->belongsTo(ClientClassification::class);
+    }
+
+    /**
+     * The classification ACRA's periodic report assigned, when this row came
+     * from the ACRA classification import. Null for rows from other flows.
+     */
+    public function acraClassification(): BelongsTo
+    {
+        return $this->belongsTo(ClientClassification::class, 'acra_classification_id');
+    }
+
+    /**
+     * The classification our own data implied at the time (computed from our
+     * contracts' overdue days). classification_id is the effective/kept one.
+     */
+    public function internalClassification(): BelongsTo
+    {
+        return $this->belongsTo(ClientClassification::class, 'internal_classification_id');
     }
 
     public function actionable(): MorphTo

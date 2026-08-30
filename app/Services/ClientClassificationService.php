@@ -51,8 +51,12 @@ class ClientClassificationService
      * Returns true if the classification was applied, false if skipped
      * (unchanged, or current classification is already equal-or-worse).
      */
-    public function applyClassificationIfWorse(Client $client, ClientClassification $classification, string $comment): bool
-    {
+    public function applyClassificationIfWorse(
+        Client $client,
+        ClientClassification $classification,
+        string $comment,
+        ?ClientClassification $acraClassification = null
+    ): bool {
         ['acc16605PC' => $acc16605PC, 'acc16605PS' => $acc16605PS, 'acc16200NV' => $acc16200NV,
             'acc16200' => $acc16200, 'acc16201NI' => $acc16201NI, 'acc86000' => $acc86000, 'acc86001' => $acc86001]
             = self::resolveAccountIds();
@@ -240,6 +244,8 @@ class ClientClassificationService
                     ClassificationHistory::create([
                         'client_id' => $client->id,
                         'classification_id' => $classification->id,
+                        'acra_classification_id' => $acraClassification?->id,
+                        'internal_classification_id' => $currentClassification->id,
                         'risk_weight' => $newRiskWeight,
                         'reserve_percent' => $client->classification?->reserve_percent ?? 0,
                         'comment' => $comment,
@@ -301,6 +307,8 @@ class ClientClassificationService
                 ClassificationHistory::create([
                     'client_id' => $client->id,
                     'classification_id' => $classification->id,
+                    'acra_classification_id' => $acraClassification?->id,
+                    'internal_classification_id' => $currentClassification->id,
                     'risk_weight' => $newRiskWeight,
                     'reserve_percent' => $client->classification?->reserve_percent ?? 0,
                     'comment' => $comment,
