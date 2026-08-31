@@ -1366,6 +1366,10 @@ class V06Export
         $amountsByClassification = ['standard' => 0, 'monitored' => 0, 'substandard' => 0, 'suspicious' => 0, 'loss' => 0];
         $weightedByClassification = ['standard' => 0, 'monitored' => 0, 'substandard' => 0, 'suspicious' => 0, 'loss' => 0];
         $reserveByClassification = ['standard' => 0, 'monitored' => 0, 'substandard' => 0, 'suspicious' => 0, 'loss' => 0];
+        // A contract can have more than one PROVIDE_CONTRACT_AMOUNT doc (e.g. a later
+        // contract_reprovide top-up). Count each contract once in B125-B129 regardless
+        // of how many disbursement docs it has.
+        $classifiedContractIds = [];
 
         $onTimeCount = 0;
         $expiredCount = 0;
@@ -1411,7 +1415,10 @@ class V06Export
                 continue;
             }
 
-            $classificationCounts[$name]++;
+            if (!isset($classifiedContractIds[$contract->id])) {
+                $classifiedContractIds[$contract->id] = true;
+                $classificationCounts[$name]++;
+            }
             $net16200NVCredit = DocumentJournal::where(function ($query) use ($contract, $doc) {
                 $query->where(function ($q) use ($contract) {
                     $q->where('journalable_type', Contract::class)
