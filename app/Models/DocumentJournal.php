@@ -437,7 +437,6 @@ class DocumentJournal extends Model
             ->value('amount') ?? 0);
 
         $remainingBalance = (float)$loanAmount - (float)$totalAttraction + (float)$totalRepayment;
-    dd($this->id,$remainingBalance,$loanAmount,$totalAttraction,$totalRepayment);
         return max($remainingBalance,0);
     }
 
