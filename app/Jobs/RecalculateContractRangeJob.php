@@ -23,13 +23,14 @@ class RecalculateContractRangeJob implements ShouldQueue
 
     public int $tries = 3;
     public int $backoff = 30;
-    public  $afterCommit = true;
 
     public function __construct(
         public int $contractId,
         public string $from,
         public string $to
-    ) {}
+    ) {
+        $this->afterCommit = true;
+    }
 
     public function handle(ContractDailyRateService $service): void
     {
