@@ -172,8 +172,12 @@ class PaymentEntryRecorder
 
         $alreadyPaidInterest  = (float) $payment->entries()->sum('interest_amount');
         $interestFullyCovered = ($alreadyPaidInterest + $paidInterest) >= (float) $payment->interest_payment;
-        $netAmount            = $originalAmount - $alreadyPaid;
-        if ($netAmount >= $totalRemaining && $interestFullyCovered) {
+
+        // $totalRemaining is already net of prior payments ($payment->amount - $alreadyPaid),
+        // so the cash applied in THIS transaction only has to cover that remainder — not the
+        // full original row amount. (Subtracting $alreadyPaid from $originalAmount here would
+        // cancel it out on both sides and wrongly keep the row 'initial' after a partial.)
+        if ($originalAmount >= $totalRemaining && $interestFullyCovered) {
             // Fill any rounding gap so entry totals match the due amount exactly
             if ($paidPrincipal == 0 && $totalRemaining > $paidInterest) {
                 $gap           = $totalRemaining - $paidInterest;
@@ -195,4 +199,38 @@ class PaymentEntryRecorder
             );
         }
     }
+//    public function recordEntry(
+//        $contract, $payment, $payer, $cash, $deal_id,
+//        float $paidInterest, float $paidPrincipal, float $originalAmount,
+//        ?string $date, float $balanceBefore
+//    ): void {
+//        $alreadyPaid         = (float) $payment->entries()->sum('amount');
+//        $totalRemaining      = max(0, (float) $payment->amount - $alreadyPaid);
+//        $balanceAfter        = (float) $contract->provided_amount;
+//
+//        $alreadyPaidInterest  = (float) $payment->entries()->sum('interest_amount');
+//        $interestFullyCovered = ($alreadyPaidInterest + $paidInterest) >= (float) $payment->interest_payment;
+//        $netAmount            = $originalAmount - $alreadyPaid;
+//        if ($netAmount >= $totalRemaining && $interestFullyCovered) {
+//            // Fill any rounding gap so entry totals match the due amount exactly
+//            if ($paidPrincipal == 0 && $totalRemaining > $paidInterest) {
+//                $gap           = $totalRemaining - $paidInterest;
+//                $paidPrincipal = $gap;
+//                $contract->left            = max(0, $contract->left - $gap);
+//                $contract->provided_amount = max(0, $contract->provided_amount - $gap);
+//                $balanceAfter              = (float) $contract->provided_amount;
+//            }
+//            $this->completePayment(
+//                $payment, $payer, $cash, $contract->id, $deal_id,
+//                $paidPrincipal, $paidInterest,
+//                $date, $balanceBefore, $balanceAfter, $totalRemaining
+//            );
+//        } else {
+//            $this->partiallyCompletePayment(
+//                $payment, $paidInterest + $paidPrincipal, $deal_id, [],
+//                $paidPrincipal, $paidInterest,
+//                $date, $balanceBefore, $balanceAfter
+//            );
+//        }
+//    }
 }
