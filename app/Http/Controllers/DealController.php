@@ -477,10 +477,12 @@ DealController extends Controller
         $cash = $request->cash;
         $type = 'cost_out';
         $purpose = $request->purpose;
+        $account_number = $request->account_number;
+        $basis = $request->basis;
 
         $filter_type = Order::EXPENSE_FILTER;
         $order_id = $this->getOrder($cash, $type);
-        $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type,$client_id);
+        $this->createOrderAndDeal($order_id,$type,$name,$amount,$purpose,$receiver,$cash,$filter_type,$client_id,$account_number,$basis);
 
         return response()->json([
             'success' => 'success',
@@ -496,14 +498,14 @@ DealController extends Controller
         return $order->id;
     }
 
-    private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type, $client_id = null)
+    private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type, $client_id = null, $account_number = null, $basis = null)
     {
-        $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver,$cash,$client_id);
+        $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver,$cash,$client_id,$account_number,$basis);
         $this->createDeal($amount, null, null, null, null,$type,null,null,$order->id, $cash,$receiver,$purpose,$filter_type);
         return $order->id;
     }
 
-    private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver,$cash, $client_id = null)
+    private function createOrder(string $type, ?string $title, $amount, $order_id, $purpose, $receiver,$cash, $client_id = null, $account_number = null, $basis = null)
     {
         if ($cash) {
             $amount = round($amount);
@@ -518,6 +520,8 @@ DealController extends Controller
             'purpose' => $purpose,
             'receiver' => $receiver,
             'client_id' => $client_id,
+            'account_number' => $account_number,
+            'basis' => $basis,
             'cash' => $cash,
             'user_id' => auth()->id(),
         ]);

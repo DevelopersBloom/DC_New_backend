@@ -42,6 +42,11 @@ class Order extends Model
         'cash',
         'filter',
         'user_id',
+        'account_number',
+        'basis',
+    ];
+    protected $casts = [
+        'amount' => 'decimal:2',
     ];
     public function pawnshop()
     {

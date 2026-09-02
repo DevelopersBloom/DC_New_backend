@@ -1060,6 +1060,7 @@ class FileController extends Controller
             'rep_id' => 2211,
             'num' => $contract->num ?? null,
             'order' => $order->order,
+            'order_num' => $order->num,
             'date' => isset($order->date) ? $this->formatArmenianDate($order->date) : null,
             'receiver' => $order->receiver,
             'client' => $client ? ($client->type === 'legal' ? $client->company_name : $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '')) : null,
@@ -1110,6 +1111,7 @@ class FileController extends Controller
             'receiver' => $order->receiver ?? null,
             'contract_id' => $contract?->num,
             'num' =>  $contract?->num ?? null,
+            'order_num' => $order->num ?? null,
             'client' => $client ? ($client->type === 'legal' ? $client->company_name : $client->name . ' ' . $client->surname . ' ' . ($client->middle_name ?? '')) : null,
             'cl_dob' => $client?->date_of_birth
                 ? Carbon::parse($client->date_of_birth)->format('d.m.Y')
@@ -1117,8 +1119,8 @@ class FileController extends Controller
             'cl_pass' => $client?->passport_series ?? null,
             'cl_val' => $passportDate,
             'cl_iss' => $client?->passport_issued ?? null,
-            'basis' => $basis ?: null,
-            'account_number' => $client?->account_number ?? $client?->card_number ?? null,
+            'basis' => $order->basis ?? ($basis ?: null),
+            'account_number' => $order->account_number ?? $client?->account_number ?? $client?->card_number ?? null,
             'amount_text' => isset($order->amount) ? $this->numberToText($order->amount) : null,
             'executor' => $user ? $user->name . ' ' . $user->surname : null,
         ]);
