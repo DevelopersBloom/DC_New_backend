@@ -199,7 +199,7 @@ trait FileTrait
     {
         $contract = Contract::where('id',$request->contract_id)->first();
         $client_name = $contract->client->name.' '.$contract->client->surname.' '.$contract->client->middle_name;
-        $purpose = 'Հերթական վճարում'; //$this->getOrderPurpose
+        $purpose = Contract::REGULAR_PAYMENT; //$this->getOrderPurpose
         $amount = $this->getOrderAmountNew($request,$payments);
         if ($request->cash) {
             $amount = round($amount);

@@ -463,7 +463,7 @@ class PaymentControllerNew extends Controller
             $motherAmount = $contract->provided_amount;
 
             $type = HistoryType::where('name', 'full_payment')->first();
-            $purpose = 'Ամբողջական մարում';
+            $purpose = Contract::FULL_PAYMENT;
 
             $newOrder = $this->generateOrder($contract, $totalAmount, $purpose, 'in', $cash, Order::FULL_FILTER, $date);
 
@@ -736,7 +736,7 @@ class PaymentControllerNew extends Controller
             'rep_id' => '2211',
             'date' => $date,
             'client_name' => $client_name,
-            'purpose' => 'Մասնակի մարում',
+            'purpose' => Contract::PARTIAL_PAYMENT,
             'cash' => $cash,
             'filter' => Order::PARTIAL_FILTER,
             'user_id' => auth()->id(),

@@ -427,7 +427,7 @@ DealController extends Controller
             $amount,
             'in',
             $receiver,
-            'Անկանխիկ հաշվիվ համալրում',
+            'Անկանխիկ հաշվին համալրում',
             false
         );
 
