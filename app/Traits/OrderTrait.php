@@ -42,6 +42,24 @@ trait OrderTrait
 
         return( $cash ? $nextOrder :  'Ա' . $nextOrder);
     }
+
+    /**
+     * Sequential accounting number for an order ("num" column), e.g. IN-000123 /
+     * T-IN-000123 / OUT-000123 / T-OUT-000123. The "T-" prefix marks non-cash
+     * (bank) orders. Kept in sync with ContractTrait::formatOrderNumber.
+     */
+    public function nextOrderNum(string $type, bool $cash): string
+    {
+        $direction = $type === 'in' ? 'in' : 'out';
+        $last = Order::whereNotNull('num')->orderByDesc('id')->value('num');
+        $lastNumber = $last ? (int) preg_replace('/\D/', '', $last) : 0;
+        $prefix = match ($direction) {
+            'in'  => $cash ? 'IN' : 'T-IN',
+            'out' => $cash ? 'OUT' : 'T-OUT',
+        };
+
+        return $prefix . '-' . str_pad((string) (++$lastNumber), 6, '0', STR_PAD_LEFT);
+    }
     private function createOrderAndDeal($order_id, string $type, ?string $title, $amount, $purpose, $receiver, $cash,$filter_type,$interestAmount = null,$clientId = null)
     {
         $order = $this->createOrder($type, $title, $amount, $order_id, $purpose, $receiver,$cash);
@@ -52,6 +70,7 @@ trait OrderTrait
     {
         return Order::create([
             'type' => $type,
+            'num' => $this->nextOrderNum($type, $cash),
             'title' => $title,
             'pawnshop_id' => auth()->user()->pawnshop_id,
             'order' => $order_id,

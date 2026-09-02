@@ -207,6 +207,7 @@ trait FileTrait
         $order_id = $this->getOrder($request->cash,'in');
         $res = [
             'contract_id' => $contract->id,
+            'num' => $this->nextOrderNum('in', (bool) $request->cash),
             'type' => 'in',
             'title' => 'Օրդեր',
             'pawnshop_id' => auth()->user()->pawnshop_id,
@@ -232,7 +233,7 @@ trait FileTrait
         $order_id = $this->getOrder($cash,$type);
         $res = [
             'contract_id' => $contract->id,
-            'num' => $contract->num,
+            'num' => $this->nextOrderNum($type, (bool) $cash),
             'type' => $type,
             'title' => 'Օրդեր',
             'pawnshop_id' => auth()->user()->pawnshop_id,

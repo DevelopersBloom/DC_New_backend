@@ -727,6 +727,7 @@ class PaymentControllerNew extends Controller
         $order_id = $this->getOrder($cash,'in');
         $res = [
             'contract_id' => $contract->id,
+            'num' => $this->nextOrderNum('in', (bool) $cash),
             'type' => 'in',
             'title' => 'Օրդեր',
             'pawnshop_id' => auth()->user()->pawnshop_id,
@@ -831,7 +832,7 @@ class PaymentControllerNew extends Controller
                 'receiver' => $buyerInfo,
                 'purpose' => Order::EXECUTION_PURPOSE,
                 'client_name' => $client_name,
-                'num' => $contract->num,
+                'num' => $this->nextOrderNum('in', (bool) $cash),
                 'cash' => $cash,
                 'filter' => Order::EXPENSE_FILTER,
                 'user_id' => auth()->id(),

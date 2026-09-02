@@ -123,7 +123,7 @@ trait ContractTrait
 
     private function getLastOrderNumber(): int
     {
-        $last = Order::orderByDesc('id')->value('num');
+        $last = Order::whereNotNull('num')->orderByDesc('id')->value('num');
 
         return $last ? (int) preg_replace('/\D/', '', $last) : 0;
     }

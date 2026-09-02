@@ -512,6 +512,7 @@ DealController extends Controller
         }
         return Order::create([
             'type' => $type,
+            'num' => $this->nextOrderNum($type, $cash),
             'title' => $title,
             'pawnshop_id' => auth()->user()->pawnshop_id,
             'order' => $order_id,
