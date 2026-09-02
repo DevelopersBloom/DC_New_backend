@@ -70,7 +70,7 @@ class MonthlyIncomeExpenseController extends Controller
         $spreadsheet = $reader->load($templatePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-        $mapPath = storage_path('app/templates/v05_map.json');
+        $mapPath = base_path('v05_map.json');
         if (!is_file($mapPath)) {
             return response()->json(['message' => "Map not found at {$mapPath}"], 404);
         }
