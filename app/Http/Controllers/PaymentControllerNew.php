@@ -81,6 +81,7 @@ class PaymentControllerNew extends Controller
         try {
             $amount = $request->amount;
             $payer  = $request->payer;
+            $payerClientId = $this->resolvePayerClientId($payer);
             $cash   = $request->cash;
 
             // ===== Payments =====
@@ -125,7 +126,8 @@ class PaymentControllerNew extends Controller
                 null,
                 null,
                 1,
-                $date
+                $date,
+                $payerClientId
             );
 
             $journal = DocumentJournal::where('journalable_type', Contract::class)
@@ -461,6 +463,7 @@ class PaymentControllerNew extends Controller
                 return $error;
             }
             $motherAmount = $contract->provided_amount;
+            $payerClientId = $this->resolvePayerClientId($payer);
 
             $type = HistoryType::where('name', 'full_payment')->first();
             $purpose = Contract::FULL_PAYMENT;
@@ -476,7 +479,7 @@ class PaymentControllerNew extends Controller
                 'date' => $date,
             ]);
 
-            $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null, null, null, $date);
+            $deal = $this->createDeal($totalAmount, null, null, null, null, 'in', $contract->id, $contract->client->id, $newOrder->id, $cash, null, Contract::FULL_PAYMENT, 'full_payment', $history->id, null, null, null, $date, $payerClientId);
             $oldPaymentAmount = $this->calcPaidAmount($contract);
             $fullPaymentResult = $this->paymentService->processFullPayment($contract, $totalAmount, $payer, $cash, $deal->id,$date);
             $paymentId = $fullPaymentResult['payment_id'];
@@ -750,7 +753,7 @@ class PaymentControllerNew extends Controller
             'contract_id' => $contract->id,
             'date' => $date,
         ]);
-        $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id);
+        $deal = $this->createDeal($partialAmount, null,null, null,null,'in', $contract->id,$contract->client->id, $new_order->id, $cash,null, Contract::PARTIAL_PAYMENT,'partial_payment',$history->id, null, null, null, null, $this->resolvePayerClientId($payer));
 
         if ($is_recount) {
             $deal->is_recount = $is_recount;

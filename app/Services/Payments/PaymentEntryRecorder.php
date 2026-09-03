@@ -5,6 +5,7 @@ namespace App\Services\Payments;
 use App\Models\DealAction;
 use App\Models\Payment;
 use App\Models\PaymentEntry;
+use App\Traits\ResolvesPayerClient;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -15,6 +16,8 @@ use Illuminate\Support\Str;
  */
 class PaymentEntryRecorder
 {
+    use ResolvesPayerClient;
+
     /**
      * Mark the payment row as completed, write a PaymentEntry, and log a DealAction.
      */
@@ -30,16 +33,20 @@ class PaymentEntryRecorder
         $payment->status = 'completed';
         $payment->save();
 
+        $payerClientId = $this->resolvePayerClientId($payer);
+
         $meta = $payer ? [
-            'another_payer' => true,
-            'name'          => $payer['name'] ?? null,
-            'surname'       => $payer['surname'] ?? null,
-            'phone'         => $payer['phone'] ?? null,
+            'another_payer'   => true,
+            'name'            => $payer['name'] ?? null,
+            'surname'         => $payer['surname'] ?? null,
+            'phone'           => $payer['phone'] ?? null,
+            'payer_client_id' => $payerClientId,
         ] : null;
 
         $this->upsertEntry($payment->id, [
             'contract_id'      => $contract_id,
             'deal_id'          => $deal_id,
+            'payer_client_id'  => $payerClientId,
             'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
             'user_id'          => auth()->id() ?? 1,
             'amount'           => $oldAmount,
@@ -83,7 +90,8 @@ class PaymentEntryRecorder
     public function partiallyCompletePayment(
         $payment, $paid, $deal_id = null, $history = [],
         float $principalPaid = 0, float $interestPaid = 0,
-        $date = null, float $balanceBefore = 0, float $balanceAfter = 0
+        $date = null, float $balanceBefore = 0, float $balanceAfter = 0,
+        $payer = null
     ): void {
         $oldAmount = $payment->amount;
         $oldDate   = $payment->date;
@@ -91,6 +99,7 @@ class PaymentEntryRecorder
         $this->upsertEntry($payment->id, [
             'contract_id'      => $payment->contract_id,
             'deal_id'          => $deal_id,
+            'payer_client_id'  => $this->resolvePayerClientId($payer),
             'pawnshop_id'      => auth()->user()->pawnshop_id ?? 1,
             'user_id'          => auth()->id() ?? 1,
             'amount'           => $paid,
@@ -147,6 +156,9 @@ class PaymentEntryRecorder
             if (!empty($data['meta_data'])) {
                 $existing->meta_data = $data['meta_data'];
             }
+            if (!empty($data['payer_client_id'])) {
+                $existing->payer_client_id = $data['payer_client_id'];
+            }
             $existing->save();
         } else {
             PaymentEntry::create(array_merge($data, [
@@ -195,7 +207,7 @@ class PaymentEntryRecorder
             $this->partiallyCompletePayment(
                 $payment, $paidInterest + $paidPrincipal, $deal_id, [],
                 $paidPrincipal, $paidInterest,
-                $date, $balanceBefore, $balanceAfter
+                $date, $balanceBefore, $balanceAfter, $payer
             );
         }
     }

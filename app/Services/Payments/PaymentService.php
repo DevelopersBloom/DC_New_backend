@@ -116,6 +116,7 @@ class PaymentService
                         'journalable_type'  => DocumentJournal::class,
                         'journalable_id'    => $journal_id,
                         'contract_id'       => $contract->id,
+                        'payer_client_id'   => $this->payerClientIdForDeal($deal_id),
                     ]);
                     Transaction::create([
                         'date'                 => $date,
@@ -1231,6 +1232,7 @@ class PaymentService
                     'journalable_type'  => DocumentJournal::class,
                     'journalable_id'    => $journal->id,
                     'contract_id'       => $contract->id,
+                    'payer_client_id'   => $this->payerClientIdForDeal($deal_id),
                 ]);
                 Transaction::create([
                     'date'                 => $date,

@@ -23,6 +23,7 @@ use PhpParser\Comment\Doc;
 trait ContractTrait
 {
     use OrderTrait;
+    use ResolvesPayerClient;
     /**
      * Helper method to create order and history entries
      */
@@ -225,7 +226,7 @@ trait ContractTrait
         return $contract;
     }
 
-    public function createDeal($amount, $interest_amount, $delay_days, $penalty, $discount, $type, $contract_id, $client_id, $order_id = null, $cash = true, $receiver = null, $purpose = null, $filter_type = null, $history_id = null, $payment_id = null, $source = null, $pawnshop_id = null, $date = null)
+    public function createDeal($amount, $interest_amount, $delay_days, $penalty, $discount, $type, $contract_id, $client_id, $order_id = null, $cash = true, $receiver = null, $purpose = null, $filter_type = null, $history_id = null, $payment_id = null, $source = null, $pawnshop_id = null, $date = null, $payer_client_id = null)
     {
         if ($cash) {
             $amount = round($amount, 2);
@@ -271,6 +272,7 @@ trait ContractTrait
             'source' => $source,
             'created_by' => auth()->user()->id ?? 1,
             'client_id' => $client_id,
+            'payer_client_id' => $payer_client_id,
             'filter_type' => $filter_type,
             'history_id' => $history_id,
             'payment_id' => $payment_id,
@@ -321,7 +323,6 @@ trait ContractTrait
             $payment->name = $payer['name'];
             $payment->surname = $payer['surname'];
             $payment->phone = $payer['phone'];
-
         }
         $payment->save();
         return $payment;
