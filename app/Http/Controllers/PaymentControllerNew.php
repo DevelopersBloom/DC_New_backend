@@ -452,7 +452,6 @@ class PaymentControllerNew extends Controller
 
     public function makeFullPayment(Request $request): JsonResponse
     {
-        dd(34);
         $idempotencyKey = $request->header('Idempotency-Key');
             $contract = Contract::findOrFail($request->contract_id);
             $totalAmount = $request->amount;

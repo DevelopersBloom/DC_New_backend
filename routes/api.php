@@ -250,6 +250,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/download-all/{id}', [FileController::class, 'downloadAllFiles'])->middleware('can:download_all_contract_files');
         Route::get('/export', [FileController::class, 'exportZip'])->middleware('can:export_contracts_zip');
         Route::get('/export-all',[ContractControllerNew::class,'exportContracts'])->middleware('can:export_contracts');
+        Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);//->middleware(['can:make_full_contract_payment', 'idempotent:contracts.make-full-payment']);
 //        Route::get('/{id}/credit-registry/l001', [CreditRegistryController::class, 'downloadL001'])->middleware('can:download_contract_file');
         Route::get('/{id}/credit-registry/l002', [CreditRegistryController::class, 'downloadL002'])->middleware('can:download_contract_file');
         Route::get('/{id}/credit-registry/l003', [CreditRegistryController::class, 'downloadL003'])->middleware('can:download_contract_file');
@@ -267,7 +268,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/{id}/mother-amount-to-pay', [ContractControllerNew::class, 'motherAmountToPay'])->middleware('can:view_contracts');
         Route::get('/{id}/full-payment-amount', [ContractControllerNew::class, 'fullPaymentAmount'])->middleware('can:view_contracts');
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware(['can:make_contract_payment']);//'idempotent:contracts.make-payment'
-        Route::post('/make-full-payment',[PaymentControllerNew::class, 'makeFullPayment']);//->middleware(['can:make_full_contract_payment', 'idempotent:contracts.make-full-payment']);
         Route::post('/make-partial-payment',[PaymentControllerNew::class,'payPartial'])->middleware('can:make_partial_contract_payment');
         Route::post('/execute',[PaymentControllerNew::class,'executeItem'])->middleware('can:execute_contract_item');
         Route::post('/recalculate-schedule', [PaymentControllerNew::class, 'recalculateSchedule'])->middleware('can:calculate_contract_interest');
