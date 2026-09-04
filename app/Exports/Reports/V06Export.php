@@ -1372,13 +1372,23 @@ class V06Export
         $classifiedContractIds = [];
 
         $onTimeCount = 0;
-        $expiredCount = 0;
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
         $acc16200 = ChartOfAccount::idByCode('16200');
 
         // Use classification as of report end date (not clients.classification_id today).
         $clientClassAsOf = $this->sheet1ClientClassificationsAsOf($date);
+
+        // R18/R21: point-in-time overdue status as of the report end date, same rule as
+        // Contract::scopeFilterStatus('overdue', $date) — unpaid (status=initial) installment
+        // debt due before $date totals >= 1000 AMD. Deduped per contract (see B125-B129 below).
+        $overdueContractIds = Contract::query()
+            ->filterStatus('overdue', $date)
+            ->pluck('id')
+            ->flip();
+        $notOverdueCount = 0;
+        $overdueCount = 0;
+        $overdueCheckedContractIds = [];
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
@@ -1399,10 +1409,17 @@ class V06Export
                     return Carbon::parse($p->date)->lt($date);
                 });
 
-            if ($hasExpiredPayment) {
-                $expiredCount++;
-            } else {
+            if (!$hasExpiredPayment) {
                 $onTimeCount++;
+            }
+
+            if (!isset($overdueCheckedContractIds[$contract->id])) {
+                $overdueCheckedContractIds[$contract->id] = true;
+                if (isset($overdueContractIds[$contract->id])) {
+                    $overdueCount++;
+                } else {
+                    $notOverdueCount++;
+                }
             }
             // Bucket by report snapshot date, not contract creation timestamp.
             $days = Carbon::parse($contract->deadline)
@@ -1540,8 +1557,9 @@ class V06Export
 
         $sheet->setCellValue('R15', $onTimeCount);
         $sheet->setCellValue('R16', $onTimeCount);
-        $sheet->setCellValue('R21', $expiredCount);
-        $sheet->setCellValue('R22', $expiredCount);
+        $sheet->setCellValue('R18', $notOverdueCount);
+        $sheet->setCellValue('R21', $overdueCount);
+        $sheet->setCellValue('R22', $overdueCount);
 
         $rowsCar = [110];
         $rowsTotal = [108];
