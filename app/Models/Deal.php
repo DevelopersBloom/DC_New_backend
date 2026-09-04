@@ -33,6 +33,7 @@ class Deal extends Model
         'pawnshop_id',
         'contract_id',
         'client_id',
+        'payer_client_id',
         'cashbox',
         'bank_cashbox',
         'worth',
@@ -160,6 +161,10 @@ class Deal extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+    public function payerClient(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'payer_client_id');
     }
     public function history(): BelongsTo
     {

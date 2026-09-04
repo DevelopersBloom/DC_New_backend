@@ -86,6 +86,7 @@ class DocumentJournal extends Model
         'journalable_id',
         'deal_id',
         'contract_id',
+        'payer_client_id',
     ];
 
     protected $casts = [
@@ -97,6 +98,13 @@ class DocumentJournal extends Model
     protected static function booted(): void
     {
         parent::booted();
+        // Carry the payer (the "another payer" client) down from the deal this
+        // journal row belongs to, so payer info is queryable straight off the journal.
+        static::creating(function (DocumentJournal $journal) {
+            if (empty($journal->payer_client_id) && !empty($journal->deal_id)) {
+                $journal->payer_client_id = Deal::whereKey($journal->deal_id)->value('payer_client_id');
+            }
+        });
 //        static::created(function (DocumentJournal $journal) {
 //            $journal->loadMissing(['debitAccount', 'creditAccount']);
 //
@@ -339,6 +347,10 @@ class DocumentJournal extends Model
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class, 'contract_id');
+    }
+    public function payerClient(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'payer_client_id');
     }
     public function journalable(): MorphTo
     {
