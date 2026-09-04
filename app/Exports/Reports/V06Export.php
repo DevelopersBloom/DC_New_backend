@@ -1371,14 +1371,23 @@ class V06Export
         // of how many disbursement docs it has.
         $classifiedContractIds = [];
 
-        $onTimeCount = 0;
-        $expiredCount = 0;
         $acc16200NV = ChartOfAccount::idByCode('16200NV');
         $acc16201NI = ChartOfAccount::idByCode('16201NI');
         $acc16200 = ChartOfAccount::idByCode('16200');
 
         // Use classification as of report end date (not clients.classification_id today).
         $clientClassAsOf = $this->sheet1ClientClassificationsAsOf($date);
+
+        // R15/R16/R21/R22: point-in-time overdue status as of the report end date, same rule as
+        // Contract::scopeFilterStatus('overdue', $date) — unpaid (status=initial) installment
+        // debt due before $date totals >= 1000 AMD. Deduped per contract (see B125-B129 below).
+        $overdueContractIds = Contract::query()
+            ->filterStatus('overdue', $date)
+            ->pluck('id')
+            ->flip();
+        $notOverdueCount = 0;
+        $overdueCount = 0;
+        $overdueCheckedContractIds = [];
 
         foreach ($docs as $doc) {
             $contract = $doc->journalable;
@@ -1399,10 +1408,13 @@ class V06Export
                     return Carbon::parse($p->date)->lt($date);
                 });
 
-            if ($hasExpiredPayment) {
-                $expiredCount++;
-            } else {
-                $onTimeCount++;
+            if (!isset($overdueCheckedContractIds[$contract->id])) {
+                $overdueCheckedContractIds[$contract->id] = true;
+                if (isset($overdueContractIds[$contract->id])) {
+                    $overdueCount++;
+                } else {
+                    $notOverdueCount++;
+                }
             }
             // Bucket by report snapshot date, not contract creation timestamp.
             $days = Carbon::parse($contract->deadline)
@@ -1415,7 +1427,8 @@ class V06Export
                 continue;
             }
 
-            if (!isset($classifiedContractIds[$contract->id])) {
+            $isFirstDocForContract = !isset($classifiedContractIds[$contract->id]);
+            if ($isFirstDocForContract) {
                 $classifiedContractIds[$contract->id] = true;
                 $classificationCounts[$name]++;
             }
@@ -1476,7 +1489,9 @@ class V06Export
                 if (in_array($contract->category->name, ['car', 'car-purchase'])) {
                     $carContractAmount += $amount;
                     $groupsCar[$col] += $net16200NV;
-                    $carContractCount++;
+                    if ($isFirstDocForContract) {
+                        $carContractCount++;
+                    }
                     if ($hasExpiredPayment) {
                         $expiredCarContractAmount += $amount;
                     }
@@ -1484,14 +1499,18 @@ class V06Export
                 if ($contract->category->name === 'gold') {
                     $goldContractAmount += $amount;
                     $groupsGold[$col] += $net16200NV;
-                    $goldContractCount++;
+                    if ($isFirstDocForContract) {
+                        $goldContractCount++;
+                    }
                     if ($hasExpiredPayment) {
                         $expiredGoldContractAmount += $amount;
                     }
                 }
             }
             if ((int)$contract->category_id === 2) {
-                $category2ContractCount++;
+                if ($isFirstDocForContract) {
+                    $category2ContractCount++;
+                }
                 $category2ContractAmount += $amount;
                 $groupsCategory2[$col] += $net16200NV;
                 if ($hasExpiredPayment) {
@@ -1538,10 +1557,12 @@ class V06Export
         $sheet->setCellValue('P22', ($expiredCarContractAmount + $expiredGoldContractAmount + $expiredCategory2ContractAmount) / 1000);
         $sheet->getStyle('P22')->getNumberFormat()->setFormatCode('#,##0');
 
-        $sheet->setCellValue('R15', $onTimeCount);
-        $sheet->setCellValue('R16', $onTimeCount);
-        $sheet->setCellValue('R21', $expiredCount);
-        $sheet->setCellValue('R22', $expiredCount);
+        // R14 is left alone: the template has a native validation formula there
+        // (=IF(R15+R18+R21=R24+R28, R24+R28, "Error!")) that must not be overwritten.
+        $sheet->setCellValue('R15', $notOverdueCount);
+        $sheet->setCellValue('R16', $notOverdueCount);
+        $sheet->setCellValue('R21', $overdueCount);
+        $sheet->setCellValue('R22', $overdueCount);
 
         $rowsCar = [110];
         $rowsTotal = [108];

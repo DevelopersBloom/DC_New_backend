@@ -40,7 +40,7 @@ class   ContractService
             ->filterByDelayDays($filters['delay']??null);
 
         if (!empty($filters['num'])) {
-            $query->where('num', 'like', $filters['num'] . '%');
+            $query->where('num', 'like', '%' . trim($filters['num']) . '%');
         }
         $contracts = $query->paginate(10);
 
