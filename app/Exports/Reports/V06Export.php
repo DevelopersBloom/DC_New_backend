@@ -1379,7 +1379,7 @@ class V06Export
         // Use classification as of report end date (not clients.classification_id today).
         $clientClassAsOf = $this->sheet1ClientClassificationsAsOf($date);
 
-        // R18/R21: point-in-time overdue status as of the report end date, same rule as
+        // R14/R15/R21: point-in-time overdue status as of the report end date, same rule as
         // Contract::scopeFilterStatus('overdue', $date) — unpaid (status=initial) installment
         // debt due before $date totals >= 1000 AMD. Deduped per contract (see B125-B129 below).
         $overdueContractIds = Contract::query()
@@ -1555,9 +1555,9 @@ class V06Export
         $sheet->setCellValue('P22', ($expiredCarContractAmount + $expiredGoldContractAmount + $expiredCategory2ContractAmount) / 1000);
         $sheet->getStyle('P22')->getNumberFormat()->setFormatCode('#,##0');
 
-        $sheet->setCellValue('R15', $onTimeCount);
+        $sheet->setCellValue('R14', $notOverdueCount);
+        $sheet->setCellValue('R15', $notOverdueCount);
         $sheet->setCellValue('R16', $onTimeCount);
-        $sheet->setCellValue('R18', $notOverdueCount);
         $sheet->setCellValue('R21', $overdueCount);
         $sheet->setCellValue('R22', $overdueCount);
 
