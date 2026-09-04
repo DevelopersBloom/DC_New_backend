@@ -1432,7 +1432,8 @@ class V06Export
                 continue;
             }
 
-            if (!isset($classifiedContractIds[$contract->id])) {
+            $isFirstDocForContract = !isset($classifiedContractIds[$contract->id]);
+            if ($isFirstDocForContract) {
                 $classifiedContractIds[$contract->id] = true;
                 $classificationCounts[$name]++;
             }
@@ -1493,7 +1494,9 @@ class V06Export
                 if (in_array($contract->category->name, ['car', 'car-purchase'])) {
                     $carContractAmount += $amount;
                     $groupsCar[$col] += $net16200NV;
-                    $carContractCount++;
+                    if ($isFirstDocForContract) {
+                        $carContractCount++;
+                    }
                     if ($hasExpiredPayment) {
                         $expiredCarContractAmount += $amount;
                     }
@@ -1501,14 +1504,18 @@ class V06Export
                 if ($contract->category->name === 'gold') {
                     $goldContractAmount += $amount;
                     $groupsGold[$col] += $net16200NV;
-                    $goldContractCount++;
+                    if ($isFirstDocForContract) {
+                        $goldContractCount++;
+                    }
                     if ($hasExpiredPayment) {
                         $expiredGoldContractAmount += $amount;
                     }
                 }
             }
             if ((int)$contract->category_id === 2) {
-                $category2ContractCount++;
+                if ($isFirstDocForContract) {
+                    $category2ContractCount++;
+                }
                 $category2ContractAmount += $amount;
                 $groupsCategory2[$col] += $net16200NV;
                 if ($hasExpiredPayment) {
