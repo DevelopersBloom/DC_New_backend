@@ -157,6 +157,9 @@ class ClientRequest extends FormRequest
             'is_company_employee' => ['sometimes', 'boolean'],
             'status' => ['nullable', 'integer'],
             'region_code' => ['nullable', 'string'],
+
+            'files' => ['nullable', 'array'],
+            'files.*' => ['file', 'max:10240'],
         ];
 
         if ($type === 'individual') {

@@ -48,6 +48,9 @@ class UpdateClientRequest extends FormRequest
             'actual_settlement' => 'nullable|string',
             'actual_street_building' => 'nullable|string',
             'actual_zip_code' => 'nullable|string',
+
+            'files' => ['nullable', 'array'],
+            'files.*' => ['file', 'max:10240'],
         ];
 
         if ($effectiveType === 'legal') {

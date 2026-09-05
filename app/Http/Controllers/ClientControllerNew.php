@@ -15,6 +15,7 @@ use App\Models\ClientClassification;
 use App\Models\ClassificationHistory;
 use App\Models\ClientPawnshop;
 use App\Models\Contract;
+use App\Models\File;
 use App\Models\Modification;
 use App\Models\ContractReserveHistory;
 use App\Models\DocumentJournal;
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Exception;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -47,15 +49,43 @@ class ClientControllerNew extends Controller
 
     public function storeClient(ClientRequest $request): JsonResponse
     {
-        return $this->storeClientData($request->validated(), true);
+        return $this->storeClientData($request, $request->validated(), true);
     }
 
     public function storeNonClient(ClientRequest $request): JsonResponse
     {
-        return $this->storeClientData($request->validated(), false);
+        return $this->storeClientData($request, $request->validated(), false);
     }
 
-    private function storeClientData(array $data, bool $hasContract): JsonResponse
+    private function attachClientFiles(Request $request, Client $client): void
+    {
+        if (!$request->hasFile('files')) {
+            return;
+        }
+
+        foreach ($request->file('files') as $uploadedFile) {
+            if (!$uploadedFile || !$uploadedFile->isValid()) {
+                continue;
+            }
+
+            $storedName = Str::uuid() . '.' . $uploadedFile->getClientOriginalExtension();
+            $path = $uploadedFile->storeAs('files', $storedName, 'public');
+
+            File::create([
+                'file_type' => $uploadedFile->getClientMimeType(),
+                'fileable_id' => $client->id,
+                'fileable_type' => Client::class,
+                'client_id' => $client->id,
+                'name' => $uploadedFile->getClientOriginalName(),
+                'original_name' => $uploadedFile->getClientOriginalName(),
+                'type' => $uploadedFile->getClientOriginalExtension(),
+                'doc_type' => 'regular',
+                'path' => $path,
+            ]);
+        }
+    }
+
+    private function storeClientData(Request $request, array $data, bool $hasContract): JsonResponse
     {
         $pawnshopId = Auth::user()->pawnshop_id ?? 1;
         $data['has_contract'] = $hasContract;
@@ -115,11 +145,13 @@ class ClientControllerNew extends Controller
                 'pawnshop_id' => $pawnshopId,
             ]);
 
+            $this->attachClientFiles($request, $client);
+
             DB::commit();
 
             return response()->json([
                 'message' => $hasContract ? 'Client added successfully' : 'Non-client added successfully',
-                'data' => $client->fresh(),
+                'data' => $client->fresh('files'),
             ], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -144,7 +176,7 @@ class ClientControllerNew extends Controller
 
         $client = Client::with(['contracts' => function ($query) use ($status) {
             $query->where('status', $status);
-        }, 'classification'])->find($clientId);
+        }, 'classification', 'files'])->find($clientId);
 
         if (!$client) {
             return response()->json(['error' => 'Client not found'], 404);
@@ -255,11 +287,13 @@ class ClientControllerNew extends Controller
                 'pawnshop_id' => $pawnshopId,
             ]);
 
+            $this->attachClientFiles($request, $client);
+
             DB::commit();
 
             return response()->json([
                 'message' => 'Client data updated successfully',
-                'client' => $client->fresh(),
+                'client' => $client->fresh('files'),
             ], 200);
         } catch (\Throwable $e) {
             DB::rollBack();

@@ -136,6 +136,11 @@ class Client extends Model
     public function files(){
         return $this->morphMany(File::class,'fileable');
     }
+
+    public function allFiles(): HasMany
+    {
+        return $this->hasMany(File::class, 'client_id');
+    }
     public function deals(): HasMany
     {
         return $this->hasMany(Deal::class);

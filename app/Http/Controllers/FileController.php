@@ -36,10 +36,13 @@ class FileController extends Controller
         $this->activity = $activity;
         $this->contractCalculationService = $contractCalculationService;
     }
-    public function index()
+    public function index(Request $request)
     {
         $files = ModelsFile::orderBy('created_at', 'desc')
-            ->select('id', 'name', 'path', 'original_name')
+            ->when($request->query('client_id'), function ($query, $clientId) {
+                $query->where('client_id', $clientId);
+            })
+            ->select('id', 'name', 'path', 'original_name', 'doc_type', 'fileable_id', 'fileable_type', 'client_id')
             ->get();
 
         $files->transform(function ($file) {
@@ -72,6 +75,7 @@ class FileController extends Controller
             'name' => 'required|string|max:255',
             'fileable_id' => 'nullable|integer',
             'fileable_type' => 'nullable|string',
+            'client_id' => 'nullable|integer|exists:clients,id',
         ]);
 
 
@@ -83,10 +87,16 @@ class FileController extends Controller
 
         $path = $uploadedFile->storeAs('files', $storedName, 'public');
 
+        $clientId = $request->client_id;
+        if (!$clientId && $request->fileable_type === \App\Models\Client::class) {
+            $clientId = $request->fileable_id;
+        }
+
         ModelsFile::create([
             'file_type' => $uploadedFile->getClientMimeType(),
             'fileable_id' => $request->fileable_id,
             'fileable_type' => $request->fileable_type,
+            'client_id' => $clientId,
             'name' => $request->name,
             'original_name' => $originalName,
             'type' => $uploadedFile->getClientOriginalExtension(),
