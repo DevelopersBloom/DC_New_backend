@@ -59,7 +59,6 @@ class ClientControllerNew extends Controller
 
     private function attachClientFiles(Request $request, Client $client): void
     {
-        dd($request->hasFile('files'));
         if (!$request->hasFile('files')) {
             return;
         }
