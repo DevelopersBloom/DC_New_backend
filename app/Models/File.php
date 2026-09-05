@@ -23,6 +23,8 @@ class File extends Model
         'path',
     ];
 
+    protected $appends = ['url'];
+
     public function fileable(): MorphTo
     {
         return $this->morphTo();
@@ -31,5 +33,10 @@ class File extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function getUrlAttribute(): ?string
+    {
+        return $this->path ? asset('storage/' . $this->path) : null;
     }
 }

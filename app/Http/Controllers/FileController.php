@@ -45,11 +45,6 @@ class FileController extends Controller
             ->select('id', 'name', 'path', 'original_name', 'doc_type', 'fileable_id', 'fileable_type', 'client_id')
             ->get();
 
-        $files->transform(function ($file) {
-            $file->url = asset('storage/' . $file->path);
-            return $file;
-        });
-
         return response()->json([
             'data' => $files
         ]);
