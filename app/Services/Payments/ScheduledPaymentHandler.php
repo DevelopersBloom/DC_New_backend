@@ -146,12 +146,17 @@ class ScheduledPaymentHandler
         $prevDate = Carbon::parse($contract->date);
         foreach ($payments as $payment) {
             $payment     = $this->normalizePaymentDates($payment, $contract);
-            $paymentDate = Carbon::parse($payment->to_date)->startOfDay();
+
+            $paymentDate = Carbon::parse($payment->calendar_due_date ?: $payment->to_date)->startOfDay();
             $fromDate    = Carbon::parse($payment->from_date)->startOfDay();
             $now         = $date ?? now()->startOfDay();
 
-            $selectedDate = $fromDate->lt($now) ? $now : $fromDate;
-            $days         = max(1, $paymentDate->diffInDays($selectedDate));
+            $selectedDate  = $fromDate->lt($now) ? $now : $fromDate;
+            $scheduledDays = (int) ($payment->days ?? 0);
+            $days          = max(1, $paymentDate->diffInDays($selectedDate));
+            if ($scheduledDays > 0) {
+                $days = min($days, $scheduledDays);
+            }
             $prevDate     = $paymentDate;
 
             // Entries for the reduction currently being applied (processAmortized)

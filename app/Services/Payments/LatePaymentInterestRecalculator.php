@@ -114,8 +114,14 @@ class LatePaymentInterestRecalculator
 
         foreach ($affected as $payment) {
             $fromDate  = Carbon::parse($payment->from_date)->startOfDay();
-            $toDate    = Carbon::parse($payment->to_date)->startOfDay();
-            $totalDays = (int) $fromDate->diffInDays($toDate);
+
+
+            $calendarDue = data_get($payment, 'calendar_due_date') ?: $payment->to_date;
+            $toDate      = Carbon::parse($calendarDue)->startOfDay();
+            $scheduledDays = (int) data_get($payment, 'days', 0);
+            $totalDays   = $scheduledDays > 0
+                ? $scheduledDays
+                : (int) $fromDate->diffInDays($toDate);
 
             // Balance at the start of this period:
             // original amount minus principals that were historically collected on or before from_date.
@@ -135,8 +141,8 @@ class LatePaymentInterestRecalculator
 
             } else {
                 // Partially crossed: split at paymentDate.
-                $daysBefore = (int) $fromDate->diffInDays($payDate);
-                $daysAfter  = $totalDays - $daysBefore;
+                $daysBefore = min($totalDays, (int) $fromDate->diffInDays($payDate));
+                $daysAfter  = max(0, $totalDays - $daysBefore);
 
                 // After paymentDate the overdue installments' principals are collected,
                 // reducing the balance for the remainder of this period.
