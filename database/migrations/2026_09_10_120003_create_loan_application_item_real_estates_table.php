@@ -11,9 +11,13 @@ return new class extends Migration
         Schema::create('loan_application_item_real_estates', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('loan_application_item_id')
-                ->unique()
-                ->constrained('loan_application_items')
+            // Explicit short names: the auto-generated
+            // `loan_application_item_real_estates_loan_application_item_id_*`
+            // identifiers exceed MySQL's 64-char limit.
+            $table->unsignedBigInteger('loan_application_item_id');
+            $table->unique('loan_application_item_id', 'la_item_re_item_id_unique');
+            $table->foreign('loan_application_item_id', 'la_item_re_item_id_fk')
+                ->references('id')->on('loan_application_items')
                 ->cascadeOnDelete();
 
             // Mirrors item_real_estates minus the appraisal-result fields
