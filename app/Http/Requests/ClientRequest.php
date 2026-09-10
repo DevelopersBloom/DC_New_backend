@@ -157,10 +157,17 @@ class ClientRequest extends FormRequest
             'is_company_employee' => ['sometimes', 'boolean'],
             'status' => ['nullable', 'integer'],
             'region_code' => ['nullable', 'string'],
-
-            'files' => ['nullable', 'array'],
-            'files.*' => ['file', 'max:10240'],
         ];
+
+        // This request is also injected alongside ContractRequest when creating a
+        // contract (ContractControllerNew::store), where 'files' holds a different,
+        // nested shape (files[n][file_type] / files[n][file]) for contract documents.
+        // Only enforce the flat files[] => raw file rule on the client-only endpoints.
+        $action = $this->route()?->getActionMethod();
+        if (in_array($action, ['storeClient', 'storeNonClient'], true)) {
+            $rules['files'] = ['nullable', 'array'];
+            $rules['files.*'] = ['file', 'max:10240'];
+        }
 
         if ($type === 'individual') {
             $rules = array_merge($rules, [
