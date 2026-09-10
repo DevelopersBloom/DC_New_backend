@@ -125,6 +125,14 @@ return [
             'update_note',
             'delete_note',
         ],
+        'loan_applications' => [
+            'create_loan_application',
+            'view_loan_applications',
+            'estimate_loan_application_collateral',
+            'decide_loan_application',
+            'view_loan_application_admin_files',
+            'convert_loan_application',
+        ],
         'dashboard_and_orders' => [
             'view_reminder_orders',
             'create_reminder_order',
@@ -172,6 +180,8 @@ return [
             'make_partial_contract_payment', 'execute_contract_item', 'view_contract_history_details',
             'pay_contract_amount', 'reprovide_contract_amount', 'request_contract_discount', 'view_notes', 'create_note',
             'view_cashbox_summary', 'download_order',
+            'create_loan_application', 'view_loan_applications',
+            'estimate_loan_application_collateral', 'convert_loan_application',
         ],
     ],
 ];

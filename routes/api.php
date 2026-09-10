@@ -225,6 +225,22 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/update-classification', [ClientControllerNew::class, 'updateClientClassification'])->middleware('can:classify_client');
         Route::post('/{id}/fetch-bank-id', [CreditRegistryController::class, 'fetchBankId']);
     });
+    // Internal loan application workflow (separate from the New Loan wizard).
+    Route::prefix('loan-applications')->group(function () {
+        Route::get('/', [\App\Http\Controllers\LoanApplicationController::class, 'index'])
+            ->middleware('can:view_loan_applications');
+        Route::post('/', [\App\Http\Controllers\LoanApplicationController::class, 'store'])
+            ->middleware('can:create_loan_application');
+        Route::get('/{id}', [\App\Http\Controllers\LoanApplicationController::class, 'show'])
+            ->middleware('can:view_loan_applications');
+        Route::post('/{id}/estimates', [\App\Http\Controllers\LoanApplicationController::class, 'storeEstimate'])
+            ->middleware('can:estimate_loan_application_collateral');
+        Route::post('/{id}/decide', [\App\Http\Controllers\LoanApplicationController::class, 'decide'])
+            ->middleware('can:decide_loan_application');
+        Route::post('/{id}/convert', [\App\Http\Controllers\LoanApplicationController::class, 'convert'])
+            ->middleware('can:convert_loan_application');
+    });
+
     Route::post('/credit-registry/import-acc-classification/preview', [CreditRegistryController::class, 'previewAccClassification'])->middleware('can:classify_client');
     Route::post('/credit-registry/import-acc-classification', [CreditRegistryController::class, 'applyAccClassification'])->middleware('can:classify_client');
     Route::get('/export-clients', [ClientControllerNew::class, 'exportClients'])->middleware('can:export_clients');

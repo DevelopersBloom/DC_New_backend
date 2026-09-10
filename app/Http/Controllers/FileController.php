@@ -38,11 +38,16 @@ class FileController extends Controller
     }
     public function index(Request $request)
     {
+        $canSeeAdminFiles = optional($request->user())->can('view_loan_application_admin_files');
+
         $files = ModelsFile::orderBy('created_at', 'desc')
             ->when($request->query('client_id'), function ($query, $clientId) {
                 $query->where('client_id', $clientId);
             })
-            ->select('id', 'name', 'path', 'original_name', 'doc_type', 'fileable_id', 'fileable_type', 'client_id')
+            ->when(!$canSeeAdminFiles, function ($query) {
+                $query->where('visibility', '!=', 'admin_only');
+            })
+            ->select('id', 'name', 'path', 'original_name', 'doc_type', 'visibility', 'fileable_id', 'fileable_type', 'client_id')
             ->get();
 
         return response()->json([
@@ -53,6 +58,13 @@ class FileController extends Controller
     public function download($id)
     {
         $file = ModelsFile::findOrFail($id);
+
+        // Authorization check, not a UI-only hide: admin_only files require the
+        // view_loan_application_admin_files permission.
+        if ($file->visibility === 'admin_only'
+            && !optional(request()->user())->can('view_loan_application_admin_files')) {
+            abort(403, 'You are not allowed to access this file.');
+        }
 
         if (!$file->path || !Storage::disk('public')->exists($file->path)) {
             abort(404, 'File not found');

@@ -20,6 +20,7 @@ class File extends Model
         'original_name',
         'type',
         'doc_type',
+        'visibility',
         'path',
     ];
 

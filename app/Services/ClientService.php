@@ -45,6 +45,25 @@ class ClientService
         return $client;
     }
 
+    /**
+     * Shared quick "ոչ հաճախորդ" (non-client) creation used by both
+     * ClientControllerNew::storeNonClient and the loan-application intake,
+     * so neither has to re-implement the other's logic.
+     *
+     * @param array{name?: string, surname?: string, phone?: string} $data
+     */
+    public function createNonClient(array $data): Client
+    {
+        return $this->storeOrUpdate([
+            'type'         => 'individual',
+            'name'         => $data['name'] ?? null,
+            'surname'      => $data['surname'] ?? null,
+            'phone'        => $data['phone'] ?? null,
+            'has_contract' => false,
+            'date'         => now()->format('Y-m-d'),
+        ]);
+    }
+
     public function storeOrUpdate1(array $data): Client
     {
         // Format phone numbers

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\ClientsExport;
 use App\Http\Requests\ClientRequest;
+use App\Http\Requests\NonClientQuickIntakeRequest;
 use App\Http\Requests\UpdateClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Http\Resources\PartnerResource;
@@ -52,8 +53,10 @@ class ClientControllerNew extends Controller
         return $this->storeClientData($request, $request->validated(), true);
     }
 
-    public function storeNonClient(ClientRequest $request): JsonResponse
+    public function storeNonClient(NonClientQuickIntakeRequest $request): JsonResponse
     {
+        // Quick "ոչ հաճախորդ" intake: only name, surname and phone are required.
+        // storeClient() keeps its ClientRequest for full onboarding elsewhere.
         return $this->storeClientData($request, $request->validated(), false);
     }
 
