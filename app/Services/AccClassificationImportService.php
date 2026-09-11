@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Client;
+use App\Models\ClientClassification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -151,6 +152,11 @@ class AccClassificationImportService
                     $comment = 'Client classification update from ACC periodic report'
                         . ($sourceLabel !== '' ? " ({$sourceLabel})" : '');
 
+                    // acra_classification_id always reflects this ACC report's finding,
+                    // regardless of whether it ends up moving classification_id below —
+                    // that decision stays entirely with applyClassificationIfWorse().
+                    $this->recordAcraClassification($client, $classification);
+
                     $applied = $this->classificationService->applyClassificationIfWorse(
                         $client,
                         $classification,
@@ -182,6 +188,17 @@ class AccClassificationImportService
         }
 
         return $summary;
+    }
+
+
+    private function recordAcraClassification(Client $client, ClientClassification $classification): void
+    {
+        if ($client->acra_classification_id === $classification->id) {
+            return;
+        }
+
+        $client->acra_classification_id = $classification->id;
+        $client->save();
     }
 
     /**

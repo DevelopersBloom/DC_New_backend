@@ -61,7 +61,7 @@ class ClientClassificationService
             'acc16200' => $acc16200, 'acc16201NI' => $acc16201NI, 'acc86000' => $acc86000, 'acc86001' => $acc86001]
             = self::resolveAccountIds();
 
-        $client->load(['classification', 'contracts' => function ($q) {
+        $client->load(['classification', 'acraClassification', 'contracts' => function ($q) {
             $q->where('status', 'initial');
         }]);
 
@@ -69,6 +69,17 @@ class ClientClassificationService
         try {
             $currentOverdueDays = $this->maxOverdueDaysForClient($client);
             $currentClassification = $this->classificationByOverdue($currentOverdueDays);
+
+
+            if ($client->acraClassification && $client->acraClassification->order > $classification->order) {
+                Log::info(
+                    "Skipping classification update for client #{$client->id}: stored ACRA classification "
+                    . "'{$client->acraClassification->name}' (order {$client->acraClassification->order}) outranks "
+                    . "the newly computed '{$classification->name}' (order {$classification->order})."
+                );
+                DB::commit();
+                return false;
+            }
 
             if (($client->classification_id === $classification->id) || ($currentClassification->order > $classification->order)) {
                 DB::commit();
