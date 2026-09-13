@@ -30,6 +30,7 @@ use Illuminate\Http\Request;
 use App\Services\DealUpdateService;
 use App\Services\DealsTableOnlyUpdateService;
 use App\Services\FullPaymentDealReversalService;
+use App\Services\RegularPaymentDealReversalService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -805,20 +806,28 @@ class AdminControllerNew extends Controller
         return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
     }
 
-    public function deleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService)
+    public function deleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService, RegularPaymentDealReversalService $regularPaymentDealReversalService)
     {
         $deal = Deal::find($id);
         if (!$deal) {
             return response()->json(['message' => 'Deal not found'], 404);
         }
-        return DB::transaction(function () use ($deal, $fullPaymentDealReversalService) {
-            try {
+
+        // The try/catch wraps DB::transaction() (not the other way around) so that
+        // any exception thrown inside the closure still propagates out of it —
+        // that's what makes DB::transaction() roll back. Catching inside the
+        // closure and returning a normal response, like this used to do, hides the
+        // exception from DB::transaction() entirely, so it commits whatever
+        // partial mutations happened before the failure even though the response
+        // below reports an error.
+        try {
+            return DB::transaction(function () use ($deal, $fullPaymentDealReversalService, $regularPaymentDealReversalService) {
                 if ($deal->filter_type === 'full_payment') {
                     return $this->handleFullPaymentDeal($deal, $fullPaymentDealReversalService);
                 }
 
                 if ($deal->filter_type === 'payment') {
-                    return $this->handleRegularPaymentDeal($deal, $fullPaymentDealReversalService);
+                    return $this->handleRegularPaymentDeal($deal, $regularPaymentDealReversalService);
                 }
 
                 if ($deal->filter_type === 'partial_payment') {
@@ -828,31 +837,29 @@ class AdminControllerNew extends Controller
                 $deal->delete();
 
                 return response()->json(['message' => 'Deal deleted successfully']);
-
-            } catch (\Exception $e) {
-                return response()->json([
-                    'message' => 'Error while deleting data',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-        });
-
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error while deleting data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
-     * Dry-run of handleFullPaymentDeal()'s reversal: runs the exact same
-     * FullPaymentDealReversalService::reverse() call inside a transaction that
-     * gets rolled back instead of committed, so the returned diff is guaranteed
-     * to match what a real delete would do.
+     * Dry-run of handleFullPaymentDeal()/handleRegularPaymentDeal()'s reversal:
+     * runs the exact same reversal-service call inside a transaction that gets
+     * rolled back instead of committed, so the returned diff is guaranteed to
+     * match what a real delete would do.
      */
-    public function previewDeleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService)
+    public function previewDeleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService, RegularPaymentDealReversalService $regularPaymentDealReversalService)
     {
         $deal = Deal::find($id);
         if (!$deal) {
             return response()->json(['message' => 'Deal not found'], 404);
         }
 
-        if ($deal->filter_type !== 'full_payment') {
+        if (!in_array($deal->filter_type, ['full_payment', 'payment'], true)) {
             return response()->json([
                 'message'  => 'Preview not supported for this deal type',
                 'sections' => [],
@@ -860,9 +867,19 @@ class AdminControllerNew extends Controller
             ]);
         }
 
+        if ($deal->filter_type === 'payment' && $this->regularPaymentHasLaterDeal($deal)) {
+            return response()->json([
+                'message'  => 'Cannot delete this deal — a later payment exists on this contract.',
+                'sections' => [],
+                'warnings' => [],
+            ], 422);
+        }
+
         DB::beginTransaction();
         try {
-            $diff = $fullPaymentDealReversalService->reverse($deal);
+            $diff = $deal->filter_type === 'full_payment'
+                ? $fullPaymentDealReversalService->reverse($deal)
+                : $regularPaymentDealReversalService->reverse($deal);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -875,9 +892,15 @@ class AdminControllerNew extends Controller
         return response()->json($diff);
     }
 
-    private function handleRegularPaymentDeal(Deal $deal, FullPaymentDealReversalService $fullPaymentDealReversalService)
+    /**
+     * True when a later payment/partial_payment/full_payment deal exists on the
+     * same contract, which blocks deleting $deal out of order. Shared between
+     * the real delete and the preview so both agree on whether a delete is even
+     * possible before either one touches the database.
+     */
+    private function regularPaymentHasLaterDeal(Deal $deal): bool
     {
-        $laterDealExists = Deal::where('contract_id', $deal->contract_id)
+        return Deal::where('contract_id', $deal->contract_id)
             ->where('id', '!=', $deal->id)
             ->whereIn('filter_type', ['payment', 'partial_payment', 'full_payment'])
             ->where(function ($q) use ($deal) {
@@ -887,79 +910,24 @@ class AdminControllerNew extends Controller
                     });
             })
             ->exists();
+    }
 
-        if ($laterDealExists) {
+    private function handleRegularPaymentDeal(Deal $deal, RegularPaymentDealReversalService $regularPaymentDealReversalService)
+    {
+        if ($this->regularPaymentHasLaterDeal($deal)) {
             return response()->json([
                 'message' => 'Cannot delete this deal — a later payment exists on this contract.',
             ], 422);
         }
 
-        $dealActions = DealAction::where('deal_id', $deal->id)->get();
-
-        $contract = Contract::find($deal->contract_id);
-        if ($contract) {
-            $contract->collected = max(0, (float) $contract->collected - (float) ($deal->interest_amount ?? 0));
-            $contract->save();
-        }
-
-        foreach ($dealActions as $dealAction) {
-            $history = $dealAction->history ?? [];
-
-            if ($dealAction->type === 'penalty' && $dealAction->actionable) {
-                $dealAction->actionable->delete();
-                continue;
-            }
-
-            if ($dealAction->description === 'Regular payment') {
-                foreach (($history['payment_changes'] ?? []) as $change) {
-                    Payment::where('id', $change['payment_id'])->update(['status' => 'initial']);
-                }
-                continue;
-            }
-
-            if (in_array($dealAction->description, ['Partial payment with amount reduction', 'Partial payment with schedule recount'])) {
-                foreach (($history['payment_changes'] ?? []) as $change) {
-                    Payment::where('id', $change['payment_id'])->update([
-                        'amount'            => $change['old_amount'],
-                        'paid'              => $change['old_paid'] ?? 0,
-                        'date'              => $change['old_date'],
-                        'principal_payment' => $change['old_principal'],
-                        'interest_payment'  => $change['old_interest'],
-                        'status'            => 'initial',
-                    ]);
-                }
-                if (isset($history['mother_amount']['payment_id'])) {
-                    Payment::where('id', $history['mother_amount']['payment_id'])->update([
-                        'mother' => $history['mother_amount']['old_mother'],
-                        'status' => 'initial',
-                    ]);
-                }
-                continue;
-            }
-
-            // 'Partial payment contract changes' — informational only, nothing to restore here.
-        }
-
-        PaymentEntry::where('deal_id', $deal->id)->delete();
-        Prepayment::where('deal_id', $deal->id)->delete();
-
-        $skippedModifications = [];
-        if ($contract) {
-            $result = $fullPaymentDealReversalService->deleteModificationsForContract(
-                $contract,
-                (string) $deal->date,
-                ['PrincipalAmount', 'PercentsPaid', 'AmountsPaid']
-            );
-            $skippedModifications = $result['skipped'];
-        }
-
-        DealAction::where('deal_id', $deal->id)->delete();
-        $deal->delete();
+        $diff = $regularPaymentDealReversalService->reverse($deal);
 
         return response()->json([
             'message'               => 'Payment deal reverted successfully',
-            'skipped_modifications' => $skippedModifications,
-        ]);
+            'diff'                  => $diff['sections'],
+            'warnings'              => $diff['warnings'],
+            'skipped_modifications' => $diff['skipped_modifications'],
+        ], 200);
     }
 
     private function handleFullPaymentDeal(Deal $deal, FullPaymentDealReversalService $fullPaymentDealReversalService)
