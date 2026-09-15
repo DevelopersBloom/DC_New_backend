@@ -30,10 +30,6 @@ class AuthServiceProvider extends ServiceProvider
                 return null;
             }
 
-            if ($user->role === 'admin') {
-                return true;
-            }
-
             return $user->hasRole('admin') ? true : null;
         });
     }

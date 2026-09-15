@@ -44,7 +44,7 @@ class LoginController extends Controller
 
     public function getUser()
     {
-        return response()->json(['user' => auth()->user()]);
+        return response()->json(['user' => $this->userPayload(auth()->user())]);
     }
 
     public function refresh()
@@ -67,7 +67,26 @@ class LoginController extends Controller
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => $ttl * 60,
-            'user' => auth()->user()
+            'user' => $this->userPayload(auth('api')->user())
+        ]);
+    }
+
+    /**
+     * The user as before, with the role taken from Spatie and the flat list of
+     * permission names so the frontend can show/hide actions.
+     */
+    private function userPayload(?User $user): ?array
+    {
+        if (!$user) {
+            return null;
+        }
+
+        $role = $user->getRoleNames()->first() ?? $user->role;
+        $permissions = $user->getAllPermissions()->pluck('name')->values()->all();
+
+        return array_merge($user->withoutRelations()->toArray(), [
+            'role' => $role,
+            'permissions' => $permissions,
         ]);
     }
 }
