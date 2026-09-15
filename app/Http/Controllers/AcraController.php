@@ -57,8 +57,6 @@ class AcraController
             })
             ->keys()
             ->toArray();
-        // Manual exclusion: client 4 (Գրիշա Հունեյան) must not appear in the ACRA export.
-        $excludedClientIds = [4];
 
         // A contract whose only activity this period was an on-time interest payment
         // doesn't belong in the report on that basis alone (see the journal-type list
@@ -66,7 +64,6 @@ class AcraController
         // in even without a matching journal action this period. Reuses AcraExport's
         // column-L calc so this inclusion check and what fillCredit prints stay in sync.
         $contractsWithOverdueInterest = Contract::whereNotNull('provided_at')
-            ->whereNotIn('client_id', $excludedClientIds)
             ->get(['id', 'client_id', 'payment_type', 'deadline', 'provided_amount'])
             ->filter(function ($contract) use ($from, $to) {
                 [, $overdueInterest] = AcraExport::overdueAmounts($contract, $from, $to);
@@ -146,7 +143,6 @@ class AcraController
 
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
-            ->whereNotIn('client_id', $excludedClientIds)
             ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions, $contractsWithPrepayments, $contractsWithOverdueInterest) {
                 // Upper bound is exclusive: the classification snapshot (see
                 // AcraExport::fillCredit) is taken as of $to - 1 day, so a
@@ -164,7 +160,7 @@ class AcraController
         $contractClientIds = $contracts->pluck('client_id')->toArray();
         $contractIds = $contracts->pluck('id')->toArray();
         $allClientIds = array_unique(array_merge($contractClientIds, $updatedClientIds));
-        $allClients = Client::whereIn('id', $allClientIds)->whereNotIn('id', $excludedClientIds)->get();
+        $allClients = Client::whereIn('id', $allClientIds)->get();
         $acraExport = new AcraExport($contracts, $allClients, $from, $to);
         $fileData = $acraExport->export();
 
