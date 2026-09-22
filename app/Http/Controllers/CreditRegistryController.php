@@ -140,7 +140,6 @@ class CreditRegistryController extends Controller
         }
 
         try {
-            dd($validationErrors);
             $xml = $this->l001Service->generateL001Xml($contract);
             $result = $this->degsClient->sendL001($xml);
 

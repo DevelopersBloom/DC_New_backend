@@ -28,20 +28,20 @@ class CreditRegistryL001Validator
         $client = $contract->client;
 
         if (!$client) {
-            $errors[] = 'Պայմանագրի Client-ը գոյություն չունի կամ բեռնված չէ. մնացած ստուգումները հնարավոր չէ իրականացնել առանց դրա։';
+            $errors[] = 'Պայմանագրի Client-ը գոյություն չունի կամ բեռնված չէ';
             return $errors;
         }
 
         // DebtorID — stClientID: ^[0-9]{13}$
         $debtorId = (string) ($client->bank_client_id ?? '');
         if (!preg_match('/^[0-9]{13}$/', $debtorId)) {
-            $errors[] = "DebtorID (հաճախորդի BankID) պարտադիր է, պետք է լինի ուղիղ 13 նիշ, ստացվել է՝ \"{$debtorId}\". Նախապես ստացեք BankID-ն (fetch-bank-id)։";
+            $errors[] = "DebtorID (հաճախորդի BankID) պարտադիր է, պետք է լինի 13 նիշ, ստացվել է՝ \"{$debtorId}\".";
         }
 
         // ContractType — stContractType: int 1..3 (1=Պարզ, 2=Համատեղ, 3=Խմբային)
         $contractKind = $contract->contract_kind;
         if ($contractKind === null || (int) $contractKind < 1 || (int) $contractKind > 3) {
-            $errors[] = 'ContractType (պայմանագրի տեսակ) պարտադիր է և պետք է լինի 1(Պարզ)/2(Համատեղ)/3(Խմբային), ստացվել է՝ "' . ($contractKind ?? 'null') . '"։';
+            $errors[] = 'ContractType (պայմանագրի տեսակ) պարտադիր է';
         }
 
         // ContractNumber — xs:string, minLength=1, maxLength=20
@@ -49,7 +49,7 @@ class CreditRegistryL001Validator
         if ($num === '') {
             $errors[] = 'ContractNumber (պայմանագրի համար) պարտադիր է։';
         } elseif (mb_strlen($num) > 20) {
-            $errors[] = "ContractNumber-ը (\"{$num}\") գերազանցում է առավելագույն 20 նիշը՝ ուղարկելիս կկտրվի և կդառնա սխալ։";
+            $errors[] = "ContractNumber-ը (\"{$num}\") գերազանցում է առավելագույն 20 նիշը";
         }
 
         // ContractDate — stDate: dd/mm/yyyy
@@ -89,13 +89,13 @@ class CreditRegistryL001Validator
         // ContractModifiedAmount — stAmountNonZero: > 0, 2 decimal
         $contractModifiedAmount = (float) ($contract->contract_modified_amount ?? $contractAmount);
         if ($contractModifiedAmount <= 0) {
-            $errors[] = 'ContractModifiedAmount (փոփոխված սահմանաչափ) պարտադիր է և պետք է լինի 0-ից մեծ։ Լրացրեք contract.contract_modified_amount, կամ թողեք դատարկ՝ ContractAmount-ից փոխառնելու համար։';
+            $errors[] = 'ContractModifiedAmount (փոփոխված սահմանաչափ) պարտադիր է և պետք է լինի 0-ից մեծ';
         }
 
         // AnnualInterestRate — stPercent: 0..100, 2 decimal (interest_rate/day × 365)
         $annual = round((float) ($contract->interest_rate ?? 0) * 365, 2);
         if ($annual < 0 || $annual > 100) {
-            $errors[] = "AnnualInterestRate (հաշվարկված տարեկան տոկոսադրույք) պետք է լինի 0-100%-ի սահմաններում, հաշվարկվել է՝ {$annual}% (contract.interest_rate × 365). Ստուգեք contract.interest_rate-ը։";
+            $errors[] = "AnnualInterestRate (հաշվարկված տարեկան տոկոսադրույք) պետք է լինի 0-100%-ի սահմաններում, հաշվարկվել է՝ {$annual}% (contract.interest_rate × 365).";
         }
 
         // ActualInterestRate — stPercent: 0..100, 2 decimal
@@ -113,16 +113,16 @@ class CreditRegistryL001Validator
         // LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
         $luf = trim((string) ($contract->loan_use_field ?? $client->activity_field ?? ''));
         if ($luf === '') {
-            $errors[] = 'LoanUseField (վարկի օգտագործման ոլորտ) պարտադիր է։ Լրացրեք contract.loan_use_field կամ client.activity_field։';
+            $errors[] = 'LoanUseField (վարկի օգտագործման ոլորտ) պարտադիր է';
         } elseif (!preg_match('/^[0-9]{2}\.[0-9]{2}\.[0-9]{1}$/', $luf)) {
-            $errors[] = "LoanUseField-ի ձևաչափը սխալ է (\"{$luf}\"), սպասվում է ԴԴ.ԴԴ.Դ (օրինակ՝ 10.01.1)։";
+            $errors[] = "LoanUseField-ի ձևաչափը սխալ է";
         }
 
         // LoanUsePurpose — Int32, required per CBA ER0026 (added to schema after 2017;
         // not present in this havelvac7 copy of ctLoan, but confirmed by the L005/L006 spec).
         $lup = $contract->loan_use_purpose;
         if ($lup === null || $lup === '') {
-            $errors[] = 'LoanUsePurpose (վարկի օգտագործման նպատակ) պարտադիր է (CBA ER0026)։ Լրացրեք contract.loan_use_purpose (ամբողջ թիվ)։';
+            $errors[] = 'LoanUsePurpose (վարկի օգտագործման նպատակ) պարտադիր է';
         } elseif (!is_numeric($lup)) {
             $errors[] = "LoanUsePurpose-ը պետք է լինի ամբողջ թիվ, ստացվել է՝ \"{$lup}\"։";
         }
@@ -130,9 +130,9 @@ class CreditRegistryL001Validator
         // LoanUseRegion — stRegion: ^[0-9]{8}$
         $region = trim((string) ($client->region_code ?? ''));
         if ($region === '') {
-            $errors[] = 'LoanUseRegion (վարկի օգտագործման մարզ) պարտադիր է։ Լրացրեք client.region_code-ը (8 նիշանոց կոդ, ARM_Regions_Districts.pdf)։';
+            $errors[] = 'LoanUseRegion (վարկի օգտագործման մարզ) պարտադիր է';
         } elseif (!preg_match('/^[0-9]{8}$/', $region)) {
-            $errors[] = "LoanUseRegion-ի ձևաչափը սխալ է (\"{$region}\"), սպասվում է ուղիղ 8 նիշ, արտերկրի համար՝ 99000002։";
+            $errors[] = "LoanUseRegion-ի ձևաչափը սխալ է (\"{$region}\")";
         }
 
         return $errors;
