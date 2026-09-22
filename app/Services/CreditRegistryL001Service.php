@@ -214,6 +214,13 @@ class CreditRegistryL001Service
             $this->fmtAmountNonZero($contractAmt)
         ));
 
+        // 10a. ContractModifiedAmount — stAmountNonZero, required (ctLoan XSD).
+        //      Falls back to ContractAmount when the limit was never revised.
+        $contractModifiedAmt = (float) ($contract->contract_modified_amount ?? $contractAmt);
+        $ld->appendChild($dom->createElement('ContractModifiedAmount',
+            $this->fmtAmountNonZero($contractModifiedAmt)
+        ));
+
         // 11. AnnualInterestRate — stPercent: 0.00–100.00
         //     interest_rate = ՕՐԱՅԻՆ → × 365
         $annual = round((float) ($contract->interest_rate ?? 0) * 365, 2);
@@ -233,6 +240,12 @@ class CreditRegistryL001Service
 
         // 14. IsInterestSubsidy — stYN
         $ld->appendChild($dom->createElement('IsInterestSubsidy', 'N'));
+
+        // 14a. ProvisionOfCredit — stYN, required (ctLoan XSD).
+        //      Y = վարկը տրամադրված է միջազգային ծրագրով, N = ոչ:
+        $ld->appendChild($dom->createElement('ProvisionOfCredit',
+            ($contract->provision_of_credit) ? 'Y' : 'N'
+        ));
 
         // 15. LoanUseField — stUseField: [0-9]{2}.[0-9]{2}.[0-9]{1}
         //     Appendix – Reference Book.xlsx-ից

@@ -19,9 +19,11 @@ use RuntimeException;
  */
 class CreditRegistryL006Service
 {
+    use CreditRegistryCodeTrait;
+
     private const NS                       = 'urn:cba-am:lnreg3';
     private const ORGANISATION_CODE        = '66100';
-    private const ORGANISATION_BRANCH_CODE = '0001';
+    private const ORGANISATION_BRANCH_CODE = '00001';
     private const ORGANIZATION_STATUS      = 1;
 
     public const DELETE_LOAN_USE_FIELD   = 'LoanUseField';
@@ -74,42 +76,12 @@ class CreditRegistryL006Service
     }
 
     /**
-     * CreditCode — same format as L001: NNNNN-YYYYMMDD-NNNNNX
-     * Must match the code that was originally sent with L001.
+     * CreditCode — must be byte-identical to the code originally sent with L001,
+     * so it is built by the same shared trait (CreditRegistryCodeTrait::buildCreditCode()),
+     * not a locally re-derived formula.
      */
     private function createCreditCode(DOMDocument $dom, Contract $contract): DOMElement
     {
-        $orgCode  = self::ORGANISATION_CODE;
-        $datePart = Carbon::parse($contract->date)->format('Ymd');
-        $sequence = str_pad(substr($contract->num, -5), 5, '0', STR_PAD_LEFT);
-        $base     = $orgCode . $datePart . $sequence;
-        $checksum = $this->calculateCbaChecksum($base);
-
-        $formattedCode = sprintf('%s-%s-%s%d', $orgCode, $datePart, $sequence, $checksum);
-
-        return $dom->createElement('CreditCode', $formattedCode);
-    }
-
-    /**
-     * CBA Luhn Mod 10 checksum (identical to L001Service implementation).
-     */
-    private function calculateCbaChecksum(string $input): int
-    {
-        $digits = str_split($input);
-        $sum    = 0;
-        $len    = count($digits);
-
-        for ($i = 0; $i < $len; $i++) {
-            $d = (int) $digits[$i];
-            if (($len - 1 - $i) % 2 === 0) {
-                $d *= 2;
-                if ($d > 9) {
-                    $d -= 9;
-                }
-            }
-            $sum += $d;
-        }
-
-        return (10 - ($sum % 10)) % 10;
+        return $dom->createElement('CreditCode', $this->buildCreditCode($contract));
     }
 }

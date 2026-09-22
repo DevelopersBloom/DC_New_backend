@@ -121,6 +121,9 @@ class Contract extends Model
         'interest_rate_type',
         'security_type',
         'loan_use_field',
+        'loan_use_purpose',
+        'contract_modified_amount',
+        'provision_of_credit',
         'payment_day',
     ];
 
@@ -129,6 +132,8 @@ class Contract extends Model
         'estimated_amount'      => 'decimal:2',
         'provided_amount'       => 'decimal:2',
         'contract_amount'       => 'decimal:2',
+        'contract_modified_amount' => 'decimal:2',
+        'provision_of_credit'   => 'boolean',
         'interest_rate'         => 'decimal:4',
         'effective_rate'        => 'decimal:4',
         'effective_annual_rate' => 'decimal:10',

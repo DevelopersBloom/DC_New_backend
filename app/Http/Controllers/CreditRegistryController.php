@@ -7,6 +7,7 @@ use App\Models\Contract;
 use App\Models\Modification;
 use App\Services\AccClassificationImportService;
 use App\Services\CreditRegistryL001Service;
+use App\Services\CreditRegistryL001Validator;
 use App\Services\CreditRegistryL002Service;
 use App\Services\CreditRegistryL003Service;
 use App\Services\CreditRegistryL005Service;
@@ -23,6 +24,7 @@ class CreditRegistryController extends Controller
 {
     public function __construct(
         private CreditRegistryL001Service                $l001Service,
+        private CreditRegistryL001Validator               $l001Validator,
         private CreditRegistryL002Service                $l002Service,
         private CreditRegistryL003Service                $l003Service,
         private CreditRegistryL005Service                $l005Service,
@@ -95,14 +97,46 @@ class CreditRegistryController extends Controller
     // ================================================================
 
     /**
+     * GET /credit-registry/contracts/{id}/validate-l001
+     * Checks every mandatory L001 field/format WITHOUT generating or sending
+     * anything. Returns { ok: true } when the contract is ready, otherwise
+     * { ok: false, errors: [...] } listing every problem found.
+     */
+    public function validateL001(string $id): JsonResponse
+    {
+        $contract = Contract::find($id);
+        if (!$contract) {
+            return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $errors = $this->l001Validator->validate($contract);
+
+        return response()->json([
+            'ok'     => empty($errors),
+            'errors' => $errors,
+        ]);
+    }
+
+    /**
      * POST /credit-registry/contracts/{id}/send-l001
-     * Generates L001 XML and sends it to DEGS. Returns requestId.
+     * Validates all mandatory L001 fields/formats first — if anything is
+     * missing or malformed, nothing is generated or sent and the full list
+     * of problems is returned (422). Only sends to DEGS once everything
+     * checks out. Returns requestId.
      */
     public function sendL001(string $id): JsonResponse
     {
         $contract = Contract::find($id);
         if (!$contract) {
             return response()->json(['message' => 'Contract not found'], 404);
+        }
+
+        $validationErrors = $this->l001Validator->validate($contract);
+        if (!empty($validationErrors)) {
+            return response()->json([
+                'message' => 'L001-ը չի կարող ուղարկվել. պարտադիր դաշտեր են բացակայում կամ սխալ ֆորմատով',
+                'errors'  => $validationErrors,
+            ], 422);
         }
 
         try {

@@ -421,6 +421,9 @@ class   ContractService
             'interest_rate_type' => $data['interest_rate_type'] ?? 2,
             'security_type'      => $data['security_type'] ?? 4,
             'loan_use_field'     => $data['loan_use_field'] ?? null,
+            'loan_use_purpose'   => $data['loan_use_purpose'] ?? null,
+            'contract_modified_amount' => $data['contract_modified_amount'] ?? null,
+            'provision_of_credit' => $data['provision_of_credit'] ?? false,
             'payment_day'        => $data['payment_day'] ?? null,
 //            'kasko_amount' => $data['kasko_amount'] ?? null,
         ];
