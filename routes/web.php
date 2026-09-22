@@ -8,8 +8,6 @@ use App\Http\Controllers\DealController;
 use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\InnerController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -27,7 +25,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
-Route::get('/test', [TestController::class, 'test']);
 Route::get('/api/download-contract/{id}', [FileController::class, 'downloadContract']);
 Route::get('/api/download-bond/{id}', [FileController::class, 'downloadBond']);
 Route::get('/api/download-order/{id}', [FileController::class, 'downloadOrder']);
@@ -39,13 +36,9 @@ Route::group(['middleware' => 'jwt.auth', 'prefix' => 'api'], function () {
     Route::post('/update-contract', [ContractControllerNew::class, 'update']);
     Route::post('/extend-contract', [ContractControllerNew::class, 'extend']);
     Route::post('/execute-contract', [ContractControllerNew::class, 'execute']);
-    Route::post('/make-regular-payment', [PaymentController::class, 'makePayment']);
-    Route::post('/make-full-payment', [PaymentController::class, 'makeFullPayment']);
-    Route::post('/make-partial-payment', [PaymentController::class, 'makePartialPayment']);
     Route::get('/get-contracts', [ContractControllerNew::class, 'get']);
     Route::get('/get-filters', [ContractControllerNew::class, 'getFilters']);
     Route::get('/get-todays-contracts', [ContractControllerNew::class, 'getTodaysContracts']);
-    Route::get('/get-payments/{id}', [PaymentController::class, 'getPayments']);
     Route::get('/edit-contract/{id}', [ContractControllerNew::class, 'editContract']);
     Route::post('/get-clients', [ContractControllerNew::class, 'searchClient']);
     Route::post('/filter-contracts', [ContractControllerNew::class, 'filterContracts']);
@@ -55,8 +48,6 @@ Route::group(['middleware' => 'jwt.auth', 'prefix' => 'api'], function () {
     Route::post('/save-profile-files', [ClientController::class, 'saveFiles']);
     Route::get('/get-categories', [ContractControllerNew::class, 'getCategories']);
     Route::post('/send-comment', [InnerController::class, 'addComment']);
-    Route::post('/request-discount', [PaymentController::class, 'requestDiscount']);
-    Route::post('/answer-discount', [PaymentController::class, 'answerDiscount']);
     Route::get('/get-comments', [InnerController::class, 'getComments']);
     Route::post('/get-deals', [DealController::class, 'index']);
     //Route::post('/add-cost', [DealController::class, 'addCost']);

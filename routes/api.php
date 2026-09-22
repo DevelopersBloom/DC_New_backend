@@ -12,16 +12,13 @@ use App\Http\Controllers\MonthlyIncomeExpenseController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TransactionsExport;
 use App\Http\Controllers\PostingRuleController;
 use App\Http\Controllers\RateController;
 use App\Http\Controllers\ClientControllerNew;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\LoginController;
-use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentControllerNew;
 use App\Http\Controllers\ReminderOrderController;
-use App\Http\Controllers\TestController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +35,7 @@ use App\Http\Controllers\TPartnerReportController;
 use App\Http\Controllers\TurnoverReportController;
 use App\Http\Controllers\CreditRegistryController;
 use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -70,6 +68,16 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::get('/download-file/{id}',[AdminControllerNew::class,'downloadFile'])->middleware('can:download_personal_information_file');
 
         //users
+        Route::get('/users', [AdminUserController::class, 'index'])->middleware('can:view_users');
+        Route::get('/users/meta', [AdminUserController::class, 'meta'])->middleware('can:view_users');
+        Route::get('/users/{user}', [AdminUserController::class, 'show'])->whereNumber('user')->middleware('can:view_users');
+        Route::post('/users', [AdminUserController::class, 'store'])->middleware('can:create_user');
+        Route::put('/users/{user}', [AdminUserController::class, 'update'])->whereNumber('user')->middleware('can:update_user');
+        Route::put('/users/{user}/password', [AdminUserController::class, 'resetPassword'])->whereNumber('user')->middleware('can:update_user');
+        Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->whereNumber('user')->middleware('can:delete_user');
+        Route::post('/users/{id}/restore', [AdminUserController::class, 'restore'])->whereNumber('id')->middleware('can:delete_user');
+
+        // legacy user endpoints — remove once the new frontend is deployed
         Route::get('/get-users', [AdminControllerNew::class, 'getUsers'])->middleware('can:view_users');
         Route::post('/create-user', [AdminControllerNew::class, 'createUser'])->middleware('can:create_user');
         Route::put('/update-user/{id}', [AdminControllerNew::class, 'updateUser'])->middleware('can:update_user');
