@@ -1075,38 +1075,65 @@ class AdminControllerNew extends Controller
             'discounts' => $discounts
         ]);
     }
-    public function getPrepayments(Request $request): JsonResponse
+//    public function getPrepayments(Request $request): JsonResponse
+//    {
+//        $perPage = $request->query('per_page', 15);
+//
+//        $prepaymentsQuery = Prepayment::with([
+//            'contract:id,num,client_id',
+//            'contract.client:id,name,surname',
+//        ]);
+//
+//        if ($request->filled('status')) {
+//            $prepaymentsQuery->where('status', $request->query('status'));
+//        }
+//
+//        if ($request->filled('contract_id')) {
+//            $prepaymentsQuery->where('contract_id', $request->query('contract_id'));
+//        }
+//
+//        if ($request->filled('from')) {
+//            $prepaymentsQuery->whereDate('due_date', '>=', $request->query('from'));
+//        }
+//
+//        if ($request->filled('to')) {
+//            $prepaymentsQuery->whereDate('due_date', '<=', $request->query('to'));
+//        }
+//
+//        $prepayments = $prepaymentsQuery
+//            ->orderBy('due_date', 'desc')
+//            ->orderBy('id', 'desc')
+//            ->paginate($perPage);
+//
+//        return response()->json([
+//            'prepayments' => $prepayments
+//        ]);
+//    }
+    public function getPrepayments(): JsonResponse
     {
-        $perPage = $request->query('per_page', 15);
-
-        $prepaymentsQuery = Prepayment::with([
-            'contract:id,num,client_id',
-            'contract.client:id,name,surname',
-        ]);
-
-        if ($request->filled('status')) {
-            $prepaymentsQuery->where('status', $request->query('status'));
-        }
-
-        if ($request->filled('contract_id')) {
-            $prepaymentsQuery->where('contract_id', $request->query('contract_id'));
-        }
-
-        if ($request->filled('from')) {
-            $prepaymentsQuery->whereDate('due_date', '>=', $request->query('from'));
-        }
-
-        if ($request->filled('to')) {
-            $prepaymentsQuery->whereDate('due_date', '<=', $request->query('to'));
-        }
-
-        $prepayments = $prepaymentsQuery
+        $prepayments = Prepayment::select(
+            'id',
+            'contract_id',
+            'amount',
+            'principal_amount',
+            'interest_amount',
+            'due_date',
+            'status',
+            'paid_at',
+        )
+            ->with([
+                'contract:id,num,client_id',
+                'contract.client:id,name,surname',
+            ])
+            ->whereHas('contract', function ($query) {
+                $query->where('pawnshop_id', auth()->user()->pawnshop_id);
+            })
             ->orderBy('due_date', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate($perPage);
+            ->get();
 
         return response()->json([
-            'prepayments' => $prepayments
+            'prepayments' => $prepayments,
         ]);
     }
     public function getContracts(): JsonResponse
