@@ -712,6 +712,7 @@ class ClientClassificationService
                 if (!$isPaid && $due->lt($today)) {
 
                     $unpaidOverdueDebt += max(0, (float) $p->amount - (float) $p->entries->sum('amount'));
+                    dd($unpaidOverdueDebt,$p->amount, $p->entries->sum('amount') );
                     $unpaidOverdueDays = 0;//max($unpaidOverdueDays, $due->diffInDays($today));
                 }
                 elseif ($isPaid && $paidAt->gt($due)) {
