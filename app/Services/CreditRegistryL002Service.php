@@ -16,7 +16,7 @@ class CreditRegistryL002Service
     use CreditRegistryCodeTrait;
     private const NS = 'urn:cba-am:lnreg3';
 
-    private const MODIFIED_DATA_ALLOWED_FIELDS = [
+    public const MODIFIED_DATA_ALLOWED_FIELDS = [
         'ActualInterestRate',
         'AffectionWithCreditor',
         'AmountsOf',
@@ -214,7 +214,7 @@ class CreditRegistryL002Service
 
         return $el;
     }
-    private function calculateOverdueDays(Contract $contract): int
+    public function calculateOverdueDays(Contract $contract): int
     {
         $firstUnpaid = $contract->payments()
             ->where('status', '=', 'initial')
@@ -234,7 +234,7 @@ class CreditRegistryL002Service
 
         return $dueDate->diffInDays($today);
     }
-    private function calculateOverdueValues(Contract $contract, int $days): array
+    public function calculateOverdueValues(Contract $contract, int $days): array
     {
         if ($days <= 0) {
             return ['interest_payment' => 0, 'principal_payment' => 0];
