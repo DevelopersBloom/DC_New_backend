@@ -698,7 +698,7 @@ class ClientClassificationService
         foreach ($client->contracts()
                      ->where('status', 'initial')
             ->with(['payments' => fn ($q) => $q->where('status', 'initial')->with('entries')])
-                     ->get() as $contract) { // not cursor(): it ignores with(), so payments would lazy-load unfiltered
+                     ->get() as $contract) {
 
             $unpaidOverdueDebt = 0.0;
             $unpaidOverdueDays = 0;
@@ -718,6 +718,7 @@ class ClientClassificationService
                     $maxOverdue = max($maxOverdue, $due->diffInDays($paidAt));
                 }
             }
+            dd($unpaidOverdueDebt, $unpaidOverdueDays,$maxOverdue);
             if ($unpaidOverdueDebt > self::MIN_OVERDUE_DEBT_AMD) {
                 $maxOverdue = max($maxOverdue, $unpaidOverdueDays);
             }
