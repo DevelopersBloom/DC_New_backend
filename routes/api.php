@@ -137,7 +137,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::delete('delete-discount/{id}',[AdminControllerNew::class,'deleteDiscount'])->middleware('can:delete_discount');
 
         //Prepayment
-        Route::get('/get-prepayments', [AdminControllerNew::class, 'getPrepayments'])->middleware('can:view_prepayments');
+        Route::get('/get-prepayments', [AdminControllerNew::class, 'getPrepayments'])->middleware('can:view_deals');
 
         Route::prefix('reports')->group(function (){
             Route::get('/monthly-income-expense', MonthlyIncomeExpenseController::class)->middleware('can:view_v05_report');

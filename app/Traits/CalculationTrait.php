@@ -36,7 +36,7 @@ trait CalculationTrait
     ];
     public function makeMoney($money, $with_sign = false): string
     {
-        $string = strval($money);
+        $string = strval((int) $money);
         if (!$string) {
             $string = '0';
         }
@@ -76,6 +76,7 @@ trait CalculationTrait
     // }
     public function numberToText($number)
 {
+    $number = (int) $number;
     $text = '';
 
     $millions = intval($number / 1000000);
