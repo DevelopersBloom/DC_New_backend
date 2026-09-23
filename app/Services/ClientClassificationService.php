@@ -698,7 +698,7 @@ class ClientClassificationService
         foreach ($client->contracts()
                      ->where('status', 'initial')
             ->with(['payments' => fn ($q) => $q->where('status', 'initial')->with('entries')])
-                     ->cursor() as $contract) {
+                     ->get() as $contract) { // not cursor(): it ignores with(), so payments would lazy-load unfiltered
 
             $unpaidOverdueDebt = 0.0;
             $unpaidOverdueDays = 0;
