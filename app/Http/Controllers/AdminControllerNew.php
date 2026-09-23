@@ -1075,42 +1075,23 @@ class AdminControllerNew extends Controller
             'discounts' => $discounts
         ]);
     }
-//    public function getPrepayments(Request $request): JsonResponse
-//    {
-//        $perPage = $request->query('per_page', 15);
-//
-//        $prepaymentsQuery = Prepayment::with([
-//            'contract:id,num,client_id',
-//            'contract.client:id,name,surname',
-//        ]);
-//
-//        if ($request->filled('status')) {
-//            $prepaymentsQuery->where('status', $request->query('status'));
-//        }
-//
-//        if ($request->filled('contract_id')) {
-//            $prepaymentsQuery->where('contract_id', $request->query('contract_id'));
-//        }
-//
-//        if ($request->filled('from')) {
-//            $prepaymentsQuery->whereDate('due_date', '>=', $request->query('from'));
-//        }
-//
-//        if ($request->filled('to')) {
-//            $prepaymentsQuery->whereDate('due_date', '<=', $request->query('to'));
-//        }
-//
-//        $prepayments = $prepaymentsQuery
-//            ->orderBy('due_date', 'desc')
-//            ->orderBy('id', 'desc')
-//            ->paginate($perPage);
-//
-//        return response()->json([
-//            'prepayments' => $prepayments
-//        ]);
-//    }
-    public function getPrepayments(): JsonResponse
+
+    public function getPrepayments(Request $request): JsonResponse
     {
+        $request->validate([
+            'status'      => 'nullable|in:paid,unpaid',
+            'contract_id' => 'nullable|integer',
+            'contract_num'=> 'nullable|string|max:255',
+            'client'      => 'nullable|string|max:255',
+            'cash'        => 'nullable|boolean',
+            'due_from'    => 'nullable|date',
+            'due_to'      => 'nullable|date',
+            'paid_from'   => 'nullable|date',
+            'paid_to'     => 'nullable|date',
+            'amount_min'  => 'nullable|numeric',
+            'amount_max'  => 'nullable|numeric',
+        ]);
+
         $prepayments = Prepayment::select(
             'id',
             'contract_id',
@@ -1128,6 +1109,26 @@ class AdminControllerNew extends Controller
             ->whereHas('contract', function ($query) {
                 $query->where('pawnshop_id', auth()->user()->pawnshop_id);
             })
+            ->when($request->filled('status'), fn($q) => $q->where('status', $request->query('status')))
+            ->when($request->filled('contract_id'), fn($q) => $q->where('contract_id', $request->query('contract_id')))
+            ->when($request->filled('contract_num'), fn($q) => $q->whereHas('contract', function ($query) use ($request) {
+                $query->where('num', 'like', '%' . $request->query('contract_num') . '%');
+            }))
+            ->when($request->filled('client'), fn($q) => $q->whereHas('contract.client', function ($query) use ($request) {
+                $search = '%' . $request->query('client') . '%';
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', $search)
+                        ->orWhere('surname', 'like', $search)
+                        ->orWhere(DB::raw("CONCAT(name, ' ', surname)"), 'like', $search);
+                });
+            }))
+            ->when($request->filled('cash'), fn($q) => $q->where('cash', $request->boolean('cash')))
+            ->when($request->filled('due_from'), fn($q) => $q->whereDate('due_date', '>=', $request->query('due_from')))
+            ->when($request->filled('due_to'), fn($q) => $q->whereDate('due_date', '<=', $request->query('due_to')))
+            ->when($request->filled('paid_from'), fn($q) => $q->whereDate('paid_at', '>=', $request->query('paid_from')))
+            ->when($request->filled('paid_to'), fn($q) => $q->whereDate('paid_at', '<=', $request->query('paid_to')))
+            ->when($request->filled('amount_min'), fn($q) => $q->where('amount', '>=', $request->query('amount_min')))
+            ->when($request->filled('amount_max'), fn($q) => $q->where('amount', '<=', $request->query('amount_max')))
             ->orderBy('due_date', 'desc')
             ->orderBy('id', 'desc')
             ->get();

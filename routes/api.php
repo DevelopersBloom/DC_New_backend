@@ -166,7 +166,6 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         });
 
         Route::get('/contracts', [AdminControllerNew::class, 'getContracts'])->middleware('can:admin_view_contracts');
-        Route::get('/prepayments', [AdminControllerNew::class, 'getPrepayments']);
         Route::get('/export-acra-report',[AcraController::class,'downloadAcraReport']);
         Route::get('/logs', [ActivityLogController::class,'getLogs'])->middleware('can:view_logs');
 
