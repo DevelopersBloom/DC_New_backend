@@ -704,7 +704,6 @@ class ClientClassificationService
             $unpaidOverdueDays = 0;
 
             foreach ($contract->payments as $p) {
-                dd($p->id);
                 $isPaid     = $p->status === 'completed';
                 $paidAt     = $isPaid ? Carbon::parse($p->date, 'Asia/Yerevan') : null;
 
@@ -717,7 +716,6 @@ class ClientClassificationService
                 }
                 elseif ($isPaid && $paidAt->gt($due)) {
                     $maxOverdue = max($maxOverdue, $due->diffInDays($paidAt));
-                    dd($maxOverdue,2,$p->id);
                 }
             }
             dd($maxOverdue,$unpaidOverdueDebt, self::MIN_OVERDUE_DEBT_AMD);
