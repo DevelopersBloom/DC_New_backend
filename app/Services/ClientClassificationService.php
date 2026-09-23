@@ -697,7 +697,7 @@ class ClientClassificationService
 
         foreach ($client->contracts()
                      ->where('status', 'initial')
-            ->with(['payments' => fn ($q) => $q->withSum('entries as entries_paid', 'amount')])
+            ->with('payments.entries')
                      ->cursor() as $contract) {
 
             $unpaidOverdueDebt = 0.0;
@@ -710,15 +710,15 @@ class ClientClassificationService
                 $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
 
                 if (!$isPaid && $due->lt($today)) {
-                    dd($p->amount,$p->entries_paid);
-                    $unpaidOverdueDebt += max(0, (float) $p->amount - (float) ($p->entries_paid ?? 0));
+
+                    $unpaidOverdueDebt += max(0, (float) $p->amount - (float) $p->entries->sum('amount'));
                     $unpaidOverdueDays = max($unpaidOverdueDays, $due->diffInDays($today));
+                    dd($unpaidOverdueDebt,$unpaidOverdueDays);
                 }
                 elseif ($isPaid && $paidAt->gt($due)) {
                     $maxOverdue = max($maxOverdue, $due->diffInDays($paidAt));
                 }
             }
-            dd($unpaidOverdueDebt);
             if ($unpaidOverdueDebt > self::MIN_OVERDUE_DEBT_AMD) {
                 $maxOverdue = max($maxOverdue, $unpaidOverdueDays);
             }

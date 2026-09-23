@@ -1087,12 +1087,13 @@ class AdminControllerNew extends Controller
 
         $contracts = $client->contracts()
             ->where('status', 'initial')
-            ->with(['payments' => fn ($q) => $q->withSum('entries as entries_paid', 'amount')])
+            ->with('payments.entries')
             ->get()
             ->map(function ($contract) use ($today) {
                 $payments = $contract->payments->map(function ($p) use ($today) {
                     $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
                     $isPaid = $p->status === 'completed';
+                    $entriesPaid = (float) $p->entries->sum('amount');
 
                     return [
                         'id'           => $p->id,
@@ -1100,9 +1101,10 @@ class AdminControllerNew extends Controller
                         'date'         => $p->date,
                         'to_date'      => $p->to_date,
                         'amount'       => (float) $p->amount,
-                        'entries_paid' => (float) ($p->entries_paid ?? 0),
+                        'entries_paid' => $entriesPaid,
+                        'entries'      => $p->entries->map(fn ($e) => ['id' => $e->id, 'amount' => (float) $e->amount])->values(),
                         'unpaid_overdue' => !$isPaid && $due->lt($today),
-                        'remaining'    => $isPaid ? 0 : max(0, (float) $p->amount - (float) ($p->entries_paid ?? 0)),
+                        'remaining'    => $isPaid ? 0 : max(0, (float) $p->amount - $entriesPaid),
                     ];
                 });
 
