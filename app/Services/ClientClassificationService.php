@@ -697,7 +697,7 @@ class ClientClassificationService
 
         foreach ($client->contracts()
                      ->where('status', 'initial')
-            ->with('payments.entries')
+            ->with(['payments' => fn ($q) => $q->where('status', 'initial')->with('entries')])
                      ->cursor() as $contract) {
 
             $unpaidOverdueDebt = 0.0;

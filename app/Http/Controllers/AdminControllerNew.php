@@ -1087,7 +1087,7 @@ class AdminControllerNew extends Controller
 
         $contracts = $client->contracts()
             ->where('status', 'initial')
-            ->with('payments.entries')
+            ->with(['payments' => fn ($q) => $q->where('status', 'initial')->with('entries')])
             ->get()
             ->map(function ($contract) use ($today) {
                 $payments = $contract->payments->map(function ($p) use ($today) {
