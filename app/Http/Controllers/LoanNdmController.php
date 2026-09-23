@@ -380,6 +380,27 @@ class LoanNdmController extends Controller
                 $partnerId = $rule->debit_partner_id;
                 $creditPartnerId = $rule->credit_partner_id;
 
+                $deal = $this->createDeal(
+                    $amount,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::IN_DEAL,
+                    null,
+                    $creditPartnerId,
+                    null,
+                    $data['cash'],
+                    null,
+                    DocumentJournal::LOAN_ATTRACTION,
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $date
+                );
+
                 $journalDoc = DocumentJournal::create([
                     'date'            => $date,
                     'document_number' => $docNum,
@@ -394,6 +415,7 @@ class LoanNdmController extends Controller
                     'user_id'         => auth()->id(),
                     'journalable_type'   => DocumentJournal::class,
                     'journalable_id'     => $journal->id,
+                    'deal_id'            => $deal->id,
                 ]);
 
                 Transaction::create([
@@ -419,27 +441,6 @@ class LoanNdmController extends Controller
                     'transactionable_type'=> DocumentJournal::class,
                     'transactionable_id'  => $data['document_journal_id'],
                 ]);
-
-                $this->createDeal(
-                    $amount,
-                    null,
-                    null,
-                    null,
-                    null,
-                    Deal::IN_DEAL,
-                    null,
-                    $creditPartnerId,
-                    null,
-                    $data['cash'],
-                    null,
-                    DocumentJournal::LOAN_ATTRACTION,
-                    Deal::NDM_DEAL,
-                    null,
-                    null,
-                    null,
-                    $loan->pawnshop_id,
-                    $date
-                );
 
                 $this->activity->log(
                     action: 'loan_attraction_created',
@@ -833,7 +834,30 @@ class LoanNdmController extends Controller
 
                 $debitInterestPayment = $ruleInterestPayment->debit_account_id;
                 $creditInterestPayment = $ruleInterestPayment->credit_account_id;
+
+                $deal = $this->createDeal(
+                    $interest,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::OUT_DEAL,
+                    null,
+                    $clientId,
+                    null,
+                    $commonJ['cash'],
+                    null,
+                    'Տոկոսի մարում',
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $data['operation_date']
+                );
+
                 $j = DocumentJournal::create($commonJWithFK + [
+                        'deal_id'           => $deal->id,
                         'document_type'     => 'Տոկոսի մարում',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $interest,
@@ -857,27 +881,6 @@ class LoanNdmController extends Controller
                     'credit_partner_id' => $creditClient,
                 ]);
 
-                $this->createDeal(
-                    $interest,
-                    null,
-                    null,
-                    null,
-                    null,
-                    Deal::OUT_DEAL,
-                    null,
-                    $clientId,
-                    null,
-                    $commonJ['cash'],
-                    null,
-                    'Տոկոսի մարում',
-                    Deal::NDM_DEAL,
-                    null,
-                    null,
-                    null,
-                    $loan->pawnshop_id,
-                    $data['operation_date']
-                );
-
                 $documentNumber++;
                 $transactionDocumentNumber++;
             }
@@ -895,7 +898,29 @@ class LoanNdmController extends Controller
                 $debitLoanPayment = $ruleLoanPayment->debit_account_id;
                 $creditLoanPayment = $ruleLoanPayment->credit_account_id;
 
+                $deal = $this->createDeal(
+                    $principal,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::COST_OUT_DEAL,
+                    null,
+                    $clientId,
+                    null,
+                    $commonJ['cash'],
+                    null,
+                    'Վարկի մարում',
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $data['operation_date']
+                );
+
                 $j = DocumentJournal::create($commonJWithFK + [
+                        'deal_id'           => $deal->id,
                         'document_type'     => 'Վարկի մարում',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $principal,
@@ -919,27 +944,6 @@ class LoanNdmController extends Controller
                     'credit_partner_id' => $principalCreditClient,
                 ]);
 
-                $this->createDeal(
-                    $principal,
-                    null,
-                    null,
-                    null,
-                    null,
-                    Deal::COST_OUT_DEAL,
-                    null,
-                    $clientId,
-                    null,
-                    $commonJ['cash'],
-                    null,
-                    'Վարկի մարում',
-                    Deal::NDM_DEAL,
-                    null,
-                    null,
-                    null,
-                    $loan->pawnshop_id,
-                    $data['operation_date']
-                );
-
                 $documentNumber++;
                 $transactionDocumentNumber++;
             }
@@ -956,7 +960,29 @@ class LoanNdmController extends Controller
                 $debitTax = $ruleTax->debit_account_id;
                 $creditTax = $ruleTax->credit_account_id;
 
+                $deal = $this->createDeal(
+                    $taxInt,
+                    null,
+                    null,
+                    null,
+                    null,
+                    Deal::OUT_DEAL,
+                    null,
+                    $clientId,
+                    null,
+                    $commonJ['cash'],
+                    null,
+                    'Հարկի գանձում տոկոսի մարումից',
+                    Deal::NDM_DEAL,
+                    null,
+                    null,
+                    null,
+                    $loan->pawnshop_id,
+                    $data['operation_date']
+                );
+
                 $j = DocumentJournal::create($commonJWithFK + [
+                        'deal_id'           => $deal->id,
                         'document_type'     => 'Հարկի գանձում տոկոսի մարումից',
                         'document_number'   => $documentNumber,
                         'amount_amd'        => $taxInt,
@@ -979,27 +1005,6 @@ class LoanNdmController extends Controller
                     'debit_partner_id' => $taxDebitClient,
                     'credit_partner_id' => $taxCreditClient,
                 ]);
-
-                $this->createDeal(
-                    $taxInt,
-                    null,
-                    null,
-                    null,
-                    null,
-                    Deal::OUT_DEAL,
-                    null,
-                    $clientId,
-                    null,
-                    $commonJ['cash'],
-                    null,
-                    'Հարկի գանձում տոկոսի մարումից',
-                    Deal::NDM_DEAL,
-                    null,
-                    null,
-                    null,
-                    $loan->pawnshop_id,
-                    $data['operation_date']
-                );
 
                 $documentNumber++;
                 $transactionDocumentNumber++;

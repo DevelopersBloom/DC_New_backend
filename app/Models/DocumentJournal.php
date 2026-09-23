@@ -146,6 +146,13 @@ class DocumentJournal extends Model
                 }
                 self::syncContractProvidedAmountOnMotherPaymentDelete($journal);
                 if ($journal->document_type == self::LOAN_ATTRACTION) {
+                    // Attraction rows hang off the base journal (journalable_type === self),
+                    // so the guard above skips them — but each owns its Deal outright.
+                    // Query-builder delete (still a soft delete) so Deal::deleting doesn't
+                    // re-enter this hook via $deal->documents().
+                    if ($journal->deal_id) {
+                        Deal::whereKey($journal->deal_id)->delete();
+                    }
 
                     $ndmId   = $journal->journalable_id;
                     $ndmType = $journal->journalable_type;

@@ -21,6 +21,10 @@ class ClientClassificationService
 {
     use CorrectReserveTrait;
 
+    // A contract's unpaid overdue payments only count toward classification once
+    // the outstanding overdue debt on it exceeds this amount (see AcraExport::MIN_OVERDUE_AMD).
+    private const MIN_OVERDUE_DEBT_AMD = 1000;
+
     private static ?array $accountIdCache = null;
 
     private static function resolveAccountIds(): array
@@ -693,33 +697,28 @@ class ClientClassificationService
 
         foreach ($client->contracts()
                      ->where('status', 'initial')
-            ->with('payments')
+            ->with(['payments' => fn ($q) => $q->withSum('entries as entries_paid', 'amount')])
                      ->cursor() as $contract) {
 
+            $unpaidOverdueDebt = 0.0;
+            $unpaidOverdueDays = 0;
+
             foreach ($contract->payments as $p) {
-                $amount     = (float)($p->amount ?? 0);
-                $paidAmount = (float)($p->paid ?? 0);
                 $isPaid     = $p->status === 'completed';
                 $paidAt     = $isPaid ? Carbon::parse($p->date, 'Asia/Yerevan') : null;
 
                 $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
 
-                //if ($isPaid) continue;
-
-
                 if (!$isPaid && $due->lt($today)) {
-                    $overdueDays = $due->diffInDays($today);
+                    $unpaidOverdueDebt += max(0, (float) $p->amount - (float) ($p->entries_paid ?? 0));
+                    $unpaidOverdueDays = max($unpaidOverdueDays, $due->diffInDays($today));
                 }
                 elseif ($isPaid && $paidAt->gt($due)) {
-                    $overdueDays = $due->diffInDays($paidAt);
+                    $maxOverdue = max($maxOverdue, $due->diffInDays($paidAt));
                 }
-                else {
-                    $overdueDays = 0;
-                }
-
-                if ($overdueDays > $maxOverdue) {
-                    $maxOverdue = $overdueDays;
-                }
+            }
+            if ($unpaidOverdueDebt > self::MIN_OVERDUE_DEBT_AMD) {
+                $maxOverdue = max($maxOverdue, $unpaidOverdueDays);
             }
         }
 
