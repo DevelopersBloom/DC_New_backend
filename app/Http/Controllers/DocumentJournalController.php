@@ -149,8 +149,10 @@ class DocumentJournalController
                 'debit_partner_id'    => $j->debit_partner_id,
                 'debit_partner_code'  => $partnerCode,
                 'debit_partner_name'  => $partnerName,
+                'credit_partner_id'   => $j->credit_partner_id,
                 'credit_partner_code'  => $creditPartnerCode,
                 'credit_partner_name'  => $creditPartnerName,
+                'cash'                => (bool) $j->cash,
                 'comment'             => $j->comment,
                 'user_id'             => $j->user_id,
                 'user'                => $j->user,
@@ -332,50 +334,49 @@ class DocumentJournalController
             'amount_amd'       => ['sometimes','numeric'],
             'amount_currency'  => ['sometimes','nullable','numeric'],
             'debit_partner_id' => ['sometimes','nullable','integer','exists:clients,id'],
+            'credit_partner_id' => ['sometimes','nullable','integer','exists:clients,id'],
+            'debit_account_id'  => ['sometimes','nullable','integer','exists:chart_of_accounts,id'],
+            'credit_account_id' => ['sometimes','nullable','integer','exists:chart_of_accounts,id'],
+            'cash'             => ['sometimes','boolean'],
             'comment'          => ['sometimes','nullable','string'],
              'user_id'         => ['sometimes','nullable','integer','exists:users,id'],
         ]);
 
         DB::beginTransaction();
         try {
+            $originalType = $journal->document_type;
+
             $journal->fill($data);
             $journal->save();
 
-            if ($journal->relationLoaded('journalable') === false) {
-                $journal->load('journalable');
-            }
+            $journal->loadMissing('journalable');
             $source = $journal->journalable;
 
-            if ($source) {
-                switch (true) {
-                    case $source instanceof LoanNdm:
-                        $map = [
-                                'date'            => 'contract_date',
-                                'document_number' => 'contract_number',
-                                'currency_id'     => 'currency_id',
-                                'amount_amd'      => 'amount',
-                                'debit_partner_id' => 'client_id',
-                                'comment'         => 'comment',
-                        ];
-                        foreach ($map as $jKey => $mKey) {
-                            if (array_key_exists($jKey, $data)) {
-                                $source->{$mKey} = $data[$jKey];
-                            }
-                        }
-                        if (array_key_exists('amount_currency', $data) && $source->isFillable('amount_currency')) {
-                            $source->amount_currency = $data['amount_currency'];
-                        }
-                        break;
-                        default:
-                            foreach ($data as $key => $val) {
-                                if ($source->isFillable($key)) {
-                                    $source->{$key} = $val;
-                                }
-                            }
-                            break;
-                    }
-
-                    $source->save();
+            // Many rows share a LoanNdm/parent journal as journalable; only the row that
+            // represents the source record itself may write back to it.
+            if ($source instanceof LoanNdm && $originalType === DocumentJournal::LOAN_NDM_TYPE) {
+                $this->copyMapped($data, $source, [
+                    'date'             => 'contract_date',
+                    'document_number'  => 'contract_number',
+                    'currency_id'      => 'currency_id',
+                    'amount_amd'       => 'amount',
+                    'debit_partner_id' => 'client_id',
+                    'comment'          => 'comment',
+                ]);
+                $source->save();
+            } elseif ($source instanceof ReminderOrder) {
+                $this->copyMapped($data, $source, [
+                    'date'              => 'order_date',
+                    'document_number'   => 'num',
+                    'amount_amd'        => 'amount',
+                    'currency_id'       => 'currency_id',
+                    'comment'           => 'comment',
+                    'debit_account_id'  => 'debit_account_id',
+                    'debit_partner_id'  => 'debit_partner_id',
+                    'credit_account_id' => 'credit_account_id',
+                    'credit_partner_id' => 'credit_partner_id',
+                ]);
+                $source->save();
             }
 
             DB::commit();
@@ -392,6 +393,18 @@ class DocumentJournalController
             ], 500);
         }
     }
+    private function copyMapped(array $data, \Illuminate\Database\Eloquent\Model $target, array $map): void
+    {
+        foreach ($map as $from => $to) {
+            if (!array_key_exists($from, $data)) {
+                continue;
+            }
+            foreach ((array) $to as $column) {
+                $target->{$column} = $data[$from];
+            }
+        }
+    }
+
     public function destroy(DocumentJournal $journal): JsonResponse
     {
         DB::beginTransaction();

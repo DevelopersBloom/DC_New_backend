@@ -187,6 +187,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('loan-ndm/repay',[LoanNdmController::class, 'repay'])->middleware(['can:repay_loan_interest', 'idempotent:loan_ndm.repay']);
         Route::get('/loan-ndm/remaining/{id}', [ChartOfAccountController::class, 'remainingAmount'])->middleware('can:view_remaining_loan');
         Route::get('/loan-ndm/by-journal/{journal}', [LoanNdmController::class, 'get'])->middleware('can:view_loan_by_journal');
+        Route::get('/loan-ndm/copy-source/{journalId}', [LoanNdmController::class, 'copySource'])->middleware('can:view_loan_by_journal');
         Route::get('/transactions', [TransactionController::class, 'index'])->middleware('can:view_transactions');
         Route::get('/transactions/export', [TransactionController::class, 'export'])->middleware('can:export_transactions');
         Route::get('/account-transactions', [TransactionController::class, 'getAccountTransactions']);

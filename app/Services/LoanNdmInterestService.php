@@ -111,6 +111,7 @@
 
 namespace App\Services;
 
+use App\Models\DocumentJournal;
 use App\Models\LoanNdm;
 use Carbon\Carbon;
 
@@ -139,19 +140,50 @@ class LoanNdmInterestService
         ];
     }
 
+    /**
+     * Journal row for an interest-accrual posting built for `transactions`, so both tables carry the
+     * same entry (number, accounts, partners, amount and parent journal).
+     */
+    public function recordAccrualJournal(array $posting): DocumentJournal
+    {
+        return DocumentJournal::create([
+            'date'              => $posting['date'],
+            'document_number'   => $posting['document_number'],
+            'document_type'     => $posting['document_type'],
+            'amount_amd'        => $posting['amount_amd'],
+            'currency_id'       => $posting['amount_currency_id'] ?? null,
+            'amount_currency'   => $posting['amount_currency'] ?? null,
+            'debit_partner_id'  => $posting['debit_partner_id'] ?? null,
+            'credit_partner_id' => $posting['credit_partner_id'] ?? null,
+            'debit_account_id'  => $posting['debit_account_id'],
+            'credit_account_id' => $posting['credit_account_id'],
+            'comment'           => $posting['comment'] ?? null,
+            'user_id'           => $posting['user_id'] ?? null,
+            'journalable_type'  => $posting['transactionable_type'],
+            'journalable_id'    => $posting['transactionable_id'],
+        ]);
+    }
+
     protected function weightedYearFractions(LoanNdm  $loan, Carbon $from,
         Carbon   $to,
         callable $baseDaysFunc,
         ?int     $fixedBaseDays
     ): float
     {
-        $txs = $loan->journals()
-            ->with(['transactions' => function ($q) use ($to) {
-                $q->whereDate('date', '<=', $to->toDateString());
-            }])
-            ->get()
-            ->pluck('transactions')
-            ->flatten();
+        // The loan's own rows (base, repayments) and the rows attached to them (attractions, accruals).
+        $loanJournalIds = $loan->journals()->pluck('id');
+
+        $txs = DocumentJournal::query()
+            ->where(function ($q) use ($loan, $loanJournalIds) {
+                $q->where(function ($q) use ($loan) {
+                    $q->where('journalable_type', LoanNdm::class)->where('journalable_id', $loan->id);
+                })->orWhere(function ($q) use ($loanJournalIds) {
+                    $q->where('journalable_type', DocumentJournal::class)->whereIn('journalable_id', $loanJournalIds);
+                });
+            })
+            ->whereDate('date', '<=', $to->toDateString())
+            ->orderBy('id')
+            ->get(['date', 'debit_account_id', 'credit_account_id', 'amount_amd']);
 
         $events = collect();
         foreach ($txs as $trx) {

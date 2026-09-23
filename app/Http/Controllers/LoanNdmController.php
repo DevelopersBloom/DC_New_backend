@@ -216,6 +216,62 @@ class LoanNdmController extends Controller
         }
     }
 
+    /**
+     * Data for copying a loan-NDM logbook row into a new document. attachLoanNdm/repay/postInterest
+     * attach postings to whichever journal they receive, so a copy must target the loan's base journal.
+     */
+    public function copySource(int $journalId): JsonResponse
+    {
+        $journal = DocumentJournal::findOrFail($journalId);
+
+        $baseJournal = $journal->journalable_type === DocumentJournal::class
+            ? DocumentJournal::find($journal->journalable_id)
+            : DocumentJournal::where('journalable_type', $journal->journalable_type)
+                ->where('journalable_id', $journal->journalable_id)
+                ->where('document_type', DocumentJournal::LOAN_NDM_TYPE)
+                ->orderBy('id')
+                ->first();
+
+        if (!$baseJournal
+            || $baseJournal->document_type !== DocumentJournal::LOAN_NDM_TYPE
+            || !$baseJournal->journalable instanceof LoanNdm) {
+            return response()->json(['message' => 'Այս փաստաթուղթը կապված չէ ներգրավված դրամական միջոցի հետ'], 422);
+        }
+
+        $repayment = null;
+        if ($journal->ndm_repayment_id) {
+            $detail = NdmRepaymentDetail::with('account:id,code,name')->find($journal->ndm_repayment_id);
+            $amounts = DocumentJournal::where('ndm_repayment_id', $journal->ndm_repayment_id)
+                ->pluck('amount_amd', 'document_type');
+
+            $repayment = [
+                'principal_amount'          => (float) ($amounts[DocumentJournal::LOAN_REPAYMENT] ?? 0),
+                'interest_amount'           => (float) ($amounts[DocumentJournal::INTEREST_REPAYMENT] ?? 0),
+                'interest_unused_part'      => (float) ($detail?->interest_unused_part ?? 0),
+                'penalty_overdue_principal' => (float) ($detail?->penalty_overdue_principal ?? 0),
+                'penalty_overdue_interest'  => (float) ($detail?->penalty_overdue_interest ?? 0),
+                'tax_from_penalty_pr'       => (float) ($detail?->tax_from_penalty_pr ?? 0),
+                'tax_from_penalty_int'      => (float) ($detail?->tax_from_penalty_int ?? 0),
+                'total_amount'              => (float) ($detail?->total_amount ?? 0),
+                'account'                   => $detail?->account
+                    ? ['id' => $detail->account->id, 'code' => $detail->account->code, 'name' => $detail->account->name]
+                    : null,
+            ];
+        }
+
+        return response()->json([
+            'data' => [
+                'base_journal_id' => $baseJournal->id,
+                'document_type'   => $journal->document_type,
+                'date'            => optional($journal->date)->format('Y-m-d'),
+                'amount_amd'      => (float) $journal->amount_amd,
+                'cash'            => (bool) $journal->cash,
+                'comment'         => $journal->comment,
+                'repayment'       => $repayment,
+            ],
+        ]);
+    }
+
     public function get(int $id): JsonResponse
     {
         $journal = DocumentJournal::with('journalable')->findOrFail($id);
@@ -622,7 +678,7 @@ class LoanNdmController extends Controller
             $nextDocNum = Transaction::getNextDocumentNumber();
 
             $mkTx = function (array $attrs) use (&$nextDocNum, $data, $currencyId, $baseJournal) {
-                return Transaction::create($attrs + [
+                $posting = $attrs + [
                         'date'                 => $data['operation_date'],
                         'document_number'      => $nextDocNum++,
                         'debit_currency_id'    => $currencyId,
@@ -634,7 +690,11 @@ class LoanNdmController extends Controller
                         'is_system'            => false,
                         'transactionable_type' => DocumentJournal::class,
                         'transactionable_id'   => $baseJournal->id,
-                    ]);
+                    ];
+
+                $this->loanNdmInterestService->recordAccrualJournal($posting);
+
+                return Transaction::create($posting);
             };
 
             $created = [];
