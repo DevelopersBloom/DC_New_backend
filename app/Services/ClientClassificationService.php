@@ -722,7 +722,6 @@ class ClientClassificationService
                 $maxOverdue = max($maxOverdue, $unpaidOverdueDays);
             }
         }
-dd($maxOverdue);
         return $maxOverdue;
     }
 
