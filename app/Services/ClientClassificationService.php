@@ -704,6 +704,7 @@ class ClientClassificationService
             $unpaidOverdueDays = 0;
 
             foreach ($contract->payments as $p) {
+                dd($p->id);
                 $isPaid     = $p->status === 'completed';
                 $paidAt     = $isPaid ? Carbon::parse($p->date, 'Asia/Yerevan') : null;
 
