@@ -292,8 +292,14 @@ class Contract extends Model
     public function scopeFilterByClient($query, $filters)
     {
         if (!empty($filters['name'])) {
-            $query->whereHas('client', function ($q) use ($filters) {
-                $q->where('name', 'LIKE', '%' . $filters['name'] . '%');
+            $nameTerms = preg_split('/\s+/', trim($filters['name']));
+            $query->whereHas('client', function ($q) use ($nameTerms) {
+                foreach ($nameTerms as $term) {
+                    $q->where(function ($sub) use ($term) {
+                        $sub->where('name', 'LIKE', '%' . $term . '%')
+                            ->orWhere('surname', 'LIKE', '%' . $term . '%');
+                    });
+                }
             });
         }
 

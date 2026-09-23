@@ -1075,6 +1075,34 @@ class AdminControllerNew extends Controller
             'discounts' => $discounts
         ]);
     }
+    public function getPrepayments(): JsonResponse
+    {
+        $prepayments = Prepayment::select(
+            'id',
+            'contract_id',
+            'amount',
+            'principal_amount',
+            'interest_amount',
+            'due_date',
+            'status',
+            'paid_at',
+        )
+            ->with([
+                'contract:id,num,client_id',
+                'contract.client:id,name,surname',
+            ])
+            ->whereHas('contract', function ($query) {
+                $query->where('pawnshop_id', auth()->user()->pawnshop_id);
+            })
+            ->orderBy('due_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json([
+            'prepayments' => $prepayments,
+        ]);
+    }
+
     public function getContracts(): JsonResponse
     {
         $contracts = Contract::with('client:id,name,surname')

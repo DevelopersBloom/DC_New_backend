@@ -75,6 +75,7 @@ return [
             'view_discounts',
             'respond_discount',
             'delete_discount',
+            'view_prepayments',
             'attach_loan_ndm',
             'view_loan_attraction',
             'update_loan_attraction',
@@ -154,7 +155,7 @@ return [
     */
     'roles' => [
         'accountant' => [
-            'view_pawnshops', 'update_pawnshop', 'view_deals', 'view_discounts',
+            'view_pawnshops', 'update_pawnshop', 'view_deals', 'view_discounts', 'view_prepayments',
             'view_chart_of_accounts', 'create_chart_of_account', 'update_chart_of_account', 'delete_chart_of_account',
             'view_rules', 'create_rule', 'view_reminder_orders', 'create_reminder_order',
             'view_transactions', 'export_transactions', 'view_account_balances', 'export_account_balances',
@@ -170,7 +171,7 @@ return [
             'view_contract_history_details', 'view_notes', 'create_note', 'view_cashbox_summary', 'download_order',
         ],
         'manager' => [
-            'view_categories', 'view_category_duration', 'view_subcategories', 'view_deals', 'view_discounts',
+            'view_categories', 'view_category_duration', 'view_subcategories', 'view_deals', 'view_discounts', 'view_prepayments',
             'attach_loan_ndm', 'view_loan_attraction', 'update_loan_attraction', 'calculate_loan_interest',
             'post_loan_interest', 'repay_loan_interest', 'view_remaining_loan', 'view_loan_by_journal',
             'view_files', 'upload_file', 'download_file', 'view_cashbox_balance', 'create_expense',
