@@ -712,14 +712,14 @@ class ClientClassificationService
                 if (!$isPaid && $due->lt($today)) {
 
                     $unpaidOverdueDebt += max(0, (float) $p->amount - (float) $p->entries->sum('amount'));
-                    dd($unpaidOverdueDebt,$p->amount, $p->entries->sum('amount') );
                     $unpaidOverdueDays = 0;//max($unpaidOverdueDays, $due->diffInDays($today));
                 }
                 elseif ($isPaid && $paidAt->gt($due)) {
                     $maxOverdue = max($maxOverdue, $due->diffInDays($paidAt));
+                    dd($maxOverdue,2);
                 }
             }
-            dd($unpaidOverdueDebt, self::MIN_OVERDUE_DEBT_AMD);
+            dd($maxOverdue,$unpaidOverdueDebt, self::MIN_OVERDUE_DEBT_AMD);
             if ($unpaidOverdueDebt > self::MIN_OVERDUE_DEBT_AMD) {
                 dd($maxOverdue,$unpaidOverdueDays);
                 $maxOverdue = max($maxOverdue, $unpaidOverdueDays);
