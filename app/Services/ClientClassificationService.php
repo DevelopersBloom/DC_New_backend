@@ -717,6 +717,7 @@ class ClientClassificationService
                     $maxOverdue = max($maxOverdue, $due->diffInDays($paidAt));
                 }
             }
+            dd($unpaidOverdueDebt);
             if ($unpaidOverdueDebt > self::MIN_OVERDUE_DEBT_AMD) {
                 $maxOverdue = max($maxOverdue, $unpaidOverdueDays);
             }
