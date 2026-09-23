@@ -1091,9 +1091,6 @@ class AdminControllerNew extends Controller
                 'contract:id,num,client_id',
                 'contract.client:id,name,surname',
             ])
-            ->whereHas('contract', function ($query) {
-                $query->where('pawnshop_id', auth()->user()->pawnshop_id);
-            })
             ->orderBy('due_date', 'desc')
             ->orderBy('id', 'desc')
             ->get();
