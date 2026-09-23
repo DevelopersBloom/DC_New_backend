@@ -710,6 +710,7 @@ class ClientClassificationService
                 $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
 
                 if (!$isPaid && $due->lt($today)) {
+                    dd($p->amount,$p->entries_paid);
                     $unpaidOverdueDebt += max(0, (float) $p->amount - (float) ($p->entries_paid ?? 0));
                     $unpaidOverdueDays = max($unpaidOverdueDays, $due->diffInDays($today));
                 }
