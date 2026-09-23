@@ -723,7 +723,7 @@ class ClientClassificationService
             } else {
                 $maxOverdue = $unpaidOverdueDebt;
             }
-            dd($maxOverdue);
+            dd($unpaidOverdueDebt,$maxOverdue);
         }
         return $maxOverdue;
     }
