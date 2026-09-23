@@ -1076,6 +1076,55 @@ class AdminControllerNew extends Controller
         ]);
     }
 
+    // TEMP: debug endpoint for checking ClientClassificationService::maxOverdueDaysForClient — remove after verification
+    public function debugClientOverdue(int $id): JsonResponse
+    {
+        $service = app(\App\Services\ClientClassificationService::class);
+        $client = \App\Models\Client::with('classification')->findOrFail($id);
+
+        $maxOverdueDays = $service->maxOverdueDaysForClient($client);
+        $today = Carbon::now('Asia/Yerevan')->startOfDay();
+
+        $contracts = $client->contracts()
+            ->where('status', 'initial')
+            ->with(['payments' => fn ($q) => $q->withSum('entries as entries_paid', 'amount')])
+            ->get()
+            ->map(function ($contract) use ($today) {
+                $payments = $contract->payments->map(function ($p) use ($today) {
+                    $due = Carbon::parse($p->to_date, 'Asia/Yerevan')->startOfDay();
+                    $isPaid = $p->status === 'completed';
+
+                    return [
+                        'id'           => $p->id,
+                        'status'       => $p->status,
+                        'date'         => $p->date,
+                        'to_date'      => $p->to_date,
+                        'amount'       => (float) $p->amount,
+                        'entries_paid' => (float) ($p->entries_paid ?? 0),
+                        'unpaid_overdue' => !$isPaid && $due->lt($today),
+                        'remaining'    => $isPaid ? 0 : max(0, (float) $p->amount - (float) ($p->entries_paid ?? 0)),
+                    ];
+                });
+
+                $overduePayments = $payments->where('unpaid_overdue', true);
+
+                return [
+                    'id'                  => $contract->id,
+                    'num'                 => $contract->num,
+                    'unpaid_overdue_debt' => round($overduePayments->sum('remaining'), 2),
+                    'payments'            => $payments->values(),
+                ];
+            });
+
+        return response()->json([
+            'client_id'                => $client->id,
+            'current_classification'   => $client->classification?->name,
+            'max_overdue_days'         => $maxOverdueDays,
+            'computed_classification'  => $service->classificationByOverdue($maxOverdueDays)->name,
+            'contracts'                => $contracts,
+        ]);
+    }
+
     public function getPrepayments(Request $request): JsonResponse
     {
         $request->validate([
