@@ -179,7 +179,7 @@ class ClientControllerNew extends Controller
 
         $client = Client::with(['contracts' => function ($query) use ($status) {
             $query->where('status', $status);
-        }, 'classification', 'files'])->find($clientId);
+        }, 'classification', 'acraClassification', 'files'])->find($clientId);
 
         if (!$client) {
             return response()->json(['error' => 'Client not found'], 404);
@@ -189,6 +189,7 @@ class ClientControllerNew extends Controller
             'client' => $client,
             'contracts' => $client->contracts,
             'classification_title' => $client->classification?->title,
+            'acra_classification_title' => $client->acraClassification?->title,
         ]);
     }
 

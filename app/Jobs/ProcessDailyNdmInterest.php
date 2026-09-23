@@ -102,10 +102,10 @@ class ProcessDailyNdmInterest implements ShouldQueue
 
                     Log::info("Next document number: {$nextDocNum}");
 
-                    $mkTx = function (array $attrs) use (&$nextDocNum, $currencyId, $journal, $today) {
+                    $mkTx = function (array $attrs) use (&$nextDocNum, $currencyId, $journal, $today, $service) {
                         Log::info("Creating transaction: ", $attrs);
 
-                        $tx = Transaction::create($attrs + [
+                        $posting = $attrs + [
                                 'date'                 => $today,
                                 'document_number'      => $nextDocNum++,
                                 'debit_currency_id'    => $currencyId,
@@ -117,7 +117,10 @@ class ProcessDailyNdmInterest implements ShouldQueue
                                 'is_system'            => true,
                                 'transactionable_type' => DocumentJournal::class,
                                 'transactionable_id'   => $journal->id,
-                            ]);
+                            ];
+
+                        $service->recordAccrualJournal($posting);
+                        $tx = Transaction::create($posting);
 
                         Log::info("Created TX ID {$tx->id}");
                         return $tx;

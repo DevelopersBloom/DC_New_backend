@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,7 @@ class DocumentJournal extends Model
     const LOAN_ATTRACTION    = 'Վարկի ներգրավում';
     const EFFECTIVE_RATE     = 'Արդյունավետ տոկոսի հաշվարկում';
     const INTEREST_RATE      = 'Տոկոսի հաշվարկում';
+    const INTEREST_ACCRUAL_TYPES = [self::EFFECTIVE_RATE, self::INTEREST_RATE];
 
     const INTEREST_REPAYMENT = 'Տոկոսի մարում';
     const LOAN_REPAYMENT = 'Վարկի մարում';
@@ -167,13 +169,20 @@ class DocumentJournal extends Model
 
                     $txQ->delete(); // soft delete
 
-                    $calcTypes = ['Արդյունավետ տոկոսի հաշվարկում', 'Տոկոսի հաշվարկում'];
+                    // Interest accruals booked in this attraction's window go with it; repayments stay.
+                    $accrualQ = self::query()
+                        ->where('journalable_id',  $ndmId)
+                        ->where('journalable_type', $ndmType)
+                        ->whereIn('document_type', self::INTEREST_ACCRUAL_TYPES)
+                        ->whereDate('date', '>=', $journal->date);
 
-                    $lastCalcDate = Transaction::query()
-                        ->where('transactionable_id',  $ndmId)
-                        ->where('transactionable_type', $ndmType)
-                        ->whereIn('document_type', $calcTypes)
-                        ->max('date');
+                    if ($nextAttraction) {
+                        $accrualQ->whereDate('date', '<', $nextAttraction->date);
+                    }
+
+                    $accrualQ->delete(); // soft delete
+
+                    $lastCalcDate = self::lastInterestCalcDate($ndmType, $ndmId);
 
                     $contractDate = LoanNdm::query()
                         ->whereKey($ndmId)
@@ -185,6 +194,9 @@ class DocumentJournal extends Model
                         LoanNdm::query()->whereKey($ndmId)->update(['calc_date' => $calcDate]);
                     }
 
+                }
+                elseif (self::isInterestAccrual($journal)) {
+                    self::interestAccrualTwin($journal, Transaction::query())->delete();
                 }
 //                elseif (in_array($journal->document_type, [
 //                    self::INTEREST_REPAYMENT,
@@ -259,13 +271,19 @@ class DocumentJournal extends Model
 
                     $txQ->restore();
 
-                    $calcTypes = ['Արդյունավետ տոկոսի հաշվարկում', 'Տոկոսի հաշվարկում'];
+                    $accrualQ = self::onlyTrashed()
+                        ->where('journalable_id',  $ndmId)
+                        ->where('journalable_type', $ndmType)
+                        ->whereIn('document_type', self::INTEREST_ACCRUAL_TYPES)
+                        ->whereDate('date', '>=', $journal->date);
 
-                    $lastCalcDate = Transaction::query()
-                        ->where('transactionable_id',  $ndmId)
-                        ->where('transactionable_type', $ndmType)
-                        ->whereIn('document_type', $calcTypes)
-                        ->max('date');
+                    if ($nextAttraction) {
+                        $accrualQ->whereDate('date', '<', $nextAttraction->date);
+                    }
+
+                    $accrualQ->restore();
+
+                    $lastCalcDate = self::lastInterestCalcDate($ndmType, $ndmId);
 
                     $contractDate = LoanNdm::query()
                         ->whereKey($ndmId)
@@ -286,6 +304,9 @@ class DocumentJournal extends Model
 
                     $journal->transactions()->onlyTrashed()->restore();
                     $journal->journals()->onlyTrashed()->restore();
+                } elseif (self::isInterestAccrual($journal)) {
+                    // Must not fall into the generic branch below: it treats journalable_id as a loan id.
+                    self::interestAccrualTwin($journal, Transaction::onlyTrashed())->restore();
                 } else {
 
                         $ndmId   = $journal->journalable_id;
@@ -312,13 +333,7 @@ class DocumentJournal extends Model
                             ->where('transactionable_type', $ndmType)
                             ->restore();
 
-                        $calcTypes = ['Արդյունավետ տոկոսի հաշվարկում', 'Տոկոսի հաշվարկում'];
-
-                        $lastCalcDate = Transaction::query()
-                            ->where('transactionable_id',  $ndmId)
-                            ->where('transactionable_type', $ndmType)
-                            ->whereIn('document_type', $calcTypes)
-                            ->max('date');
+                        $lastCalcDate = self::lastInterestCalcDate($ndmType, $ndmId);
 
                         $contractDate = LoanNdm::query()
                             ->whereKey($ndmId)
@@ -432,14 +447,15 @@ class DocumentJournal extends Model
     }
     public function remainingCapacity(?string $toDate = null): float
     {
-        $totalAttraction = Transaction::where('transactionable_id', $this->id)
-            ->where('transactionable_type', DocumentJournal::class)
-            ->where('document_type',Transaction::LOAN_ATTRACTION)
+        // Attractions hang off this base journal; repayments hang off the loan itself (see repay()).
+        $totalAttraction = self::where('journalable_id', $this->id)
+            ->where('journalable_type', self::class)
+            ->where('document_type', self::LOAN_ATTRACTION)
             ->sum('amount_amd');
 
-        $totalRepayment = Transaction::where('transactionable_id', $this->id)
-            ->where('transactionable_type',DocumentJournal::class)
-            ->where('document_type',Transaction::LOAN_REPAYMENT)
+        $totalRepayment = self::where('journalable_id', $this->journalable_id)
+            ->where('journalable_type', $this->journalable_type)
+            ->where('document_type', self::LOAN_REPAYMENT)
             ->sum('amount_amd');
 
         $loanAmount = LoanNdm::where('id',$this->journalable_id)->select('amount');
@@ -450,6 +466,34 @@ class DocumentJournal extends Model
 
         $remainingBalance = (float)$loanAmount - (float)$totalAttraction + (float)$totalRepayment;
         return max($remainingBalance,0);
+    }
+
+    /** Latest loan-NDM interest accrual date among journal rows attached to the given parent. */
+    protected static function lastInterestCalcDate(?string $parentType, $parentId): ?string
+    {
+        return self::query()
+            ->where('journalable_type', $parentType)
+            ->where('journalable_id', $parentId)
+            ->whereIn('document_type', self::INTEREST_ACCRUAL_TYPES)
+            ->max('date');
+    }
+
+    protected static function isInterestAccrual(DocumentJournal $journal): bool
+    {
+        return $journal->journalable_type === self::class
+            && in_array($journal->document_type, self::INTEREST_ACCRUAL_TYPES, true);
+    }
+
+    /** The `transactions` posting written together with an interest accrual row (postInterest / daily job). */
+    protected static function interestAccrualTwin(DocumentJournal $journal, Builder $query): Builder
+    {
+        return $query
+            ->where('transactionable_type', $journal->journalable_type)
+            ->where('transactionable_id', $journal->journalable_id)
+            ->where('document_type', $journal->document_type)
+            ->where('document_number', $journal->document_number)
+            ->whereDate('date', $journal->date)
+            ->where('amount_amd', $journal->amount_amd);
     }
 
     protected static function createProvisionEntry(DocumentJournal $parent, $amount, $label, $debitCode, $creditCode)
