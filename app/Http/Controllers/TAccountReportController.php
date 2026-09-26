@@ -85,6 +85,7 @@ class TAccountReportController extends Controller
             ->with([
                 'debitAccount:id,code',
                 'creditAccount:id,code',
+                'contract:id,num',
             ])
             ->orderBy('date')
             ->orderBy('id')
@@ -96,6 +97,7 @@ class TAccountReportController extends Controller
                 'amount_amd',
                 'debit_account_id',
                 'credit_account_id',
+                'contract_id',
             ]);
 
         $rows = [];
@@ -120,6 +122,7 @@ class TAccountReportController extends Controller
                 'debit_amd'            => $debitAmd,
                 'credit_amd'           => $creditAmd,
                 'document_number'      => $tx->document_number,
+                'contract_number'      => $tx->contract?->num,
                 'comment'              => $tx->comment,
             ];
         }
