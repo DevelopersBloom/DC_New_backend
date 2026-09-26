@@ -833,7 +833,7 @@ trait ContractTrait
                         $primary_parent_id = $payment->id; //659
                     }
 
-                    $current_penalty = $this->calcAmount($payment->amount, $current_delay_days, $contract->penalty);
+                    $current_penalty = $this->calcAmount($debt, $current_delay_days, $contract->penalty);
 
                     $penalty_paid = Payment::where('contract_id', $contract->id)
                         ->where('type', 'penalty')

@@ -802,10 +802,6 @@ class AdminControllerNew extends Controller
             'tables_updated' => ['deals'],
         ]);
     }
-    public function calcAmount($amount,$days,$rate){
-        return intval(ceil($days * $rate * $amount * 0.01 /10) * 10);
-    }
-
     public function deleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService, RegularPaymentDealReversalService $regularPaymentDealReversalService)
     {
         $deal = Deal::find($id);
