@@ -55,6 +55,14 @@ DealController extends Controller
             ->when($dealType !== Deal::HISTORY, fn($query) =>
             $query->where('type', $dealType)
             )
+            ->when($request->filled('client_name'), fn($query) =>
+            $query->whereHas('order', fn($q) =>
+                $q->where('client_name', 'like', '%' . $request->client_name . '%')
+            )
+            )
+            ->when($request->filled('cash'), fn($query) =>
+            $query->where('cash', $request->boolean('cash'))
+            )
             ->orderByRaw("STR_TO_DATE(date, '%d.%m.%Y') DESC")
             ->orderByDesc('id')
             ->paginate(10);
