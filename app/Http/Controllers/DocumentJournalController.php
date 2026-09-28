@@ -38,17 +38,6 @@ class DocumentJournalController
 
         $requestType  = $request->query('document_type');
         $documentType = $typeMap[$requestType] ?? $requestType;
-        $documentTypes = $request->query('document_types', []);
-        if (is_string($documentTypes)) {
-            $documentTypes = array_filter(array_map('trim', explode(',', $documentTypes)));
-        }
-        if (!is_array($documentTypes)) {
-            $documentTypes = [];
-        }
-        $documentTypes = array_values(array_filter(array_map(
-            fn ($t) => $typeMap[$t] ?? $t,
-            $documentTypes
-        )));
 
         $sortKey = (string) $request->query('sort_by', 'id');
         $sortDir = strtolower((string) $request->query('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
@@ -68,14 +57,7 @@ class DocumentJournalController
             'creditPartner:id,type,name,surname,company_name,social_card_number,tax_number',
             'user:id,name,surname',
         ])
-            ->when(!empty($documentTypes), function ($q) use ($documentTypes) {
-                $q->where(function ($q2) use ($documentTypes) {
-                    foreach ($documentTypes as $type) {
-                        $q2->orWhere('document_type', 'LIKE', '%' . $type . '%');
-                    }
-                });
-            })
-            ->when(empty($documentTypes) && $documentType, fn($q) => $q->where('document_type','LIKE', '%' . $documentType . '%'))
+            ->when($documentType, fn($q) => $q->where('document_type','LIKE', '%' . $documentType . '%'))
             ->when($documentNumber, fn($q) => $q->where('document_number', 'LIKE', $documentNumber . '%'))
             ->when($from && $to,  fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
