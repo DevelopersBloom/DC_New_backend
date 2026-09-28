@@ -166,6 +166,24 @@ class DocumentJournalController
 
         return response()->json($pagePayload);
     }
+    public function documentTypes(Request $request): JsonResponse
+    {
+        $from = $request->query('from_date');
+        $to   = $request->query('to_date');
+
+        $types = DocumentJournal::query()
+            ->when($from && $to, fn ($q) => $q->whereBetween('date', [$from, $to]))
+            ->when($from && !$to, fn ($q) => $q->where('date', '>=', $from))
+            ->when(!$from && $to, fn ($q) => $q->where('date', '<=', $to))
+            ->whereNotNull('document_type')
+            ->where('document_type', '!=', DocumentJournal::LOAN_NDM_TYPE)
+            ->distinct()
+            ->orderBy('document_type')
+            ->pluck('document_type');
+
+        return response()->json(['data' => $types]);
+    }
+
     public function show($id): JsonResponse
     {
         $j = DocumentJournal::with([

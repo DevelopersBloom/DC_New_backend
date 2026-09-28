@@ -201,6 +201,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         Route::post('/documents-journal/{id}/restore', [DocumentJournalController::class, 'restore'])->middleware('can:restore_document_journal');
         Route::delete('/documents-journal/{id}/force', [DocumentJournalController::class, 'forceDestroy'])->middleware('can:force_delete_document_journal');
         Route::get('/document-journals/export', [DocumentJournalController::class, 'export'])->middleware('can:export_document_journals');
+        Route::get('/document-journals/document-types', [DocumentJournalController::class, 'documentTypes'])->middleware('can:view_document_journals');
 
         Route::get('/document-journals/{id}', [DocumentJournalController::class, 'show'])->middleware('can:view_document_journals');
 
