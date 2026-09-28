@@ -39,6 +39,14 @@ class DocumentJournalController
         $requestType  = $request->query('document_type');
         $documentType = $typeMap[$requestType] ?? $requestType;
 
+        // document_types[]=...: exact match on any of the selected types
+        $documentTypes = collect((array) $request->query('document_types', []))
+            ->filter(fn ($t) => is_string($t) && trim($t) !== '')
+            ->map(fn ($t) => $typeMap[trim($t)] ?? trim($t))
+            ->unique()
+            ->values()
+            ->all();
+
         $sortKey = (string) $request->query('sort_by', 'id');
         $sortDir = strtolower((string) $request->query('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $sortMap = [
@@ -58,6 +66,7 @@ class DocumentJournalController
             'user:id,name,surname',
         ])
             ->when($documentType, fn($q) => $q->where('document_type','LIKE', '%' . $documentType . '%'))
+            ->when(!empty($documentTypes), fn($q) => $q->whereIn('document_type', $documentTypes))
             ->when($documentNumber, fn($q) => $q->where('document_number', 'LIKE', $documentNumber . '%'))
             ->when($from && $to,  fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
