@@ -897,7 +897,6 @@ trait ContractTrait
             ->where('is_completed', false)
             ->filter(fn ($p) => !$settledDate || Carbon::parse($p->date)->gt($settledDate))
             ->sum(fn ($p) => (float) ($p->paid ?? $p->amount));
-
         if ($overdue_payments->isNotEmpty()) {
             foreach ($overdue_payments as $payment) {
                 $payment_date = Carbon::parse($payment->date);  //2026-01-13
@@ -919,11 +918,13 @@ trait ContractTrait
                     }
 
                     $current_penalty = $this->calcAmount($debt, $current_delay_days, $contract->penalty);
+dd($settledDate,$partialPenaltyPaid,$current_penalty,$debt,$current_delay_days,$payment->id);
                     $total_penalty_amount += ($current_penalty);
 
                 }
             }
         }
+        dd($total_penalty_amount,$partialPenaltyPaid,$primary_parent_id,$max_delay_days,$total_penalty_amount,$first_penalty_start_date);
         $total_penalty_amount -= $partialPenaltyPaid;
         $contract->penalty_amount = max(0, $total_penalty_amount);
         $contract->save();
