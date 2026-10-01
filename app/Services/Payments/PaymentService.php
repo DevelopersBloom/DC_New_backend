@@ -85,7 +85,7 @@ class PaymentService
         $partial_amount = 0;
         if ($penalty > 0) {
             $penaltyResult = $this->processPenalty(
-                $contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id, $date
+                $contract->id, $amount, $penalty, $payer, $cash, $deal_id, $parent_id, false, $date
             );
             $payed_penalty = $penaltyResult['penalty'];
             $amount        = $penaltyResult['amount'];
