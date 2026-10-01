@@ -919,13 +919,11 @@ trait ContractTrait
                     }
 
                     $current_penalty = $this->calcAmount($debt, $current_delay_days, $contract->penalty);
-dd($settledDate,$partialPenaltyPaid->id,$current_penalty,$debt,$current_delay_days,$payment->id);
                     $total_penalty_amount += ($current_penalty);
 
                 }
             }
         }
-        dd($total_penalty_amount,$partialPenaltyPaid,$primary_parent_id,$max_delay_days,$total_penalty_amount,$first_penalty_start_date);
         $total_penalty_amount -= $partialPenaltyPaid;
         $contract->penalty_amount = max(0, $total_penalty_amount);
         $contract->save();
