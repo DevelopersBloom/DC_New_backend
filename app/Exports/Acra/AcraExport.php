@@ -415,8 +415,7 @@ class AcraExport
         // seconds after midnight), even though it computes that day's state. A
         // pure whereDate() cutoff would exclude that row, so extend the cutoff
         // with a grace window past midnight to still catch it.
-//        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->subMinutes(10);
-        $classificationAsOf = Carbon::parse($this->from)->endOfDay();
+        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->subMinutes(10);
 
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);
@@ -631,9 +630,9 @@ class AcraExport
             $sheet->setCellValue('O' . $row, $riskClassCode);
 
             // X: last risk classification date ("Վարկի վերջին դասակարգման ամսաթիվ").
-            // Left blank when the client has no risk class, and also for "standard"
-            // (01) — only non-standard classes (02-05) carry a classification date.
-            $requiresClassificationDate = !in_array($riskClassCode, ['', '01'], true);
+            // Left blank only when the client has no risk class; every class
+            // (including "standard" 01) carries the date it was last assigned.
+            $requiresClassificationDate = $riskClassCode !== '';
             $lastClassificationDate = $requiresClassificationDate ? $classificationHistory?->date : null;
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
