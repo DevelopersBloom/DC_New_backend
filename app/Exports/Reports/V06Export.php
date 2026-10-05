@@ -1310,14 +1310,22 @@ use App\Models\ChartOfAccount;
 use App\Models\ClassificationHistory;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
+use App\Services\Reports\OverdueScheduleService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
 
 class V06Export
 {
+    /**
+     * A contract is overdue (row 1.3) when its overdue principal plus overdue interest on the
+     * report date is at least this many AMD. Smaller overdue amounts stay in row 1.1.
+     */
+    public const V06_OVERDUE_MIN_AMOUNT = 1000;
+
     public function export($from, $to)
     {
         $path = base_path('v06.xls');
@@ -1329,17 +1337,7 @@ class V06Export
 
         $sheet = $spreadsheet->getSheetByName('Sheet1');
 
-        $docs = DocumentJournal::with(['journalable.payments' => function ($q) use ($date) {
-            // Load payments that were unpaid as of the report date:
-            // either still initial, or completed after the report date.
-            $q->where(function ($q2) use ($date) {
-                $q2->where('status', 'initial')
-                    ->orWhere(function ($q3) use ($date) {
-                        $q3->where('status', 'completed')
-                            ->whereDate('to_date', '>', $date);
-                    });
-            });
-        }])
+        $docs = DocumentJournal::with('journalable')
             ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $date)
             ->get();
@@ -1378,13 +1376,23 @@ class V06Export
         // Use classification as of report end date (not clients.classification_id today).
         $clientClassAsOf = $this->sheet1ClientClassificationsAsOf($date);
 
-        // R15/R16/R21/R22: point-in-time overdue status as of the report end date, same rule as
-        // Contract::scopeFilterStatus('overdue', $date) — unpaid (status=initial) installment
-        // debt due before $date totals >= 1000 AMD. Deduped per contract (see B125-B129 below).
-        $overdueContractIds = Contract::query()
-            ->filterStatus('overdue', $date)
-            ->pluck('id')
-            ->flip();
+        // Rows 1.1 / 1.3 (15/16, 21/22): the contracts overdue on the report date, as the schedule and
+        // payment entries stood on that date (see OverdueScheduleService) — rows deleted after it still
+        // count, entries after it do not, and the contract's current status is not used. One set drives
+        // both the amounts (via $hasExpiredPayment) and the counts (R15/R16/R21/R22), deduped per
+        // contract (see B125-B129 below).
+        $overdueContractIds = (new OverdueScheduleService())->overdueAmountsAtDate(
+            $docs->pluck('journalable_id')->all(),
+            $date,
+            self::V06_OVERDUE_MIN_AMOUNT,
+            $settledWithGap
+        );
+        if ($settledWithGap) {
+            Log::info('V06: instalments treated as settled although the entries fall short', [
+                'date' => $date,
+                'settled_with_gap' => $settledWithGap,
+            ]);
+        }
         $notOverdueCount = 0;
         $overdueCount = 0;
         $overdueCheckedContractIds = [];
@@ -1403,10 +1411,7 @@ class V06Export
             // A contract closed after $date was still active on the report snapshot.
             if ($contract->closed_at && Carbon::parse($contract->closed_at)->lt($date)) continue;
 
-            $hasExpiredPayment = $contract->payments
-                ->contains(function ($p) use ($date) {
-                    return Carbon::parse($p->date)->lt($date);
-                });
+            $hasExpiredPayment = isset($overdueContractIds[$contract->id]);
 
             if (!isset($overdueCheckedContractIds[$contract->id])) {
                 $overdueCheckedContractIds[$contract->id] = true;
