@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\Reports\ReportsJournalExport;
 use App\Exports\Reports\V03Export;
 use App\Exports\Reports\V06Export;
+use App\Exports\Reports\V06ExportV2;
 use App\Exports\Reports\V07Export;
 use App\Exports\Reports\V09Export;
 use App\Exports\Reports\V13Export;
@@ -63,20 +64,26 @@ class ReportController
     public function getV06Report(Request $request)
     {
         $request->validate([
-            'from' => 'required|date',
-            'to'   => 'required|date',
+            'from'    => 'required|date',
+            'to'      => 'required|date',
+            // legacy = the original calculation (default until the new one is signed off), v2 = overdue assets by instalment
+            'version' => 'nullable|in:legacy,v2',
         ]);
+
+        $version = $request->input('version', 'legacy');
+
         $this->activity->log(
             'export_v06',
-            "Export V06 from {$request->from} to {$request->to}"
+            "Export V06 from {$request->from} to {$request->to} (version: {$version})"
         );
         try {
-            $export = new V06Export();
+            $export = $version === 'v2' ? new V06ExportV2() : new V06Export();
             $path = $export->export($request->from, $request->to);
 
             return response()->download($path)->deleteFileAfterSend();
         } catch (\Throwable $e) {
             Log::error('V06 export failed', [
+                'version' => $version,
                 'from' => $request->from,
                 'to' => $request->to,
                 'error' => $e->getMessage(),

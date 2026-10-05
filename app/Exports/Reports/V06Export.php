@@ -1314,11 +1314,16 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xls;
 
 class V06Export
 {
-    public function export($from, $to)
+    /**
+     * Fills the v06.xls template for the period and returns the workbook (not yet saved).
+     * Extracted from export() so a subclass can adjust cells before saving; behaviour unchanged.
+     */
+    public function buildSpreadsheet($from, $to): Spreadsheet
     {
         $path = base_path('v06.xls');
         $reader = IOFactory::createReader('Xls');
@@ -1484,6 +1489,7 @@ class V06Export
             }
 
             $amount = $net16200NV + $net16201NI + $net16200;
+            $this->recordContractLedger($contract, $col, $net16200NV, $net16201NI, $net16200);
             $amountsByClassification[$name] += $amount;
             if ($contract->category) {
                 if (in_array($contract->category->name, ['car', 'car-purchase'])) {
@@ -1888,6 +1894,24 @@ class V06Export
 
         // Column R: left to Excel template formulas (H+J−L per row).
 
+        return $spreadsheet;
+    }
+
+    /**
+     * Called once per disbursement document of every contract the Sheet1 loop includes, with the
+     * ledger balances it just computed. Does nothing here; V06ExportV2 collects them.
+     */
+    protected function recordContractLedger(Contract $contract, string $col, float $nv, float $ni, float $adjustment): void
+    {
+    }
+
+    public function export($from, $to)
+    {
+        return $this->save($this->buildSpreadsheet($from, $to));
+    }
+
+    protected function save(Spreadsheet $spreadsheet): string
+    {
         $fileName = 'v06_export_' . now()->format('Ymd_His') . '.xls';
         $savePath = storage_path('app/public/' . $fileName);
 
@@ -1951,7 +1975,7 @@ class V06Export
      *
      * @return array<int, int> client_id => classification_id
      */
-    private function sheet2ClientClassificationsAsOf(string $snapshotDate): array
+    protected function sheet2ClientClassificationsAsOf(string $snapshotDate): array
     {
         $maxDates = DB::table('classification_histories')
             ->select('client_id', DB::raw('MAX(`date`) as max_date'))
@@ -1982,7 +2006,7 @@ class V06Export
      *
      * @return array<int, int> client_id => classification_id
      */
-    private function sheet2ClientClassificationsBetween(string $dateFrom, string $dateTo): array
+    protected function sheet2ClientClassificationsBetween(string $dateFrom, string $dateTo): array
     {
         $maxDates = DB::table('classification_histories')
             ->select('client_id', DB::raw('MAX(`date`) as max_date'))
@@ -2012,7 +2036,7 @@ class V06Export
      * Calendar date of the most recent classification_histories row (on or before $snapshotDate) where the
      * client was set to $classificationId (journal nets run through the day before this date).
      */
-    private function lastClientClassificationAssignmentDate(int $clientId, int $classificationId, string $snapshotDate): ?string
+    protected function lastClientClassificationAssignmentDate(int $clientId, int $classificationId, string $snapshotDate): ?string
     {
         $d = ClassificationHistory::query()
             ->where('client_id', $clientId)
@@ -2030,7 +2054,7 @@ class V06Export
      * Journal as-of date for Sheet2 column B: day before the last time (on or before snapshot) the client
      * was assigned their current effective class (3, 4, or 5).
      */
-    private function sheet2JournalAsOfDate(int $classificationId, string $snapshotDate, int $clientId): string
+    protected function sheet2JournalAsOfDate(int $classificationId, string $snapshotDate, int $clientId): string
     {
         if (!in_array($classificationId, [3, 4, 5], true)) {
             return $snapshotDate;
@@ -2048,7 +2072,7 @@ class V06Export
      * Sheet2 column B: by car/gold/category_id=2, journals through the day before the last assignment to effective class 3/4/5.
      * Class 3–4: net162 (16200NV + 16201NI + 16200). Class 5: net86000 + net86001.
      */
-    private function sumSheet2ColumnBNetByCategory(string $categoryName, string $snapshotDate, array $clientIdToClass): float
+    protected function sumSheet2ColumnBNetByCategory(string $categoryName, string $snapshotDate, array $clientIdToClass): float
     {
         if ($clientIdToClass === []) {
             return 0.0;
@@ -2124,7 +2148,7 @@ class V06Export
      * Change = balance at $dateTo minus opening balance for that row (same as column B at period start).
      * Clients not yet in class 3/4/5 on the day before $dateFrom contribute 0 opening — not their pre-downgrade balance.
      */
-    private function sumSheet2ColumnDPeriodChangeByCategory(
+    protected function sumSheet2ColumnDPeriodChangeByCategory(
         string $categoryName,
         string $dateFrom,
         string $dateTo,
@@ -2188,7 +2212,7 @@ class V06Export
     /**
      * Effective classification_id for a client on or before $snapshotDate.
      */
-    private function clientClassificationIdAsOf(int $clientId, string $snapshotDate): ?int
+    protected function clientClassificationIdAsOf(int $clientId, string $snapshotDate): ?int
     {
         $row = ClassificationHistory::query()
             ->where('client_id', $clientId)
@@ -2204,7 +2228,7 @@ class V06Export
     /**
      * Active contracts for Sheet2 car / gold / category2 and given client ids.
      */
-    private function sheet2ContractsForCategory(string $categoryName, array $clientIds, string $asOfDate)
+    protected function sheet2ContractsForCategory(string $categoryName, array $clientIds, string $asOfDate)
     {
         return Contract::query()
             ->with('category')
@@ -2232,7 +2256,7 @@ class V06Export
     /**
      * Portfolio net at a date: class 5 → 86000+86001; otherwise 16200NV+16201NI+16200 (partner-aware scope).
      */
-    private function contractPortfolioNetAtDate(
+    protected function contractPortfolioNetAtDate(
         DocumentJournal $provideDoc,
         Contract        $contract,
         string          $asOfDate,
@@ -2269,7 +2293,7 @@ class V06Export
      * Scope portfolio journals to a contract: journalable link, contract_id, or debit/credit partner.
      * When a partner is set on a row, it must match the contract client (fixes mis-linked journalable_id).
      */
-    private function applyPortfolioJournalScope(
+    protected function applyPortfolioJournalScope(
         $query,
         Contract $contract,
         DocumentJournal $provideDoc,
@@ -2329,7 +2353,7 @@ class V06Export
     /**
      * Net162 for Sheet2 (classification ids 3–4): net16200NV + net16201NI + net16200 through $asOfDate (same rules as Sheet1).
      */
-    private function contractNet162AtDate(
+    protected function contractNet162AtDate(
         DocumentJournal $doc,
         Contract        $contract,
         string          $asOfDate,
@@ -2381,7 +2405,7 @@ class V06Export
      * Sheet2 column B for classification 5 (loss): loss expense nets debit − credit on 86000 + 86001
      * (partner-aware journal scope).
      */
-    private function contractNet86000Plus86001AtDate(
+    protected function contractNet86000Plus86001AtDate(
         DocumentJournal $doc,
         Contract        $contract,
         string          $asOfDate,
@@ -2425,7 +2449,7 @@ class V06Export
     /**
      * Sum provided amounts for contracts with given category between $dateFrom and $dateTo
      */
-    private function sumByCategoryBetween(string $categoryName, string $dateFrom, string $dateTo): float
+    protected function sumByCategoryBetween(string $categoryName, string $dateFrom, string $dateTo): float
     {
         return DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereHasMorph('journalable', [Contract::class], function ($q) use ($categoryName) {
@@ -2451,7 +2475,7 @@ class V06Export
     /**
      * Sum amounts for given account column (debit_account_id or credit_account_id) before date
      */
-    private function sumAccountBefore($accountId, string $column, string $dateFrom): float
+    protected function sumAccountBefore($accountId, string $column, string $dateFrom): float
     {
         if (!$accountId) return 0;
         return DocumentJournal::where($column, $accountId)
@@ -2467,7 +2491,7 @@ class V06Export
      *
      * @return array<string>
      */
-    private function sheet2ColumnJDocumentTypes(): array
+    protected function sheet2ColumnJDocumentTypes(): array
     {
         return array_values(array_unique([
             DocumentJournal::OFF_BALANCE_INCOMING,
@@ -2486,7 +2510,7 @@ class V06Export
      * @param array<int|null> $accountIds
      * @param array<string>|null $documentTypes
      */
-    private function sumSheet286000TurnoverByCategory(
+    protected function sumSheet286000TurnoverByCategory(
         string $categoryName,
         string $amountColumn,
         string $dateFrom,
@@ -2531,7 +2555,7 @@ class V06Export
      *
      * @param array<int|null> $accountIds
      */
-    private function sumSheet286000BalanceBeforeByCategory(
+    protected function sumSheet286000BalanceBeforeByCategory(
         string $categoryName,
         string $dateFrom,
         array  $accountIds
@@ -2569,7 +2593,7 @@ class V06Export
     /**
      * Resolve car / gold / category2 for an 86000/86001 journal row.
      */
-    private function sheet2JournalCategoryName(DocumentJournal $row): ?string
+    protected function sheet2JournalCategoryName(DocumentJournal $row): ?string
     {
         if (preg_match('/contract #(\d+)/i', (string)$row->comment, $matches)) {
             $fromComment = $this->sheet2CategoryNameForContractId((int)$matches[1]);
@@ -2621,7 +2645,7 @@ class V06Export
     /**
      * @return 'car'|'gold'|'category2'|null
      */
-    private function sheet2CategoryNameForContractId(int $contractId): ?string
+    protected function sheet2CategoryNameForContractId(int $contractId): ?string
     {
         static $cache = [];
 
@@ -2652,7 +2676,7 @@ class V06Export
     /**
      * Sum amounts for given account column (debit_account_id or credit_account_id) between dates
      */
-    private function sumAccountBetween($accountId, string $column, string $dateFrom, string $dateTo): float
+    protected function sumAccountBetween($accountId, string $column, string $dateFrom, string $dateTo): float
     {
         if (!$accountId) return 0;
         return DocumentJournal::where($column, $accountId)
@@ -2660,7 +2684,7 @@ class V06Export
             ->sum('amount_amd');
     }
 
-    private function getColumnByDays($days): string
+    protected function getColumnByDays($days): string
     {
         if ($days <= 90) return 'B';
         if ($days <= 180) return 'D';
