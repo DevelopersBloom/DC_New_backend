@@ -1648,10 +1648,13 @@ class V06Export
 
         $acc10210Ids = ChartOfAccount::where('code', 'like', '10210%')->pluck('id');
 
-        $accCount = $acc10210Ids->count();
+        // Count only real bank accounts (102101..102103), not the parent 10210 (same as Form 20).
+        $accCount = ChartOfAccount::where('code', 'like', '10210%')
+            ->where('code', '!=', '10210')
+            ->count();
         $balance10210 = 0;
 
-        if ($accCount > 0) {
+        if ($acc10210Ids->count() > 0) {
             $balance10210 = DocumentJournal::whereIn('debit_account_id', $acc10210Ids)
                     ->whereDate('date', '<=', $date)
                     ->sum('amount_amd')
@@ -1665,19 +1668,9 @@ class V06Export
 
         $sheet->setCellValue('L125', $balance10210 / 1000);
         $sheet->getStyle('L125')->getNumberFormat()->setFormatCode('#,##0');
-        $acc15300Ids = ChartOfAccount::where('code', 'like', '15300%')->pluck('id');
-
-        $balance15300 = 0;
-        if ($acc15300Ids) {
-            $balance15300 = DocumentJournal::whereIn('credit_account_id', $acc15300Ids)
-                    ->whereDate('date', '<=', $date)
-                    ->sum('amount_amd')
-                - DocumentJournal::whereIn('debit_account_id', $acc15300Ids)
-                    ->whereDate('date', '<=', $date)
-                    ->sum('amount_amd');
-
-        }
-        $sheet->setCellValue('N125', $balance15300 / 1000);
+        // Reserve on bank balances is shown at the standard 1% of the bank balance (as in Form 3),
+        // not the ledger balance of 15300, so that Form 3 and Form 6 agree.
+        $sheet->setCellValue('N125', max($balance10210, 0) * 0.01 / 1000);
         $sheet->getStyle('N125')->getNumberFormat()->setFormatCode('#,##0');
 
         $acc19331 = ChartOfAccount::idByCode('19331');
