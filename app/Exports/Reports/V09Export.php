@@ -5,6 +5,7 @@ namespace App\Exports\Reports;
 use App\Models\ChartOfAccount;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
+use App\Models\LoanNdm;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -55,27 +56,17 @@ class V09Export
         $sheet->setCellValue('F22', $balance19000 / 1000);
         $sheet->setCellValue('F44', $balance19000 / 1000);
 
-        $acc39210 = ChartOfAccount::idByCode('39210');
-        $balance39210 = $acc39210 ? $this->getAccountBalance($acc39210, $dateStr, 'passive') : 0;
-        $sheet->setCellValue('F52', $balance39210 / 1000);
-
-        $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
-
-        $balance39102 = 0;
-        foreach ($acc39102Group as $accId) {
-            $balance39102 += $this->getAccountBalance($accId, $dateStr, 'passive');
+        // Section 2 (liabilities). Amounts in thousand AMD.
+        // 2.4 Liabilities to participants (33512NV): per-agreement balance, bucketed by maturity.
+        foreach ($this->participantLoanBuckets($dateStr, $toDate) as $col => $amount) {
+            $sheet->setCellValue($col . '50', $amount / 1000);
         }
-
-        $sheet->setCellValue('F53', $balance39102 / 1000);
-
-
-        $acc39200Account = ChartOfAccount::where('code', '39200')->first();
-
-        $balance39200 = $acc39200Account
-            ? $this->getAccountBalance($acc39200Account->id, $dateStr, $acc39200Account->type)
-            : 0;
-
-        $sheet->setCellValue('F59', $balance39200 / 1000);
+        // 2.6 Legal entities: external creditor debts.
+        $sheet->setCellValue('F52', $this->passiveBalance(['39210'], $dateStr) / 1000);
+        // 2.7 Government: taxes payable incl. income tax withheld on rent (3910204).
+        $sheet->setCellValue('F53', $this->passiveBalance(['3910201', '3910202', '3910203', '3910204'], $dateStr) / 1000);
+        // 2.13 Other: salaries payable + prepayments received from clients.
+        $sheet->setCellValue('F59', $this->passiveBalance(['39200', '39220'], $dateStr) / 1000);
 
         $docs = DocumentJournal::where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
             ->whereDate('date', '<=', $dateStr)
@@ -92,9 +83,6 @@ class V09Export
         $classificationsAsOf = (new V06Export())->sheet1ClientClassificationsAsOf($dateStr);
         $nonPerformingNames = ['substandard', 'suspicious'];
 
-        $acc39210 = ChartOfAccount::idByCode('39210');
-        $acc39102Group = ChartOfAccount::whereIn('code', ['3910201', '3910202', '3910203'])->pluck('id')->toArray();
-        $acc39200Account = ChartOfAccount::where('code', '39200')->first();
         foreach ($docsByContract as $contractDocs) {
             $doc = $contractDocs->first();
             $contract = $doc->journalable;
@@ -165,33 +153,6 @@ class V09Export
                     }
                 }
             }
-
-            // 39210
-//            if ($acc39210) {
-//                $balance39210 = $this->getSpecificBalance($contract->id, $doc->id, $acc39210, $dateStr, 'passive');
-//                if ($balance39210 > 0) {
-//                    $prev52 = (float)$sheet->getCell($col . '52')->getValue();
-//                    $sheet->setCellValue($col . '52', $prev52 + ($balance39210 / 1000));
-//                }
-//            }
-//
-//            // 39102Group
-//            if (!empty($acc39102Group)) {
-//                $balance39102 = $this->getSpecificBalance($contract->id, $doc->id, $acc39102Group, $dateStr, 'passive');
-//                if ($balance39102 > 0) {
-//                    $prev54 = (float)$sheet->getCell($col . '54')->getValue();
-//                    $sheet->setCellValue($col . '54', $prev54 + ($balance39102 / 1000));
-//                }
-//            }
-//
-//            // 39200
-//            if ($acc39200Account) {
-//                $balance39200 = $this->getSpecificBalance($contract->id, $doc->id, $acc39200Account->id, $dateStr, $acc39200Account->type);
-//                if ($balance39200 > 0) {
-//                    $prev59 = (float)$sheet->getCell($col . '59')->getValue();
-//                    $sheet->setCellValue($col . '59', $prev59 + ($balance39200 / 1000));
-//                }
-//            }
         }
 
         $this->fixPColumnTotals($sheet);
@@ -202,6 +163,88 @@ class V09Export
         $writer->save($outputPath);
 
         return $outputPath;
+    }
+
+    /**
+     * Sum of the passive (credit - debit) balances of the given account codes at $date.
+     */
+    private function passiveBalance(array $codes, string $date): float
+    {
+        $total = 0.0;
+        foreach (ChartOfAccount::whereIn('code', $codes)->pluck('id') as $accountId) {
+            $total += $this->getAccountBalance($accountId, $date, 'passive');
+        }
+        return $total;
+    }
+
+    /**
+     * Row 2.4: balance of 33512NV per loan agreement (loan_ndm) as of $date, bucketed by the days
+     * left to maturity_date (no maturity_date => column E, on demand). Agreements with a zero
+     * balance are skipped.
+     *
+     * An entry is matched to an agreement when it is journalable to the LoanNdm itself or to a
+     * DocumentJournal that is journalable to the LoanNdm. Any other entry, or a mismatch with the
+     * ledger balance, throws instead of guessing.
+     *
+     * @return array<string, float> [column => AMD]
+     */
+    public function participantLoanBuckets(string $date, Carbon $toDate): array
+    {
+        $accountId = ChartOfAccount::idByCode('33512NV');
+        if (!$accountId) {
+            return [];
+        }
+
+        $entries = DocumentJournal::where(function ($q) use ($accountId) {
+            $q->where('debit_account_id', $accountId)->orWhere('credit_account_id', $accountId);
+        })->whereDate('date', '<=', $date)->get();
+
+        $balances = [];
+        $unmatched = [];
+        foreach ($entries as $entry) {
+            $loanId = null;
+            if ($entry->journalable_type === LoanNdm::class) {
+                $loanId = $entry->journalable_id;
+            } elseif ($entry->journalable_type === DocumentJournal::class) {
+                $parent = DocumentJournal::find($entry->journalable_id);
+                if ($parent && $parent->journalable_type === LoanNdm::class) {
+                    $loanId = $parent->journalable_id;
+                }
+            }
+            if ($loanId === null) {
+                $unmatched[] = "#{$entry->id} ({$entry->date}, {$entry->amount_amd}, {$entry->journalable_type}#{$entry->journalable_id})";
+                continue;
+            }
+            $sign = $entry->credit_account_id == $accountId ? 1 : -1;
+            $balances[$loanId] = ($balances[$loanId] ?? 0.0) + $sign * (float)$entry->amount_amd;
+        }
+
+        if ($unmatched !== []) {
+            throw new \RuntimeException('Form 9 row 2.4: 33512NV entries not linked to a loan agreement: ' . implode(', ', $unmatched));
+        }
+
+        $ledger = $this->getAccountBalance($accountId, $date, 'passive');
+        if (abs(array_sum($balances) - $ledger) > 0.005) {
+            throw new \RuntimeException('Form 9 row 2.4: agreements sum ' . array_sum($balances) . ' differs from 33512NV balance ' . $ledger);
+        }
+
+        $loans = LoanNdm::whereIn('id', array_keys($balances))->get()->keyBy('id');
+        $buckets = [];
+        foreach ($balances as $loanId => $balance) {
+            if (abs($balance) < 0.005) {
+                continue;
+            }
+            $loan = $loans[$loanId] ?? null;
+            if (!$loan) {
+                throw new \RuntimeException("Form 9 row 2.4: loan agreement #{$loanId} is deleted but has a 33512NV balance of {$balance}");
+            }
+            $col = $loan->maturity_date
+                ? $this->getColumnByDaysV09($toDate->copy()->startOfDay()->diffInDays($loan->maturity_date->copy()->startOfDay(), false))
+                : 'E';
+            $buckets[$col] = ($buckets[$col] ?? 0.0) + $balance;
+        }
+
+        return $buckets;
     }
 
     private function getColumnByDaysV09($days): string
