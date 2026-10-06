@@ -47,7 +47,7 @@ class TurnoverReportController extends Controller
 
     /**
      * Build turnover rows using a single grouped query (no N+1).
-     * Data source: transactions (each row = one debit line + one credit line).
+     * Data source: documents_journal (each row = one debit line + one credit line).
      */
     private function buildTurnoverRows(string $startDate, string $endDate): array
     {
@@ -154,7 +154,7 @@ class TurnoverReportController extends Controller
      */
     private function periodLinesSubquery(string $startDate, string $endDate)
     {
-        $debitSide = DB::table('transactions as t')
+        $debitSide = DB::table('documents_journal as t')
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.debit_account_id')
             ->whereDate('t.date', '>=', $startDate)
@@ -165,7 +165,7 @@ class TurnoverReportController extends Controller
                 DB::raw('0 as credit'),
             ]);
 
-        $creditSide = DB::table('transactions as t')
+        $creditSide = DB::table('documents_journal as t')
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.credit_account_id')
             ->whereDate('t.date', '>=', $startDate)
@@ -184,7 +184,7 @@ class TurnoverReportController extends Controller
      */
     private function openingLinesSubquery(string $startDate)
     {
-        $debitSide = DB::table('transactions as t')
+        $debitSide = DB::table('documents_journal as t')
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.debit_account_id')
             ->whereDate('t.date', '<', $startDate)
@@ -194,7 +194,7 @@ class TurnoverReportController extends Controller
                 DB::raw('0 as credit'),
             ]);
 
-        $creditSide = DB::table('transactions as t')
+        $creditSide = DB::table('documents_journal as t')
             ->whereNull('t.deleted_at')
             ->whereNotNull('t.credit_account_id')
             ->whereDate('t.date', '<', $startDate)
