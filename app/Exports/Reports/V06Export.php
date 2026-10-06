@@ -2057,11 +2057,10 @@ class V06Export
         $contracts = Contract::query()
             ->with('category')
             ->whereIn('client_id', $clientIds)
-            ->where('status', 'initial')
             ->whereDate('date', '<=', $snapshotDate)
             ->where(function ($q) use ($snapshotDate) {
                 $q->whereNull('closed_at')
-                    ->orWhereDate('closed_at', '>=', $snapshotDate);
+                    ->orWhereDate('closed_at', '>', $snapshotDate);
             })
             ->when($categoryName === 'category2', function ($q) {
                 $q->where('category_id', 2);
@@ -2134,7 +2133,7 @@ class V06Export
         }
 
         $openSnapshotDate = Carbon::parse($dateFrom)->subDay()->format('Y-m-d');
-        $contracts = $this->sheet2ContractsForCategory($categoryName, array_keys($clientIdToClassAtTo), $dateTo);
+        $contracts = $this->sheet2ContractsForCategory($categoryName, array_keys($clientIdToClassAtTo), $dateTo, $openSnapshotDate);
 
         if ($contracts->isEmpty()) {
             return 0.0;
@@ -2202,16 +2201,20 @@ class V06Export
     /**
      * Active contracts for Sheet2 car / gold / category2 and given client ids.
      */
-    private function sheet2ContractsForCategory(string $categoryName, array $clientIds, string $asOfDate)
+    private function sheet2ContractsForCategory(string $categoryName, array $clientIds, string $asOfDate, ?string $openSnapshotDate = null)
     {
+        // Contracts that existed on the date, whatever their status today: provided on or before it and
+        // not closed on or before it. With $openSnapshotDate (column D) the window starts at the opening
+        // date instead, so a contract closed inside the period still contributes its drop to zero.
+        $closedAfter = $openSnapshotDate ?? $asOfDate;
+
         return Contract::query()
             ->with('category')
             ->whereIn('client_id', $clientIds)
-            ->where('status', 'initial')
             ->whereDate('date', '<=', $asOfDate)
-            ->where(function ($q) use ($asOfDate) {
+            ->where(function ($q) use ($closedAfter) {
                 $q->whereNull('closed_at')
-                    ->orWhereDate('closed_at', '>=', $asOfDate);
+                    ->orWhereDate('closed_at', '>', $closedAfter);
             })
             ->when($categoryName === 'category2', function ($q) {
                 $q->where('category_id', 2);
@@ -2292,9 +2295,29 @@ class V06Export
                                 ->orWhereIn('credit_account_id', $accountIds);
                         });
                     }
+                    // Legacy rows (before contract_id was filled, up to 02.06.2026) have no contract_id: leave out the
+                    // ones tied to another contract, otherwise every contract of the client would count them
+                    // (e.g. contract 55's entries also landing on 115).
                     $partner->where(function ($c) use ($contractId) {
-                        $c->whereNull('contract_id')
-                            ->orWhere('contract_id', $contractId);
+                        $c->where('contract_id', $contractId)
+                            ->orWhere(function ($n) use ($contractId) {
+                                $n->whereNull('contract_id')
+                                    ->where(function ($x) use ($contractId) {
+                                        $x->whereNull('journalable_type')
+                                            ->orWhere('journalable_type', '!=', Contract::class)
+                                            ->orWhere('journalable_id', $contractId);
+                                    })
+                                    ->where(function ($x) use ($contractId) {
+                                        $x->whereNull('journalable_type')
+                                            ->orWhere('journalable_type', '!=', DocumentJournal::class)
+                                            ->orWhereNotIn('journalable_id', function ($sub) use ($contractId) {
+                                                $sub->select('id')->from('documents_journal')
+                                                    ->where('document_type', DocumentJournal::PROVIDE_CONTRACT_AMOUNT)
+                                                    ->where('journalable_type', Contract::class)
+                                                    ->where('journalable_id', '!=', $contractId);
+                                            });
+                                    });
+                            });
                     });
                 })
                 ->orWhere(function ($journalable) use ($clientId, $contractId, $provideDocId) {
