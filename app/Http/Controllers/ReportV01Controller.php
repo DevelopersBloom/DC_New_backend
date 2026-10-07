@@ -120,6 +120,8 @@ class ReportV01Controller extends Controller
         $sheet->getStyle('A1')->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
 
         $sheet->setCellValueExplicit('A1', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
+        // Template's "Arial Armenian" has no « » glyphs
+        $sheet->getStyle('A1')->getFont()->setName('Arial');
 //        $sheet->setCellValueExplicit('A1', '«Ակրեդիտ» ՎՄ ՍՊԸ', DataType::TYPE_STRING);
 
         $timestamp = strtotime($toStr);

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  *  - deals: physical cash / bank balances and the disbursement method (operational source, by decision).
  *
  * Nothing here uses manual constants; every number is derived from stored records.
- * Fixed number of queries (6) regardless of the period length or the number of categories.
+ * Fixed number of queries regardless of the period length or the number of categories.
  */
 class CreditActivityReportService
 {
@@ -73,7 +73,9 @@ class CreditActivityReportService
         $balances = $this->dealBalances($pawnshopId, $cur, $prev);
         $monthlyStock = $this->monthlyStock($pawnshopId, $cur);
         $trendStart = $p['start']->copy()->subMonthsNoOverflow($trendMonths - 1);
-        $events = $this->disbursementEvents($pawnshopId, min($trendStart->toDateString(), $prevStart), $cur);
+        // Whole history up to the selected date: every consumer filters by its own dates; the lifetime view
+        // (repeated top-ups, customer frequency, active contracts) needs the early rows too.
+        $events = $this->disbursementEvents($pawnshopId, '1900-01-01', $cur);
         $titles = Category::query()->pluck('title', 'id')->all();
         $deals = $this->disbursementDeals($pawnshopId, $prevStart, $prev, $start, $cur);
 
@@ -163,7 +165,36 @@ class CreditActivityReportService
         ];
         $result['highlights'] = $this->highlights($result);
 
-        return $result;
+        // Tranche 3: active portfolio management, as of the selected end date.
+        $pm = (new PortfolioManagementService($this))->build(
+            $pawnshopId,
+            ['start' => $start, 'end' => $cur, 'as_of' => $cur],
+            $events,
+            array_map(fn ($m) => ['month' => $m['month'], 'start' => $m['start'], 'end' => $m['end']], $result['trend']['months']),
+            $titles
+        );
+        $result['highlights'] = array_merge($result['highlights'], $pm['portfolio_highlights']);
+        unset($pm['portfolio_highlights']);
+
+        return $result + $pm;
+    }
+
+    /**
+     * Drill-down behind a Tranche 3 headline number (see PortfolioManagementService::DETAIL_TYPES).
+     * Same period/as-of resolution as build(); pawnshop comes from the caller, never from the request.
+     */
+    public function details(int $pawnshopId, int $month, int $year, string $type, array $opts = []): array
+    {
+        $p = $this->resolvePeriods($month, $year);
+        $cur = $p['end']->toDateString();
+        $events = $this->disbursementEvents($pawnshopId, '1900-01-01', $cur);
+        $titles = Category::query()->pluck('title', 'id')->all();
+
+        return (new PortfolioManagementService($this))->details(
+            $pawnshopId,
+            ['start' => $p['start']->toDateString(), 'end' => $cur, 'as_of' => $cur],
+            $events, $titles, $type, $opts
+        );
     }
 
     // ------------------------------------------------------------------ queries
@@ -459,8 +490,8 @@ class CreditActivityReportService
             'new_borrowers' => count($newBorrowers), 'repeat_borrowers' => count($repeatBorrowers),
             'by_category' => $byCat,
             'borrower_loan_sizes' => [
-                'new' => ['count' => count($bySize['new']), 'average' => $bySize['new'] ? array_sum($bySize['new']) / count($bySize['new']) : null, 'median' => $bySize['new'] ? $this->median($bySize['new']) : null],
-                'repeat' => ['count' => count($bySize['repeat']), 'average' => $bySize['repeat'] ? array_sum($bySize['repeat']) / count($bySize['repeat']) : null, 'median' => $bySize['repeat'] ? $this->median($bySize['repeat']) : null],
+                'new' => ['count' => count($bySize['new']), 'total' => array_sum($bySize['new']), 'average' => $bySize['new'] ? array_sum($bySize['new']) / count($bySize['new']) : null, 'median' => $bySize['new'] ? $this->median($bySize['new']) : null],
+                'repeat' => ['count' => count($bySize['repeat']), 'total' => array_sum($bySize['repeat']), 'average' => $bySize['repeat'] ? array_sum($bySize['repeat']) / count($bySize['repeat']) : null, 'median' => $bySize['repeat'] ? $this->median($bySize['repeat']) : null],
             ],
         ];
     }
@@ -629,6 +660,7 @@ class CreditActivityReportService
     {
         $rows = [];
         $excl = ['no_estimate' => 0, 'zero_estimate' => 0, 'invalid_disbursement' => 0];
+        $exRows = [];
         $total = 0;
         $noCat = 0;
         foreach ($events as $e) {
@@ -638,10 +670,13 @@ class CreditActivityReportService
             $total++;
             if ($e['amount'] <= 0) {
                 $excl['invalid_disbursement']++;
+                $exRows[] = ['contract_id' => $e['contract_id'], 'reason' => 'invalid_disbursement'];
             } elseif ($e['est_rows'] === 0) {
                 $excl['no_estimate']++;
+                $exRows[] = ['contract_id' => $e['contract_id'], 'reason' => 'no_estimate'];
             } elseif ($e['est_at_origination'] === null || $e['est_at_origination'] <= 0) {
                 $excl['zero_estimate']++;
+                $exRows[] = ['contract_id' => $e['contract_id'], 'reason' => 'zero_estimate'];
             } else {
                 $rows[] = [
                     'ltv' => round($e['amount'] * 100 / $e['est_at_origination'], 6),
@@ -682,6 +717,7 @@ class CreditActivityReportService
             'above_80_share_percent' => $this->pct(count(array_filter($rows, fn ($r) => $r['ltv'] > 80)), count($rows)),
             'by_category' => array_map(fn ($c) => $this->ltvStats($c), $byCat),
             'rows' => $rows,
+            'excluded_rows' => $exRows,
         ];
     }
 
@@ -723,7 +759,7 @@ class CreditActivityReportService
     }
 
     /** Categories whose stored estimate is known to be unreliable for LTV (resolved by canonical categories.name). */
-    private const LTV_WARNING_CATEGORY_NAMES = ['gold'];
+    public const LTV_WARNING_CATEGORY_NAMES = ['gold'];
 
     private function collateralPerformance(array $stock, array $cur, array $prev, array $ltv, float $estTotal, array $titles): array
     {
@@ -785,6 +821,10 @@ class CreditActivityReportService
             'new_share_percent' => $this->pct($f['new_borrowers'], $f['new_borrowers'] + $f['repeat_borrowers']),
             'repeat_share_percent' => $this->pct($f['repeat_borrowers'], $f['new_borrowers'] + $f['repeat_borrowers']),
             'loan_sizes' => $f['borrower_loan_sizes'],
+            'new_loans' => $f['borrower_loan_sizes']['new']['count'], 'repeat_loans' => $f['borrower_loan_sizes']['repeat']['count'],
+            'new_disbursement' => round($f['borrower_loan_sizes']['new']['total'], 2), 'repeat_disbursement' => round($f['borrower_loan_sizes']['repeat']['total'], 2),
+            'new_disbursement_share_percent' => $this->pct($f['borrower_loan_sizes']['new']['total'], $f['new_amount']),
+            'repeat_disbursement_share_percent' => $this->pct($f['borrower_loan_sizes']['repeat']['total'], $f['new_amount']),
         ];
         return ['current' => $mix($cur), 'previous' => $mix($prev)];
     }
@@ -854,7 +894,7 @@ class CreditActivityReportService
             'direction' => $pp == 0.0 ? 'unchanged' : ($pp > 0 ? 'up' : 'down')];
     }
 
-    private function median(array $values): float
+    public function median(array $values): float
     {
         $n = count($values);
         if ($n === 0) {
@@ -865,12 +905,12 @@ class CreditActivityReportService
         return $n % 2 ? (float) $values[$mid] : ($values[$mid - 1] + $values[$mid]) / 2;
     }
 
-    private function ratio(float $numerator, float $denominator): ?float
+    public function ratio(float $numerator, float $denominator): ?float
     {
         return $denominator > 0 ? round($numerator / $denominator * 100, 1) : null;
     }
 
-    private function pct(float|int $part, float|int $whole): ?float
+    public function pct(float|int $part, float|int $whole): ?float
     {
         return $whole != 0 ? round($part / $whole * 100, 1) : null;
     }

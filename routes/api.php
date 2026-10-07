@@ -350,6 +350,12 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox'])->middleware('can:view_cashbox_balance');
     // /reports page ("financial indicators" permission group): legacy daily table + management summary.
     Route::get('/get-cashBox-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox'])->middleware('can:view_cashbox_summary');
+    Route::get('/reports/portfolio-quality/details', \App\Http\Controllers\PortfolioQualityDetailsController::class)
+        ->middleware('can:view_cashbox_summary');
+    Route::get('/reports/portfolio-quality/{month}/{year}', \App\Http\Controllers\PortfolioQualityController::class)
+        ->whereNumber(['month', 'year'])->middleware('can:view_cashbox_summary');
+    Route::get('/reports/credit-activity/details', \App\Http\Controllers\CreditActivityDetailsController::class)
+        ->middleware('can:view_cashbox_summary');
     Route::get('/reports/credit-activity/{month}/{year}', \App\Http\Controllers\CreditActivityReportController::class)
         ->whereNumber(['month', 'year'])->middleware('can:view_cashbox_summary');
     Route::put('/contract-amount-histories/{id}', [DealController::class, 'updateContractAmountHistory']);
