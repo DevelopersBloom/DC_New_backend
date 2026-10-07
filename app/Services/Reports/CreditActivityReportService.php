@@ -60,8 +60,9 @@ class CreditActivityReportService
 
     // ------------------------------------------------------------------ main entry
 
-    public function build(int $pawnshopId, int $month, int $year): array
+    public function build(int $pawnshopId, int $month, int $year, int $trendMonths = 6): array
     {
+        $trendMonths = $trendMonths === 12 ? 12 : 6;
         $p = $this->resolvePeriods($month, $year);
         $cur = $p['end']->toDateString();
         $prev = $p['prev_end']->toDateString();
@@ -70,7 +71,10 @@ class CreditActivityReportService
 
         $stock = $this->stockByCategory($pawnshopId, $cur, $prev);
         $balances = $this->dealBalances($pawnshopId, $cur, $prev);
-        $events = $this->disbursementEvents($pawnshopId, $prevStart, $cur);
+        $monthlyStock = $this->monthlyStock($pawnshopId, $cur);
+        $trendStart = $p['start']->copy()->subMonthsNoOverflow($trendMonths - 1);
+        $events = $this->disbursementEvents($pawnshopId, min($trendStart->toDateString(), $prevStart), $cur);
+        $titles = Category::query()->pluck('title', 'id')->all();
         $deals = $this->disbursementDeals($pawnshopId, $prevStart, $prev, $start, $cur);
 
         $flowCur = $this->flow($events, $start, $cur);
@@ -90,9 +94,11 @@ class CreditActivityReportService
         $historyTotal = $flowCur['total'];
         $dealTotal = $deals['cur']['cash']['amount'] + $deals['cur']['non_cash']['amount'];
 
-        $categories = $this->categoryRows($stock, $flowCur, $flowPrev, $estCur);
+        $categories = $this->categoryRows($stock, $flowCur, $flowPrev, $estCur, $titles);
+        $ltvCur = $this->ltv($events, $start, $cur);
+        $ltvPrev = $this->ltv($events, $prevStart, $prev);
 
-        return [
+        $result = [
             'period' => [
                 'start' => $start,
                 'end' => $cur,
@@ -133,6 +139,11 @@ class CreditActivityReportService
                 'total' => round($dealTotal, 2),
             ],
             'collateral_categories' => $categories,
+            'trend' => $this->trend($events, $monthlyStock, $p, $trendMonths, $titles),
+            'drivers' => $this->drivers($flowCur, $flowPrev),
+            'collateral_performance' => $this->collateralPerformance($stock, $flowCur, $flowPrev, $ltvCur, $estCur, $titles),
+            'origination_ltv' => $this->ltvBlock($ltvCur, $ltvPrev),
+            'borrower_mix' => $this->borrowerMix($flowCur, $flowPrev),
             'reconciliation' => [
                 'estimated_total' => round($estCur, 2),
                 'estimated_category_sum' => round(array_sum(array_column($categories, 'estimated_collateral')), 2),
@@ -150,6 +161,9 @@ class CreditActivityReportService
                 'malformed_deal_dates' => $balances['malformed'],
             ],
         ];
+        $result['highlights'] = $this->highlights($result);
+
+        return $result;
     }
 
     // ------------------------------------------------------------------ queries
@@ -242,11 +256,20 @@ class CreditActivityReportService
               FROM ev
             )
             SELECT id, contract_id, client_id, category_id, amount, kind, client_first_date,
-                   CASE WHEN kind = 'cont' THEN first_date ELSE date END AS eff_date
+                   CASE WHEN kind = 'cont' THEN first_date ELSE date END AS eff_date,
+                   CASE WHEN kind = 'first' THEN (
+                       SELECT SUM(CASE e.type WHEN 'in' THEN e.amount WHEN 'out' THEN -e.amount ELSE 0 END)
+                       FROM contract_amount_histories e
+                       WHERE e.contract_id = ev2.contract_id AND e.pawnshop_id = :pid2 AND e.deleted_at IS NULL
+                         AND e.amount_type = 'estimated_amount' AND e.date <= ev2.date) END AS est_at_orig,
+                   CASE WHEN kind = 'first' THEN (
+                       SELECT COUNT(*) FROM contract_amount_histories e
+                       WHERE e.contract_id = ev2.contract_id AND e.pawnshop_id = :pid3 AND e.deleted_at IS NULL
+                         AND e.amount_type = 'estimated_amount' AND e.date <= ev2.date) END AS est_rows
             FROM ev2
             WHERE (CASE WHEN kind = 'cont' THEN first_date ELSE date END) >= :from
             ORDER BY contract_id, id
-        ", ['pid' => $pawnshopId, 'to' => $to, 'from' => $from]);
+        ", ['pid' => $pawnshopId, 'pid2' => $pawnshopId, 'pid3' => $pawnshopId, 'to' => $to, 'from' => $from]);
 
         $events = [];
         $firstIdx = [];
@@ -261,6 +284,10 @@ class CreditActivityReportService
                 'category_id' => $r->category_id === null ? null : (int) $r->category_id,
                 'amount' => (float) $r->amount, 'date' => $r->eff_date, 'is_first' => $r->kind === 'first',
                 'client_first_date' => $r->client_first_date,
+                // Estimate in force on the logical first-disbursement date (net of in/out rows dated <= that day).
+                // Same-day estimate rows are all included: the order inside one day is not recorded.
+                'est_at_origination' => $r->est_at_orig === null ? null : (float) $r->est_at_orig,
+                'est_rows' => $r->est_rows === null ? 0 : (int) $r->est_rows,
             ];
             if ($r->kind === 'first') {
                 $firstIdx[$r->contract_id] = array_key_last($events);
@@ -394,6 +421,7 @@ class CreditActivityReportService
         $borrowers = [];
         $newBorrowers = $repeatBorrowers = [];
         $byCat = [];
+        $bySize = ['new' => [], 'repeat' => []];
 
         foreach ($new as $e) {
             if ($e['client_id'] !== null) {
@@ -405,9 +433,15 @@ class CreditActivityReportService
                 }
             }
             $c = $e['category_id'] ?? 'null';
+            $isNewBorrower = $e['client_id'] !== null && $e['client_first_date'] >= $from;
             $byCat[$c]['new_amount'] = ($byCat[$c]['new_amount'] ?? 0) + $e['amount'];
             $byCat[$c]['new_count'] = ($byCat[$c]['new_count'] ?? 0) + 1;
+            $byCat[$c]['new_amounts'][] = $e['amount'];
             $byCat[$c]['clients'][$e['client_id'] ?? 'x' . $e['contract_id']] = true;
+            if ($e['client_id'] !== null) {
+                $byCat[$c][$isNewBorrower ? 'new_clients' : 'repeat_clients'][$e['client_id']] = true;
+            }
+            $bySize[$isNewBorrower ? 'new' : 'repeat'][] = $e['amount'];
         }
         foreach ($top as $e) {
             $c = $e['category_id'] ?? 'null';
@@ -415,12 +449,7 @@ class CreditActivityReportService
         }
 
         $count = count($new);
-        sort($newAmounts);
-        $median = 0.0;
-        if ($count > 0) {
-            $mid = intdiv($count, 2);
-            $median = $count % 2 ? $newAmounts[$mid] : ($newAmounts[$mid - 1] + $newAmounts[$mid]) / 2;
-        }
+        $median = $this->median($newAmounts);
 
         return [
             'new_amount' => $newAmount, 'topup_amount' => $topAmount, 'total' => $newAmount + $topAmount,
@@ -429,12 +458,15 @@ class CreditActivityReportService
             'topup_events' => count($top), 'topup_contracts' => count(array_unique(array_column($top, 'contract_id'))),
             'new_borrowers' => count($newBorrowers), 'repeat_borrowers' => count($repeatBorrowers),
             'by_category' => $byCat,
+            'borrower_loan_sizes' => [
+                'new' => ['count' => count($bySize['new']), 'average' => $bySize['new'] ? array_sum($bySize['new']) / count($bySize['new']) : null, 'median' => $bySize['new'] ? $this->median($bySize['new']) : null],
+                'repeat' => ['count' => count($bySize['repeat']), 'average' => $bySize['repeat'] ? array_sum($bySize['repeat']) / count($bySize['repeat']) : null, 'median' => $bySize['repeat'] ? $this->median($bySize['repeat']) : null],
+            ],
         ];
     }
 
-    private function categoryRows(array $stock, array $flowCur, array $flowPrev, float $estTotal): array
+    private function categoryRows(array $stock, array $flowCur, array $flowPrev, float $estTotal, array $titles): array
     {
-        $titles = Category::query()->pluck('title', 'id')->all();
         $ids = array_unique(array_merge(array_keys($titles), array_keys($stock), array_keys($flowCur['by_category']), array_keys($flowPrev['by_category'])));
         sort($ids);
 
@@ -469,6 +501,323 @@ class CreditActivityReportService
         return $rows;
     }
 
+    // ------------------------------------------------------------------ Tranche 2: trend, drivers, LTV
+
+    /** Net in-out by calendar month for estimated collateral and principal, all history up to $cur (1 query). */
+    public function monthlyStock(int $pawnshopId, string $cur): array
+    {
+        $signed = "CASE h.type WHEN 'in' THEN h.amount WHEN 'out' THEN -h.amount ELSE 0 END";
+        $rows = DB::select("
+            SELECT DATE_FORMAT(h.date, '%Y-%m') AS ym,
+              SUM(CASE WHEN h.amount_type='estimated_amount' THEN $signed ELSE 0 END) AS est,
+              SUM(CASE WHEN h.amount_type='provided_amount' THEN $signed ELSE 0 END) AS prov
+            FROM contract_amount_histories h
+            WHERE h.pawnshop_id = :pid AND h.deleted_at IS NULL
+              AND h.amount_type IN ('estimated_amount','provided_amount') AND h.date <= :cur
+            GROUP BY ym ORDER BY ym
+        ", ['pid' => $pawnshopId, 'cur' => $cur]);
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[$r->ym] = ['est' => (float) $r->est, 'prov' => (float) $r->prov];
+        }
+        return $out;
+    }
+
+    /**
+     * Monthly trend over the last N months ending with the selected month (the selected month is month-to-date
+     * when it is the current month). Months before the pawnshop's first history row are not invented.
+     * Every number comes from the same flow()/ltv() functions as the headline KPIs.
+     */
+    private function trend(array $events, array $monthlyStock, array $p, int $n, array $titles): array
+    {
+        $firstYm = $monthlyStock ? array_key_first($monthlyStock) : null;
+
+        // cumulative month-end stock, carried forward across months without rows
+        $cum = [];
+        if ($firstYm) {
+            $est = $prov = 0.0;
+            for ($m = Carbon::parse($firstYm . '-01'); $m->lte($p['start']); $m->addMonthNoOverflow()) {
+                $ym = $m->format('Y-m');
+                $est += $monthlyStock[$ym]['est'] ?? 0;
+                $prov += $monthlyStock[$ym]['prov'] ?? 0;
+                $cum[$ym] = [$est, $prov];
+            }
+        }
+
+        $months = [];
+        $legend = [];
+        for ($i = $n - 1; $i >= 0; $i--) {
+            $mStart = $p['start']->copy()->subMonthsNoOverflow($i);
+            $ym = $mStart->format('Y-m');
+            if (!$firstYm || $ym < $firstYm) {
+                continue;
+            }
+            $mEnd = $i === 0 ? $p['end']->copy() : $mStart->copy()->endOfMonth()->startOfDay();
+            $f = $this->flow($events, $mStart->toDateString(), $mEnd->toDateString());
+            $l = $this->ltv($events, $mStart->toDateString(), $mEnd->toDateString());
+            [$est, $prov] = $cum[$ym] ?? [0.0, 0.0];
+
+            $cats = [];
+            foreach ($f['by_category'] as $cid => $c) {
+                $amt = ($c['new_amount'] ?? 0) + ($c['topup_amount'] ?? 0);
+                $cats[$cid] = round($amt, 2);
+                $legend[$cid] = $cid === 'null' ? 'Առանց տեսակի' : ($titles[$cid] ?? "#$cid");
+            }
+            $sizes = $f['borrower_loan_sizes'];
+            $months[] = [
+                'month' => $ym,
+                'start' => $mStart->toDateString(),
+                'end' => $mEnd->toDateString(),
+                'is_partial' => $i === 0 && $p['is_mtd'],
+                'total_disbursement' => round($f['total'], 2),
+                'new_disbursement' => round($f['new_amount'], 2),
+                'top_up_disbursement' => round($f['topup_amount'], 2),
+                'new_loan_count' => $f['new_count'],
+                'unique_borrowers' => $f['borrowers'],
+                'average_new_loan' => round($f['average'], 2),
+                'median_new_loan' => round($f['median'], 2),
+                'new_borrowers' => $f['new_borrowers'],
+                'repeat_borrowers' => $f['repeat_borrowers'],
+                'new_borrower_share_percent' => $this->pct($f['new_borrowers'], $f['new_borrowers'] + $f['repeat_borrowers']),
+                'repeat_borrower_share_percent' => $this->pct($f['repeat_borrowers'], $f['new_borrowers'] + $f['repeat_borrowers']),
+                'estimated_collateral' => round($est, 2),
+                'outstanding_principal' => round($prov, 2),
+                'portfolio_ratio' => $this->ratio($prov, $est),
+                'median_origination_ltv' => $l['all']['median'],
+                'average_origination_ltv' => $l['all']['average'],
+                'weighted_origination_ratio' => $l['all']['weighted_ratio'],
+                'ltv_eligible_loans' => $l['all']['count'],
+                'categories' => $cats,
+            ];
+        }
+        ksort($legend);
+        $legendList = [];
+        foreach ($legend as $cid => $title) {
+            $legendList[] = ['category_id' => $cid === 'null' ? null : (int) $cid, 'key' => (string) $cid, 'title' => $title];
+        }
+
+        return ['months_requested' => $n, 'months' => $months, 'category_legend' => $legendList];
+    }
+
+    /** Why lending moved: counts, ticket sizes and top-ups side by side. Metrics only, no attribution. */
+    private function drivers(array $cur, array $prev): array
+    {
+        return [
+            'total_disbursement' => $this->change($cur['total'], $prev['total']),
+            'new_loan_count' => $this->change($cur['new_count'], $prev['new_count']),
+            'average_new_loan' => $this->change($cur['average'], $prev['average']),
+            'median_new_loan' => $this->change($cur['median'], $prev['median']),
+            'top_up' => [
+                'amount' => $this->change($cur['topup_amount'], $prev['topup_amount']),
+                'share_percent' => $this->pct($cur['topup_amount'], $cur['total']),
+                'previous_share_percent' => $this->pct($prev['topup_amount'], $prev['total']),
+                'change_amount' => round($cur['topup_amount'] - $prev['topup_amount'], 2),
+            ],
+        ];
+    }
+
+    /**
+     * Origination LTV per new loan = logical first disbursement / estimate in force on that day * 100.
+     * Eligible: estimate rows exist, estimate > 0, disbursement > 0. Loans without a category stay in the
+     * aggregate and form their own 'null' category. Top-ups and later revaluations are never looked at.
+     */
+    public function ltv(array $events, string $from, string $to): array
+    {
+        $rows = [];
+        $excl = ['no_estimate' => 0, 'zero_estimate' => 0, 'invalid_disbursement' => 0];
+        $total = 0;
+        $noCat = 0;
+        foreach ($events as $e) {
+            if (!$e['is_first'] || $e['date'] < $from || $e['date'] > $to) {
+                continue;
+            }
+            $total++;
+            if ($e['amount'] <= 0) {
+                $excl['invalid_disbursement']++;
+            } elseif ($e['est_rows'] === 0) {
+                $excl['no_estimate']++;
+            } elseif ($e['est_at_origination'] === null || $e['est_at_origination'] <= 0) {
+                $excl['zero_estimate']++;
+            } else {
+                $rows[] = [
+                    'ltv' => round($e['amount'] * 100 / $e['est_at_origination'], 6),
+                    'init' => $e['amount'], 'est' => $e['est_at_origination'],
+                    'cat' => $e['category_id'] ?? 'null', 'contract_id' => $e['contract_id'], 'date' => $e['date'],
+                ];
+                $noCat += $e['category_id'] === null ? 1 : 0;
+            }
+        }
+
+        $bounds = [['0-40', 40], ['40-60', 60], ['60-70', 70], ['70-80', 80], ['80-100', 100], ['100+', null]];
+        $dist = array_map(fn ($b) => ['bucket' => $b[0], 'loan_count' => 0, 'initial_disbursement' => 0.0], $bounds);
+        $byCat = [];
+        foreach ($rows as $r) {
+            foreach ($bounds as $i => $b) {
+                if ($b[1] === null || $r['ltv'] <= $b[1]) {
+                    $dist[$i]['loan_count']++;
+                    $dist[$i]['initial_disbursement'] += $r['init'];
+                    break;
+                }
+            }
+            $byCat[$r['cat']][] = $r;
+        }
+        foreach ($dist as &$d) {
+            $d['share_percent'] = $this->pct($d['loan_count'], count($rows));
+            $d['initial_disbursement'] = round($d['initial_disbursement'], 2);
+        }
+        unset($d);
+
+        return [
+            'total_new_loans' => $total,
+            'eligible_loans' => count($rows),
+            'excluded_loans' => $total - count($rows),
+            'exclusions' => $excl,
+            'eligible_without_category' => $noCat,
+            'all' => $this->ltvStats($rows),
+            'distribution' => $dist,
+            'above_80_share_percent' => $this->pct(count(array_filter($rows, fn ($r) => $r['ltv'] > 80)), count($rows)),
+            'by_category' => array_map(fn ($c) => $this->ltvStats($c), $byCat),
+            'rows' => $rows,
+        ];
+    }
+
+    /** Average, median and weighted ratio are different things and are returned separately; null when no loans. */
+    private function ltvStats(array $rows): array
+    {
+        if (!$rows) {
+            return ['count' => 0, 'median' => null, 'average' => null, 'weighted_ratio' => null, 'min' => null, 'max' => null];
+        }
+        $ltvs = array_column($rows, 'ltv');
+        return [
+            'count' => count($rows),
+            'median' => round($this->median($ltvs), 1),
+            'average' => round(array_sum($ltvs) / count($ltvs), 1),
+            'weighted_ratio' => round(array_sum(array_column($rows, 'init')) * 100 / array_sum(array_column($rows, 'est')), 1),
+            'min' => round(min($ltvs), 1),
+            'max' => round(max($ltvs), 1),
+        ];
+    }
+
+    private function ltvBlock(array $cur, array $prev): array
+    {
+        $a = $cur['all'];
+        $b = $prev['all'];
+        return [
+            'total_new_loans' => $cur['total_new_loans'],
+            'eligible_loans' => $cur['eligible_loans'],
+            'excluded_loans' => $cur['excluded_loans'],
+            'exclusions' => $cur['exclusions'],
+            'eligible_without_category' => $cur['eligible_without_category'],
+            'median' => $a['median'], 'average' => $a['average'], 'weighted_ratio' => $a['weighted_ratio'],
+            'min' => $a['min'], 'max' => $a['max'],
+            'previous' => ['median' => $b['median'], 'average' => $b['average'], 'weighted_ratio' => $b['weighted_ratio'], 'eligible_loans' => $b['count']],
+            'median_change' => $this->changePp($a['median'], $b['median']),
+            'above_80_share_percent' => $cur['above_80_share_percent'],
+            'previous_above_80_share_percent' => $prev['above_80_share_percent'],
+            'distribution' => $cur['distribution'],
+        ];
+    }
+
+    private function collateralPerformance(array $stock, array $cur, array $prev, array $ltv, float $estTotal, array $titles): array
+    {
+        $ids = array_unique(array_merge(array_keys($titles), array_keys($stock), array_keys($cur['by_category']), array_keys($prev['by_category'])));
+        sort($ids);
+        $rows = [];
+        foreach ($ids as $id) {
+            $c = $cur['by_category'][$id] ?? [];
+            $pr = $prev['by_category'][$id] ?? [];
+            $disb = ($c['new_amount'] ?? 0) + ($c['topup_amount'] ?? 0);
+            $prevDisb = ($pr['new_amount'] ?? 0) + ($pr['topup_amount'] ?? 0);
+            $count = $c['new_count'] ?? 0;
+            $share = $this->pct($disb, $cur['total']);
+            $prevShare = $this->pct($prevDisb, $prev['total']);
+            $dch = $this->change($disb, $prevDisb);
+            $cch = $this->change($count, $pr['new_count'] ?? 0);
+            $l = $ltv['by_category'][$id] ?? $this->ltvStats([]);
+            $est = $stock[$id]['est_cur'] ?? 0.0;
+            $rows[] = [
+                'category_id' => $id === 'null' ? null : (int) $id,
+                'category' => $id === 'null' ? 'Առանց տեսակի' : ($titles[$id] ?? "#$id"),
+                'new_loan_disbursement' => round($c['new_amount'] ?? 0, 2),
+                'top_up_disbursement' => round($c['topup_amount'] ?? 0, 2),
+                'period_disbursement' => round($disb, 2),
+                'share_percent' => $share,
+                'previous_share_percent' => $prevShare,
+                'share_change_pp' => ($share !== null && $prevShare !== null) ? round($share - $prevShare, 1) : null,
+                'previous_disbursement' => round($prevDisb, 2),
+                'change_percent' => $dch['change_percent'],
+                'change_direction' => $dch['direction'],
+                'change_amount' => round($disb - $prevDisb, 2),
+                'new_loan_count' => $count,
+                'previous_new_loan_count' => $pr['new_count'] ?? 0,
+                'count_change_percent' => $cch['change_percent'],
+                'unique_borrowers' => count($c['clients'] ?? []),
+                'new_borrowers' => count($c['new_clients'] ?? []),
+                'repeat_borrowers' => count($c['repeat_clients'] ?? []),
+                'average_new_loan' => $count ? round($c['new_amount'] / $count, 2) : null,
+                'median_new_loan' => $count ? round($this->median($c['new_amounts']), 2) : null,
+                'estimated_collateral' => round($est, 2),
+                'estimated_share_percent' => $this->pct($est, $estTotal),
+                'median_origination_ltv' => $l['median'],
+                'average_origination_ltv' => $l['average'],
+                'weighted_origination_ratio' => $l['weighted_ratio'],
+                'max_origination_ltv' => $l['max'],
+                'ltv_eligible_loans' => $l['count'],
+            ];
+        }
+        return $rows;
+    }
+
+    private function borrowerMix(array $cur, array $prev): array
+    {
+        $mix = fn (array $f) => [
+            'new' => $f['new_borrowers'], 'repeat' => $f['repeat_borrowers'],
+            'new_share_percent' => $this->pct($f['new_borrowers'], $f['new_borrowers'] + $f['repeat_borrowers']),
+            'repeat_share_percent' => $this->pct($f['repeat_borrowers'], $f['new_borrowers'] + $f['repeat_borrowers']),
+            'loan_sizes' => $f['borrower_loan_sizes'],
+        ];
+        return ['current' => $mix($cur), 'previous' => $mix($prev)];
+    }
+
+    /**
+     * Deterministic facts for the "Key changes" block. Structured (type + numbers), the UI words them.
+     * Only emitted when the comparison is defined; no explanations, no causality.
+     */
+    private function highlights(array $r): array
+    {
+        $out = [];
+        $perf = array_filter($r['collateral_performance'], fn ($c) => $c['change_amount'] != 0);
+        usort($perf, fn ($a, $b) => $b['change_amount'] <=> $a['change_amount']);
+        $up = $perf[0] ?? null;
+        $down = $perf ? end($perf) : null;
+        foreach ([['category_growth', $up, 1], ['category_decline', $down, -1]] as [$type, $c, $sign]) {
+            if ($c && $c['change_amount'] * $sign > 0) {
+                $out[] = ['type' => $type, 'category' => $c['category'], 'change_percent' => $c['change_percent'],
+                    'change_amount' => $c['change_amount'], 'current' => $c['period_disbursement'], 'previous' => $c['previous_disbursement']];
+            }
+        }
+        $d = $r['drivers'];
+        if ($d['total_disbursement']['direction'] !== 'unavailable' && $d['total_disbursement']['direction'] !== 'unchanged') {
+            $out[] = ['type' => 'total_change', 'change_percent' => $d['total_disbursement']['change_percent']];
+        }
+        if ($d['new_loan_count']['direction'] === 'up' || $d['new_loan_count']['direction'] === 'down') {
+            $out[] = ['type' => 'new_loan_count_change', 'change_percent' => $d['new_loan_count']['change_percent']];
+        }
+        if ($d['top_up']['share_percent'] !== null) {
+            $out[] = ['type' => 'top_up_share', 'share_percent' => $d['top_up']['share_percent']];
+        }
+        $bm = $r['borrower_mix']['current'];
+        if ($bm['new_share_percent'] !== null) {
+            $out[] = ['type' => 'borrower_mix', 'new_share_percent' => $bm['new_share_percent'], 'repeat_share_percent' => $bm['repeat_share_percent']];
+        }
+        $mc = $r['origination_ltv']['median_change'];
+        if ($mc['change_pp'] !== null && $mc['change_pp'] != 0.0) {
+            $out[] = ['type' => 'median_ltv_change', 'current' => $mc['current'], 'previous' => $mc['previous'], 'change_pp' => $mc['change_pp']];
+        }
+        return $out;
+    }
+
     // ------------------------------------------------------------------ small helpers
 
     /** Money/count KPI with comparison. direction: up | down | unchanged | unavailable (previous = 0). */
@@ -494,6 +843,17 @@ class CreditActivityReportService
         $pp = round($current - $previous, 1);
         return ['current' => $current, 'previous' => $previous, 'change_pp' => $pp,
             'direction' => $pp == 0.0 ? 'unchanged' : ($pp > 0 ? 'up' : 'down')];
+    }
+
+    private function median(array $values): float
+    {
+        $n = count($values);
+        if ($n === 0) {
+            return 0.0;
+        }
+        sort($values);
+        $mid = intdiv($n, 2);
+        return $n % 2 ? (float) $values[$mid] : ($values[$mid - 1] + $values[$mid]) / 2;
     }
 
     private function ratio(float $numerator, float $denominator): ?float

@@ -8,15 +8,15 @@ use Illuminate\Http\JsonResponse;
 class CreditActivityReportController extends Controller
 {
     /**
-     * GET /api/reports/credit-activity/{month}/{year}
+     * GET /api/reports/credit-activity/{month}/{year}?months=6|12
      * Position (stock) and period activity (flow) summary for the /reports page, scoped to the user's pawnshop.
      */
-    public function __invoke(int $month, int $year, CreditActivityReportService $service): JsonResponse
+    public function __invoke(int $month, int $year, \Illuminate\Http\Request $request, CreditActivityReportService $service): JsonResponse
     {
         if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) {
             return response()->json(['message' => 'Invalid month or year'], 422);
         }
 
-        return response()->json(['data' => $service->build((int) auth()->user()->pawnshop_id, $month, $year)]);
+        return response()->json(['data' => $service->build((int) auth()->user()->pawnshop_id, $month, $year, (int) $request->query('months', 6))]);
     }
 }
