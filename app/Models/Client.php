@@ -163,9 +163,21 @@ class Client extends Model
             $query->where('middle_name', 'LIKE', '%' . $filters['patronymic'] . '%');
         }
 
-        if (!empty($filters['passport'])) {
-            $query->where('passport_series', 'LIKE', '%' . $filters['passport'] . '%');
+        $passport = $filters['passport'] ?? $filters['passport_series'] ?? null;
+        if (!empty($passport)) {
+            $query->where('passport_series', 'LIKE', '%' . $passport . '%');
         }
+
+        if (!empty($filters['type']) && in_array($filters['type'], ['individual', 'legal'], true)) {
+            $query->where('type', $filters['type']);
+        }
+
+        if (isset($filters['has_contract']) && $filters['has_contract'] !== '') {
+            $query->where('has_contract', filter_var($filters['has_contract'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0);
+        }
+
+        $filters['start_date'] = $filters['start_date'] ?? $filters['date_from'] ?? null;
+        $filters['end_date'] = $filters['end_date'] ?? $filters['date_to'] ?? null;
 
         if (!empty($filters['phone'])) {
             $query->where(function ($q) use ($filters) {
