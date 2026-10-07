@@ -618,6 +618,9 @@ class CreditActivityReportService
     }
 
     /**
+     * LOGICAL DISBURSEMENT DATE = date of the first history row of the logical disbursement (later rows of the same
+     * deal_id are folded into it); deals.date is deliberately not used. See disbursementEvents().
+     *
      * Origination LTV per new loan = logical first disbursement / estimate in force on that day * 100.
      * Eligible: estimate rows exist, estimate > 0, disbursement > 0. Loans without a category stay in the
      * aggregate and form their own 'null' category. Top-ups and later revaluations are never looked at.
@@ -719,8 +722,12 @@ class CreditActivityReportService
         ];
     }
 
+    /** Categories whose stored estimate is known to be unreliable for LTV (resolved by canonical categories.name). */
+    private const LTV_WARNING_CATEGORY_NAMES = ['gold'];
+
     private function collateralPerformance(array $stock, array $cur, array $prev, array $ltv, float $estTotal, array $titles): array
     {
+        $warnIds = Category::query()->whereIn('name', self::LTV_WARNING_CATEGORY_NAMES)->pluck('id')->all();
         $ids = array_unique(array_merge(array_keys($titles), array_keys($stock), array_keys($cur['by_category']), array_keys($prev['by_category'])));
         sort($ids);
         $rows = [];
@@ -764,6 +771,8 @@ class CreditActivityReportService
                 'weighted_origination_ratio' => $l['weighted_ratio'],
                 'max_origination_ltv' => $l['max'],
                 'ltv_eligible_loans' => $l['count'],
+                // Gold estimates were seen equal to the loan amount (not an independent appraisal): interpret cautiously.
+                'ltv_quality_warning' => $id !== 'null' && in_array((int) $id, $warnIds, true),
             ];
         }
         return $rows;
