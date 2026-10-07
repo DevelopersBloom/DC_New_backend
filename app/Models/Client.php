@@ -172,8 +172,15 @@ class Client extends Model
             $query->where('type', $filters['type']);
         }
 
+        // Based on real contracts; the `has_contract` column only marks client vs non-client.
         if (isset($filters['has_contract']) && $filters['has_contract'] !== '') {
-            $query->where('has_contract', filter_var($filters['has_contract'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0);
+            filter_var($filters['has_contract'], FILTER_VALIDATE_BOOLEAN)
+                ? $query->whereHas('contracts')
+                : $query->whereDoesntHave('contracts');
+        }
+
+        if (!empty($filters['open_contract']) && filter_var($filters['open_contract'], FILTER_VALIDATE_BOOLEAN)) {
+            $query->whereHas('contracts', fn($q) => $q->where('status', 'initial'));
         }
 
         $filters['start_date'] = $filters['start_date'] ?? $filters['date_from'] ?? null;

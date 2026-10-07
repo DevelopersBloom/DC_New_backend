@@ -349,6 +349,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
     Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox'])->middleware('can:view_cashbox_balance');
     Route::get('/get-cashBox-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox']);
+    // Same access level as the legacy summary (any authenticated user); recommend a dedicated permission.
+    Route::get('/reports/credit-activity/{month}/{year}', \App\Http\Controllers\CreditActivityReportController::class)
+        ->whereNumber(['month', 'year']);
     Route::put('/contract-amount-histories/{id}', [DealController::class, 'updateContractAmountHistory']);
     Route::get('/get-deals', [DealController::class, 'index'])->middleware('can:view_deals');
     Route::post('/add-cost', [DealController::class, 'addCostNDM'])->middleware('can:create_loan_ndm');

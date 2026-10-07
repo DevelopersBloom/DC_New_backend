@@ -211,7 +211,7 @@ class ClientControllerNew extends Controller
                     $q->where('name', $statusValue);
                 });
             })
-            ->filterByClient($request->only(['id', 'name', 'surname', 'patronymic', 'passport', 'passport_series', 'phone', 'start_date', 'end_date', 'date_from', 'date_to', 'is_linked_to_company', 'is_company_employee', 'type', 'has_contract']))
+            ->filterByClient($request->only(['id', 'name', 'surname', 'patronymic', 'passport', 'passport_series', 'phone', 'start_date', 'end_date', 'date_from', 'date_to', 'is_linked_to_company', 'is_company_employee', 'type', 'has_contract', 'open_contract']))
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->paginate(10);

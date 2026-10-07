@@ -182,6 +182,7 @@ DealController extends Controller
                 ->where('cash', false)
                 ->sum('amount');
 
+            // LEGACY daily table only. The new CreditActivityReportService must never use these constants.
             // Add the initial car estimated amount starting from July 30, 2025, since earlier data is unavailable
             if ($date >= "2025-08-01")
             {
