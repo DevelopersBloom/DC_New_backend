@@ -26,7 +26,7 @@ class CreditActivityAccessTest extends TestCase
         $without = $this->userWith(['view_contracts']);
         $with = $this->userWith(['view_cashbox_summary']);
 
-        foreach (['/api/reports/credit-activity/9/2026', '/api/get-cashBox-summary/9/2026'] as $url) {
+        foreach (['/api/reports/credit-activity/9/2026', '/api/reports/financial-indicators/9/2026'] as $url) {
             $this->getJson($url)->assertStatus(401);
             $this->getJson($url, $this->authHeaders($without))->assertStatus(403);
             $this->getJson($url, $this->authHeaders($with))->assertOk();

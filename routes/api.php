@@ -348,8 +348,9 @@ Route::group(['middleware' => 'jwt.auth'], function () {
 
     Route::get('/download-order/{id}', [FileController::class, 'downloadOrder']);
     Route::get('/get-cashBox/{id}',[DealController::class,'getCashBox'])->middleware('can:view_cashbox_balance');
-    // /reports page ("financial indicators" permission group): legacy daily table + management summary.
-    Route::get('/get-cashBox-summary/{month}/{year}', [DealController::class, 'calculatePawnshopCashbox'])->middleware('can:view_cashbox_summary');
+    // /reports page ("financial indicators" permission group): management summary + daily financial indicators.
+    Route::get('/reports/financial-indicators/{month}/{year}', \App\Http\Controllers\FinancialIndicatorsController::class)
+        ->whereNumber(['month', 'year'])->middleware('can:view_cashbox_summary');
     Route::get('/reports/portfolio-quality/details', \App\Http\Controllers\PortfolioQualityDetailsController::class)
         ->middleware('can:view_cashbox_summary');
     Route::get('/reports/portfolio-quality/{month}/{year}', \App\Http\Controllers\PortfolioQualityController::class)

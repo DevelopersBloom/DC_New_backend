@@ -20,18 +20,23 @@ use Illuminate\Support\Facades\DB;
 class CreditActivityReportService
 {
     /** Deal types that move the operational cash/bank balance: 'in' adds, the rest subtract. */
-    private const DEAL_IN = ['in'];
-    private const DEAL_OUT = ['out', 'expense', 'cost_out'];
+    public const DEAL_IN = ['in'];
+    public const DEAL_OUT = ['out', 'expense', 'cost_out'];
 
     /** A contract-disbursement deal (see ContractTrait::createOrderHistoryEntry: type out, filter_type contract). */
     private const DISBURSEMENT_DEAL_TYPE = 'out';
     private const DISBURSEMENT_DEAL_FILTER = 'contract';
 
-    private const VALID_DEAL_DATE = "d.date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'";
+    public const VALID_DEAL_DATE = "d.date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'";
 
     public function __construct(private ?Carbon $today = null)
     {
         $this->today = ($today ?? Carbon::now('Asia/Yerevan'))->copy()->startOfDay();
+    }
+
+    public function today(): Carbon
+    {
+        return $this->today->copy();
     }
 
     // ------------------------------------------------------------------ periods
@@ -436,7 +441,7 @@ class CreditActivityReportService
      * Flow metrics for events dated $from..$to. Pure PHP over the (small) event list; the median is
      * computed here because MySQL/MariaDB have no portable MEDIAN and the cohort is a few dozen rows.
      */
-    private function flow(array $events, string $from, string $to): array
+    public function flow(array $events, string $from, string $to): array
     {
         $new = $top = [];
         foreach ($events as $e) {
