@@ -249,6 +249,16 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             ->middleware('can:view_loan_applications');
         Route::post('/{id}/estimates', [\App\Http\Controllers\LoanApplicationController::class, 'storeEstimate'])
             ->middleware('can:estimate_loan_application_collateral');
+        Route::put('/{id}', [\App\Http\Controllers\LoanApplicationController::class, 'update'])
+            ->middleware('can:edit_loan_application');
+        Route::delete('/{id}', [\App\Http\Controllers\LoanApplicationController::class, 'destroy'])
+            ->middleware('can:delete_loan_application');
+        Route::post('/{id}/finalize-estimate', [\App\Http\Controllers\LoanApplicationController::class, 'finalizeEstimate'])
+            ->middleware('can:finalize_loan_application_estimate');
+        Route::post('/{id}/files', [\App\Http\Controllers\LoanApplicationController::class, 'storeFiles'])
+            ->middleware('can:view_loan_applications');
+        Route::delete('/{id}/files/{fileId}', [\App\Http\Controllers\LoanApplicationController::class, 'destroyFile'])
+            ->middleware('can:edit_loan_application');
         Route::post('/{id}/decide', [\App\Http\Controllers\LoanApplicationController::class, 'decide'])
             ->middleware('can:decide_loan_application');
         Route::post('/{id}/convert', [\App\Http\Controllers\LoanApplicationController::class, 'convert'])

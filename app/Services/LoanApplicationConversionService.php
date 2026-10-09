@@ -86,7 +86,11 @@ class LoanApplicationConversionService
 
         $loanApplication->loadMissing(['items.realEstate', 'finalEstimate']);
 
-        $seedAmount = (float) ($loanApplication->finalEstimate->estimated_amount ?? 0);
+        // New flow: the amount decided in loan review. Legacy approved rows have
+        // no provided amount and fall back to their final estimate.
+        $seedAmount = (float) ($loanApplication->provided_amount
+            ?? $loanApplication->finalEstimate->estimated_amount
+            ?? 0);
         $firstItem = $loanApplication->items->first();
 
         return DB::transaction(function () use ($loanApplication, $client, $seedAmount, $firstItem) {
@@ -95,9 +99,10 @@ class LoanApplicationConversionService
                 'user_id'          => Auth::id(),
                 'pawnshop_id'      => $loanApplication->pawnshop_id,
                 'category_id'      => $firstItem?->category_id,
-                'estimated_amount' => $seedAmount,
+                'estimated_amount' => (float) ($loanApplication->finalEstimate->estimated_amount ?? $seedAmount),
                 'provided_amount'  => $seedAmount,
-                'loan_type'        => $loanApplication->loan_type,
+                // contracts.loan_type is an integer classification code set by the
+                // New Loan wizard; the application's car/gold/property type is not it.
                 'status'           => Contract::STATUS_INITIAL,
                 'date'             => now()->toDateString(),
                 // Placeholder; the New Loan wizard sets the real term/deadline.

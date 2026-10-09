@@ -6,10 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * The designated approver's final call on a submitted application.
- *
- * `final_estimate_id` must reference an estimate; the controller additionally
- * verifies the estimate actually belongs to THIS application (not just any).
+ * The loan-review decision: approve with the amount to disburse, or reject.
  */
 class LoanApplicationDecisionRequest extends FormRequest
 {
@@ -21,9 +18,12 @@ class LoanApplicationDecisionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status'            => ['required', Rule::in(['approved', 'rejected'])],
-            'final_estimate_id' => ['required_if:status,approved', 'nullable', 'exists:loan_application_estimates,id'],
-            'rejected_reason'   => ['required_if:status,rejected', 'nullable', 'string'],
+            'status'               => ['required', Rule::in(['approved', 'rejected'])],
+            // No ceiling: the provided amount may exceed the collateral estimate.
+            'provided_amount'      => ['required_if:status,approved', 'nullable', 'numeric', 'gt:0'],
+            'provided_currency_id' => ['nullable', 'exists:currencies,id'],
+            'provided_note'        => ['nullable', 'string', 'max:1000'],
+            'rejected_reason'      => ['required_if:status,rejected', 'nullable', 'string'],
         ];
     }
 
@@ -32,7 +32,7 @@ class LoanApplicationDecisionRequest extends FormRequest
         return [
             'status.required'              => 'Որոշումը պարտադիր է։',
             'status.in'                    => 'Որոշումը պետք է լինի approved կամ rejected։',
-            'final_estimate_id.required_if' => 'Հաստատելու համար ընտրեք վերջնական գնահատականը։',
+            'provided_amount.required_if'  => 'Հաստատելու համար նշեք տրամադրվող գումարը։',
             'rejected_reason.required_if'  => 'Մերժման պատճառը պարտադիր է։',
         ];
     }

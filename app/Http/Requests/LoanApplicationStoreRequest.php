@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Support\LoanApplicationDocument;
 use Illuminate\Validation\Rule;
 
 /**
@@ -45,6 +46,10 @@ class LoanApplicationStoreRequest extends FormRequest
             'files.*'               => ['file', 'max:10240'],
             'file_visibilities'     => ['nullable', 'array'],
             'file_visibilities.*'   => [Rule::in(['public', 'admin_only'])],
+            'file_types'            => ['nullable', 'array'],
+            'file_types.*'          => [Rule::in(LoanApplicationDocument::TYPES)],
+            'file_titles'           => ['nullable', 'array'],
+            'file_titles.*'         => ['nullable', 'string', 'max:255'],
         ];
 
         if ($loanType === 'gold') {
@@ -82,6 +87,30 @@ class LoanApplicationStoreRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * Required collateral documents per loan type: «Տեխ. անձնագիր» + photos for
+     * cars, «սեփականության վկայական» for property. Gold has no required document.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $types = (array) $this->input('file_types', []);
+            $files = (array) $this->file('files', []);
+
+            foreach (LoanApplicationDocument::REQUIRED[$this->input('loan_type')] ?? [] as $type) {
+                $count = 0;
+                foreach ($files as $index => $file) {
+                    if ($file && ($types[$index] ?? null) === $type) {
+                        $count++;
+                    }
+                }
+                if ($count === 0) {
+                    $validator->errors()->add('files', LoanApplicationDocument::LABELS[$type] . ' պարտադիր է։');
+                }
+            }
+        });
     }
 
     public function messages(): array

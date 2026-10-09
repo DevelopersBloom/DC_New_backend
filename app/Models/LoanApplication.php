@@ -15,7 +15,8 @@ class LoanApplication extends Model
     use SoftDeletes;
 
     public const STATUS_SUBMITTED = 'submitted';
-    public const STATUS_IN_REVIEW = 'in_review';
+    public const STATUS_COLLATERAL_REVIEW = 'collateral_review';
+    public const STATUS_LOAN_REVIEW = 'loan_review';
     public const STATUS_APPROVED = 'approved';
     public const STATUS_REJECTED = 'rejected';
     public const STATUS_CONVERTED = 'converted';
@@ -28,6 +29,11 @@ class LoanApplication extends Model
         'pawnshop_id',
         'created_by',
         'final_estimate_id',
+        'provided_amount',
+        'provided_currency_id',
+        'provided_note',
+        'estimate_finalized_at',
+        'estimate_finalized_by',
         'approved_by',
         'approved_at',
         'rejected_reason',
@@ -35,7 +41,9 @@ class LoanApplication extends Model
     ];
 
     protected $casts = [
-        'approved_at' => 'datetime',
+        'approved_at'           => 'datetime',
+        'estimate_finalized_at' => 'datetime',
+        'provided_amount'       => 'decimal:2',
     ];
 
     public function client(): BelongsTo
@@ -81,6 +89,17 @@ class LoanApplication extends Model
     public function files(): MorphMany
     {
         return $this->morphMany(File::class, 'fileable');
+    }
+
+    public function providedCurrency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class, 'provided_currency_id');
+    }
+
+    /** The collateral estimate is locked once the final estimate has been chosen. */
+    public function isEstimateFinalized(): bool
+    {
+        return $this->final_estimate_id !== null;
     }
 
     public function isDecided(): bool
