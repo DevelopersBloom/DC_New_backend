@@ -132,6 +132,9 @@ return [
             'decide_loan_application',
             'view_loan_application_admin_files',
             'convert_loan_application',
+            'edit_loan_application',
+            'delete_loan_application',
+            'finalize_loan_application_estimate',
         ],
         'dashboard_and_orders' => [
             'view_reminder_orders',

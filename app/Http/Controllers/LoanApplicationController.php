@@ -4,17 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoanApplicationDecisionRequest;
 use App\Http\Requests\LoanApplicationEstimateRequest;
+use App\Http\Requests\LoanApplicationFileRequest;
+use App\Http\Requests\LoanApplicationFinalizeEstimateRequest;
 use App\Http\Requests\LoanApplicationStoreRequest;
+use App\Http\Requests\LoanApplicationUpdateRequest;
 use App\Models\Client;
 use App\Models\File;
 use App\Models\LoanApplication;
 use App\Models\LoanApplicationEstimate;
 use App\Services\ClientService;
 use App\Services\LoanApplicationConversionService;
+use App\Support\LoanApplicationDocument;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class LoanApplicationController extends Controller
@@ -100,7 +105,13 @@ class LoanApplicationController extends Controller
                 }
             }
 
-            $this->attachFiles($application, $data);
+            $this->attachFiles(
+                $application,
+                $data['files'] ?? [],
+                $data['file_types'] ?? [],
+                $data['file_titles'] ?? [],
+                $data['file_visibilities'] ?? [],
+            );
 
             return $application;
         });
@@ -137,6 +148,7 @@ class LoanApplicationController extends Controller
             'estimates.user',
             'estimates.currency',
             'finalEstimate',
+            'providedCurrency',
             'approver',
             'creator',
             'contract',
@@ -158,48 +170,34 @@ class LoanApplicationController extends Controller
     {
         $application = LoanApplication::findOrFail($id);
 
-        if ($application->isDecided()) {
+        if ($application->isEstimateFinalized() || $application->isDecided()
+            || $application->status === LoanApplication::STATUS_LOAN_REVIEW) {
             return response()->json([
-                'message' => 'This application is already ' . $application->status . '.',
+                'message' => 'The collateral estimation is already finished.',
             ], 409);
         }
 
         $data = $request->validated();
         $userId = Auth::id();
 
+        // Estimates are not editable: one per user, final once submitted.
+        if ($application->estimates()->where('user_id', $userId)->exists()) {
+            return response()->json([
+                'message' => 'You have already submitted an estimate for this application.',
+            ], 409);
+        }
+
         $estimate = DB::transaction(function () use ($application, $data, $userId) {
-            /** @var LoanApplicationEstimate|null $existing */
-            $existing = $application->estimates()->where('user_id', $userId)->first();
+            $estimate = $application->estimates()->create([
+                'user_id'          => $userId,
+                'estimated_amount' => $data['estimated_amount'],
+                'currency_id'      => $data['currency_id'] ?? null,
+                'note'             => $data['note'] ?? null,
+            ]);
 
-            if ($existing) {
-                $history = $existing->history ?? [];
-                $history[] = [
-                    'estimated_amount' => $existing->estimated_amount,
-                    'currency_id'      => $existing->currency_id,
-                    'note'             => $existing->note,
-                    'changed_at'       => now()->toDateTimeString(),
-                ];
-
-                $existing->update([
-                    'estimated_amount' => $data['estimated_amount'],
-                    'currency_id'      => $data['currency_id'] ?? $existing->currency_id,
-                    'note'             => $data['note'] ?? null,
-                    'history'          => $history,
-                ]);
-
-                $estimate = $existing;
-            } else {
-                $estimate = $application->estimates()->create([
-                    'user_id'          => $userId,
-                    'estimated_amount' => $data['estimated_amount'],
-                    'currency_id'      => $data['currency_id'] ?? null,
-                    'note'             => $data['note'] ?? null,
-                ]);
-            }
-
-            // First estimate for an application moves it into review.
+            // First estimate moves the application into collateral review.
             if ($application->status === LoanApplication::STATUS_SUBMITTED) {
-                $application->update(['status' => LoanApplication::STATUS_IN_REVIEW]);
+                $application->update(['status' => LoanApplication::STATUS_COLLATERAL_REVIEW]);
             }
 
             return $estimate;
@@ -212,48 +210,73 @@ class LoanApplicationController extends Controller
     }
 
 
+    /**
+     * Ends the collateral stage: locks the estimates, records the chosen final
+     * estimate and moves the application into loan review.
+     */
+    public function finalizeEstimate(LoanApplicationFinalizeEstimateRequest $request, int $id): JsonResponse
+    {
+        $application = LoanApplication::findOrFail($id);
+
+        if ($application->status !== LoanApplication::STATUS_COLLATERAL_REVIEW) {
+            return response()->json([
+                'message' => 'Only an application under collateral review can be finalized.',
+            ], 409);
+        }
+
+        $estimateId = $request->validated()['final_estimate_id'];
+
+        if (!$application->estimates()->whereKey($estimateId)->exists()) {
+            return response()->json([
+                'message' => 'The chosen final estimate does not belong to this application.',
+            ], 422);
+        }
+
+        $application->update([
+            'status'                => LoanApplication::STATUS_LOAN_REVIEW,
+            'final_estimate_id'     => $estimateId,
+            'estimate_finalized_at' => now(),
+            'estimate_finalized_by' => Auth::id(),
+        ]);
+
+        return response()->json([
+            'message' => 'Collateral estimation finished',
+            'data'    => $application->fresh(['finalEstimate']),
+        ]);
+    }
+
+
+    /** Loan review decision: approve with the provided amount, or reject. */
     public function decide(LoanApplicationDecisionRequest $request, int $id): JsonResponse
     {
         $application = LoanApplication::findOrFail($id);
 
-        if ($application->isDecided()) {
+        if ($application->status !== LoanApplication::STATUS_LOAN_REVIEW) {
             return response()->json([
-                'message' => 'This application is already ' . $application->status . '.',
+                'message' => 'Only an application under loan review can be decided (current status: ' . $application->status . ').',
             ], 409);
         }
 
         $data = $request->validated();
 
         if ($data['status'] === LoanApplication::STATUS_APPROVED) {
-            $belongs = $application->estimates()
-                ->whereKey($data['final_estimate_id'])
-                ->exists();
-
-            if (!$belongs) {
-                return response()->json([
-                    'message' => 'The chosen final estimate does not belong to this application.',
-                ], 422);
-            }
+            $application->update([
+                'status'               => LoanApplication::STATUS_APPROVED,
+                'provided_amount'      => $data['provided_amount'],
+                'provided_currency_id' => $data['provided_currency_id'] ?? null,
+                'provided_note'        => $data['provided_note'] ?? null,
+                'approved_by'          => Auth::id(),
+                'approved_at'          => now(),
+                'rejected_reason'      => null,
+            ]);
+        } else {
+            $application->update([
+                'status'          => LoanApplication::STATUS_REJECTED,
+                'approved_by'     => Auth::id(),
+                'approved_at'     => now(),
+                'rejected_reason' => $data['rejected_reason'],
+            ]);
         }
-
-        DB::transaction(function () use ($application, $data) {
-            if ($data['status'] === LoanApplication::STATUS_APPROVED) {
-                $application->update([
-                    'status'            => LoanApplication::STATUS_APPROVED,
-                    'final_estimate_id' => $data['final_estimate_id'],
-                    'approved_by'       => Auth::id(),
-                    'approved_at'       => now(),
-                    'rejected_reason'   => null,
-                ]);
-            } else {
-                $application->update([
-                    'status'          => LoanApplication::STATUS_REJECTED,
-                    'approved_by'     => Auth::id(),
-                    'approved_at'     => now(),
-                    'rejected_reason' => $data['rejected_reason'],
-                ]);
-            }
-        });
 
         return response()->json([
             'message' => 'Application ' . $application->status,
@@ -288,8 +311,9 @@ class LoanApplicationController extends Controller
                 'contract_id' => $contract->id,
                 'prefill'     => [
                     'client_id'        => $contract->client_id,
-                    'loan_type'        => $contract->loan_type,
+                    'loan_type'        => $application->loan_type,
                     'estimated_amount' => $contract->estimated_amount,
+                    'provided_amount'  => $contract->provided_amount,
                     'items'            => $contract->items()->with('realEstate')->get(),
                 ],
             ],
@@ -297,15 +321,135 @@ class LoanApplicationController extends Controller
     }
 
 
-    private function attachFiles(LoanApplication $application, array $data): void
+    /** Admin edit of inputs. Estimates and the final estimate are never touched. */
+    public function update(LoanApplicationUpdateRequest $request, int $id): JsonResponse
     {
-        if (empty($data['files'])) {
-            return;
+        $application = LoanApplication::findOrFail($id);
+
+        if ($application->status === LoanApplication::STATUS_CONVERTED) {
+            return response()->json(['message' => 'A converted application cannot be edited.'], 409);
         }
 
-        $visibilities = $data['file_visibilities'] ?? [];
+        $data = $request->validated();
 
-        foreach ($data['files'] as $index => $uploadedFile) {
+        DB::transaction(function () use ($application, $data) {
+            if (array_key_exists('comments', $data)) {
+                $application->update(['comments' => $data['comments']]);
+            }
+
+            foreach ($data['items'] ?? [] as $itemData) {
+                $fields = collect($itemData)->except(['id', 'real_estate'])->all();
+
+                if (!empty($itemData['id'])) {
+                    $item = $application->items()->findOrFail($itemData['id']);
+                    $item->update($fields);
+                } else {
+                    $item = $application->items()->create($fields);
+                }
+
+                if ($application->loan_type === 'property' && !empty($itemData['real_estate'])) {
+                    $item->realEstate()->updateOrCreate([], [
+                        'certificate_number'   => $itemData['real_estate']['certificate_number'] ?? null,
+                        'certificate_password' => $itemData['real_estate']['certificate_password'] ?? null,
+                        'cadastral_code'       => $itemData['real_estate']['cadastral_code'] ?? null,
+                        'area_sqm'             => $itemData['real_estate']['area_sqm'] ?? null,
+                        'is_joint'             => $itemData['real_estate']['is_joint'] ?? false,
+                    ]);
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => 'Application updated',
+            'data'    => $application->fresh(['client', 'items.realEstate', 'files']),
+        ]);
+    }
+
+
+    public function destroy(int $id): JsonResponse
+    {
+        $application = LoanApplication::findOrFail($id);
+
+        if ($application->status === LoanApplication::STATUS_CONVERTED) {
+            return response()->json(['message' => 'A converted application cannot be deleted.'], 409);
+        }
+
+        $application->delete();
+
+        return response()->json(['message' => 'Application deleted']);
+    }
+
+
+    /**
+     * Adds named, typed documents. Admins (edit permission) may add any type; a
+     * loan-review decider may add only ԱՔՌԱ documents while the loan is in review.
+     */
+    public function storeFiles(LoanApplicationFileRequest $request, int $id): JsonResponse
+    {
+        $application = LoanApplication::findOrFail($id);
+        $user = $request->user();
+        $data = $request->validated();
+
+        if ($application->status === LoanApplication::STATUS_CONVERTED) {
+            return response()->json(['message' => 'A converted application cannot be changed.'], 409);
+        }
+
+        if (!$user->can('edit_loan_application')) {
+            $types = array_map(
+                fn ($index) => $data['file_types'][$index] ?? LoanApplicationDocument::OTHER,
+                array_keys($data['files'])
+            );
+            $onlyAcra = $types !== [] && collect($types)->every(fn ($t) => $t === LoanApplicationDocument::ACRA);
+
+            if (!$user->can('decide_loan_application')
+                || !$onlyAcra
+                || $application->status !== LoanApplication::STATUS_LOAN_REVIEW) {
+                abort(403, 'You are not allowed to add these documents.');
+            }
+        }
+
+        $this->attachFiles(
+            $application,
+            $data['files'],
+            $data['file_types'] ?? [],
+            $data['file_titles'] ?? [],
+            $data['file_visibilities'] ?? [],
+        );
+
+        return response()->json([
+            'message' => 'Files added',
+            'data'    => $application->files()->get(),
+        ], 201);
+    }
+
+
+    public function destroyFile(int $id, int $fileId): JsonResponse
+    {
+        $application = LoanApplication::findOrFail($id);
+
+        if ($application->status === LoanApplication::STATUS_CONVERTED) {
+            return response()->json(['message' => 'A converted application cannot be changed.'], 409);
+        }
+
+        $file = $application->files()->findOrFail($fileId);
+
+        if ($file->path) {
+            Storage::disk('public')->delete($file->path);
+        }
+        $file->delete();
+
+        return response()->json(['message' => 'File deleted']);
+    }
+
+
+    private function attachFiles(
+        LoanApplication $application,
+        array $files,
+        array $types = [],
+        array $titles = [],
+        array $visibilities = [],
+    ): void {
+        foreach ($files as $index => $uploadedFile) {
             if (!$uploadedFile || !$uploadedFile->isValid()) {
                 continue;
             }
@@ -317,9 +461,10 @@ class LoanApplicationController extends Controller
                 'file_type'     => $uploadedFile->getClientMimeType(),
                 'client_id'     => $application->client_id,
                 'name'          => $uploadedFile->getClientOriginalName(),
+                'title'         => ($titles[$index] ?? null) ?: $uploadedFile->getClientOriginalName(),
                 'original_name' => $uploadedFile->getClientOriginalName(),
                 'type'          => $uploadedFile->getClientOriginalExtension(),
-                'doc_type'      => 'regular',
+                'doc_type'      => $types[$index] ?? LoanApplicationDocument::OTHER,
                 'visibility'    => ($visibilities[$index] ?? 'public') === 'admin_only' ? 'admin_only' : 'public',
                 'path'          => $path,
             ]);

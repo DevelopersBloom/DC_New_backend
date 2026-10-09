@@ -17,6 +17,7 @@ class File extends Model
         'fileable_type',
         'client_id',
         'name',
+        'title',
         'original_name',
         'type',
         'doc_type',
