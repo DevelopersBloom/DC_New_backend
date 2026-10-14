@@ -125,6 +125,12 @@ class CreditRegistryL001Validator
             $errors[] = 'LoanUsePurpose (վարկի օգտագործման նպատակ) պարտադիր է';
         } elseif (!is_numeric($lup)) {
             $errors[] = "LoanUsePurpose-ը պետք է լինի ամբողջ թիվ, ստացվել է՝ \"{$lup}\"։";
+        } elseif ($msg = \App\Support\LoanUsePurpose::violation(
+            (int) $lup,
+            $client->type ?? null,
+            $contract->loan_use_field ?? $client->activity_field ?? null
+        )) {
+            $errors[] = 'LoanUsePurpose. ' . $msg;
         }
 
         // LoanUseRegion — stRegion: ^[0-9]{8}$

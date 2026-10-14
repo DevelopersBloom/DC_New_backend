@@ -47,7 +47,7 @@ class StoreReminderOrderRequest extends FormRequest
             'debit_account_id.exists'    => 'Դեբետ հաշիվը սխալ է։',
             'debit_partner_id.exists'    => 'Դեբետ գործընկերը սխալ է։',
             'credit_account_id.exists'   => 'Կրեդիտ հաշիվը սխալ է։',
-            'credit_partner_id.exists'   => 'Դեբետ գործընկերը սխալ է։',
+            'credit_partner_id.exists'   => 'Կրեդիտ գործընկերը սխալ է։',
             'is_draft.boolean'           => 'Սևագրի դաշտը պետք է լինի true կամ false։',
         ];
     }

@@ -6,10 +6,11 @@ use App\Traits\Journalable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ReminderOrder extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 //Journalable;
 
     protected $fillable = [
@@ -57,6 +58,25 @@ class ReminderOrder extends Model
     {
         return $this->morphMany(Transaction::class, 'transactionable');
     }
+    /**
+     * Off-balance (8xxx) accounts change the document type; every writer of the
+     * journal/transactions for this order must use this so they agree.
+     */
+    public function resolveDocumentType(): string
+    {
+        $debitCode  = ChartOfAccount::whereKey($this->debit_account_id)->value('code');
+        $creditCode = ChartOfAccount::whereKey($this->credit_account_id)->value('code');
+
+        if ($debitCode && str_starts_with($debitCode, '8')) {
+            return DocumentJournal::OFF_BALANCE_INCOMING;
+        }
+        if ($creditCode && str_starts_with($creditCode, '8')) {
+            return DocumentJournal::OFF_BALANCE_OUTGOING;
+        }
+
+        return DocumentJournal::REMINDER_ORDER_TYPE;
+    }
+
     public function toJournalRow(): array
     {
         return [

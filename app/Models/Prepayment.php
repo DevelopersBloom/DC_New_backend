@@ -24,7 +24,7 @@ class Prepayment extends Model
     ];
 
     protected $casts = [
-        'due_date'         => 'date',
+        'due_date'         => 'date:Y-m-d',
         'paid_at'          => 'datetime',
         'amount'           => 'decimal:2',
         'principal_amount' => 'decimal:2',

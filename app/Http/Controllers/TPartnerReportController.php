@@ -96,8 +96,6 @@ class TPartnerReportController extends Controller
                 'credit_account_id',
                 'debit_partner_id',
                 'credit_partner_id',
-                'debit_partner_name',
-                'credit_partner_name',
             ]);
 
         $rows = [];
@@ -116,8 +114,8 @@ class TPartnerReportController extends Controller
             }
 
             $counterpartyName = $isDebitSide
-                ? ($this->partnerDisplayName($tx->creditPartner) ?? $tx->credit_partner_name)
-                : ($this->partnerDisplayName($tx->debitPartner) ?? $tx->debit_partner_name);
+                ? $this->partnerDisplayName($tx->creditPartner)
+                : $this->partnerDisplayName($tx->debitPartner);
 
             $rows[] = [
                 'date'                    => $tx->date?->format('Y-m-d'),

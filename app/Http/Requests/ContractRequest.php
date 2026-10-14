@@ -48,7 +48,7 @@ class ContractRequest extends FormRequest
             'interest_rate_type' => 'nullable|integer',
             'security_type'      => 'nullable|integer',
             'loan_use_field' => 'nullable|string',
-            'loan_use_purpose' => 'nullable|integer',
+            'loan_use_purpose' => 'nullable|integer|between:0,14',
             'contract_modified_amount' => 'nullable|numeric',
             'provision_of_credit' => 'nullable|boolean',
             'payment_day'   => 'nullable|integer|min:1|max:28',
@@ -57,6 +57,30 @@ class ContractRequest extends FormRequest
 //            'files.*.file_type' => 'required|string',
         ];
     }
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $purpose = $this->input('loan_use_purpose');
+            if ($purpose === null || $purpose === '' || $validator->errors()->has('loan_use_purpose')) {
+                return;
+            }
+
+            $clientType = $this->input('type');
+            if (!$clientType && $this->input('client_id')) {
+                $clientType = \App\Models\Client::whereKey($this->input('client_id'))->value('type');
+            }
+
+            $error = \App\Support\LoanUsePurpose::violation(
+                (int) $purpose,
+                $clientType,
+                $this->input('loan_use_field')
+            );
+            if ($error) {
+                $validator->errors()->add('loan_use_purpose', $error);
+            }
+        });
+    }
+
     public function messages()
     {
         return [

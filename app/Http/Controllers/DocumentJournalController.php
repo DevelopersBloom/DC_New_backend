@@ -29,6 +29,7 @@ class DocumentJournalController
         $documentNumber = $request->query('document_number');
         $partnerName    = $request->query('partner_name');
         $partnerIds     = $request->query('partner_ids', []);
+        $comment        = trim((string) $request->query('comment', ''));
 
         $typeMap = [
             'ndm' => DocumentJournal::LOAN_NDM_TYPE,
@@ -56,6 +57,7 @@ class DocumentJournalController
             'amount_amd'        => 'amount_amd',
             'disbursement_date' => 'created_at',
             'debit_partner_name'=> 'debit_partner_id',
+            'credit_partner_name'=> 'credit_partner_id',
         ];
         $sortColumn = $sortMap[$sortKey] ?? 'id';
 
@@ -68,6 +70,7 @@ class DocumentJournalController
             ->when($documentType, fn($q) => $q->where('document_type','LIKE', '%' . $documentType . '%'))
             ->when(!empty($documentTypes), fn($q) => $q->whereIn('document_type', $documentTypes))
             ->when($documentNumber, fn($q) => $q->where('document_number', 'LIKE', $documentNumber . '%'))
+            ->when($comment !== '', fn($q) => $q->where('comment', 'LIKE', '%' . addcslashes($comment, '%_\\') . '%'))
             ->when($from && $to,  fn($q) => $q->whereBetween('date', [$from, $to]))
             ->when($from && !$to, fn($q) => $q->where('date', '>=', $from))
             ->when(!$from && $to, fn($q) => $q->where('date', '<=', $to))
@@ -386,6 +389,31 @@ class DocumentJournalController
                     'credit_partner_id' => 'credit_partner_id',
                 ]);
                 $source->save();
+
+                // Keep the ledger rows in step with the journal row.
+                $txData = [];
+                foreach (['date', 'document_number', 'amount_amd', 'comment',
+                          'debit_account_id', 'debit_partner_id',
+                          'credit_account_id', 'credit_partner_id'] as $col) {
+                    if (array_key_exists($col, $data)) {
+                        $txData[$col] = $data[$col];
+                    }
+                }
+                if (array_key_exists('currency_id', $data)) {
+                    $txData['debit_currency_id']  = $data['currency_id'];
+                    $txData['credit_currency_id'] = $data['currency_id'];
+                }
+                if (array_key_exists('debit_account_id', $data) || array_key_exists('credit_account_id', $data)) {
+                    $type = $source->resolveDocumentType();
+                    if ($journal->document_type !== $type) {
+                        $journal->document_type = $type;
+                        $journal->save();
+                    }
+                    $txData['document_type'] = $type;
+                }
+                if ($txData) {
+                    $journal->transactions()->update($txData);
+                }
             }
 
             DB::commit();
