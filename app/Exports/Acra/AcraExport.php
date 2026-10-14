@@ -510,7 +510,6 @@ class AcraExport
 //            };
             $sheet->setCellValue('F' . $row, '001');
             $sheet->setCellValue('G' . $row, $contract->contract_amount);
-            $sheet->setCellValue('H' . $row, $contract->mother);
 
             // I and J share one reconstruction of this contract's principal -
             // disbursed, repaid, and still outstanding - as of $to, sourced from
@@ -548,6 +547,11 @@ class AcraExport
                     ->where('date', '<', $this->to)
                     ->sum('amount');
             }
+            // H: total actually disbursed as of $to (initial disbursement plus any
+            // re-provides). Not contracts.mother, which is a static creation-time
+            // value that never reflects repayments and can drift from the ledger.
+            $this->setIntegerCellValue($sheet, 'H' . $row, $principalIn);
+
             $principalLedgerBalance = (float) $principalIn - (float) $principalOut;
 
             // A prepayment's principal_amount AND partial_amount both stay out of the

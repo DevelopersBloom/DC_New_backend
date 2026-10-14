@@ -15,11 +15,13 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
 {
     protected $from;
     protected $to;
+    protected array $filters;
 
-    public function __construct($from = null, $to = null)
+    public function __construct($from = null, $to = null, array $filters = [])
     {
         $this->from = $from;
         $this->to = $to;
+        $this->filters = $filters;
     }
 
     public function collection()
@@ -40,6 +42,7 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             'is_system',
             'debit_partner_id',
             'credit_partner_id',
+            'comment',
         ])->with([
             'debitAccount:id,code,name',
             'debitCurrency:id,code',
@@ -57,6 +60,30 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             $query->where('date', '>=', $this->from);
         } elseif ($this->to) {
             $query->where('date', '<=', $this->to);
+        }
+
+        $f = $this->filters;
+
+        if (!empty($f['document_types'])) {
+            $query->whereIn('document_type', $f['document_types']);
+        } elseif (!empty($f['document_type'])) {
+            $query->where('document_type', 'LIKE', '%' . $f['document_type'] . '%');
+        }
+        if (!empty($f['document_number'])) {
+            $query->where('document_number', 'LIKE', $f['document_number'] . '%');
+        }
+        if (!empty($f['comment'])) {
+            $query->where('comment', 'LIKE', '%' . addcslashes($f['comment'], '%_\\') . '%');
+        }
+        if (!empty($f['partner_name'])) {
+            $term = $f['partner_name'];
+            $ids = \App\Models\Client::where(function ($q) use ($term) {
+                $q->where('company_name', 'LIKE', '%' . $term . '%')
+                  ->orWhereRaw("CONCAT(COALESCE(name,''), ' ', COALESCE(surname,'')) LIKE ?", ['%' . $term . '%']);
+            })->pluck('id');
+            $query->where(function ($q) use ($ids) {
+                $q->whereIn('debit_partner_id', $ids)->orWhereIn('credit_partner_id', $ids);
+            });
         }
 
         return $query->orderBy('date', 'desc')->get();
@@ -77,7 +104,7 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             'Կրեդիտ Գործ․ անվանում',
             'Կրեդիտ արժ․',
             'Գումար դրամով',
-            'Գումար արժ․Մեկնաբանություն',
+            'Մեկնաբանություն',
             'Օգտագործող',
             'Համակարգչային',
         ];
@@ -98,7 +125,7 @@ class TransactionsExport implements FromCollection, WithHeadings, WithMapping, S
             $t->credit_partner_name,
             optional($t->creditCurrency)->code,
             $t->amount_amd,
-            '',
+            $t->comment,
             optional($t->user)->name . ' ' . optional($t->user)->surname,
             $t->is_system ? 'Այո' : 'Ոչ',
         ];

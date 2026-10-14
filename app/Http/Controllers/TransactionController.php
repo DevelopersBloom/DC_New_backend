@@ -25,6 +25,28 @@ class TransactionController
         $documentNumber = $request->query('document_number');
         $partnerName    = $request->query('partner_name');
         $partnerIds     = $request->query('partner_ids', []);
+        $comment        = trim((string) $request->query('comment', ''));
+
+        // document_types[]=...: exact match on any of the selected types
+        $documentTypes = collect((array) $request->query('document_types', []))
+            ->filter(fn ($t) => is_string($t) && trim($t) !== '')
+            ->map(fn ($t) => trim($t))
+            ->unique()
+            ->values()
+            ->all();
+
+        $sortMap = [
+            'date'               => 'date',
+            'document_number'    => 'document_number',
+            'document_type'      => 'document_type',
+            'amount_amd'         => 'amount_amd',
+            'comment'            => 'comment',
+            'disbursement_date'  => 'created_at',
+            'debit_partner_name' => 'debit_partner_id',
+            'credit_partner_name'=> 'credit_partner_id',
+        ];
+        $sortColumn = $sortMap[(string) $request->query('sort_by', '')] ?? 'id';
+        $sortDir    = strtolower((string) $request->query('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
 
         $query = DocumentJournal::select([
             'id',
@@ -39,6 +61,8 @@ class TransactionController
             'user_id',
             'debit_partner_id',
             'credit_partner_id',
+            'comment',
+            'created_at',
         ])
             ->with([
                 'debitAccount:id,code,name',
@@ -57,6 +81,14 @@ class TransactionController
             $query->where('date', '<=', $to);
         }
         $query->byDocument($documentType, $documentNumber);
+
+        if (!empty($documentTypes)) {
+            $query->whereIn('document_type', $documentTypes);
+        }
+
+        if ($comment !== '') {
+            $query->where('comment', 'LIKE', '%' . addcslashes($comment, '%_\\') . '%');
+        }
 
         if (!empty($partnerIds)) {
             $ids = is_array($partnerIds) ? $partnerIds : [$partnerIds];
@@ -80,12 +112,62 @@ class TransactionController
             });
         }
 
+        $query->orderBy($sortColumn, $sortDir)->orderByDesc('id');
+
         $perPage = (int) $request->query('per_page', 20);
         $perPage = $perPage > 0 ? min($perPage, 100) : 20;
-        $transactions = $query->orderBy('id', 'desc')->paginate($perPage);
 
-        return response()->json($transactions);
+        // Footer total covers the whole filtered set, not just the current page.
+        $amountSum = (float) (clone $query)->reorder()->sum('amount_amd');
+        $page = $query->paginate($perPage);
+
+        // Flat display fields next to the relations the old payload already carried.
+        $page->getCollection()->transform(function (DocumentJournal $j) {
+            $row = $j->toArray();
+            $currencyCode = $j->currency?->code ?? 'AMD';
+
+            $row['debit_partner_name']  = $this->partnerDisplayName($j->debitPartner);
+            $row['debit_partner_code']  = $this->partnerCode($j->debitPartner);
+            $row['credit_partner_name'] = $this->partnerDisplayName($j->creditPartner);
+            $row['credit_partner_code'] = $this->partnerCode($j->creditPartner);
+            // A journal row has a single currency, shared by both sides.
+            $row['debit_currency_code']  = $currencyCode;
+            $row['credit_currency_code'] = $currencyCode;
+            $row['disbursement_date']    = optional($j->created_at)->format('Y-m-d H:i:s');
+
+            return $row;
+        });
+
+        $payload = $page->toArray();
+        $payload['amount_sum'] = $amountSum;
+
+        return response()->json($payload);
     }
+
+    private function partnerDisplayName(?Client $client): ?string
+    {
+        if (!$client) {
+            return null;
+        }
+
+        $name = $client->type === 'legal'
+            ? ($client->company_name ?? '')
+            : trim(($client->name ?? '') . ' ' . ($client->surname ?? ''));
+
+        return $name !== '' ? $name : null;
+    }
+
+    private function partnerCode(?Client $client): ?string
+    {
+        if (!$client) {
+            return null;
+        }
+
+        return $client->type === 'individual'
+            ? ($client->social_card_number ?? null)
+            : ($client->tax_number ?? null);
+    }
+
     public function getAccountTransactions(Request $request)
     {
         $from        = $request->query('from_date');
@@ -161,7 +243,15 @@ class TransactionController
         $from = $request->query('from_date');
         $to = $request->query('to_date');
 
-        return Excel::download(new TransactionsExport($from, $to), 'transactions.xlsx');
+        $filters = [
+            'document_types'  => array_values(array_filter((array) $request->query('document_types', []), 'is_string')),
+            'document_type'   => $request->query('document_type'),
+            'document_number' => $request->query('document_number'),
+            'partner_name'    => $request->query('partner_name'),
+            'comment'         => $request->query('comment'),
+        ];
+
+        return Excel::download(new TransactionsExport($from, $to, $filters), 'transactions.xlsx');
     }
 
     public function loanNdmJournal1(Request $request): JsonResponse
