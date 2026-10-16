@@ -256,14 +256,14 @@ Route::group(['middleware' => 'jwt.auth'], function () {
             ->middleware('can:delete_loan_application');
         Route::post('/{id}/finalize-estimate', [\App\Http\Controllers\LoanApplicationController::class, 'finalizeEstimate'])
             ->middleware('can:finalize_loan_application_estimate');
+        Route::put('/{id}/loan-review', [\App\Http\Controllers\LoanApplicationController::class, 'saveLoanReview'])
+            ->middleware('can:decide_loan_application');
         Route::post('/{id}/files', [\App\Http\Controllers\LoanApplicationController::class, 'storeFiles'])
             ->middleware('can:view_loan_applications');
         Route::delete('/{id}/files/{fileId}', [\App\Http\Controllers\LoanApplicationController::class, 'destroyFile'])
             ->middleware('can:edit_loan_application');
         Route::post('/{id}/decide', [\App\Http\Controllers\LoanApplicationController::class, 'decide'])
             ->middleware('can:decide_loan_application');
-        Route::post('/{id}/convert', [\App\Http\Controllers\LoanApplicationController::class, 'convert'])
-            ->middleware('can:convert_loan_application');
     });
 
     Route::post('/credit-registry/import-acc-classification/preview', [CreditRegistryController::class, 'previewAccClassification'])->middleware('can:classify_client');

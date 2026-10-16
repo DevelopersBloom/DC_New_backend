@@ -14,14 +14,17 @@ class LoanApplicationFinalizeEstimateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'final_estimate_id' => ['required', 'exists:loan_application_estimates,id'],
+            // The admin's own figure; the UI pre-fills it with the average of the estimates.
+            'final_amount'      => ['required', 'numeric', 'gt:0'],
+            // Optional: the estimate the figure is based on.
+            'final_estimate_id' => ['nullable', 'exists:loan_application_estimates,id'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'final_estimate_id.required' => 'Ընտրեք վերջնական գնահատականը։',
+            'final_amount.required' => 'Նշեք վերջնական գնահատականը։',
         ];
     }
 }

@@ -15,6 +15,7 @@ use App\Models\ClientClassification;
 use App\Models\Contract;
 use App\Models\ContractAmountHistory;
 use App\Models\Deal;
+use App\Models\LoanApplication;
 use App\Models\DealAction;
 use App\Models\DocumentJournal;
 use App\Models\History;
@@ -272,9 +273,22 @@ class ContractControllerNew extends Controller
 
     public function store(ClientRequest $clientRequest, ContractRequest $contractRequest, ItemRequest $itemRequest): JsonResponse|JsonResource
     {
+        // Optional: the contract is being created from an approved loan application.
+        $loanApplication = null;
+        if ($contractRequest->filled('loan_application_id')) {
+            $loanApplication = LoanApplication::find($contractRequest->input('loan_application_id'));
+
+            if (!$loanApplication) {
+                return response()->json(['message' => 'Loan application not found.'], 422);
+            }
+            if ($loanApplication->status !== LoanApplication::STATUS_APPROVED) {
+                return response()->json(['message' => 'Only approved applications can become a contract.'], 409);
+            }
+        }
+
         DB::beginTransaction();
         try {
-            $client = $this->clientService->storeOrUpdate($clientRequest->validated());
+            $client = $this->clientService->storeOrUpdate($clientRequest->validated(), $loanApplication?->client);
             $pawnshop_id = \auth()->user()->pawnshop_id;
             $validatedContract = $contractRequest->validated();
             $date = !empty($validatedContract['contract_created_date'])
@@ -291,6 +305,14 @@ class ContractControllerNew extends Controller
             $contract->category_id = $category_id;
 
             $contract->save();
+
+            if ($loanApplication) {
+                $loanApplication->update([
+                    'status'      => LoanApplication::STATUS_CONVERTED,
+                    'contract_id' => $contract->id,
+                ]);
+            }
+
             $guarantors = $contractRequest->validated()['guarantors'] ?? [];
 
             if (!empty($guarantors)) {

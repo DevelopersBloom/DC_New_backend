@@ -6,14 +6,15 @@ use App\Http\Requests\LoanApplicationDecisionRequest;
 use App\Http\Requests\LoanApplicationEstimateRequest;
 use App\Http\Requests\LoanApplicationFileRequest;
 use App\Http\Requests\LoanApplicationFinalizeEstimateRequest;
+use App\Http\Requests\LoanApplicationLoanReviewRequest;
 use App\Http\Requests\LoanApplicationStoreRequest;
 use App\Http\Requests\LoanApplicationUpdateRequest;
+use App\Http\Resources\ClientResource;
 use App\Models\Client;
 use App\Models\File;
 use App\Models\LoanApplication;
 use App\Models\LoanApplicationEstimate;
 use App\Services\ClientService;
-use App\Services\LoanApplicationConversionService;
 use App\Support\LoanApplicationDocument;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,6 @@ class LoanApplicationController extends Controller
 {
     public function __construct(
         private ClientService $clientService,
-        private LoanApplicationConversionService $conversionService,
     ) {
     }
 
@@ -70,6 +70,8 @@ class LoanApplicationController extends Controller
                 'loan_type'   => $data['loan_type'],
                 'status'      => LoanApplication::STATUS_SUBMITTED,
                 'comments'    => $data['comments'] ?? null,
+                'client_age'    => $data['client_age'] ?? null,
+                'client_income' => $data['client_income'] ?? null,
                 'pawnshop_id' => $pawnshopId,
                 'created_by'  => Auth::id(),
             ]);
@@ -162,7 +164,14 @@ class LoanApplicationController extends Controller
             );
         }
 
-        return response()->json(['data' => $application]);
+        // Same shape the New Contract wizard's client search returns, so the wizard
+        // can prefill (and the user complete) the client's profile.
+        $data = $application->toArray();
+        $data['client_profile'] = $application->client
+            ? (new ClientResource($application->client))->resolve()
+            : null;
+
+        return response()->json(['data' => $data]);
     }
 
 
@@ -211,8 +220,9 @@ class LoanApplicationController extends Controller
 
 
     /**
-     * Ends the collateral stage: locks the estimates, records the chosen final
-     * estimate and moves the application into loan review.
+     * Ends the collateral stage. The admin settles on the final collateral amount
+     * (the participants' average is only a hint), which locks the estimates and
+     * moves the application into loan review.
      */
     public function finalizeEstimate(LoanApplicationFinalizeEstimateRequest $request, int $id): JsonResponse
     {
@@ -224,24 +234,59 @@ class LoanApplicationController extends Controller
             ], 409);
         }
 
-        $estimateId = $request->validated()['final_estimate_id'];
+        $data = $request->validated();
+        $estimateId = $data['final_estimate_id'] ?? null;
 
-        if (!$application->estimates()->whereKey($estimateId)->exists()) {
+        if ($estimateId !== null && !$application->estimates()->whereKey($estimateId)->exists()) {
             return response()->json([
                 'message' => 'The chosen final estimate does not belong to this application.',
             ], 422);
         }
 
         $application->update([
-            'status'                => LoanApplication::STATUS_LOAN_REVIEW,
-            'final_estimate_id'     => $estimateId,
-            'estimate_finalized_at' => now(),
-            'estimate_finalized_by' => Auth::id(),
+            'status'                 => LoanApplication::STATUS_LOAN_REVIEW,
+            'final_estimate_id'      => $estimateId,
+            'final_estimated_amount' => $data['final_amount'],
+            'estimate_finalized_at'  => now(),
+            'estimate_finalized_by'  => Auth::id(),
         ]);
 
         return response()->json([
             'message' => 'Collateral estimation finished',
-            'data'    => $application->fresh(['finalEstimate']),
+            'data'    => $application->fresh(['finalEstimate', 'estimates']),
+        ]);
+    }
+
+
+    /** Admin's loan-review analysis: employment, property, purpose, requested amount, ԱՔՌԱ score. */
+    public function saveLoanReview(LoanApplicationLoanReviewRequest $request, int $id): JsonResponse
+    {
+        $application = LoanApplication::findOrFail($id);
+
+        if ($application->status !== LoanApplication::STATUS_LOAN_REVIEW) {
+            return response()->json([
+                'message' => 'The loan review can only be filled while the application is under loan review.',
+            ], 409);
+        }
+
+        $data = $request->validated();
+
+        // Unanswered branches keep their inputs hidden, so clear anything left behind.
+        if (!$request->boolean('is_employed')) {
+            $data = array_merge($data, [
+                'employer_name' => null, 'employer_position' => null,
+                'employment_tenure_months' => null, 'employment_salary' => null,
+            ]);
+        }
+        if (!$request->boolean('owns_property')) {
+            $data['owned_property_info'] = null;
+        }
+
+        $application->update($data);
+
+        return response()->json([
+            'message' => 'Loan review saved',
+            'data'    => $application->fresh(),
         ]);
     }
 
@@ -260,6 +305,12 @@ class LoanApplicationController extends Controller
         $data = $request->validated();
 
         if ($data['status'] === LoanApplication::STATUS_APPROVED) {
+            if (!$application->hasAcraConsent()) {
+                return response()->json([
+                    'message' => 'Upload the signed ԱՔՌԱ consent before approving.',
+                ], 422);
+            }
+
             $application->update([
                 'status'               => LoanApplication::STATUS_APPROVED,
                 'provided_amount'      => $data['provided_amount'],
@@ -285,42 +336,6 @@ class LoanApplicationController extends Controller
     }
 
 
-    public function convert(int $id): JsonResponse
-    {
-        $application = LoanApplication::with('client')->findOrFail($id);
-
-        if ($application->status !== LoanApplication::STATUS_APPROVED) {
-            return response()->json([
-                'message' => 'Only approved applications can be converted.',
-            ], 409);
-        }
-
-        $missing = $this->conversionService->profileIsComplete($application->client);
-        if ($missing !== []) {
-            return response()->json([
-                'message'        => 'Client profile must be completed before conversion.',
-                'missing_fields' => $missing,
-            ], 422);
-        }
-
-        $contract = $this->conversionService->convert($application);
-
-        return response()->json([
-            'message' => 'Application converted',
-            'data'    => [
-                'contract_id' => $contract->id,
-                'prefill'     => [
-                    'client_id'        => $contract->client_id,
-                    'loan_type'        => $application->loan_type,
-                    'estimated_amount' => $contract->estimated_amount,
-                    'provided_amount'  => $contract->provided_amount,
-                    'items'            => $contract->items()->with('realEstate')->get(),
-                ],
-            ],
-        ]);
-    }
-
-
     /** Admin edit of inputs. Estimates and the final estimate are never touched. */
     public function update(LoanApplicationUpdateRequest $request, int $id): JsonResponse
     {
@@ -333,9 +348,7 @@ class LoanApplicationController extends Controller
         $data = $request->validated();
 
         DB::transaction(function () use ($application, $data) {
-            if (array_key_exists('comments', $data)) {
-                $application->update(['comments' => $data['comments']]);
-            }
+            $application->update(array_intersect_key($data, array_flip(['comments', 'client_age', 'client_income'])));
 
             foreach ($data['items'] ?? [] as $itemData) {
                 $fields = collect($itemData)->except(['id', 'real_estate'])->all();
@@ -399,7 +412,9 @@ class LoanApplicationController extends Controller
                 fn ($index) => $data['file_types'][$index] ?? LoanApplicationDocument::OTHER,
                 array_keys($data['files'])
             );
-            $onlyAcra = $types !== [] && collect($types)->every(fn ($t) => $t === LoanApplicationDocument::ACRA);
+            $onlyAcra = $types !== [] && collect($types)->every(
+                fn ($t) => in_array($t, [LoanApplicationDocument::ACRA, LoanApplicationDocument::ACRA_CONSENT], true)
+            );
 
             if (!$user->can('decide_loan_application')
                 || !$onlyAcra

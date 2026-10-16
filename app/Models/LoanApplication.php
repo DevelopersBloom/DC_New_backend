@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Support\LoanApplicationDocument;
 
 class LoanApplication extends Model
 {
@@ -26,12 +27,25 @@ class LoanApplication extends Model
         'loan_type',
         'status',
         'comments',
+        'client_age',
+        'client_income',
         'pawnshop_id',
         'created_by',
         'final_estimate_id',
+        'final_estimated_amount',
         'provided_amount',
         'provided_currency_id',
         'provided_note',
+        'is_employed',
+        'employer_name',
+        'employer_position',
+        'employment_tenure_months',
+        'employment_salary',
+        'owns_property',
+        'owned_property_info',
+        'loan_purpose',
+        'requested_amount',
+        'acra_score',
         'estimate_finalized_at',
         'estimate_finalized_by',
         'approved_by',
@@ -44,7 +58,15 @@ class LoanApplication extends Model
         'approved_at'           => 'datetime',
         'estimate_finalized_at' => 'datetime',
         'provided_amount'       => 'decimal:2',
+        'final_estimated_amount' => 'decimal:2',
+        'client_income'         => 'decimal:2',
+        'employment_salary'     => 'decimal:2',
+        'requested_amount'      => 'decimal:2',
+        'is_employed'           => 'boolean',
+        'owns_property'         => 'boolean',
     ];
+
+    protected $appends = ['estimates_average'];
 
     public function client(): BelongsTo
     {
@@ -96,10 +118,37 @@ class LoanApplication extends Model
         return $this->belongsTo(Currency::class, 'provided_currency_id');
     }
 
-    /** The collateral estimate is locked once the final estimate has been chosen. */
+    /** Mean of the participants' estimates; shown to the admin as a hint, never applied automatically. */
+    public function getEstimatesAverageAttribute(): ?float
+    {
+        if (!$this->relationLoaded('estimates')) {
+            return null;
+        }
+
+        return $this->estimates->isEmpty()
+            ? null
+            : round((float) $this->estimates->avg('estimated_amount'), 2);
+    }
+
+    /** The final collateral amount: the admin's figure, or the picked estimate on legacy rows. */
+    public function finalEstimateAmount(): ?float
+    {
+        $amount = $this->final_estimated_amount ?? $this->finalEstimate?->estimated_amount;
+
+        return $amount === null ? null : (float) $amount;
+    }
+
+    /** The collateral estimate is locked once the admin has finalized it. */
     public function isEstimateFinalized(): bool
     {
-        return $this->final_estimate_id !== null;
+        return $this->final_estimate_id !== null
+            || $this->final_estimated_amount !== null
+            || $this->estimate_finalized_at !== null;
+    }
+
+    public function hasAcraConsent(): bool
+    {
+        return $this->files()->where('doc_type', LoanApplicationDocument::ACRA_CONSENT)->exists();
     }
 
     public function isDecided(): bool

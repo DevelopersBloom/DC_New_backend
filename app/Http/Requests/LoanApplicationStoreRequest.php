@@ -37,6 +37,8 @@ class LoanApplicationStoreRequest extends FormRequest
 
             'loan_type' => ['required', Rule::in(['car', 'gold', 'property'])],
             'comments'  => ['nullable', 'string'],
+            'client_age'    => ['nullable', 'integer', 'min:14', 'max:120'],
+            'client_income' => ['nullable', 'numeric', 'min:0'],
 
             'items'                 => ['required', 'array', 'min:1'],
             'items.*.category_id'   => ['required', 'exists:categories,id'],

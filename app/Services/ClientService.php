@@ -14,7 +14,12 @@ class ClientService
      * @param array $data
      * @return mixed
      */
-    public function storeOrUpdate(array $data): Client
+    /**
+     * @param Client|null $fallback Used instead of a brand-new row when no existing client matches
+     *                              (e.g. the non-client created at loan-application intake gets
+     *                              completed rather than duplicated).
+     */
+    public function storeOrUpdate(array $data, ?Client $fallback = null): Client
     {
         $type = $data['type'] ?? 'individual';
 
@@ -23,6 +28,9 @@ class ClientService
                 'type' => 'individual',
                 'passport_series' => $data['passport_series'],
             ]);
+            if (!$client->exists && $fallback) {
+                $client = $fallback;
+            }
         } elseif ($type === 'legal') {
             if (!empty($data['tax_number'])) {
                 $client = Client::firstOrNew([
@@ -36,7 +44,7 @@ class ClientService
                 ]);
             }
         } else {
-            $client = new Client();
+            $client = $fallback ?? new Client();
         }
 
         $client->fill($data);

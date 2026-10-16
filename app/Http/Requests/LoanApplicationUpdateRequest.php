@@ -26,6 +26,8 @@ class LoanApplicationUpdateRequest extends FormRequest
 
         $rules = [
             'comments'              => ['nullable', 'string'],
+            'client_age'            => ['nullable', 'integer', 'min:14', 'max:120'],
+            'client_income'         => ['nullable', 'numeric', 'min:0'],
             'items'                 => ['nullable', 'array'],
             'items.*.id'            => ['nullable', 'integer'],
             'items.*.category_id'   => ['required', 'exists:categories,id'],
