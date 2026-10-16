@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CategoryRateRequest;
+use App\Http\Requests\ChangeOwnPasswordRequest;
 use App\Http\Requests\CreateUserRequest;
 use App\Http\Requests\UpdateAdminRequest;
 use App\Http\Resources\UserResource;
@@ -63,6 +64,17 @@ class AdminControllerNew extends Controller
         return response()->json([
             'message' => 'User information updated successfully',
         ]);
+    }
+
+    /**
+     * Let any authenticated user change their own password
+     */
+    public function changePassword(ChangeOwnPasswordRequest $request): JsonResponse
+    {
+        $user = User::findOrFail(auth()->id());
+        $user->forceFill(['password' => Hash::make($request->validated('password'))])->save();
+
+        return response()->json(['message' => 'Գաղտնաբառը փոխվեց։']);
     }
 
     /**

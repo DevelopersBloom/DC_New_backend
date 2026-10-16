@@ -64,6 +64,7 @@ Route::group(['middleware' => 'jwt.auth'], function () {
         //general
         Route::get('/get',[AdminControllerNew::class,'get'])->middleware('can:view_personal_information');
         Route::put('/update',[AdminControllerNew::class,'update'])->middleware('can:update_personal_information');
+        Route::put('/change-password',[AdminControllerNew::class,'changePassword']); // any authenticated user
         Route::post('/upload-file',[AdminControllerNew::class,'uploadFile'])->middleware('can:upload_personal_information_file');
         Route::get('/download-file/{id}',[AdminControllerNew::class,'downloadFile'])->middleware('can:download_personal_information_file');
 

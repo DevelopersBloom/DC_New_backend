@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class ResetUserPasswordRequest extends FormRequest
 {
@@ -14,7 +15,7 @@ class ResetUserPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'password' => ['required', 'string', 'min:8', 'max:255'],
+            'password' => ['required', 'string', 'max:255', Password::min(10)->letters()->mixedCase()->numbers()->symbols()],
         ];
     }
 
@@ -22,7 +23,11 @@ class ResetUserPasswordRequest extends FormRequest
     {
         return [
             'password.required' => 'Այս դաշտը պարտադիր է։',
-            'password.min' => 'Գաղտնաբառը պետք է լինի առնվազն 8 նիշ։',
+            'password.min' => 'Գաղտնաբառը պետք է լինի առնվազն 10 նիշ։',
+            'password.mixed' => 'Գաղտնաբառը պետք է պարունակի մեծ և փոքր տառեր։',
+            'password.letters' => 'Գաղտնաբառը պետք է պարունակի տառեր։',
+            'password.numbers' => 'Գաղտնաբառը պետք է պարունակի թվանշան։',
+            'password.symbols' => 'Գաղտնաբառը պետք է պարունակի սիմվոլ։',
         ];
     }
 }
