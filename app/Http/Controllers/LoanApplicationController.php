@@ -348,7 +348,26 @@ class LoanApplicationController extends Controller
         $data = $request->validated();
 
         DB::transaction(function () use ($application, $data) {
-            $application->update(array_intersect_key($data, array_flip(['comments', 'client_age', 'client_income'])));
+            $application->update(array_intersect_key($data, array_flip([
+                'comments', 'client_age', 'client_income',
+                'is_employed', 'employer_name', 'employer_position', 'employment_tenure_months', 'employment_salary',
+                'owns_property', 'owned_property_info', 'loan_purpose', 'requested_amount', 'acra_score',
+            ])));
+
+            // Hidden yes/no branches keep no leftovers (same rule as the loan review).
+            if (array_key_exists('is_employed', $data) && $data['is_employed'] === false) {
+                $application->update([
+                    'employer_name' => null, 'employer_position' => null,
+                    'employment_tenure_months' => null, 'employment_salary' => null,
+                ]);
+            }
+            if (array_key_exists('owns_property', $data) && $data['owns_property'] === false) {
+                $application->update(['owned_property_info' => null]);
+            }
+
+            if (!empty($data['client']) && $application->client) {
+                $application->client->update($data['client']);
+            }
 
             foreach ($data['items'] ?? [] as $itemData) {
                 $fields = collect($itemData)->except(['id', 'real_estate'])->all();

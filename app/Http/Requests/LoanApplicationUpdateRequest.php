@@ -28,6 +28,23 @@ class LoanApplicationUpdateRequest extends FormRequest
             'comments'              => ['nullable', 'string'],
             'client_age'            => ['nullable', 'integer', 'min:14', 'max:120'],
             'client_income'         => ['nullable', 'numeric', 'min:0'],
+            'client'                => ['nullable', 'array'],
+            'client.name'           => ['sometimes', 'required', 'string', 'max:255'],
+            'client.surname'        => ['sometimes', 'required', 'string', 'max:255'],
+            'client.phone'          => ['sometimes', 'required', 'string', 'max:20'],
+
+            // Loan-review inputs; an unanswered yes/no (key absent or null) is left as is.
+            'is_employed'              => ['nullable', 'boolean'],
+            'employer_name'            => ['nullable', 'string', 'max:255'],
+            'employer_position'        => ['nullable', 'string', 'max:255'],
+            'employment_tenure_months' => ['nullable', 'integer', 'min:0', 'max:1200'],
+            'employment_salary'        => ['nullable', 'numeric', 'min:0'],
+            'owns_property'            => ['nullable', 'boolean'],
+            'owned_property_info'      => ['nullable', 'string', 'max:255'],
+            'loan_purpose'             => ['nullable', 'string', 'max:1000'],
+            'requested_amount'         => ['nullable', 'numeric', 'gt:0'],
+            'acra_score'               => ['nullable', 'string', 'max:50'],
+
             'items'                 => ['nullable', 'array'],
             'items.*.id'            => ['nullable', 'integer'],
             'items.*.category_id'   => ['required', 'exists:categories,id'],

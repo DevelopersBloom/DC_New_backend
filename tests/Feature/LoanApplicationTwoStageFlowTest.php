@@ -252,6 +252,36 @@ class LoanApplicationTwoStageFlowTest extends TestCase
         $this->assertSoftDeleted('loan_applications', ['id' => $app->id]);
     }
 
+    public function test_edit_updates_client_loan_review_fields_and_clears_optional_ones(): void
+    {
+        $admin = $this->admin();
+        $client = $this->makeClient();
+        $app = $this->makeApplication('loan_review', $client);
+        $item = $app->items()->first();
+        $item->update(['model' => 'Old model']);
+        $h = $this->authHeaders($admin);
+
+        $this->putJson("/api/loan-applications/{$app->id}", [
+            'client' => ['name' => 'Anna', 'surname' => 'Petrosyan', 'phone' => '091123456'],
+            'is_employed' => true, 'employer_name' => 'Acme', 'employer_position' => 'Dev',
+            'employment_tenure_months' => 12, 'employment_salary' => 300000,
+            'owns_property' => false, 'loan_purpose' => 'Repairs', 'requested_amount' => 500000, 'acra_score' => 'A',
+            'items' => [[
+                'id' => $item->id, 'category_id' => $this->category->id, 'subcategory' => 'Chain',
+                'weight' => 20, 'hallmark' => '750', 'model' => null,
+            ]],
+        ], $h)->assertOk();
+
+        $app = $app->fresh();
+        $this->assertSame('Anna', $client->fresh()->name);
+        $this->assertSame('Acme', $app->employer_name);
+        $this->assertSame('Repairs', $app->loan_purpose);
+        $this->assertNull($item->fresh()->model);
+
+        $this->putJson("/api/loan-applications/{$app->id}", ['is_employed' => false], $h)->assertOk();
+        $this->assertNull($app->fresh()->employer_name);
+    }
+
     public function test_converted_application_cannot_be_edited_or_deleted(): void
     {
         $admin = $this->admin();
