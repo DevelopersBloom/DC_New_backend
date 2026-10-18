@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\PaymentEntry;
 use App\Models\Pawnshop;
 use App\Models\Prepayment;
+use App\Traits\CorrectReserveTrait;
 
 /**
  * Reverts everything AdminControllerNew::handleRegularPaymentDeal() used to do
@@ -28,6 +29,8 @@ use App\Models\Prepayment;
  */
 class RegularPaymentDealReversalService
 {
+    use CorrectReserveTrait;
+
     private array $sections = [];
     private array $warnings = [];
 
@@ -134,6 +137,12 @@ class RegularPaymentDealReversalService
             'type'        => $deal->type,
         ]]);
         $deal->delete();
+
+        // Deleting the payment puts its principal/interest back into net, so the
+        // reserve must go back up: bring it to % × net (or zero if nothing is open).
+        if ($contract && $contract->client_id) {
+            $this->syncClientReserveToTarget($contract->client_id, now()->toDateString(), $contract->id);
+        }
 
         return [
             'sections'              => $this->sections,

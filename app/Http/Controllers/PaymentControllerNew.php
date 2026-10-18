@@ -311,6 +311,10 @@ class PaymentControllerNew extends Controller
                 $contract->id
             );
 
+            // Interest and principal paid both lower the net balance, so bring the
+            // client's reserve back to % × net as of the payment date.
+            $this->syncClientReserveToTarget($contract->client_id, $date, $contract->id);
+
             DB::commit();
 
             $successPayload = ['success' => true, 'message' => 'Successfully created payment...'];
@@ -494,61 +498,9 @@ class PaymentControllerNew extends Controller
             $deal->save();
             if ($motherAmount > 0) {
                 $ruleKey = $cash ? 'pay_mother_amount_cash' : 'pay_mother_amount';
-                $docId = $this->createAccountingTransaction(
+                $this->createAccountingTransaction(
                     $contract, $motherAmount, $ruleKey, 'mother_amount_payment', $deal->id, $date
                 );
-
-                $classificationName = $contract->client->classification->name ?? 'standard';
-
-                $eventFilter = ($classificationName === 'standard')
-                    ? 'provide_general_amount_change'
-                    : 'provide_special_amount_change';
-
-                $ruleReserve = PostingRule::where('business_event_filter', $eventFilter)->first();
-                if ($ruleReserve) {
-                    $reservePercent = $contract->client->classification->reserve_percent ?? 0;
-                    $reserveAmount = $motherAmount * $reservePercent / 100;
-
-                    if ($reserveAmount > 0) {
-                        $clientId = $contract->client->id;
-                        $nextDocNum = Transaction::getNextDocumentNumber();
-                        $documentType = ($classificationName === 'standard')
-                            ? DocumentJournal::PROVIDED_AMOUNT_CHANGE
-                            : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
-                        $journalDocRes = DocumentJournal::create([
-                            'date' => $date,
-                            'document_number' => $nextDocNum,
-                            'document_type' => $documentType,
-                            'amount_amd' => $reserveAmount,
-                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
-                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
-                            'comment' => 'reserve_payment',
-                            'debit_account_id' => $ruleReserve->debit_account_id,
-                            'credit_account_id' => $ruleReserve->credit_account_id,
-                            'user_id' => auth()->id(),
-                            'journalable_type' => DocumentJournal::class,
-                            'journalable_id' => $docId,
-                            'deal_id' => $deal->id,
-                            'contract_id' => $contract->id,
-                        ]);
-
-                        Transaction::create([
-                            'date' => $date,
-                            'document_number' => $nextDocNum,
-                            'document_type' => $documentType,
-                            'debit_account_id' => $ruleReserve->debit_account_id,
-                            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
-                            'credit_account_id' => $ruleReserve->credit_account_id,
-                            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
-                            'amount_amd' => $reserveAmount,
-                            'comment' => 'reserve_amount',
-                            'user_id' => auth()->id(),
-                            'transactionable_type' => DocumentJournal::class,
-                            'transactionable_id' => $journalDocRes->id,
-                            'contract_id' => $contract->id,
-                        ]);
-                    }
-                }
             }
             if (($interestAmount) > 0) {
                 $ruleKey = $cash ? 'pay_interest_amount_cash' : 'pay_interest_amount';
@@ -586,6 +538,10 @@ class PaymentControllerNew extends Controller
                 'new_value' => (string)($newPaymentAmount),
                 'effective_date' => $date,
             ]);
+
+            // Payoff (and the 16200 closure above) changes the net balance: zero the
+            // reserve if the client has no open contracts left, else bring it to target.
+            $this->syncClientReserveToTarget($contract->client_id, $date, $contract->id);
 
             // ── B4: refund whatever bucket amount could not be offset against payoff ──
             if ($prepaymentRefundAmount > 0) {

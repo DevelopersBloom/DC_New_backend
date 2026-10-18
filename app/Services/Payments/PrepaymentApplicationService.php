@@ -7,6 +7,7 @@ use App\Models\DocumentJournal;
 use App\Models\Prepayment;
 use App\Models\Transaction;
 use App\Traits\ContractTrait;
+use App\Traits\CorrectReserveTrait;
 use Illuminate\Support\Carbon;
 
 /**
@@ -28,6 +29,7 @@ use Illuminate\Support\Carbon;
 class PrepaymentApplicationService
 {
     use ContractTrait;
+    use CorrectReserveTrait;
 
     public function __construct(
         protected PaymentService $paymentService,
@@ -82,5 +84,9 @@ class PrepaymentApplicationService
         $prepayment->status  = 'paid';
         $prepayment->paid_at = Carbon::parse($date)->startOfDay();
         $prepayment->save();
+
+        // Applying the bucket credits 16200NV / 16201NI, so net drops: bring the
+        // client's reserve back to % × net as of the application date.
+        $this->syncClientReserveToTarget($contract->client_id, $date, $contract->id);
     }
 }

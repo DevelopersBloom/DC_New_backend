@@ -1203,54 +1203,9 @@ class PaymentService
 //            ]);
 //        }
 
-        $classificationName = $contract->client->classification->name ?? 'standard';
-        $eventFilter        = ($classificationName === 'standard')
-            ? 'provide_general_amount_change'
-            : 'provide_special_amount_change';
-        $ruleReserve = PostingRule::where('business_event_filter', $eventFilter)->first();
-
-        if ($ruleReserve) {
-            $reservePercent = $contract->client->classification->reserve_percent ?? 0;
-            $reserveAmount  = $partialAmount * $reservePercent / 100;
-
-            if ($reserveAmount > 0) {
-                $nextDocNum   = Transaction::getNextDocumentNumber();
-                $documentType = ($classificationName === 'standard')
-                    ? DocumentJournal::PROVIDED_AMOUNT_CHANGE
-                    : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
-                $journalDocRes = DocumentJournal::create([
-                    'date'              => $date,
-                    'document_number'   => $nextDocNum,
-                    'document_type'     => $documentType,
-                    'amount_amd'        => $reserveAmount,
-                    'debit_partner_id'  => $ruleReserve->resolveDebitPartnerId($contract),
-                    'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
-                    'comment'           => 'reserve_payment',
-                    'debit_account_id'  => $ruleReserve->debit_account_id,
-                    'credit_account_id' => $ruleReserve->credit_account_id,
-                    'user_id'           => auth()->id(),
-                    'journalable_type'  => DocumentJournal::class,
-                    'journalable_id'    => $journal->id,
-                    'contract_id'       => $contract->id,
-                    'payer_client_id'   => $this->payerClientIdForDeal($deal_id),
-                ]);
-                Transaction::create([
-                    'date'                 => $date,
-                    'document_number'      => $nextDocNum,
-                    'document_type'        => $documentType,
-                    'debit_account_id'     => $ruleReserve->debit_account_id,
-                    'debit_partner_id'     => $ruleReserve->resolveDebitPartnerId($contract),
-                    'credit_account_id'    => $ruleReserve->credit_account_id,
-                    'credit_partner_id'    => $ruleReserve->resolveCreditPartnerId($contract),
-                    'amount_amd'           => $reserveAmount,
-                    'comment'              => 'reserve_amount',
-                    'user_id'              => auth()->id(),
-                    'transactionable_type' => DocumentJournal::class,
-                    'transactionable_id'   => $journalDocRes->id,
-                    'contract_id'          => $contract->id,
-                ]);
-            }
-        }
+        // Principal paid lowers the net balance: bring the client's reserve back
+        // to % × net (replaces the old inline "principal × %" release).
+        $this->syncClientReserveToTarget($clientId, $date, $contract->id);
     }
 
     // ── Future-interest coverage (mechanism: 'interest') ────────────────────

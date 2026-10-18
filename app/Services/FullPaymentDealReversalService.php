@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\PaymentEntry;
 use App\Models\Prepayment;
 use App\Models\Transaction;
+use App\Traits\CorrectReserveTrait;
 
 /**
  * Reverts everything App\Http\Controllers\PaymentControllerNew::makeFullPayment()
@@ -26,6 +27,8 @@ use App\Models\Transaction;
  */
 class FullPaymentDealReversalService
 {
+    use CorrectReserveTrait;
+
     private array $sections = [];
     private array $warnings = [];
 
@@ -97,6 +100,12 @@ class FullPaymentDealReversalService
                 ]]);
             }
             Payment::where('id', $paymentIdToDelete)->forceDelete();
+        }
+
+        // Deleting the payment puts its principal/interest back into net, so the
+        // reserve must go back up: bring it to % × net (or zero if nothing is open).
+        if ($contract && $contract->client_id) {
+            $this->syncClientReserveToTarget($contract->client_id, now()->toDateString(), $contract->id);
         }
 
         return [
@@ -387,10 +396,8 @@ class FullPaymentDealReversalService
                 ->exists();
 
             if (!$hasOtherActiveContracts) {
-                $this->warnings[] = 'This payoff may have triggered a client-wide reserve release '
-                    . 'correction when it was made (no other open contracts for this client at the time). '
-                    . 'That correction cannot be automatically reversed — verify reserve balances for this '
-                    . 'client manually.';
+                $this->warnings[] = 'This payoff released the client-wide reserve when it was made; '
+                    . 'the reserve has been brought back to the classification target for the reopened contract.';
             }
         }
 

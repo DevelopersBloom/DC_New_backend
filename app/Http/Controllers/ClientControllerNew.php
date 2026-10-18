@@ -425,22 +425,31 @@ class ClientControllerNew extends Controller
                     ->first()
                 : null;
 
+            // The whole reserve side of a classification change: release the old
+            // account to zero and set the new one to % × net. Nothing else posts reserve.
+            $reserveResult = null;
             if ($firstJournal) {
-                $this->correctClientReserveBalance(
+                $reserveResult = $this->correctClientReserveBalance(
                     clientId:           $clientId,
                     acc16605PC:         $acc16605PC,
                     acc16605PS:         $acc16605PS,
                     targetAccountIds:   $targetAccountIds,
-                    reservePercent:     $client->classification->reserve_percent ?? 0,
+                    reservePercent:     $newReservePercent,
                     classificationName: $newClassificationName,
                     journalId:          $firstJournal->id,
                     now:                now()->toDateString(),
                 );
             }
-
-            if ($newClassificationName !== 'standard') {
-                $newReservePercent -= $oldReservePercent;
-            }
+            $reserveMeta = [
+                'old_reserve_percent' => $oldReservePercent,
+                'old_reserve_amount'  => $reserveResult
+                    ? round($reserveResult['old_16605PC'] + $reserveResult['old_16605PS'], 2)
+                    : 0,
+                'old_16605PC'         => $reserveResult['old_16605PC'] ?? 0,
+                'old_16605PS'         => $reserveResult['old_16605PS'] ?? 0,
+                'net'                 => $reserveResult['net'] ?? 0,
+                'reserve_doc_ids'     => $reserveResult['document_ids'] ?? [],
+            ];
 
             foreach ($client->contracts as $contract) {
 
@@ -448,161 +457,41 @@ class ClientControllerNew extends Controller
                     ->where('journalable_id', $contract->id)
                     ->first();
 
-                $reserveAmount  = 0;
-                $amount16605PC  = 0;
-                $amount16605PS  = 0;
-
-                if ($journal) {
-                    $reserveAmount = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                        ->where('journalable_id', $journal->id)
-                        ->where(function ($q) {
-                            $q->where('document_type', DocumentJournal::RESERVE_SPECIAL_AMOUNT)
-                                ->orWhere('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT)
-                                ->orWhere('document_type', DocumentJournal::EFFECTIVE_RATE_AMOUNT);
-                        })
-                        ->sum('amount_amd');
-
-                    $amount16605PC = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                        ->where('journalable_id', $journal->id)
-                        ->where('document_type', DocumentJournal::RESERVE_GENERAL_AMOUNT)
-                        ->where('credit_account_id', $acc16605PC)
-                        ->sum('amount_amd');
-
-                    $amount16605PS = DocumentJournal::where('journalable_type', DocumentJournal::class)
-                        ->where('journalable_id', $journal->id)
-                        ->where('credit_account_id', $acc16605PS)
-                        ->sum('amount_amd');
-                }
-
-                $amount         = ($contract->provided_amount + $reserveAmount) * ($newReservePercent / 100);
-                $oldReserveAmount = ($contract->provided_amount + $reserveAmount) * ($oldReservePercent / 100);
-
+                // Reserve is set client-wide by correctClientReserveBalance above;
+                // these rows only record the resulting numbers.
                 ContractReserveHistory::create([
                     'client_id'          => $client->id,
                     'classification_id'  => $classification->id,
                     'contract_id'        => $contract->id,
                     'risk_weight'        => $newRiskWeight,
                     'reserve_percent'    => $newReservePercent,
-                    'reserve_amount'     => $amount,
-                    'total_reserve_amount' => $amount,
+                    'reserve_amount'     => $reserveResult['target'] ?? 0,
+                    'total_reserve_amount' => $reserveResult['target'] ?? 0,
                     'provided_amount'    => $contract->provided_amount,
                     'date'               => now()->toDateString(),
                     'user_id'            => auth()->id() ?? 1,
-                    'meta'               => [
-                        'old_reserve_percent' => $oldReservePercent,
-                        'old_reserve_amount'  => $oldReserveAmount,
-                    ],
+                    'meta'               => $reserveMeta,
                 ]);
-
-                if ($amount <= 0 && $client->classification->name !== 'loss') {
-                    continue;
-                }
-
-                if ($client->classification->name === 'standard') {
-                    $ruleReserve = PostingRule::where('business_event_filter', 'reserve_general_amount')->first();
-                    if (!$ruleReserve) {
-                        throw new \RuntimeException('Posting rule for reserve_general_amount not found');
-                    }
-                } else {
-                    $ruleReserve = PostingRule::where('business_event_filter', 'reserve_special_amount')->first();
-                    if (!$ruleReserve) {
-                        throw new \RuntimeException('Posting rule for reserve_special_amount not found');
-                    }
-                }
-
-                $debitReserve  = $ruleReserve->debit_account_id;
-                $creditReserve = $ruleReserve->credit_account_id;
-
-                if ($oldClassificationName === 'standard') {
-                    $ruleClassification = PostingRule::where('business_event_filter', 'classification_general_to_special')->firstOrFail();
-                } else {
-                    $ruleClassification = PostingRule::where('business_event_filter', 'classification_special_to_general')->firstOrFail();
-                }
-                $debitClassification  = $ruleClassification->debit_account_id;
-                $creditClassification = $ruleClassification->credit_account_id;
-
-                $documentType = $client->classification->name === 'standard'
-                    ? DocumentJournal::RESERVE_GENERAL_AMOUNT
-                    : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
-
-                if (!$journal) {
-                    ClassificationHistory::create([
-                        'client_id'        => $client->id,
-                        'classification_id'=> $classification->id,
-                        'risk_weight'      => $newRiskWeight,
-                        'reserve_percent'  => $client->classification?->reserve_percent ?? 0,
-                        'comment'          => 'Client classification update manually',
-                        'actionable_type'  => Contract::class,
-                        'actionable_id'    => $contract->id,
-                        'user_id'          => auth()->id() ?? 1,
-                        'meta'             => [
-                            'old_classification_id'   => $oldClassificationId,
-                            'old_classification_name' => $oldClassificationName,
-                            'old_reserve_percent'     => $oldReservePercent,
-                            'old_reserve_amount'      => $oldReserveAmount,
-                        ],
-                        'date' => now(),
-                    ]);
-                    continue;
-                }
-
-                $docJournal = null;
-                if ($amount > 0) {
-                    $nextDocNum = Transaction::getNextDocumentNumber();
-                    $docJournal = DocumentJournal::create([
-                        'date'             => now()->toDateString(),
-                        'document_number'  => $nextDocNum,
-                        'document_type'    => $documentType,
-                        'amount_amd'       => $amount,
-                        'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
-                        'credit_partner_id'=> $ruleReserve->resolveCreditPartnerId($contract),
-                        'comment'          => "Reserve for contract #{$contract->id} due to classification change (manual)",
-                        'debit_account_id' => $debitReserve,
-                        'credit_account_id'=> $creditReserve,
-                        'user_id'          => auth()->id() ?? 1,
-                        'journalable_type' => DocumentJournal::class,
-                        'journalable_id'   => $journal->id,
-                        'contract_id'      => $contract->id,
-                    ]);
-
-                    Transaction::create([
-                        'date'                 => now()->toDateString(),
-                        'document_number'      => $nextDocNum,
-                        'document_type'        => $documentType,
-                        'debit_account_id'     => $debitReserve,
-                        'debit_partner_id'     => $ruleReserve->resolveDebitPartnerId($contract),
-                        'debit_currency_id'    => 1,
-                        'credit_account_id'    => $creditReserve,
-                        'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $ruleReserve->resolveCreditPartnerId($contract),
-                        'amount_amd'           => $amount,
-                        'comment'              => "Reserve for contract #{$contract->id} (manual)",
-                        'user_id'              => auth()->id() ?? 1,
-                        'is_system'            => true,
-                        'disbursement_date'    => now()->toDateString(),
-                        'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id'   => $docJournal->id,
-                        'contract_id'          => $contract->id,
-                    ]);
-                }
 
                 ClassificationHistory::create([
                     'client_id'        => $client->id,
                     'classification_id'=> $classification->id,
                     'risk_weight'      => $newRiskWeight,
-                    'reserve_percent'  => $client->classification?->reserve_percent ?? 0,
+                    'reserve_percent'  => $newReservePercent,
                     'comment'          => 'Client classification update manually',
-                    'actionable_type'  => DocumentJournal::class,
-                    'actionable_id'    => $docJournal?->id ?? $journal->id,
+                    'actionable_type'  => $journal ? DocumentJournal::class : Contract::class,
+                    'actionable_id'    => $journal ? $journal->id : $contract->id,
                     'user_id'          => auth()->id() ?? 1,
-                    'meta'             => [
+                    'meta'             => array_merge([
                         'old_classification_id'   => $oldClassificationId,
                         'old_classification_name' => $oldClassificationName,
-                        'old_reserve_percent'     => $oldReservePercent,
-                        'old_reserve_amount'      => $oldReserveAmount,
-                    ],
+                    ], $reserveMeta),
                     'date' => now(),
                 ]);
+
+                if (!$journal) {
+                    continue;
+                }
 
                 if ($client->classification->name === 'loss') {
 
@@ -888,45 +777,6 @@ class ClientControllerNew extends Controller
                             'contract_id'          => $contract->id,
                         ]);
                     }
-                }
-
-                if (!empty($amount16605PC) && $oldClassificationName === 'standard') {
-                    $nextDocNum = Transaction::getNextDocumentNumber();
-                    $classificationDoc = DocumentJournal::create([
-                        'date'              => now()->toDateString(),
-                        'document_number'   => $nextDocNum,
-                        'document_type'     => DocumentJournal::CLASSIFICATION,
-                        'amount_amd'        => $amount16605PC,
-                        'debit_partner_id'  => $ruleClassification->resolveDebitPartnerId($contract),
-                        'credit_partner_id' => $ruleClassification->resolveCreditPartnerId($contract),
-                        'comment'           => "Old reserve for contract #{$contract->id} due to classification change (manual)",
-                        'debit_account_id'  => $debitClassification,
-                        'credit_account_id' => $creditClassification,
-                        'user_id'           => auth()->id() ?? 1,
-                        'journalable_type'  => DocumentJournal::class,
-                        'journalable_id'    => $journal->id,
-                        'contract_id'       => $contract->id,
-                    ]);
-
-                    Transaction::create([
-                        'date'                 => now()->toDateString(),
-                        'document_number'      => $nextDocNum,
-                        'document_type'        => DocumentJournal::CLASSIFICATION,
-                        'debit_account_id'     => $debitClassification,
-                        'debit_partner_id'     => $ruleClassification->resolveDebitPartnerId($contract),
-                        'debit_currency_id'    => 1,
-                        'credit_account_id'    => $creditClassification,
-                        'credit_currency_id'   => 1,
-                        'credit_partner_id'    => $ruleClassification->resolveCreditPartnerId($contract),
-                        'amount_amd'           => $amount16605PC,
-                        'comment'              => "Old reserve for contract #{$contract->id} (manual)",
-                        'user_id'              => auth()->id() ?? 1,
-                        'is_system'            => true,
-                        'disbursement_date'    => now()->toDateString(),
-                        'transactionable_type' => DocumentJournal::class,
-                        'transactionable_id'   => $classificationDoc->id,
-                        'contract_id'          => $contract->id,
-                    ]);
                 }
 
             }

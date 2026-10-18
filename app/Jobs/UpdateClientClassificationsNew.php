@@ -53,7 +53,7 @@ class UpdateClientClassificationsNew implements ShouldQueue
                         $service->applyClassificationIfWorse(
                             $client,
                             $classification,
-                            'Automatic client classification update based on overdue days',
+                            ClientClassificationService::AUTO_COMMENT,
                         );
                     } catch (\Throwable $e) {
                         Log::error("Failed to update client #{$client->id}: " . $e->getMessage());

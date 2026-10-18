@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\ClassificationHistory;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\PostingRule;
 use App\Models\Transaction;
 use App\Traits\ContractTrait;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ContractDailyRateService
@@ -37,6 +39,9 @@ class ContractDailyRateService
                     DocumentJournal::RESERVE_SPECIAL_AMOUNT,
                     DocumentJournal::PENALTY_RATE_AMOUNT,
                 ])
+                // Daily accruals always carry contract_id; client-level reserve
+                // corrections (postCorrectionEntry) don't and must survive.
+                ->whereNotNull('contract_id')
                 ->pluck('id');
 
             if ($existingIds->isNotEmpty()) {
@@ -74,7 +79,7 @@ class ContractDailyRateService
                 );
             }
 
-            $classification = $contract->client->classification;
+            $classification = $this->classificationAsOf($contract, $date);
             if ($classification && $classification->reserve_percent > 0) {
                 $reserve = $effectiveAmount * $classification->reserve_percent / 100;
 
@@ -97,6 +102,23 @@ class ContractDailyRateService
                 }
             }
         });
+    }
+
+    /**
+     * The client's classification on $date (latest classification_histories row
+     * up to that day), not the live clients.classification_id — a back-dated
+     * re-accrual must use the class that applied on each day.
+     */
+    private function classificationAsOf(Contract $contract, string $date)
+    {
+        $history = ClassificationHistory::where('client_id', $contract->client_id)
+            ->where('date', '<=', Carbon::parse($date)->endOfDay())
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->with('classification')
+            ->first();
+
+        return $history?->classification ?? $contract->client->classification;
     }
 
     private function createEntry($contract, $journal, $rule, $amount, $date, $type, $comment): void
