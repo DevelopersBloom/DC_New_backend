@@ -57,14 +57,15 @@ Route::group(['prefix' => 'auth'], function () {
         Route::post('refresh', [LoginController::class, 'refresh']);
     });
 });
-Route::group(['middleware' => 'jwt.auth'], function () {
+Route::group(['middleware' => ['jwt.auth', 'password.changed']], function () {
 //    Route::group(['middleware' => 'admin','prefix' => 'admin'], function () {
     Route::group(['prefix' => 'admin'], function () {
 
         //general
         Route::get('/get',[AdminControllerNew::class,'get'])->middleware('can:view_personal_information');
         Route::put('/update',[AdminControllerNew::class,'update'])->middleware('can:update_personal_information');
-        Route::put('/change-password',[AdminControllerNew::class,'changePassword']); // any authenticated user
+        // any authenticated user; the only route open while must_change_password is set
+        Route::put('/change-password',[AdminControllerNew::class,'changePassword'])->name('admin.change-password');
         Route::post('/upload-file',[AdminControllerNew::class,'uploadFile'])->middleware('can:upload_personal_information_file');
         Route::get('/download-file/{id}',[AdminControllerNew::class,'downloadFile'])->middleware('can:download_personal_information_file');
 

@@ -70,5 +70,6 @@ class Kernel extends HttpKernel
         'jwt.auth' => 'Tymon\JWTAuth\Middleware\GetUserFromToken',
         'jwt.refresh' => 'Tymon\JWTAuth\Middleware\RefreshToken',
         'idempotent' => \App\Http\Middleware\EnsureIdempotency::class,
+        'password.changed' => \App\Http\Middleware\EnsurePasswordChanged::class,
     ];
 }

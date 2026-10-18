@@ -72,7 +72,10 @@ class AdminControllerNew extends Controller
     public function changePassword(ChangeOwnPasswordRequest $request): JsonResponse
     {
         $user = User::findOrFail(auth()->id());
-        $user->forceFill(['password' => Hash::make($request->validated('password'))])->save();
+        $user->forceFill([
+            'password'             => Hash::make($request->validated('password')),
+            'must_change_password' => false,
+        ])->save();
 
         return response()->json(['message' => 'Գաղտնաբառը փոխվեց։']);
     }

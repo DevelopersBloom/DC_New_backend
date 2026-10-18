@@ -64,6 +64,8 @@ class UserService
             $data['password'] = Hash::make($data['password']);
 
             $user = User::create($data);
+            // The admin-entered password is one-time: the user must replace it at first login.
+            $user->forceFill(['must_change_password' => true])->save();
             $this->syncRole($user, $role);
 
             return $user->load(['roles:id,name', 'pawnshop:id,city']);
@@ -109,7 +111,11 @@ class UserService
     {
         $this->assertCanManage($actor, $user);
 
-        $user->forceFill(['password' => Hash::make($password)])->save();
+        // An admin-issued password is always temporary.
+        $user->forceFill([
+            'password'             => Hash::make($password),
+            'must_change_password' => true,
+        ])->save();
     }
 
     public function delete(User $user, User $actor): void

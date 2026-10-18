@@ -64,6 +64,8 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        // Not fillable on purpose: set only through forceFill (UserService / changePassword).
+        'must_change_password' => 'boolean',
     ];
   //  protected $with = ['pawnshop', 'config'];
 
