@@ -125,7 +125,7 @@ class ScheduledPaymentHandler
             return;
         }
 
-        $this->recalculateInterest($contract, $payments, $date);
+        $this->recalculateInterest($contract, $payments, $date ? Carbon::parse($date)->startOfDay() : null);
     }
 
     /**
@@ -135,7 +135,7 @@ class ScheduledPaymentHandler
      * into the balance for its own interest calc, since that portion hasn't
      * actually left the balance yet. Earlier rows use the balance as-is.
      */
-    public function recalculateInterest(Contract $contract, $payments, $date = null, array $pendingPrincipalReductions = [],$timing): void
+    public function recalculateInterest(Contract $contract, $payments, $date = null, array $pendingPrincipalReductions = [], ?string $timing = null): void
     {
         $payments = $payments->where('status', 'initial')
             ->sortBy(fn ($p) => [$p->date, $p->id ?? 0])
