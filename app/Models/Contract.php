@@ -247,7 +247,7 @@ class Contract extends Model
             $q->whereNotNull('contracts.provided_at')
                 ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('deals')
                     ->whereColumn('deals.contract_id', 'contracts.id'))
-                ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('document_journals')
+                ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('documents_journal')
                     ->whereColumn('documents_journal.contract_id', 'contracts.id'));
         });
     }
@@ -259,8 +259,8 @@ class Contract extends Model
             ->whereNull('contracts.provided_at')
             ->whereNotExists(fn ($s) => $s->selectRaw('1')->from('deals')
                 ->whereColumn('deals.contract_id', 'contracts.id'))
-            ->whereNotExists(fn ($s) => $s->selectRaw('1')->from('document_journals')
-                ->whereColumn('document_journals.contract_id', 'contracts.id'));
+            ->whereNotExists(fn ($s) => $s->selectRaw('1')->from('documents_journal')
+                ->whereColumn('documents_journal.contract_id', 'contracts.id'));
     }
 
     public function isProvided(): bool

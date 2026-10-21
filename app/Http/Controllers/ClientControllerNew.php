@@ -226,7 +226,7 @@ class ClientControllerNew extends Controller
             ->selectRaw('SUM(CASE WHEN EXISTS (SELECT 1 FROM contracts WHERE clients.id = contracts.client_id AND contracts.status = ?
                 AND (contracts.provided_at IS NOT NULL
                      OR EXISTS (SELECT 1 FROM deals WHERE deals.contract_id = contracts.id)
-                     OR EXISTS (SELECT 1 FROM document_journals WHERE document_journals.contract_id = contracts.id))) THEN 1 ELSE 0 END) as active_clients', ['initial'])
+                     OR EXISTS (SELECT 1 FROM documents_journal WHERE documents_journal.contract_id = contracts.id))) THEN 1 ELSE 0 END) as active_clients', ['initial'])
             ->first();
 
         return response()->json([
