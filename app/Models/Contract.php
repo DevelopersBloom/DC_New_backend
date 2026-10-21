@@ -248,7 +248,7 @@ class Contract extends Model
                 ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('deals')
                     ->whereColumn('deals.contract_id', 'contracts.id'))
                 ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('document_journals')
-                    ->whereColumn('document_journals.contract_id', 'contracts.id'));
+                    ->whereColumn('documents_journal.contract_id', 'contracts.id'));
         });
     }
 
