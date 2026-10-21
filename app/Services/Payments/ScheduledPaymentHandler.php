@@ -144,6 +144,7 @@ class ScheduledPaymentHandler
         $balance  = (float) $contract->provided_amount;
         $rate     = (float) $contract->interest_rate;
         $prevDate = Carbon::parse($contract->date);
+        $endingBalances = $this->endingBalances($contract, $pendingPrincipalReductions);
         foreach ($payments as $payment) {
             $payment     = $this->normalizePaymentDates($payment, $contract);
 
@@ -213,9 +214,48 @@ class ScheduledPaymentHandler
                 $balance = 0;
             }
 
-            $payment->remaining = round($balance, 10);
+            $payment->remaining = $endingBalances[$payment->id] ?? round($balance, 10);
             $payment->save();
         }
+    }
+
+    private function endingBalances(Contract $contract, array $pendingPrincipalReductions = []): array
+    {
+        $rows = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->where('status', 'initial')
+            ->withSum('entries as collected_principal', 'principal_amount')
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get(['id', 'date', 'principal_payment']);
+
+        return self::endingBalancesFor($rows, $pendingPrincipalReductions);
+    }
+
+    /**
+     * @param iterable $rows open rows in schedule order, each with id, principal_payment
+     *                       and collected_principal
+     * @return array<int, float>
+     */
+    public static function endingBalancesFor(iterable $rows, array $pendingPrincipalReductions = []): array
+    {
+        $unpaid = [];
+        foreach ($rows as $row) {
+            $unpaid[$row->id] = max(0.0,
+                (float) $row->principal_payment
+                - (float) ($row->collected_principal ?? 0)
+                - (float) ($pendingPrincipalReductions[$row->id] ?? 0)
+            );
+        }
+
+        $balances = [];
+        $after    = 0.0;
+        foreach (array_reverse($unpaid, true) as $id => $principal) {
+            $balances[$id] = round($after, 10);
+            $after += $principal;
+        }
+
+        return $balances;
     }
 
     // ── Partial-payment schedule adjusters ─────────────────────────────────

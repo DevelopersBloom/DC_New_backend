@@ -73,7 +73,11 @@ class PaymentService
         // client had not yet paid.  Runs before penalty so penalty sees the
         // correct (updated) amounts; no-ops when no installments are affected.
         if ($date !== null && $contract->payment_type === 'amortized') {
-            $this->lateInterestRecalculator->recalculate($contract, $date, $payments);
+            $this->lateInterestRecalculator->recalculate($contract, $date);
+
+            // The recalculator works on its own fresh copy of every open row, so the
+            // rows passed in here still hold the old interest/amount: reload them.
+            collect($payments)->each(fn ($p) => $p instanceof Payment && $p->exists ? $p->refresh() : null);
         }
 
         // ── Penalty first ────────────────────────────────────────────────────

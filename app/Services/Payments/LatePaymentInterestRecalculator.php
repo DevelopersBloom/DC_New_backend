@@ -13,22 +13,29 @@ class LatePaymentInterestRecalculator
     /**
      * Recalculate and persist adjusted interest for all installments that were
      * crossed (fully or partially) by the actual payment date arriving late.
+     *
+     * Always works on every open regular row of the contract: the balance must not
+     * depend on which rows the user ticked in the payment form.
+     *
+     * Runs only for a LATE payment date (see isLate()); on time or early it is a
+     * no-op, so it never overwrites interest that ScheduledPaymentHandler just wrote.
      * */
-    public function recalculate(Contract $contract, string $paymentDate, $payments = null): void
+    public function recalculate(Contract $contract, string $paymentDate): void
     {
-        DB::transaction(function () use ($contract, $paymentDate, $payments) {
-            $allPayments = $payments !== null
-                ? collect($payments)->where('type', 'regular')->where('status', 'initial')->sortBy('to_date')->values()
-                : Payment::where('contract_id', $contract->id)
-                    ->where('type', 'regular')
-                    ->where('status', 'initial')
-                    ->orderBy('to_date')
-                    ->orderBy('id')
-                    ->get();
+        DB::transaction(function () use ($contract, $paymentDate) {
+            $allPayments = Payment::where('contract_id', $contract->id)
+                ->where('type', 'regular')
+                ->where('status', 'initial')
+                ->withSum('entries as collected_principal', 'principal_amount')
+                ->orderBy('to_date')
+                ->orderBy('id')
+                ->get();
 
-            if ($allPayments->isEmpty()) {
+            if ($allPayments->isEmpty() || !self::isLate($allPayments, $paymentDate)) {
                 return;
             }
+
+            $endingBalances = ScheduledPaymentHandler::endingBalancesFor($allPayments);
 
             $totalCollected  = (float) PaymentEntry::where('contract_id', $contract->id)
                 ->sum('principal_amount');
@@ -62,9 +69,11 @@ class LatePaymentInterestRecalculator
                         max(0, (float) $payment->original_interest_payment - (float) $payment->interest_payment)
                     );
                 }
-                //        $payment->original_interest_payment = $recalc_interest;
+                // Same fields, same meaning as ScheduledPaymentHandler::recalculateInterest().
+                $payment->original_interest_payment  = $recalc_interest;
                 $payment->interest_payment           = $recalc_interest ; //max(0, round($recalc_interest - $alreadyPaidInterest, 2));
                 $payment->amount                     = round((float) $payment->principal_payment + $payment->interest_payment, 2);
+                $payment->remaining                  = $endingBalances[$payment->id] ?? $payment->remaining;
                 $payment->save();
             }
         });
@@ -76,7 +85,8 @@ class LatePaymentInterestRecalculator
      * Compute recalculated interest for every affected installment without touching the DB.
      *
      * @param iterable $allPayments       All initial regular payments ordered by to_date.
-     *                                     Each item must expose: from_date, to_date, principal_payment.
+     *                                     Each item must expose: from_date, to_date, principal_payment,
+     *                                     and optionally collected_principal (sum of principal entries).
      * @param float    $originalBalance   Loan amount at inception (provided_amount + all collected principals).
      * @param float    $dailyRate         Daily interest rate, e.g. 0.0011 for a 0.11 % daily rate.
      * @param string   $paymentDate       Y-m-d actual payment date.
@@ -106,9 +116,11 @@ class LatePaymentInterestRecalculator
 
         // Principals of fully-overdue installments (to_date ≤ paymentDate, status=initial).
         // These are collected AT paymentDate, reducing the balance for the segment that follows.
+        // Only the part not collected yet: an earlier partial payment already took the rest
+        // out of provided_amount.
         $overdueByPayDatePrincipals = (float) $allPayments
             ->filter(fn ($p) => Carbon::parse($p->to_date)->startOfDay()->lte($payDate))
-            ->sum(fn ($p) => (float) $p->principal_payment);
+            ->sum(fn ($p) => max(0.0, (float) $p->principal_payment - (float) data_get($p, 'collected_principal', 0)));
 
         $results = [];
 
@@ -153,6 +165,21 @@ class LatePaymentInterestRecalculator
             $results[] = ['payment' => $payment, 'interest' => $interest];
         }
         return $results;
+    }
+
+    /**
+     * The exact condition for running the late recalculation: some open row's
+     * business due date (to_date, already working-day shifted) is strictly before
+     * the payment date. Same rule as PaymentDateClassifier::LATE for the earliest
+     * open row. A payment on the due date or before it changes nothing here.
+     */
+    public static function isLate($allPayments, string $paymentDate): bool
+    {
+        $payDate = Carbon::parse($paymentDate)->toDateString();
+
+        return collect($allPayments)->contains(
+            fn ($p) => Carbon::parse($p->to_date ?? $p->date)->toDateString() < $payDate
+        );
     }
 
     /**

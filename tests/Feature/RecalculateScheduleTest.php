@@ -92,4 +92,20 @@ class RecalculateScheduleTest extends TestCase
             $this->assertGreaterThan(0, (float) $row->interest_payment);
         }
     }
+
+    /** T1: remaining is written as the ending balance, not the flat provided_amount. */
+    public function test_remaining_is_the_ending_balance_even_for_a_subset_of_rows(): void
+    {
+        $contract = $this->makeAmortizedContract();
+        $rows = Payment::where('contract_id', $contract->id)->orderBy('to_date')->get();
+
+        // Only the second row is passed in; the first still owes its 100,000.
+        app(ScheduledPaymentHandler::class)->recalculateInterest($contract, $rows->slice(1)->values(), Carbon::parse('2026-09-25'));
+        $this->assertEquals(0, (float) $rows[1]->fresh()->remaining);
+
+        app(ScheduledPaymentHandler::class)->recalculateSchedule($contract, '2026-09-25');
+        $rows = $rows->map->fresh();
+        $this->assertEquals(100000, (float) $rows[0]->remaining); // was 200,000 (provided_amount)
+        $this->assertEquals(0, (float) $rows[1]->remaining);
+    }
 }
