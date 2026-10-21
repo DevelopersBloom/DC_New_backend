@@ -87,7 +87,7 @@ class ConfigController extends Controller
         }
         $pawnshop = Pawnshop::where('id',auth()->user()->pawnshop_id)->first();
         $date = Carbon::now();
-        $contracts_query = Contract::where('pawnshop_id',auth()->user()->pawnshop_id)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])->where('status','initial');
+        $contracts_query = Contract::where('pawnshop_id',auth()->user()->pawnshop_id)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])->where('status','initial')->provided();
         $contract_ids = $contracts_query->get()->pluck('id');
         $partial_payments_amount = Payment::where('type','partial')->whereIn('contract_id',$contract_ids)->whereRaw("STR_TO_DATE(date, '%d.%m.%Y') <= ?", [$date])->sum('amount');
         $worth = $contracts_query->sum('worth');

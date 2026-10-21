@@ -222,7 +222,11 @@ class ClientControllerNew extends Controller
         })
             ->selectRaw('COUNT(*) as total')
             ->selectRaw('SUM(CASE WHEN date >= ? THEN 1 ELSE 0 END) as new_clients', [$startOfMonth])
-            ->selectRaw('SUM(CASE WHEN EXISTS (SELECT 1 FROM contracts WHERE clients.id = contracts.client_id AND contracts.status = ?) THEN 1 ELSE 0 END) as active_clients', ['initial'])
+            // Same rule as Contract::scopeProvided: undisbursed contracts do not make a client active.
+            ->selectRaw('SUM(CASE WHEN EXISTS (SELECT 1 FROM contracts WHERE clients.id = contracts.client_id AND contracts.status = ?
+                AND (contracts.provided_at IS NOT NULL
+                     OR EXISTS (SELECT 1 FROM deals WHERE deals.contract_id = contracts.id)
+                     OR EXISTS (SELECT 1 FROM document_journals WHERE document_journals.contract_id = contracts.id))) THEN 1 ELSE 0 END) as active_clients', ['initial'])
             ->first();
 
         return response()->json([
@@ -342,7 +346,7 @@ class ClientControllerNew extends Controller
         ]);
 
         $client = Client::with(['contracts' => function ($q) {
-            $q->where('status', 'initial');
+            $q->where('status', 'initial')->provided();
         }, 'classification'])->findOrFail($request->client_id);
 
         $classification = ClientClassification::where('name', $request->classification)->firstOrFail();
@@ -815,8 +819,8 @@ class ClientControllerNew extends Controller
             ChartOfAccount::idByCode('16200'),
         ]);
 
-        $firstContract = $client->contracts()->where('status', 'initial')->first();
-        $hasActiveContracts = $client->contracts()->where('status', 'initial')->exists();
+        $firstContract = $client->contracts()->where('status', 'initial')->provided()->first();
+        $hasActiveContracts = $client->contracts()->where('status', 'initial')->provided()->exists();
 
         $journalId = $firstContract
             ? DocumentJournal::where('journalable_type', Contract::class)

@@ -68,7 +68,7 @@ class ClientClassificationService
             = self::resolveAccountIds();
 
         $client->load(['classification', 'acraClassification', 'contracts' => function ($q) {
-            $q->where('status', 'initial');
+            $q->where('status', 'initial')->provided();
         }]);
 
         DB::beginTransaction();
@@ -525,6 +525,7 @@ class ClientClassificationService
 
         foreach ($client->contracts()
                      ->where('status', 'initial')
+                     ->provided()
             ->with(['payments' => fn ($q) => $q->where('status', 'initial')->with('entries')])
                      ->get() as $contract) {
 

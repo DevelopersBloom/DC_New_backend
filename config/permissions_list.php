@@ -113,6 +113,7 @@ return [
             'reprovide_contract_amount',
             'request_contract_discount',
             'update_contract_number',
+            'cancel_contract',
 
         ],
         'files_and_notes' => [

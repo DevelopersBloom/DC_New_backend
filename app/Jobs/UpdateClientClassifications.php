@@ -36,9 +36,9 @@ class UpdateClientClassifications implements ShouldQueue
         Log::info('Client classification job started...');
 
         Client::whereHas('contracts', function (Builder $q) {
-            $q->where('status', 'initial');
+            $q->where('status', 'initial')->provided();
         })->with(['contracts' => function ($q) {
-            $q->where('status', 'initial');
+            $q->where('status', 'initial')->provided();
         }, 'classification'])
             ->chunkById(200, function ($clients) use ($service) {
 

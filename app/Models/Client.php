@@ -123,7 +123,7 @@ class Client extends Model
     }
 
     public function activeContracts(){
-        return $this->contracts()->where('status','initial');
+        return $this->contracts()->where('status','initial')->provided();
     }
     public function sales(): HasMany
     {
@@ -180,7 +180,7 @@ class Client extends Model
         }
 
         if (!empty($filters['open_contract']) && filter_var($filters['open_contract'], FILTER_VALIDATE_BOOLEAN)) {
-            $query->whereHas('contracts', fn($q) => $q->where('status', 'initial'));
+            $query->whereHas('contracts', fn($q) => $q->where('status', 'initial')->provided());
         }
 
         $filters['start_date'] = $filters['start_date'] ?? $filters['date_from'] ?? null;

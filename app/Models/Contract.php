@@ -68,6 +68,10 @@ class Contract extends Model
     const STATUS_COMPLETED = 'completed';
     const STATUS_EXECUTED = 'executed';
     const STATUS_TAKEN  = 'taken';
+    const STATUS_CANCELLED = 'cancelled';
+
+    /** Reporting codes for cancelling a contract that was never disbursed. */
+    const CANCEL_REASON_CODES = ['client_declined', 'no_funds', 'collateral_issue', 'wrong_data', 'other'];
 //    protected $appends = ['is_overdue','not_payed_amount'];
     protected $appends = ['is_overdue'];
 
@@ -125,6 +129,10 @@ class Contract extends Model
         'contract_modified_amount',
         'provision_of_credit',
         'payment_day',
+        'cancelled_at',
+        'cancelled_by',
+        'cancel_reason_code',
+        'cancel_reason',
     ];
 
     protected $casts = [
@@ -147,6 +155,7 @@ class Contract extends Model
         'effective_rate_kasko'  => 'decimal:10',
         'kasko_amount'          => 'decimal:2',
         'fee_annual_rate'       => 'decimal:4',
+        'cancelled_at'          => 'datetime',
     ];
 
     public function payments(): HasMany
@@ -174,6 +183,11 @@ class Contract extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
     public function seller(): BelongsTo
     {
@@ -222,12 +236,50 @@ class Contract extends Model
     {
         return $this->hasMany(Note::class);
     }
+    /**
+     * Contracts whose money was actually paid out. provided_at is only set by
+     * pay-amount and was added in 2026-02 without a backfill, so older/imported
+     * contracts are recognised by having a deal or a journal entry instead.
+     */
+    public function scopeProvided($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNotNull('contracts.provided_at')
+                ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('deals')
+                    ->whereColumn('deals.contract_id', 'contracts.id'))
+                ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('document_journals')
+                    ->whereColumn('document_journals.contract_id', 'contracts.id'));
+        });
+    }
+
+    /** Created by POST /contracts but the second step (pay-amount) never happened. */
+    public function scopeAwaitingDisbursement($query)
+    {
+        return $query->where('contracts.status', self::STATUS_INITIAL)
+            ->whereNull('contracts.provided_at')
+            ->whereNotExists(fn ($s) => $s->selectRaw('1')->from('deals')
+                ->whereColumn('deals.contract_id', 'contracts.id'))
+            ->whereNotExists(fn ($s) => $s->selectRaw('1')->from('document_journals')
+                ->whereColumn('document_journals.contract_id', 'contracts.id'));
+    }
+
+    public function isProvided(): bool
+    {
+        return $this->provided_at !== null
+            || $this->deals()->withTrashed()->exists()
+            || DocumentJournal::withTrashed()->where('contract_id', $this->id)->exists();
+    }
+
     public function scopeFilterStatus($query, $status, $overdueDate = null)
     {
         switch ($status) {
             case 'ակտիվ':
             case 'initial':
-                return $query->where('status', 'initial');
+                return $query->where('status', 'initial')->provided();
+            case 'awaiting_disbursement':
+                return $query->awaitingDisbursement();
+            case 'cancelled':
+                return $query->where('status', self::STATUS_CANCELLED);
             case 'Փակված':
             case 'completed':
                 return $query->where('status', 'completed');
@@ -238,6 +290,7 @@ class Contract extends Model
             case 'overdue':
                 $cutoff = $overdueDate ?: today()->toDateString();
                 return $query->where('status', 'initial')
+                    ->provided()
                     ->whereRaw(
                         '(SELECT COALESCE(SUM(p.amount - COALESCE(pe.paid, 0)), 0)
                           FROM payments p
@@ -247,7 +300,7 @@ class Contract extends Model
                         [$cutoff, 'initial']
                     );
             case 'todays':
-                return $query->whereHas('payments', function ($q) {
+                return $query->where('status', 'initial')->provided()->whereHas('payments', function ($q) {
                     $q->whereDate('date', today())
                         ->where('status','initial');
                 });
@@ -257,6 +310,11 @@ class Contract extends Model
     }
     public function getIsOverdueAttribute()
     {
+        // The schedule of an undisbursed or cancelled contract is not a debt.
+        if ($this->status !== self::STATUS_INITIAL || !$this->isProvided()) {
+            return false;
+        }
+
         $overdueAmount = $this->payments()
             ->whereDate('date', '<', Carbon::today())
             ->where('status', 'initial')
@@ -380,6 +438,10 @@ class Contract extends Model
 
     public function getNotPayedAmountAttribute()
     {
+        if ($this->status === self::STATUS_CANCELLED || !$this->isProvided()) {
+            return 0;
+        }
+
         $notPayed = $this->payments()
             ->where('status', 'initial')
             ->selectRaw('SUM(amount + mother) as total')
@@ -387,6 +449,18 @@ class Contract extends Model
         $penalty = $this->countPenalty($this->id)['penalty_amount'];
         return $notPayed+$penalty;
     }
+    /** Same rule as scopeAwaitingDisbursement, for a single loaded contract. */
+    public function getIsAwaitingDisbursementAttribute(): bool
+    {
+        return $this->status === self::STATUS_INITIAL && !$this->isProvided();
+    }
+
+    /** Age in days, so the list can show how long a contract has been waiting for disbursement. */
+    public function getDaysSinceCreatedAttribute(): ?int
+    {
+        return $this->created_at ? (int) $this->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) : null;
+    }
+
     public function guarantors(): BelongsToMany
     {
         return $this->belongsToMany(Client::class, 'contract_guarantors');

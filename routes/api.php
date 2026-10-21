@@ -308,6 +308,7 @@ Route::group(['middleware' => ['jwt.auth', 'password.changed']], function () {
         Route::post('/{id}/credit-registry/l005/send', [CreditRegistryController::class, 'sendL005']);
         Route::post('/{id}/credit-registry/l006/send', [CreditRegistryController::class, 'sendL006']);
         Route::get('/{id}', [ContractControllerNew::class, 'show'])->middleware('can:view_contracts');
+        Route::post('/{id}/cancel', [ContractControllerNew::class, 'cancel'])->whereNumber('id')->middleware('can:cancel_contract');
         Route::get('/{id}/mother-amount-to-pay', [ContractControllerNew::class, 'motherAmountToPay'])->middleware('can:view_contracts');
         Route::get('/{id}/full-payment-amount', [ContractControllerNew::class, 'fullPaymentAmount'])->middleware('can:view_contracts');
         Route::post('/make-payment', [PaymentControllerNew::class, 'makePayment'])->middleware(['can:make_contract_payment']);//'idempotent:contracts.make-payment'

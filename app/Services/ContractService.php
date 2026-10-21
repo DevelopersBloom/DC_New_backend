@@ -43,22 +43,32 @@ class   ContractService
             $query->where('num', 'like', '%' . trim($filters['num']) . '%');
         }
         $contracts = $query->paginate(10);
+        $contracts->getCollection()->each->append(['days_since_created', 'is_awaiting_disbursement']);
 
 
         // Get total counts
         $totalContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)->count();
         $activeContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
             ->where('status', 'initial')
+            ->provided()
             ->count();
         $executedContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
             ->where('status', 'executed')
             ->count();
+        $awaitingContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
+            ->awaitingDisbursement()
+            ->count();
+        $cancelledContracts = Contract::where('pawnshop_id', Auth::user()->pawnshop_id)
+            ->where('status', Contract::STATUS_CANCELLED)
+            ->count();
 
         return [
-            'contracts' => $query->paginate(10),
+            'contracts' => $contracts,
             'totalContracts' => $totalContracts,
             'activeContracts' => $activeContracts,
             'executedContracts' => $executedContracts,
+            'awaitingContracts' => $awaitingContracts,
+            'cancelledContracts' => $cancelledContracts,
         ];
 //        return $query->paginate(10);
     }
@@ -485,15 +495,17 @@ class   ContractService
 
         $year = now()->format('y');
 
-        $lastContract = Contract::orderBy('id', 'desc')->first();
+        // Soft-deleted and cancelled contracts keep their number, so they must be
+        // part of the sequence; otherwise deleting the newest contract re-issues its number.
+        $lastContract = Contract::withTrashed()->whereNotNull('num')->orderBy('id', 'desc')->first();
 
-        if ($lastContract && $lastContract->num) {
-            $lastNumber = (int) substr($lastContract->num, -5);
-        } else {
-            $lastNumber = 0;
-        }
+        $lastNumber = $lastContract ? (int) substr($lastContract->num, -5) : 0;
 
-        $newNumber = str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
+        // The sequence is shared by all prefixes, and a number edited by hand
+        // (update-number) can already be taken further ahead: skip anything used.
+        do {
+            $newNumber = str_pad(++$lastNumber, 5, '0', STR_PAD_LEFT);
+        } while (Contract::withTrashed()->where('num', 'like', "%-{$year}-{$newNumber}")->exists());
 
         return "{$prefix}-{$year}-{$newNumber}";
     }

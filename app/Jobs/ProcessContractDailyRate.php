@@ -74,7 +74,7 @@ class ProcessContractDailyRate implements ShouldQueue
 
     public function handle(EffectiveRateService $effectiveRateService)
     {
-        $activeContracts = Contract::where('status', 'initial')->with('client.classification')->get();
+        $activeContracts = Contract::where('status', 'initial')->provided()->with('client.classification')->get();
         Log::info("Contract processed");
         if ($activeContracts->isEmpty()) {
             Log::info('No active contracts found to process.');

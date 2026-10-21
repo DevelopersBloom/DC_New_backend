@@ -32,9 +32,9 @@ class UpdateClientClassificationsNew implements ShouldQueue
         $processedCount = 0;
 
         Client::whereHas('contracts', function (Builder $q) {
-            $q->where('status', 'initial');
+            $q->where('status', 'initial')->provided();
         })->with(['contracts' => function ($q) {
-            $q->where('status', 'initial');
+            $q->where('status', 'initial')->provided();
         }, 'classification'])
             ->chunkById(200, function ($clients) use ($service, &$errors, &$processedCount) {
 

@@ -30,6 +30,7 @@ use App\Services\ActivityService;
 use App\Services\ClientClassificationService;
 use App\Services\ClientService;
 use App\Services\ContractCalculationService;
+use App\Services\ContractCancellationService;
 use App\Services\ContractService;
 use App\Services\EffectiveRateService;
 use App\Services\FileService;
@@ -42,6 +43,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ContractControllerNew extends Controller
 {
@@ -92,6 +94,8 @@ class ContractControllerNew extends Controller
             'total' => $data['totalContracts'],
             'active' => $data['activeContracts'],
             'executed' => $data['executedContracts'],
+            'awaiting_disbursement' => $data['awaitingContracts'],
+            'cancelled' => $data['cancelledContracts'],
         ]);
     }
     public function getForAdmin(): JsonResponse
@@ -381,16 +385,61 @@ class ContractControllerNew extends Controller
         }
     }
 
+    /**
+     * Cancel a contract that was created but never disbursed. The contract is kept
+     * (status cancelled, number reserved); its schedule is voided, its collateral is
+     * freed and a linked loan application goes back to approved.
+     */
+    public function cancel(Request $request, ContractCancellationService $cancellationService, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason_code' => 'nullable|string|in:' . implode(',', Contract::CANCEL_REASON_CODES),
+            'reason'      => 'required|string|max:2000',
+        ]);
+
+        try {
+            $contract = $cancellationService->cancel(
+                (int) $id,
+                $validated['reason_code'] ?? null,
+                $validated['reason'],
+                auth()->id()
+            );
+        } catch (HttpException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getStatusCode());
+        }
+
+        return response()->json([
+            'message'  => 'Contract cancelled.',
+            'contract' => $contract->only([
+                'id', 'num', 'status', 'cancelled_at', 'cancelled_by', 'cancel_reason_code', 'cancel_reason',
+            ]),
+        ]);
+    }
+
     public function payContractAmount(Request $request)
     {
         $validatedData = $request->validate([
             'contract_id' => 'required|integer|exists:contracts,id',
             'contract_created_date' => 'nullable|date',
+            // Re-running pay-amount on a disbursed contract wipes its schedule and dates; require intent.
+            'allow_redisburse' => 'nullable|boolean',
         ]);
 
         DB::beginTransaction();
         try {
-            $contract = Contract::findOrFail($validatedData['contract_id']);
+            $contract = Contract::lockForUpdate()->findOrFail($validatedData['contract_id']);
+
+            if ($contract->status === Contract::STATUS_CANCELLED) {
+                DB::rollBack();
+                return response()->json(['message' => 'The contract is cancelled and cannot be disbursed.'], 409);
+            }
+            if ($contract->provided_at !== null && !$request->boolean('allow_redisburse')) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'The contract has already been disbursed. Send allow_redisburse=true to disburse it again.',
+                ], 409);
+            }
+
             $contract->payments()->forcedelete();
             $client = $contract->client;
             $client_name = $client->name . ' ' . $client->surname . ($client->middle_name ? ' ' . $client->middle_name : '');

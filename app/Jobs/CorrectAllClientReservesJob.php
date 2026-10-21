@@ -71,10 +71,11 @@ class CorrectAllClientReservesJob implements ShouldQueue
 
                     $hasActiveContracts = $client->contracts()
                         ->where('status', 'initial')
+                        ->provided()
                         ->exists();
 
                     $contractIds = $client->contracts()
-                        ->when($hasActiveContracts, fn($q) => $q->where('status', 'initial'))
+                        ->when($hasActiveContracts, fn($q) => $q->where('status', 'initial')->provided())
                         ->orderBy('id')
                         ->pluck('id');
 
