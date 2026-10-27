@@ -58,6 +58,8 @@ class Client extends Model
         'date',
         'classification_id',
         'acra_classification_id',
+        'fico_score',
+        'fico_score_date',
         'is_linked_to_company',
         'is_company_employee',
         'status',
@@ -82,6 +84,8 @@ class Client extends Model
         'is_linked_to_company' => 'boolean',
         'is_company_employee'  => 'boolean',
         'is_married'           => 'boolean',
+        'fico_score'           => 'integer',
+        'fico_score_date'      => 'date:Y-m-d',
     ];
 
 

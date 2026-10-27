@@ -233,6 +233,7 @@ Route::group(['middleware' => ['jwt.auth', 'password.changed']], function () {
 
     Route::prefix('clients')->group(function () {
         Route::put('/{id}/update', [ClientControllerNew::class, 'updateClientData'])->middleware('can:update_client');
+        Route::put('/{id}/fico-score', [ClientControllerNew::class, 'updateFicoScore'])->whereNumber('id')->middleware('can:update_client');
         Route::get('/', [ClientControllerNew::class, 'index'])->middleware('can:view_clients');
         Route::get('/upcoming-birthdays', [ClientControllerNew::class, 'getUpcomingBirthdays']);
         Route::get('/{id}',[ClientControllerNew::class,'show'])->middleware('can:view_clients');

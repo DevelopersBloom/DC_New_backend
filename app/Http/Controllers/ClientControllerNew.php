@@ -336,6 +336,30 @@ class ClientControllerNew extends Controller
     }
 
     /**
+     * Sets (or clears, with a null score) the client's latest ACRA FICO score.
+     * Purely informational: never touches classification or reserves.
+     */
+    public function updateFicoScore(Request $request, int $client_id): JsonResponse
+    {
+        $data = $request->validate([
+            'fico_score'      => ['nullable', 'integer', 'between:300,850'],
+            'fico_score_date' => ['nullable', 'date', 'before_or_equal:today'],
+        ]);
+
+        $client = Client::findOrFail($client_id);
+
+        $score = $data['fico_score'] ?? null;
+        $client->fico_score = $score;
+        $client->fico_score_date = $score === null ? null : ($data['fico_score_date'] ?? now()->toDateString());
+        $client->save();
+
+        return response()->json([
+            'fico_score'      => $client->fico_score,
+            'fico_score_date' => $client->fico_score_date?->format('Y-m-d'),
+        ]);
+    }
+
+    /**
      */
     public function exportClients()
     {
