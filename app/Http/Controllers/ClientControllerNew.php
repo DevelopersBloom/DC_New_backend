@@ -92,56 +92,78 @@ class ClientControllerNew extends Controller
     {
         $pawnshopId = Auth::user()->pawnshop_id ?? 1;
         $data['has_contract'] = $hasContract;
+        $data['date'] = $data['date'] ?? now()->format('Y-m-d');
 
         $type = $data['type'] ?? 'individual';
+        $data['type'] = $type;
 
+        // Hard stop: a passport series / tax number can belong to one client only,
+        // across all pawnshops. Never merge into (and overwrite) the existing record.
         if ($type === 'individual' && !empty($data['passport_series'])) {
-            $existing = Client::where('type', 'individual')
+            $holder = Client::where('type', 'individual')
                 ->where('passport_series', $data['passport_series'])
                 ->first();
 
-            if ($existing) {
-                $alreadyLinked = $existing->pawnshopClients()
-                    ->where('pawnshop_id', $pawnshopId)
-                    ->exists();
-
-                if ($alreadyLinked) {
-                    return response()->json([
-                        'message' => 'A client with this passport already exists in this pawnshop.'
-                    ], 422);
-                }
+            if ($holder) {
+                $holderName = trim(($holder->name ?? '') . ' ' . ($holder->surname ?? ''));
+                return response()->json([
+                    'message' => "Այս անձնագրի սերիայով հաճախորդ արդեն գոյություն ունի՝ {$holderName}։ Խնդրում ենք փոխել անձնագրի սերիան։",
+                    'existing_client' => ['id' => $holder->id, 'name' => $holder->name, 'surname' => $holder->surname],
+                ], 422);
             }
         }
 
-        if ($type === 'legal') {
-            $existingQuery = Client::where('type', 'legal');
+        if ($type === 'legal' && !empty($data['tax_number'])) {
+            $holder = Client::where('type', 'legal')
+                ->where('tax_number', $data['tax_number'])
+                ->first();
 
-            if (!empty($data['tax_number'])) {
-                $existingQuery->where('tax_number', $data['tax_number']);
-            } elseif (!empty($data['company_name'])) {
-                $existingQuery->where('company_name', $data['company_name']);
+            if ($holder) {
+                return response()->json([
+                    'message' => "Այս ՀՎՀՀ-ով հաճախորդ արդեն գոյություն ունի՝ {$holder->company_name}։ Խնդրում ենք փոխել ՀՎՀՀ-ն։",
+                    'existing_client' => ['id' => $holder->id, 'company_name' => $holder->company_name],
+                ], 422);
+            }
+        }
+
+        // Soft warning: same name + surname + phone (individual) or same company name
+        // (legal). The user can cancel, or resubmit with force=true to save anyway.
+        if (!$request->boolean('force')) {
+            $similarQuery = Client::where('type', $type);
+
+            if ($type === 'individual') {
+                $similarQuery->where('name', $data['name'] ?? null)
+                    ->where('surname', $data['surname'] ?? null)
+                    ->where('phone', $data['phone'] ?? null);
+            } else {
+                $similarQuery->where('company_name', $data['company_name'] ?? null);
             }
 
-            $existing = $existingQuery->first();
+            $similar = $similarQuery->limit(5)->get();
 
-            if ($existing) {
-                $alreadyLinked = $existing->pawnshopClients()
-                    ->where('pawnshop_id', $pawnshopId)
-                    ->exists();
-
-                if ($alreadyLinked) {
-                    return response()->json([
-                        'message' => 'A legal client with the same identifier already exists in this pawnshop.'
-                    ], 422);
-                }
+            if ($similar->isNotEmpty()) {
+                return response()->json([
+                    'message' => 'A similar client already exists. Resubmit with force=true to save anyway.',
+                    'duplicate_warning' => true,
+                    'candidates' => $similar->map(fn (Client $c) => [
+                        'id' => $c->id,
+                        'type' => $c->type,
+                        'name' => $c->name,
+                        'surname' => $c->surname,
+                        'company_name' => $c->company_name,
+                        'phone' => $c->phone,
+                        'has_contract' => (bool) $c->has_contract,
+                    ])->values(),
+                ], 409);
             }
         }
 
         DB::beginTransaction();
         try {
-            /** @var ClientService $service */
-            $service = app(ClientService::class);
-            $client = $service->storeOrUpdate($data);
+            // No existing record can match here (blocked above), so always insert a new one.
+            $client = new Client();
+            $client->fill($data);
+            $client->save();
 
             ClientPawnshop::firstOrCreate([
                 'client_id' => $client->id,
