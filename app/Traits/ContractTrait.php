@@ -658,11 +658,23 @@ trait ContractTrait
                 break;
             }
             $count++;
-            $balance = (float) ($payment->remaining + $payment->principal_payment) + $carryPrincipal;
+            $entries = $payment->entries()->get();
+
+            $collectedPrincipal = (float) $entries->sum('principal_amount');
+            if ($entries->isEmpty()) {
+                $collectedPrincipal = min(
+                    (float) $payment->paid,
+                    max(0, (float) $payment->original_principal_payment - (float) $payment->principal_payment)
+                );
+            }
+            $unpaidPrincipal = max(0, (float) $payment->principal_payment - $collectedPrincipal);
+
+            // payments.remaining is the row's ending balance (unpaid principal of the rows
+            // after it), so the balance owed during this row is remaining + the part of this
+            // row's principal not yet collected, plus unpaid principal of elapsed rows.
+            $balance = (float) $payment->remaining + $unpaidPrincipal + $carryPrincipal;
 
             if ($toDate->lte($currentDate)) {
-                $entries = $payment->entries()->get();
-
                 $alreadyPaidInterest = (float) $entries->sum('interest_amount');
                 if ($entries->isEmpty()) {
                     $alreadyPaidInterest = min(
@@ -674,14 +686,7 @@ trait ContractTrait
                     $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
                 }
 
-                $collectedPrincipal = (float) $entries->sum('principal_amount');
-                if ($entries->isEmpty()) {
-                    $collectedPrincipal = min(
-                        (float) $payment->paid,
-                        max(0, (float) $payment->original_principal_payment - (float) $payment->principal_payment)
-                    );
-                }
-                $carryPrincipal += max(0, (float) $payment->principal_payment - $collectedPrincipal);
+                $carryPrincipal += $unpaidPrincipal;
 //            }            else {
 //                $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
 //                $accruedInterest = $this->calcAmount(

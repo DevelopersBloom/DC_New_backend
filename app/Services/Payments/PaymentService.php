@@ -575,11 +575,15 @@ class PaymentService
                 if ($firstPaymentId === null) {
                     $firstPaymentId = $change['payment_id'];
                 }
-                $existingEntry = PaymentEntry::where('payment_id', $change['payment_id'])
-                    ->where('document_type', 'partial_payment')
-                    ->when($deal_id, fn ($q) => $q->where('deal_id', $deal_id))
-                    ->latest('id')
-                    ->first();
+                // Merge only into an entry of the same deal; without a deal id every
+                // partial payment is its own entry (never folded into an older one).
+                $existingEntry = $deal_id
+                    ? PaymentEntry::where('payment_id', $change['payment_id'])
+                        ->where('document_type', 'partial_payment')
+                        ->where('deal_id', $deal_id)
+                        ->latest('id')
+                        ->first()
+                    : null;
                 if ($existingEntry) {
                     $existingEntry->amount           += $reduction;
                     $existingEntry->principal_amount += $reduction;
@@ -614,11 +618,13 @@ class PaymentService
                 ->orderBy('date', 'asc')->orderBy('id', 'asc')
                 ->first();
             $firstPaymentId = $nextPayment?->id;
-            $existingEntry  = PaymentEntry::where('payment_id', $firstPaymentId)
-                ->where('document_type', 'partial_payment')
-                ->when($deal_id, fn ($q) => $q->where('deal_id', $deal_id))
-                ->latest('id')
-                ->first();
+            $existingEntry  = $deal_id
+                ? PaymentEntry::where('payment_id', $firstPaymentId)
+                    ->where('document_type', 'partial_payment')
+                    ->where('deal_id', $deal_id)
+                    ->latest('id')
+                    ->first()
+                : null;
             if ($existingEntry) {
                 $existingEntry->amount           += $partialAmount;
                 $existingEntry->principal_amount += $partialAmount;

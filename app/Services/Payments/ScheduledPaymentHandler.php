@@ -6,6 +6,7 @@ use App\Models\Contract;
 use App\Models\Payment;
 use App\Models\PaymentEntry;
 use App\Traits\ContractTrait;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -129,11 +130,18 @@ class ScheduledPaymentHandler
     }
 
     /**
-     * Running-balance recalculation: interest for each period = balance × days × rate.
+     * Recalculate interest_payment of the given rows (keep-principal model: each row
+     * keeps its principal, only its interest is recomputed).
      *
-     * Only the last row in the schedule gets its still-unpaid principal added back
-     * into the balance for its own interest calc, since that portion hasn't
-     * actually left the balance yet. Earlier rows use the balance as-is.
+     * interest_payment is the interest of the row's WHOLE period, from from_date to its
+     * due date, as a sum of segments split at every date principal was reduced inside the
+     * period (see periodInterest()). Interest already collected is netted downstream
+     * (handleAmortized, calculateSoonerPrincipalSplit, calculateCurrentPayment), never here.
+     *
+     * The balance of a row is the schedule balance: the unpaid principal of that row and
+     * every row after it, plus whatever of it was paid after a given day (it was still
+     * owed on that day). Computed from all open rows of the contract, so a subset of rows
+     * gets the same values as the whole schedule.
      */
     public function recalculateInterest(Contract $contract, $payments, $date = null, array $pendingPrincipalReductions = [], ?string $timing = null): void
     {
@@ -143,36 +151,20 @@ class ScheduledPaymentHandler
 
         $balance  = (float) $contract->provided_amount;
         $rate     = (float) $contract->interest_rate;
-        $prevDate = Carbon::parse($contract->date);
-        $endingBalances = $this->endingBalances($contract, $pendingPrincipalReductions);
+        $now      = $date ? Carbon::parse($date)->startOfDay() : now()->startOfDay();
+        $state    = $this->scheduleState($contract, $pendingPrincipalReductions, $now);
         foreach ($payments as $payment) {
             $payment     = $this->normalizePaymentDates($payment, $contract);
 
             $paymentDate = Carbon::parse($payment->calendar_due_date ?: $payment->to_date)->startOfDay();
             $fromDate    = Carbon::parse($payment->from_date)->startOfDay();
-            $now         = $date ?? now()->startOfDay();
-
-            $selectedDate  = $fromDate->lt($now) ? $now : $fromDate;
-            $scheduledDays = (int) ($payment->days ?? 0);
-            $days          = max(1, $paymentDate->diffInDays($selectedDate));
-            if ($scheduledDays > 0) {
-                $days = min($days, $scheduledDays);
-            }
-            $prevDate     = $paymentDate;
+            $rowState    = $state[$payment->id] ?? null;
 
             // Entries for the reduction currently being applied (processAmortized)
-            // aren't persisted yet at this point, so they must be added explicitly —
-            // otherwise the last row's balance add-back below double-counts principal
-            // that's about to be paid off in this same request.
+            // aren't persisted yet at this point, so they must be added explicitly.
             $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount')
                 + ($pendingPrincipalReductions[$payment->id] ?? 0);
             $principal            = (float) $payment->principal_payment;
-            $balanceForRow        = $balance;
-//            if ($payment->id === $payments->last()->id && $timing === PaymentDateClassifier::SOONER  ) {
-//                $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
-//                $balanceForRow      = $balance + $remainingPrincipal;
-//                $principal          = $remainingPrincipal;
-//            }
             if ($payment->id === $payments->last()->id && $timing === PaymentDateClassifier::SOONER  ) {
                 $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
 
@@ -183,10 +175,16 @@ class ScheduledPaymentHandler
                     continue;
                 }
 
-                $balanceForRow = $balance + $remainingPrincipal;
                 $principal     = $remainingPrincipal;
             }
-            $interest = $balanceForRow * $days * ($rate / 100);
+            $interest = self::periodInterest(
+                $fromDate,
+                $paymentDate,
+                (int) ($payment->days ?? 0),
+                $rowState['opening'] ?? $balance,
+                $rowState['reductions'] ?? [],
+                $rate / 100
+            );
             $interestEntries = $payment->entries()->get();
 
             // Real cash already collected (entries) is netted out downstream by every other
@@ -214,12 +212,78 @@ class ScheduledPaymentHandler
                 $balance = 0;
             }
 
-            $payment->remaining = $endingBalances[$payment->id] ?? round($balance, 10);
+            $payment->remaining = $rowState['ending'] ?? round($balance, 10);
             $payment->save();
         }
     }
 
-    private function endingBalances(Contract $contract, array $pendingPrincipalReductions = []): array
+    /**
+     * Interest of one row's whole period, split at principal reductions:
+     * Σ balance × days × rate over the segments [from_date, d1), [d1, d2), … [dn, due].
+     *
+     * @param float $openingBalance balance owed for this row once every reduction in
+     *                              $reductions has happened (its schedule balance now)
+     * @param array $reductions     [['date' => 'Y-m-d', 'amount' => float], …] principal paid
+     *                              on this row or later rows; a reduction dated after a day
+     *                              was still owed on that day
+     * @param int   $scheduledDays  the row's days column; the period length when > 0
+     *                              (it can differ from the calendar dates, e.g. the last row)
+     */
+    public static function periodInterest(
+        CarbonInterface $fromDate,
+        CarbonInterface $dueDate,
+        int $scheduledDays,
+        float $openingBalance,
+        array $reductions,
+        float $dailyRate
+    ): float {
+        $from = $fromDate->copy()->startOfDay();
+        $due  = $dueDate->copy()->startOfDay();
+        $totalDays = $scheduledDays > 0 ? $scheduledDays : max(1, (int) $from->diffInDays($due, false));
+
+        $balanceAt = function (CarbonInterface $day) use ($openingBalance, $reductions): float {
+            $stillOwed = 0.0;
+            foreach ($reductions as $r) {
+                if (Carbon::parse($r['date'])->startOfDay()->gt($day)) {
+                    $stillOwed += (float) $r['amount'];
+                }
+            }
+            return $openingBalance + $stillOwed;
+        };
+
+        // Split points strictly inside the period.
+        $points = collect($reductions)
+            ->map(fn ($r) => Carbon::parse($r['date'])->startOfDay())
+            ->filter(fn ($d) => $d->gt($from) && $d->lt($due))
+            ->unique(fn ($d) => $d->toDateString())
+            ->sort()
+            ->values();
+
+        $interest = 0.0;
+        $usedDays = 0;
+        $start    = $from;
+        foreach ($points as $point) {
+            $days = min((int) $start->diffInDays($point, false), $totalDays - $usedDays);
+            if ($days > 0) {
+                $interest += $balanceAt($start) * $days * $dailyRate;
+                $usedDays += $days;
+            }
+            $start = $point;
+        }
+        // The last segment takes whatever is left of the scheduled days.
+        $interest += $balanceAt($start) * max(0, $totalDays - $usedDays) * $dailyRate;
+
+        return $interest;
+    }
+
+    /**
+     * Per open regular row: opening balance (its unpaid principal + every later row's),
+     * ending balance (payments.remaining, see endingBalancesFor) and the principal
+     * reductions of that row and later rows (entries plus the one being applied now).
+     *
+     * @return array<int, array{opening: float, ending: float, reductions: array}>
+     */
+    private function scheduleState(Contract $contract, array $pendingPrincipalReductions, CarbonInterface $now): array
     {
         $rows = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
@@ -229,10 +293,41 @@ class ScheduledPaymentHandler
             ->orderBy('id')
             ->get(['id', 'date', 'principal_payment']);
 
-        return self::endingBalancesFor($rows, $pendingPrincipalReductions);
+        $entriesByRow = PaymentEntry::whereIn('payment_id', $rows->pluck('id'))
+            ->where('principal_amount', '>', 0)
+            ->get(['payment_id', 'date', 'principal_amount'])
+            ->groupBy('payment_id');
+
+        $endings = self::endingBalancesFor($rows, $pendingPrincipalReductions);
+
+        $state      = [];
+        $reductions = []; // of the current row and every later row
+        foreach ($rows->reverse() as $row) {
+            foreach ($entriesByRow->get($row->id, []) as $entry) {
+                $reductions[] = ['date' => (string) $entry->date, 'amount' => (float) $entry->principal_amount];
+            }
+            if (!empty($pendingPrincipalReductions[$row->id])) {
+                $reductions[] = ['date' => $now->toDateString(), 'amount' => (float) $pendingPrincipalReductions[$row->id]];
+            }
+
+            $unpaid = max(0.0, (float) $row->principal_payment
+                - (float) ($row->collected_principal ?? 0)
+                - (float) ($pendingPrincipalReductions[$row->id] ?? 0));
+
+            $state[$row->id] = [
+                'opening'    => $endings[$row->id] + $unpaid,
+                'ending'     => $endings[$row->id],
+                'reductions' => $reductions,
+            ];
+        }
+
+        return $state;
     }
 
     /**
+     * payments.remaining is the row's ending balance: the unpaid principal of the open
+     * rows after it (same meaning as at creation in ContractService::buildAnnuitySchedule).
+     *
      * @param iterable $rows open rows in schedule order, each with id, principal_payment
      *                       and collected_principal
      * @return array<int, float>
