@@ -160,23 +160,12 @@ class ScheduledPaymentHandler
             $fromDate    = Carbon::parse($payment->from_date)->startOfDay();
             $rowState    = $state[$payment->id] ?? null;
 
-            // Entries for the reduction currently being applied (processAmortized)
-            // aren't persisted yet at this point, so they must be added explicitly.
-            $alreadyPaidPrincipal = (float) $payment->entries()->sum('principal_amount')
-                + ($pendingPrincipalReductions[$payment->id] ?? 0);
-            $principal            = (float) $payment->principal_payment;
-            if ($payment->id === $payments->last()->id && $timing === PaymentDateClassifier::SOONER  ) {
-                $remainingPrincipal = max(0, $principal - $alreadyPaidPrincipal);
-
-                if ($remainingPrincipal <= 0.01) {
-                    $payment->status    = 'completed';
-                 //   $payment->remaining = round(max(0, $balance), 10);
-                    $payment->save();
-                    continue;
-                }
-
-                $principal     = $remainingPrincipal;
-            }
+            // amount stays gross (interest + full principal_payment) on every row, SOONER
+            // included: collected principal is netted by recordEntry (amount - entries),
+            // so netting it here too would count it twice and close the row too early.
+            // A row with its principal paid early still owes its period interest, so it
+            // is closed by recordEntry once that interest is paid, not here.
+            $principal = (float) $payment->principal_payment;
             $interest = self::periodInterest(
                 $fromDate,
                 $paymentDate,
