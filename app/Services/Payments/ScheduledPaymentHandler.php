@@ -129,20 +129,7 @@ class ScheduledPaymentHandler
         $this->recalculateInterest($contract, $payments, $date ? Carbon::parse($date)->startOfDay() : null);
     }
 
-    /**
-     * Recalculate interest_payment of the given rows (keep-principal model: each row
-     * keeps its principal, only its interest is recomputed).
-     *
-     * interest_payment is the interest of the row's WHOLE period, from from_date to its
-     * due date, as a sum of segments split at every date principal was reduced inside the
-     * period (see periodInterest()). Interest already collected is netted downstream
-     * (handleAmortized, calculateSoonerPrincipalSplit, calculateCurrentPayment), never here.
-     *
-     * The balance of a row is the schedule balance: the unpaid principal of that row and
-     * every row after it, plus whatever of it was paid after a given day (it was still
-     * owed on that day). Computed from all open rows of the contract, so a subset of rows
-     * gets the same values as the whole schedule.
-     */
+
     public function recalculateInterest(Contract $contract, $payments, $date = null, array $pendingPrincipalReductions = [], ?string $timing = null): void
     {
         $payments = $payments->where('status', 'initial')
@@ -266,37 +253,98 @@ class ScheduledPaymentHandler
     }
 
     /**
-     * Per open regular row: opening balance (its unpaid principal + every later row's),
-     * ending balance (payments.remaining, see endingBalancesFor) and the principal
-     * reductions of that row and later rows (entries plus the one being applied now).
+     * Loads the contract's rows and principal entries for scheduleStateFor().
      *
      * @return array<int, array{opening: float, ending: float, reductions: array}>
      */
     private function scheduleState(Contract $contract, array $pendingPrincipalReductions, CarbonInterface $now): array
     {
+        // Every regular row (completed ones too): their late collections still count.
+        $allRows = Payment::where('contract_id', $contract->id)
+            ->where('type', 'regular')
+            ->get(['id', 'date', 'to_date']);
+
         $rows = Payment::where('contract_id', $contract->id)
             ->where('type', 'regular')
             ->where('status', 'initial')
             ->withSum('entries as collected_principal', 'principal_amount')
             ->orderBy('date')
             ->orderBy('id')
-            ->get(['id', 'date', 'principal_payment']);
+            ->get(['id', 'date', 'to_date', 'principal_payment']);
 
-        $entriesByRow = PaymentEntry::whereIn('payment_id', $rows->pluck('id'))
+        $rowsById = $allRows->keyBy('id');
+        $entries  = PaymentEntry::whereIn('payment_id', $allRows->pluck('id'))
             ->where('principal_amount', '>', 0)
             ->get(['payment_id', 'date', 'principal_amount'])
-            ->groupBy('payment_id');
+            ->map(fn ($e) => [
+                'payment_id' => $e->payment_id,
+                'row_date'   => (string) $rowsById[$e->payment_id]->date,
+                'row_due'    => (string) ($rowsById[$e->payment_id]->to_date ?: $rowsById[$e->payment_id]->date),
+                'date'       => (string) $e->date,
+                'amount'     => (float) $e->principal_amount,
+            ])
+            ->all();
 
+        return self::scheduleStateFor($rows, $entries, $pendingPrincipalReductions, $now->toDateString());
+    }
+
+    /**
+     * Per open regular row r: opening balance (unpaid principal of r and every later row),
+     * ending balance (payments.remaining, see endingBalancesFor) and the reductions for
+     * periodInterest(): principal that was still owed during r's period and left later.
+     *
+     * Reductions of r are
+     *  - every principal entry of r and later rows, and the reduction being applied now;
+     *  - principal of an EARLIER row that is late (its due date is before $now) or was
+     *    collected after its due date: overdue principal keeps accruing interest in the
+     *    following periods until it is collected. What is still unpaid of a late row is
+     *    taken as collected on $now (the payment date), as is what is being applied now.
+     * On-time collections of earlier rows never count, so for a client paying on time
+     * this is just the schedule balance; for a late client it is what the late-payment
+     * recalculation charges (LatePaymentInterestRecalculator uses this same function).
+     *
+     * Pure (no DB I/O) so it can be unit tested.
+     *
+     * @param iterable $rows    open rows in schedule order: id, date, to_date,
+     *                          principal_payment, collected_principal
+     * @param array    $entries principal entries of all regular rows of the contract:
+     *                          [['payment_id', 'row_date', 'row_due', 'date', 'amount'], …]
+     * @param string   $now     Y-m-d
+     * @return array<int, array{opening: float, ending: float, reductions: array}>
+     */
+    public static function scheduleStateFor(iterable $rows, array $entries, array $pendingPrincipalReductions, string $now): array
+    {
+        $rows    = collect($rows)->values();
         $endings = self::endingBalancesFor($rows, $pendingPrincipalReductions);
+        $day     = fn ($d) => Carbon::parse($d)->toDateString();
+        $key     = fn ($date, $id) => [$day($date), (int) $id];
 
-        $state      = [];
-        $reductions = []; // of the current row and every later row
-        foreach ($rows->reverse() as $row) {
-            foreach ($entriesByRow->get($row->id, []) as $entry) {
-                $reductions[] = ['date' => (string) $entry->date, 'amount' => (float) $entry->principal_amount];
+        $state = [];
+        foreach ($rows as $row) {
+            $rowKey     = $key($row->date, $row->id);
+            $reductions = [];
+
+            foreach ($entries as $e) {
+                $isLaterOrSame = $key($e['row_date'], $e['payment_id']) >= $rowKey;
+                if ($isLaterOrSame || $day($e['date']) > $day($e['row_due'])) {
+                    $reductions[] = ['date' => $day($e['date']), 'amount' => (float) $e['amount']];
+                }
             }
-            if (!empty($pendingPrincipalReductions[$row->id])) {
-                $reductions[] = ['date' => $now->toDateString(), 'amount' => (float) $pendingPrincipalReductions[$row->id]];
+
+            foreach ($rows as $other) {
+                $pending = (float) ($pendingPrincipalReductions[$other->id] ?? 0);
+                if ($key($other->date, $other->id) >= $rowKey) {
+                    if ($pending > 0) {
+                        $reductions[] = ['date' => $now, 'amount' => $pending];
+                    }
+                } elseif ($now > $day($other->to_date ?: $other->date)) {
+                    // Earlier row, late: its pending part plus what is still unpaid on it.
+                    $unpaidOther = max(0.0, (float) $other->principal_payment
+                        - (float) ($other->collected_principal ?? 0) - $pending);
+                    if ($pending + $unpaidOther > 0) {
+                        $reductions[] = ['date' => $now, 'amount' => $pending + $unpaidOther];
+                    }
+                }
             }
 
             $unpaid = max(0.0, (float) $row->principal_payment
