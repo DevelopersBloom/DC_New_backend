@@ -469,7 +469,10 @@ class ContractControllerNew extends Controller
             }
             $this->contractService->createPayment($contract);
 
-            $deal_id = $this->createOrderAndHistory($contract, $client->id, $client_name, $cash, $category_id);
+            $deal_id = $this->createOrderAndHistory(
+                $contract, $client->id, $client_name, $cash, $category_id,
+                null, null, $now->format('Y-m-d')
+            );
 
             ContractAmountHistory::create([
                 'contract_id' => $contract->id,
