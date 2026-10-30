@@ -994,76 +994,7 @@ class   ContractService
     }
     private function getNextWorkingDay(Carbon $date)
     {
-        $holidays = [
-            '01-01', // Ամանոր
-            '01-02', // Ամանոր
-            '01-06', // Սուրբ Ծնունդ
-            '01-27', // Հիշատակի օր
-            '01-28', // Բանակի օր
-            '03-08', // Կանանց տոն
-            '04-24', // Ցեղասպանության զոհերի հիշատակի օր
-            '05-01', // Աշխատանքի օր
-            '05-09', // Հաղթանակի և խաղաղության տոն
-            '05-28', // Հանրապետության տոն
-            '07-05', // Սահմանադրության օր
-            '09-21', // Անկախության տոն
-            '12-31', // Ամանոր
-        ];
-
-        while (true) {
-            $monthDay = $date->format('m-d');
-
-            if (in_array($monthDay, $holidays) || $date->isWeekend()) {
-                $date->addDay();
-            } else {
-                break;
-            }
-        }
-
-        return $date;
-    }
-
-    /**
-     * Rebuilds the full payment schedule from contract provided_amount and interest_rate.
-     * Duration (months) is counted inclusively from $startDate through contract deadline.
-     */
-    public function regenerateSchedule(Contract $contract, string $startDate): int
-    {
-        $start = Carbon::parse($startDate, 'Asia/Yerevan')->startOfDay();
-        $deadline = Carbon::parse($contract->deadline, 'Asia/Yerevan')->startOfDay();
-
-        if ($start->gt($deadline)) {
-            throw new \InvalidArgumentException('Start date cannot be after contract deadline.');
-        }
-
-        // Match contract creation: deadline = start + N months, so N is the month diff (not inclusive +1).
-        $months = ($deadline->year - $start->year) * 12 + ($deadline->month - $start->month);
-        $months = max(1, $months);
-
-        $hasCompletedPayments = Payment::where('contract_id', $contract->id)
-            ->where('status', Contract::STATUS_COMPLETED)
-            ->where('type', 'regular')
-            ->exists();
-
-        if ($hasCompletedPayments) {
-            throw new \InvalidArgumentException('Cannot regenerate schedule when completed payments exist.');
-        }
-
-        Payment::where('contract_id', $contract->id)->forceDelete();
-
-        $contract->date = $start->format('Y-m-d');
-        $contract->provided_at = $start->format('Y-m-d');
-        $contract->deadline_days = (string) $months;
-        $contract->save();
-
-        $this->createPayment(
-            $contract->fresh(),
-            $start->format('Y-m-d'),
-            $contract->pawnshop_id,
-            $months
-        );
-
-        return $months;
+        return \App\Services\Schedule\WorkingDays::next($date);
     }
 
     /**

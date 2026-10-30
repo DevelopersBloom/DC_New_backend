@@ -796,6 +796,12 @@ class AdminControllerNew extends Controller
             'scopes.deal_actions' => 'sometimes|boolean',
         ]);
 
+        foreach (\App\Models\Deal::whereIn('id', array_column($validated['deals'], 'id'))->get() as $dealToEdit) {
+            if ($blocked = $this->scheduleRegeneratedAfter($dealToEdit)) {
+                return $blocked;
+            }
+        }
+
         $scopes = $validated['scopes'] ?? [];
         $useScoped = $dealUpdateService->hasAnyScope($scopes);
 
@@ -817,11 +823,37 @@ class AdminControllerNew extends Controller
             'tables_updated' => ['deals'],
         ]);
     }
+    /**
+     * A deal older than an active schedule regeneration must not be reversed or
+     * edited: the rows its history points at were replaced by the regeneration.
+     */
+    private function scheduleRegeneratedAfter(Deal $deal): ?\Illuminate\Http\JsonResponse
+    {
+        if (!$deal->contract_id
+            || !in_array($deal->filter_type, ['full_payment', 'payment', 'partial_payment'], true)) {
+            return null;
+        }
+
+        if (\App\Services\Schedule\ScheduleRegenerator::activeSince($deal->contract_id, $deal->created_at)) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'SCHEDULE_REGENERATED',
+                'message'    => 'The schedule was regenerated after this deal. Revert the schedule regeneration first.',
+            ], 422);
+        }
+
+        return null;
+    }
+
     public function deleteDeal($id, FullPaymentDealReversalService $fullPaymentDealReversalService, RegularPaymentDealReversalService $regularPaymentDealReversalService)
     {
         $deal = Deal::find($id);
         if (!$deal) {
             return response()->json(['message' => 'Deal not found'], 404);
+        }
+
+        if ($blocked = $this->scheduleRegeneratedAfter($deal)) {
+            return $blocked;
         }
 
         // The try/catch wraps DB::transaction() (not the other way around) so that
@@ -868,6 +900,10 @@ class AdminControllerNew extends Controller
         $deal = Deal::find($id);
         if (!$deal) {
             return response()->json(['message' => 'Deal not found'], 404);
+        }
+
+        if ($blocked = $this->scheduleRegeneratedAfter($deal)) {
+            return $blocked;
         }
 
         if (!in_array($deal->filter_type, ['full_payment', 'payment'], true)) {

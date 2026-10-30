@@ -10,7 +10,7 @@ use Illuminate\Support\Carbon;
  * A1: classifies a payment date against the earliest open installment's
  * business_due_date. That date is already working-day-shifted at
  * schedule-creation time and stored directly on Payment::to_date / Payment::date
- * (see ContractService::regenerateSchedule()) — including for the first,
+ * (see ContractService::createAnnuityPayment()) — including for the first,
  * broken-period row — so no shifting logic is needed here, only the comparison.
  */
 class PaymentDateClassifier
