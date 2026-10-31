@@ -98,6 +98,7 @@ return [
             'view_contract',
             'create_contract',
             'update_contract',
+            'regenerate_contract_schedule',
             'calculate_contract_interest',
             'confirm_calculated_interest',
             'export_contracts',
