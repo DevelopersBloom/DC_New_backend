@@ -446,9 +446,9 @@ class ScheduleRegenerator
             ]);
             $createdIds[] = $payment->id;
         }
-        dd(34);
 
         $contract->payment_schedule = $this->scheduleJson($contract->id);
+        dd(34);
         $contract->save();
 
         $summary = $this->summary($plan);
