@@ -448,8 +448,8 @@ class ScheduleRegenerator
         }
 
         $contract->payment_schedule = $this->scheduleJson($contract->id);
-        dd(34);
         $contract->save();
+        dd(34);
 
         $summary = $this->summary($plan);
 
