@@ -73,7 +73,6 @@ class ScheduleRegenerator
             $before = $this->protectedChecksum($contract->id, $plan['replace_ids']);
 
             $record = $this->write($contract, $plan, $reason, $userId);
-            dd(3);
             $this->assertInvariants($contract->fresh(), $plan, $before);
 
             $this->activityService->log(
@@ -452,14 +451,7 @@ class ScheduleRegenerator
         $contract->save();
 
         $summary = $this->summary($plan);
-dd(ScheduleRegeneration::create([
-    'user_id'              => $userId,
-    'effective_date'       => $plan['effective'],
-    'current_payment_id'   => $current->id,
-    'anchor_day'           => $plan['anchor_day'],
-    'reason'               => $reason,
 
-]));
         return ScheduleRegeneration::create([
             'contract_id'          => $contract->id,
             'user_id'              => $userId,
