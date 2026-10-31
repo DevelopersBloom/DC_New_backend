@@ -52,7 +52,14 @@ class ScheduleRegenerationController extends Controller
             if ($error = $this->postingDatePolicy->validate($data['effective_date'])) {
                 return $error;
             }
-
+dd( response()->json($this->regenerator->apply(
+                (int) $data['contract_id'],
+                $data['effective_date'],
+                $data['payment_day'] ?? null,
+                $data['reason'],
+                $data['state_hash'],
+                auth()->id()
+            )));
             return response()->json($this->regenerator->apply(
                 (int) $data['contract_id'],
                 $data['effective_date'],
