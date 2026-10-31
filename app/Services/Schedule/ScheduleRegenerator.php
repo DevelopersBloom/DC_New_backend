@@ -73,7 +73,6 @@ class ScheduleRegenerator
             $before = $this->protectedChecksum($contract->id, $plan['replace_ids']);
 
             $record = $this->write($contract, $plan, $reason, $userId);
-            dd(3);
             $this->assertInvariants($contract->fresh(), $plan, $before);
 
             $this->activityService->log(
@@ -410,6 +409,7 @@ class ScheduleRegenerator
         foreach ($plan['moved'] as $entry) {
             $movedLog[] = ['entry_id' => $entry->id, 'old_payment_id' => $entry->payment_id];
         }
+        dd(34);
         if ($movedLog) {
             PaymentEntry::whereIn('id', array_column($movedLog, 'entry_id'))->update(['payment_id' => $current->id]);
             $current->principal_payment          = (float) $current->getRawOriginal('principal_payment') + $plan['moved_principal'];
