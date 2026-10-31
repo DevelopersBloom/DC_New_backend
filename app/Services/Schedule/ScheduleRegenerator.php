@@ -58,7 +58,7 @@ class ScheduleRegenerator
                 ->where('status', Contract::STATUS_INITIAL)->lockForUpdate()->get();
 
             $plan = $this->plan($contract, $effectiveDate, $paymentDay);
-
+dd($plan);
             if ($stateHash !== null && !hash_equals($plan['state_hash'], $stateHash)) {
                 throw new ScheduleRegenerationException(
                     'STATE_CHANGED',

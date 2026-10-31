@@ -49,7 +49,6 @@ class ScheduleRegenerationController extends Controller
         ]);
 
         return $this->run(function () use ($data) {
-            dd(23,$this->postingDatePolicy->validate($data['effective_date']));
             if ($error = $this->postingDatePolicy->validate($data['effective_date'])) {
                 return $error;
             }
