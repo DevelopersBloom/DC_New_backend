@@ -451,8 +451,24 @@ class ScheduleRegenerator
         $contract->save();
 
         $summary = $this->summary($plan);
-        dd(34);
-
+dd([ 'contract_id'          => $contract->id,
+    'user_id'              => $userId,
+    'effective_date'       => $plan['effective'],
+    'current_payment_id'   => $current->id,
+    'anchor_day'           => $plan['anchor_day'],
+    'reason'               => $reason,
+    'balance'              => $plan['balance'],
+    'old_total_interest'   => $summary['old']['total_interest'],
+    'new_total_interest'   => $summary['new']['total_interest'],
+    'old_monthly'          => $summary['old']['monthly_max'],
+    'new_monthly'          => $summary['new']['monthly'],
+    'old_last_date'        => $summary['old']['last_date'],
+    'new_last_date'        => $summary['new']['last_date'],
+    'removed_payment_ids'  => $plan['replace_ids'],
+    'created_payment_ids'  => $createdIds,
+    'moved_entries'        => $movedLog,
+    'current_row_before'   => $currentBefore,
+    'old_payment_schedule' => $oldSchedule,]);
         return ScheduleRegeneration::create([
             'contract_id'          => $contract->id,
             'user_id'              => $userId,
@@ -473,6 +489,7 @@ class ScheduleRegenerator
             'current_row_before'   => $currentBefore,
             'old_payment_schedule' => $oldSchedule,
         ]);
+
     }
 
     /** One JSON shape for the snapshot column, built from the regular rows. */
