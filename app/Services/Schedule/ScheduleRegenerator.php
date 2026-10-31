@@ -70,10 +70,10 @@ class ScheduleRegenerator
                 return $this->summary($plan) + ['regeneration_id' => null, 'changed' => false];
             }
 
+            dd(3);
             $before = $this->protectedChecksum($contract->id, $plan['replace_ids']);
 
             $record = $this->write($contract, $plan, $reason, $userId);
-dd(3);
             $this->assertInvariants($contract->fresh(), $plan, $before);
 
             $this->activityService->log(
