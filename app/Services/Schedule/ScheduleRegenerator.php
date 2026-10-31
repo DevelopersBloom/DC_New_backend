@@ -71,9 +71,9 @@ class ScheduleRegenerator
             }
 
             $before = $this->protectedChecksum($contract->id, $plan['replace_ids']);
-            dd(3);
 
             $record = $this->write($contract, $plan, $reason, $userId);
+            dd(3);
             $this->assertInvariants($contract->fresh(), $plan, $before);
 
             $this->activityService->log(
