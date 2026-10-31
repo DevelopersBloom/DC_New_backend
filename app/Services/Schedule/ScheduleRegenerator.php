@@ -449,9 +449,9 @@ class ScheduleRegenerator
 
         $contract->payment_schedule = $this->scheduleJson($contract->id);
         $contract->save();
-        dd(34);
 
         $summary = $this->summary($plan);
+        dd(34);
 
         return ScheduleRegeneration::create([
             'contract_id'          => $contract->id,
