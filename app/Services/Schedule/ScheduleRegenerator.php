@@ -454,11 +454,7 @@ class ScheduleRegenerator
         $summary = $this->summary($plan);
 dd(ScheduleRegeneration::create([
     'contract_id'          => $contract->id,
-    'user_id'              => $userId,
-    'effective_date'       => $plan['effective'],
-    'current_payment_id'   => $current->id,
-    'anchor_day'           => $plan['anchor_day'],
-    'reason'               => $reason,
+
 
 ]));
         return ScheduleRegeneration::create([
