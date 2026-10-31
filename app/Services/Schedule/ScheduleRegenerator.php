@@ -421,7 +421,6 @@ class ScheduleRegenerator
 
         $pgi = (int) Payment::withTrashed()->where('contract_id', $contract->id)->max('PGI_ID');
         $createdIds = [];
-        dd(34);
 
         foreach ($plan['new_rows'] as $row) {
             $payment = Payment::create([
@@ -447,6 +446,7 @@ class ScheduleRegenerator
             ]);
             $createdIds[] = $payment->id;
         }
+        dd(34);
 
         $contract->payment_schedule = $this->scheduleJson($contract->id);
         $contract->save();
