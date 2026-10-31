@@ -58,7 +58,6 @@ class ScheduleRegenerator
                 ->where('status', Contract::STATUS_INITIAL)->lockForUpdate()->get();
 
             $plan = $this->plan($contract, $effectiveDate, $paymentDay);
-dd($plan);
             if ($stateHash !== null && !hash_equals($plan['state_hash'], $stateHash)) {
                 throw new ScheduleRegenerationException(
                     'STATE_CHANGED',
@@ -74,7 +73,7 @@ dd($plan);
             $before = $this->protectedChecksum($contract->id, $plan['replace_ids']);
 
             $record = $this->write($contract, $plan, $reason, $userId);
-
+dd(3);
             $this->assertInvariants($contract->fresh(), $plan, $before);
 
             $this->activityService->log(
