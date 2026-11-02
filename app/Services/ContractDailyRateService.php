@@ -80,28 +80,65 @@ class ContractDailyRateService
             }
 
             $classification = $this->classificationAsOf($contract, $date);
-            if ($classification && $classification->reserve_percent > 0) {
-                $reserve = $effectiveAmount * $classification->reserve_percent / 100;
+            $this->createReserve($contract, $journal, $rules, $classification, $effectiveAmount, $date, 'Reserve');
 
-                if ($reserve > 0) {
-                    $ruleKey = $classification->name === 'standard'
-                        ? 'reserve_general_amount'
-                        : 'reserve_special_amount';
+            $penalty = $this->dailyPenalty($contract, $date);
 
-                    $this->createEntry(
-                        $contract,
-                        $journal,
-                        $rules[$ruleKey],
-                        $reserve,
-                        $date,
-                        $classification->name === 'standard'
-                            ? DocumentJournal::RESERVE_GENERAL_AMOUNT
-                            : DocumentJournal::RESERVE_SPECIAL_AMOUNT,
-                        'Reserve'
-                    );
-                }
+            if ($penalty > 0 && isset($rules['penalty_rate_amount'])) {
+                $this->createEntry(
+                    $contract,
+                    $journal,
+                    $rules['penalty_rate_amount'],
+                    $penalty,
+                    $date,
+                    DocumentJournal::PENALTY_RATE_AMOUNT,
+                    'Daily penalty'
+                );
+
+                // Accrued penalty (Dr 16201NI) grows the reserve base too
+                $this->createReserve($contract, $journal, $rules, $classification, $penalty, $date, 'Penalty reserve');
             }
         });
+    }
+
+    private function createReserve($contract, $journal, array $rules, $classification, float $baseAmount, string $date, string $comment): void
+    {
+        if (!$classification || $classification->reserve_percent <= 0) return;
+
+        $reserve = $baseAmount * $classification->reserve_percent / 100;
+        if ($reserve <= 0) return;
+
+        $isStandard = $classification->name === 'standard';
+
+        $this->createEntry(
+            $contract,
+            $journal,
+            $rules[$isStandard ? 'reserve_general_amount' : 'reserve_special_amount'],
+            $reserve,
+            $date,
+            $isStandard
+                ? DocumentJournal::RESERVE_GENERAL_AMOUNT
+                : DocumentJournal::RESERVE_SPECIAL_AMOUNT,
+            $comment
+        );
+    }
+
+    /**
+     * Penalty accrued on $date: the cumulative penalty that day minus the day
+     * before. countPenalty() persists penalty_amount on the contract as a side
+     * effect, so the live value is restored — a back-dated day must not
+     * overwrite it.
+     */
+    private function dailyPenalty(Contract $contract, string $date): float
+    {
+        $penaltyAmountBefore = Contract::whereKey($contract->id)->value('penalty_amount');
+
+        $yesterday = (float) ($this->countPenalty($contract->id, Carbon::parse($date)->subDay()->toDateString())['penalty_amount'] ?? 0);
+        $today     = (float) ($this->countPenalty($contract->id, $date)['penalty_amount'] ?? 0);
+
+        Contract::whereKey($contract->id)->update(['penalty_amount' => $penaltyAmountBefore]);
+
+        return max(0, $today - $yesterday);
     }
 
     /**
@@ -164,6 +201,7 @@ class ContractDailyRateService
             'interest_rate_amount',
             'reserve_general_amount',
             'reserve_special_amount',
+            'penalty_rate_amount',
         ])->get()->keyBy('business_event_filter')->all();
     }
 

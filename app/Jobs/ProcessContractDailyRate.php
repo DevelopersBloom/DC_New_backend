@@ -153,52 +153,7 @@ class ProcessContractDailyRate implements ShouldQueue
                         ]);
                         $nextDocNum++;
 
-                        $classification = $contract->client->classification;
-                        if ($classification && $classification->reserve_percent > 0) {
-                            $reserveAmount = $effectiveAmount * $classification->reserve_percent / 100;
-                            $isStandard = $classification->name == 'standard';
-
-                            $eventFilter = $isStandard ? 'reserve_general_amount' : 'reserve_special_amount';
-                            $docTypeReserve = $isStandard ? DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
-
-                            $ruleReserve = PostingRule::where('business_event_filter', $eventFilter)->first();
-
-                            if ($ruleReserve && $reserveAmount > 0) {
-                                $journalDocReserve = DocumentJournal::create([
-                                    'date' => $date,
-                                    'document_number' => $nextDocNum,
-                                    'document_type' => $docTypeReserve,
-                                    'amount_amd' => $reserveAmount,
-                                    'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
-                                    'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
-                                    'comment' => "Daily reserve for contract #{$contract->id}",
-                                    'debit_account_id' => $ruleReserve->debit_account_id,
-                                    'credit_account_id' => $ruleReserve->credit_account_id,
-                                    'user_id' => $systemUserId,
-                                    'journalable_type' => DocumentJournal::class,
-                                    'journalable_id' => $journal->id,
-                                    'contract_id' => $contract->id,
-                                ]);
-
-                                Transaction::create([
-                                    'date' => $date,
-                                    'document_number' => $nextDocNum,
-                                    'document_type' => $docTypeReserve,
-                                    'debit_account_id' => $ruleReserve->debit_account_id,
-                                    'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
-                                    'credit_account_id' => $ruleReserve->credit_account_id,
-                                    'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
-                                    'amount_amd' => $reserveAmount,
-                                    'comment' => "Daily reserve for contract #{$contract->id}",
-                                    'user_id' => $systemUserId,
-                                    'is_system' => true,
-                                    'transactionable_type' => DocumentJournal::class,
-                                    'transactionable_id' => $journalDocReserve->id,
-                                    'contract_id' => $contract->id,
-                                ]);
-                                $nextDocNum++;
-                            }
-                        }
+                        $this->postReserve($contract, $journal, $effectiveAmount, $date, $systemUserId, "Daily reserve for contract #{$contract->id}");
                     }
                 }
 
@@ -290,6 +245,9 @@ class ProcessContractDailyRate implements ShouldQueue
                                 'transactionable_id' => $journalDocPenalty->id,
                                 'contract_id' => $contract->id,
                             ]);
+
+                            // Accrued penalty (Dr 16201NI) grows the reserve base too
+                            $this->postReserve($contract, $journal, $dailyPenaltyAmount, $date, $systemUserId, "Daily penalty reserve for contract #{$contract->id}");
                         }
                     }
 //                }
@@ -311,6 +269,63 @@ class ProcessContractDailyRate implements ShouldQueue
                 count($errors) . " of {$activeContracts->count()} contract(s) failed:\n" . implode("\n", $errors)
             ));
         }
+    }
+
+    /**
+     * Posts the reserve (general for 'standard', special otherwise) on a daily
+     * accrual: $baseAmount × the client's reserve_percent.
+     */
+    private function postReserve(Contract $contract, DocumentJournal $journal, float $baseAmount, string $date, int $systemUserId, string $comment): void
+    {
+        $classification = $contract->client->classification;
+        if (!$classification || $classification->reserve_percent <= 0) {
+            return;
+        }
+
+        $reserveAmount = $baseAmount * $classification->reserve_percent / 100;
+        $isStandard = $classification->name == 'standard';
+
+        $eventFilter = $isStandard ? 'reserve_general_amount' : 'reserve_special_amount';
+        $docTypeReserve = $isStandard ? DocumentJournal::RESERVE_GENERAL_AMOUNT : DocumentJournal::RESERVE_SPECIAL_AMOUNT;
+
+        $ruleReserve = PostingRule::where('business_event_filter', $eventFilter)->first();
+        if (!$ruleReserve || $reserveAmount <= 0) {
+            return;
+        }
+
+        $nextDocNum = Transaction::getNextDocumentNumber();
+        $journalDocReserve = DocumentJournal::create([
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $docTypeReserve,
+            'amount_amd' => $reserveAmount,
+            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
+            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
+            'comment' => $comment,
+            'debit_account_id' => $ruleReserve->debit_account_id,
+            'credit_account_id' => $ruleReserve->credit_account_id,
+            'user_id' => $systemUserId,
+            'journalable_type' => DocumentJournal::class,
+            'journalable_id' => $journal->id,
+            'contract_id' => $contract->id,
+        ]);
+
+        Transaction::create([
+            'date' => $date,
+            'document_number' => $nextDocNum,
+            'document_type' => $docTypeReserve,
+            'debit_account_id' => $ruleReserve->debit_account_id,
+            'debit_partner_id' => $ruleReserve->resolveDebitPartnerId($contract),
+            'credit_account_id' => $ruleReserve->credit_account_id,
+            'credit_partner_id' => $ruleReserve->resolveCreditPartnerId($contract),
+            'amount_amd' => $reserveAmount,
+            'comment' => $comment,
+            'user_id' => $systemUserId,
+            'is_system' => true,
+            'transactionable_type' => DocumentJournal::class,
+            'transactionable_id' => $journalDocReserve->id,
+            'contract_id' => $contract->id,
+        ]);
     }
 
     private function processLossInterest(Contract $contract, DocumentJournal $journal, string $date, int $systemUserId): void
