@@ -2118,9 +2118,10 @@ class V06Export
     }
 
     /**
-     * Sheet2 column D: net portfolio change during [$dateFrom, $dateTo] for clients in class 3/4/5 at report end.
+     * Sheet2 column D: net portfolio change during [$dateFrom, $dateTo] for clients in class 3/4/5 at period start or end.
      * Change = balance at $dateTo minus opening balance for that row (same as column B at period start).
      * Clients not yet in class 3/4/5 on the day before $dateFrom contribute 0 opening — not their pre-downgrade balance.
+     * Clients reclassified out of 3/4/5 during the period contribute 0 closing, so their opening shows as a decrease.
      */
     private function sumSheet2ColumnDPeriodChangeByCategory(
         string $categoryName,
@@ -2129,12 +2130,15 @@ class V06Export
         array  $clientIdToClassAtTo
     ): float
     {
-        if ($clientIdToClassAtTo === []) {
+        $openSnapshotDate = Carbon::parse($dateFrom)->subDay()->format('Y-m-d');
+        $clientIdToClassAtOpen = $this->sheet2ClientClassificationsAsOf($openSnapshotDate);
+        $clientIds = array_keys($clientIdToClassAtTo + $clientIdToClassAtOpen);
+
+        if ($clientIds === []) {
             return 0.0;
         }
 
-        $openSnapshotDate = Carbon::parse($dateFrom)->subDay()->format('Y-m-d');
-        $contracts = $this->sheet2ContractsForCategory($categoryName, array_keys($clientIdToClassAtTo), $dateTo, $openSnapshotDate);
+        $contracts = $this->sheet2ContractsForCategory($categoryName, $clientIds, $dateTo, $openSnapshotDate);
 
         if ($contracts->isEmpty()) {
             return 0.0;
@@ -2154,15 +2158,11 @@ class V06Export
                 continue;
             }
 
-            $classAtTo = (int)($clientIdToClassAtTo[$contract->client_id] ?? 0);
-            if (!in_array($classAtTo, [3, 4, 5], true)) {
-                continue;
-            }
-
             if (Carbon::parse($contract->date)->format('Y-m-d') > $dateTo) {
                 continue;
             }
 
+            $classAtTo = (int)($clientIdToClassAtTo[$contract->client_id] ?? 0);
             $classAtOpen = $this->clientClassificationIdAsOf((int)$contract->client_id, $openSnapshotDate);
 
             // Opening for D matches column B: only clients already in 3/4/5 at period start have a non-zero base.
@@ -2176,7 +2176,11 @@ class V06Export
                 );
             }
 
-            $closeNet = $this->contractPortfolioNetAtDate($doc, $contract, $dateTo, $classAtTo);
+            // Out of 3/4/5 at period end: no longer non-working, so closing is 0 and the opening is the decrease.
+            $closeNet = 0.0;
+            if (in_array($classAtTo, [3, 4, 5], true)) {
+                $closeNet = $this->contractPortfolioNetAtDate($doc, $contract, $dateTo, $classAtTo);
+            }
             $change += $closeNet - $openNet;
         }
 
