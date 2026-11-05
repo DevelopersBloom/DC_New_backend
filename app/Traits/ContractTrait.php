@@ -553,8 +553,8 @@ trait ContractTrait
             }
             $count++;
 
+            $alreadyPaidInterest = (float) $payment->entries()->sum('interest_amount');
             if ($toDate->lte($currentDate)) {
-                $alreadyPaidInterest = (float) $payment->entries()->sum('interest_amount');
                 $interestAmount += max(0, (float) $payment->interest_payment - $alreadyPaidInterest);
             } else {
                 // Balance comes from contract->provided_amount (kept live on every principal
@@ -562,11 +562,12 @@ trait ContractTrait
                 // ScheduledPaymentHandler::recalculateInterest() and goes stale the moment a
                 // payment sweeps through without touching every pending row.
                 $daysIntoCurrentPeriod = $fromDate->diffInDays($currentDate);
-                $interestAmount += $this->calcAmount(
+                $accruedInterest = $this->calcAmount(
                     (float) $contract->provided_amount,
                     $daysIntoCurrentPeriod,
                     $contract->interest_rate
                 );
+                $interestAmount += max(0, $accruedInterest - $alreadyPaidInterest);
                 break;
             }
         }
