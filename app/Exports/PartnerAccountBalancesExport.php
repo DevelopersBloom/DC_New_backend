@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class PartnerAccountBalancesExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
@@ -36,6 +37,7 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
             'Կրեդիտ արժ․',
             'Դեբետ Դրամով',
             'Կրեդիտ Դրամով',
+            'Դասակարգում',
         ];
     }
 
@@ -71,6 +73,7 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
             '',
             $debitAmd,
             $creditAmd,
+            $row->classification ?? '',
         ];
     }
 
@@ -83,7 +86,18 @@ class PartnerAccountBalancesExport implements FromCollection, WithHeadings, With
             ->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-        $sheet->getStyle('A1:H1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+
+        // Partners with no classification history: paint the empty cell red.
+        foreach ($this->rows->values() as $index => $row) {
+            if (($row->classification ?? null) === null) {
+                $sheet->getStyle('I' . ($index + 2))
+                    ->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()
+                    ->setARGB('FFFF0000');
+            }
+        }
 
         return [];
     }

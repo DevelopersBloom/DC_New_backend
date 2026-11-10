@@ -7,6 +7,7 @@ use App\Http\Requests\StoreChartOfAccountRequest;
 use App\Models\ChartOfAccount;
 use App\Models\DocumentJournal;
 use App\Traits\CalculatesAccountBalancesTrait;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -320,6 +321,24 @@ class ChartOfAccountController
                         ->orWhere('b.account_name', 'like', "%{$search}%");
                 });
             });
+
+        // Classification as of the report date: the newest classification_histories
+        // row per partner (date <= to_date, or newest overall when no date is given).
+        // Null when the partner has no history — the export paints that cell red.
+        $classificationAsOf = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
+
+        $q->selectSub(
+            DB::table('classification_histories as ch')
+                ->leftJoin('clients_classification as cc', 'cc.id', '=', 'ch.classification_id')
+                ->whereColumn('ch.client_id', 'b.partner_id')
+                ->whereNull('ch.deleted_at')
+                ->when($classificationAsOf, fn($qq) => $qq->where('ch.date', '<=', $classificationAsOf))
+                ->orderByDesc('ch.date')
+                ->orderByDesc('ch.id')
+                ->limit(1)
+                ->selectRaw("COALESCE(cc.title, cc.name, '')"),
+            'classification'
+        );
 
         $rows = $q->get();
 
