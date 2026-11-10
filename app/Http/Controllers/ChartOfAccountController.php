@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Exports\PartnerAccountBalancesExport;
 use App\Http\Requests\StoreChartOfAccountRequest;
 use App\Models\ChartOfAccount;
+use App\Models\ClassificationHistory;
 use App\Models\DocumentJournal;
 use App\Traits\CalculatesAccountBalancesTrait;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -324,24 +326,80 @@ class ChartOfAccountController
 
         // Classification as of the report date: the newest classification_histories
         // row per partner (date <= to_date, or newest overall when no date is given).
-        // Null when the partner has no history — the export paints that cell red.
         $classificationAsOf = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
         $q->selectSub(
             DB::table('classification_histories as ch')
-                ->leftJoin('clients_classification as cc', 'cc.id', '=', 'ch.classification_id')
                 ->whereColumn('ch.client_id', 'b.partner_id')
                 ->whereNull('ch.deleted_at')
                 ->when($classificationAsOf, fn($qq) => $qq->where('ch.date', '<=', $classificationAsOf))
                 ->orderByDesc('ch.date')
                 ->orderByDesc('ch.id')
                 ->limit(1)
-                ->selectRaw("COALESCE(cc.title, cc.name, '')"),
-            'classification'
+                ->select('ch.id'),
+            'classification_history_id'
         );
 
         $rows = $q->get();
 
+        $this->appendClassificationAndReserveCheck($rows, $dateTo);
+
         return Excel::download(new PartnerAccountBalancesExport($rows), 'partner_account_balances.xlsx');
+    }
+
+    /**
+     * Adds to each export row:
+     *  - classification: title of the partner's latest classification history
+     *    (null when the partner has no history — the export paints it red);
+     *  - reserve_diff: on 16605PC / 16605PS rows only, required reserve minus
+     *    the actual reserve balance (0 = correct), else null.
+     *
+     * Required reserve = reserve % × net debit balance of 16200 + 16200NV + 16201NI.
+     * It belongs on 16605PC for a standard client and on 16605PS otherwise; the
+     * other reserve account is expected to be 0 (same rule as CorrectReserveTrait).
+     * Loan balances are read unfiltered so search / account filters on the export
+     * cannot distort the base.
+     */
+    private function appendClassificationAndReserveCheck(Collection $rows, ?string $dateTo): void
+    {
+        $loanCodes = ['16200', '16200NV', '16201NI'];
+
+        $histories = ClassificationHistory::with('classification')
+            ->whereIn('id', $rows->pluck('classification_history_id')->filter()->unique())
+            ->get()
+            ->keyBy('id');
+
+        $loanNetByPartner = DB::query()
+            ->fromSub($this->partnerAccountBalancesSubquery($dateTo), 'pr')
+            ->whereIn('pr.account_code', $loanCodes)
+            ->whereIn('pr.partner_id', $rows->pluck('partner_id')->filter()->unique())
+            ->groupBy('pr.partner_id')
+            ->selectRaw('pr.partner_id, SUM(pr.balance) as net')
+            ->pluck('net', 'partner_id');
+
+        foreach ($rows as $row) {
+            $history = $histories->get($row->classification_history_id);
+            $classification = $history?->classification;
+
+            $row->classification = $history
+                ? (string) ($classification->title ?? $classification->name ?? '')
+                : null;
+            $row->reserve_diff = null;
+
+            if (!$classification || !in_array($row->account_code, ['16605PC', '16605PS'], true)) {
+                continue;
+            }
+
+            $percent = (float) ($history->reserve_percent ?? $classification->reserve_percent ?? 0);
+            $required = round((float) ($loanNetByPartner[$row->partner_id] ?? 0) * $percent / 100, 2);
+
+            $requiredAccount = $classification->name === 'standard' ? '16605PC' : '16605PS';
+            $expected = $row->account_code === $requiredAccount ? $required : 0.0;
+
+            // Reserve accounts carry a credit balance, which this query reports as negative.
+            $actual = -1 * (float) $row->balance;
+
+            $row->reserve_diff = round($expected - $actual, 2) + 0.0;
+        }
     }
 }
