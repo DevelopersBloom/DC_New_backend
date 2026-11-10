@@ -420,6 +420,17 @@ class ClientControllerNew extends Controller
             return response()->json(['message' => 'Classification is already set to this value.']);
         }
 
+        // ACRA's stored class is a floor: same rule applyClassificationIfWorse
+        // enforces for automatic updates. A manual change must not rate the
+        // client better than ACRA does (e.g. ACRA says monitored -> not standard).
+        $client->loadMissing('acraClassification');
+        if ($client->acraClassification && $client->acraClassification->order > $classification->order) {
+            return response()->json([
+                'message' => "Classification cannot be set to '{$classification->name}': ACRA classification "
+                    . "'{$client->acraClassification->name}' is worse.",
+            ], 422);
+        }
+
         $acc16605PC  = ChartOfAccount::idByCode('16605PC');
         $acc16605PS  = ChartOfAccount::idByCode('16605PS');
         $acc16200NV  = ChartOfAccount::idByCode('16200NV');

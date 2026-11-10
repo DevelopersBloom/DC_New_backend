@@ -47,6 +47,16 @@ class AcraExport
     }
 
     /**
+     * Snapshot cutoff for classification lookups: the last day the period covers
+     * (see fillCredit). Shared with AcraController so the "classification changed
+     * in this period" trigger selects exactly the rows this snapshot can see.
+     */
+    public static function classificationCutoff($to): Carbon
+    {
+        return Carbon::parse($to)->subDay()->endOfDay()->subMinutes(10);
+    }
+
+    /**
      * Shared with AcraController (report-inclusion check for "has overdue
      * interest") so the two stay consistent with what column L reports.
      * Returns [overdueMother, overdueInterest].
@@ -415,7 +425,7 @@ class AcraExport
         // seconds after midnight), even though it computes that day's state. A
         // pure whereDate() cutoff would exclude that row, so extend the cutoff
         // with a grace window past midnight to still catch it.
-        $classificationAsOf = Carbon::parse($this->to)->subDay()->endOfDay()->subMinutes(10);
+        $classificationAsOf = self::classificationCutoff($this->to);
 
         foreach ($this->contracts as $contract) {
             $sheet->setCellValue('A' . $row, $contract->client_id);

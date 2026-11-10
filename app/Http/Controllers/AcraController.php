@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\Acra\AcraExport;
 use App\Models\Client;
+use App\Models\ClassificationHistory;
 use App\Models\Contract;
 use App\Models\DocumentJournal;
 use App\Models\Payment;
@@ -141,9 +142,28 @@ class AcraController
             ->unique()
             ->toArray();
 
+        // A client whose classification changed inside the window must be reported
+        // (Debtor + every Credit row, since classification is client-wide) even with
+        // no payment activity, otherwise ACRA never learns of the new class.
+        // Bounded by the same cutoff fillCredit's snapshot uses, so a selected
+        // contract always shows the changed class in column O. Changes driven by
+        // an ACC report import carry acra_classification_id and are excluded: they
+        // came from ACRA, so there's nothing to tell them. `date` (not created_at)
+        // is the effective date; manual changes are stamped a day before creation.
+        $classificationClientIds = ClassificationHistory::whereNull('acra_classification_id')
+            ->where('date', '>=', $from)
+            ->where('date', '<=', AcraExport::classificationCutoff($to))
+            ->pluck('client_id')
+            ->unique()
+            ->toArray();
+        $contractsWithClassificationChange = Contract::whereNotNull('provided_at')
+            ->whereIn('client_id', $classificationClientIds)
+            ->pluck('id')
+            ->toArray();
+
         $contracts = Contract::with(['client.classification', 'guarantors', 'items'])
             ->whereNotNull('provided_at')
-            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions, $contractsWithPrepayments, $contractsWithOverdueInterest) {
+            ->where(function($query) use ($from, $to, $contractsWithInitialPayments, $contractsWithJournalActions, $contractsWithPrepayments, $contractsWithOverdueInterest, $contractsWithClassificationChange) {
                 // Upper bound is exclusive: the classification snapshot (see
                 // AcraExport::fillCredit) is taken as of $to - 1 day, so a
                 // contract dated exactly on $to has no classification history
@@ -153,14 +173,14 @@ class AcraController
                     ->orWhereIn('id', $contractsWithInitialPayments)
                     ->orWhereIn('id', $contractsWithJournalActions)
                     ->orWhereIn('id', $contractsWithPrepayments)
-                    ->orWhereIn('id', $contractsWithOverdueInterest);
+                    ->orWhereIn('id', $contractsWithOverdueInterest)
+                    ->orWhereIn('id', $contractsWithClassificationChange);
             })->get();
 
-        $updatedClientIds = Client::whereBetween('updated_at', [$from, $to])->pluck('id')->toArray();
-        $contractClientIds = $contracts->pluck('client_id')->toArray();
-        $contractIds = $contracts->pluck('id')->toArray();
-        $allClientIds = array_unique(array_merge($contractClientIds, $updatedClientIds));
-        $allClients = Client::whereIn('id', $allClientIds)->get();
+        // Debtor/Credit sheets are built from $contracts only; AcraExport never
+        // reads $allClients, so a client matched by updated_at alone was never
+        // reported. Pass the clients of the selected contracts.
+        $allClients = Client::whereIn('id', $contracts->pluck('client_id')->unique())->get();
         $acraExport = new AcraExport($contracts, $allClients, $from, $to);
         $fileData = $acraExport->export();
 
