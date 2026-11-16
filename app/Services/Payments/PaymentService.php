@@ -887,6 +887,57 @@ class PaymentService
         ];
     }
 
+    /**
+     * Backdated payoff: soft-delete the nightly accrual postings of $contract dated
+     * after $closedOn (interest, effective interest, penalty, reserve, loss
+     * interest). The payoff covers interest up to the end of $closedOn, so that
+     * day's accrual stays. Same filter as ContractDailyRateService::processDay():
+     * only rows carrying this contract_id — client-level reserve corrections have
+     * none and are left for the reserve sync to settle.
+     *
+     * @return int number of journal documents removed
+     */
+    public function removeDailyAccrualsAfter(Contract $contract, string $closedOn): int
+    {
+        $journalId = DocumentJournal::where('journalable_type', Contract::class)
+            ->where('journalable_id', $contract->id)
+            ->value('id');
+
+        if (!$journalId) {
+            return 0;
+        }
+
+        $ids = DocumentJournal::where('journalable_type', DocumentJournal::class)
+            ->where('journalable_id', $journalId)
+            ->where('contract_id', $contract->id)
+            ->whereDate('date', '>', $closedOn)
+            ->whereIn('document_type', [
+                DocumentJournal::EFFECTIVE_RATE_AMOUNT,
+                DocumentJournal::INTEREST_RATE_AMOUNT,
+                DocumentJournal::PENALTY_RATE_AMOUNT,
+                DocumentJournal::RESERVE_GENERAL_AMOUNT,
+                DocumentJournal::RESERVE_SPECIAL_AMOUNT,
+                DocumentJournal::LOSS_INTEREST_EFFECTIVE,
+                DocumentJournal::LOSS_INTEREST_NOMINAL,
+            ])
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        Transaction::where('transactionable_type', DocumentJournal::class)
+            ->whereIn('transactionable_id', $ids)
+            ->delete();
+        DocumentJournal::whereIn('id', $ids)->delete();
+
+        Log::info("Backdated full payment: removed accruals after {$closedOn} for contract #{$contract->id}", [
+            'document_ids' => $ids->all(),
+        ]);
+
+        return $ids->count();
+    }
+
     // ── Payment preview (read-only breakdown) ───────────────────────────────
 
     /**

@@ -187,24 +187,17 @@ class ContractControllerNew extends Controller
      * payment should route to the full-payment flow, so the frontend can show
      * the same number before the client actually pays.
      */
-    public function fullPaymentAmount($id): JsonResponse
+    public function fullPaymentAmount(Request $request, $id): JsonResponse
     {
+        $request->validate([
+            'date' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
         $contract = Contract::findOrFail((int) $id);
 
-        $current           = $this->calculateCurrentPayment($contract);
-        $motherAmountToPay = $this->calculateMotherAmountToPay($contract);
-
-        $interestAmount = max(0.0, (float) ($current['interest_amount'] ?? 0));
-        $penaltyAmount  = (float) ($current['penalty_amount'] ?? 0);
-        $principalDue   = (float) ($motherAmountToPay['mother_amount_to_pay'] ?? 0);
-
-        return response()->json([
-            'interest_amount'     => $interestAmount,
-            'penalty_amount'      => $penaltyAmount,
-            'principal_amount'    => $principalDue,
-            'prepayment_credit'   => (float) ($motherAmountToPay['principal_from_bucket'] ?? 0),
-            'full_payment_amount' => $interestAmount + $penaltyAmount + $principalDue,
-        ]);
+        // Same quote makeFullPayment() validates the amount against — ?date= gives
+        // the payoff for a backdated payment (interest/penalty up to that day).
+        return response()->json($this->calculateFullPaymentQuote($contract, $request->query('date')));
     }
 
     public function getHistoryDetails($id)

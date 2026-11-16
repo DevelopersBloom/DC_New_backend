@@ -457,15 +457,70 @@ class PaymentControllerNew extends Controller
     public function makeFullPayment(Request $request): JsonResponse
     {
         $idempotencyKey = $request->header('Idempotency-Key');
-            $contract = Contract::findOrFail($request->contract_id);
-            $totalAmount = $request->amount;
-            $payer = $request->payer;
-            $cash = $request->cash;
-            $date = $request->contract_created_date ?? Carbon::now()->format('Y-m-d');
-
-            if ($error = $this->postingDatePolicy->validate($date)) {
-                return $error;
+        // Nothing has been written when a request is rejected: release the key so
+        // a corrected retry with the same key is processed instead of getting 409.
+        $reject = function (JsonResponse $response) use ($idempotencyKey): JsonResponse {
+            if ($idempotencyKey) {
+                IdempotencyKey::where('key', $idempotencyKey)->update(['locked_at' => null]);
             }
+            return $response;
+        };
+
+        $request->validate([
+            'contract_id'           => 'required|integer',
+            'amount'                => 'required|numeric|min:0',
+            'contract_created_date' => 'nullable|date_format:Y-m-d',
+        ]);
+
+        $contract    = Contract::findOrFail($request->contract_id);
+        $totalAmount = $request->amount;
+        $payer       = $request->payer;
+        $cash        = $request->cash;
+        $date        = $request->contract_created_date ?? Carbon::now()->format('Y-m-d');
+        $today       = Carbon::now()->format('Y-m-d');
+
+        if ($error = $this->postingDatePolicy->validate($date)) {
+            return $reject($error);
+        }
+
+        if ($error = $this->validateFullPaymentContext($contract, $date)) {
+            return $reject($error);
+        }
+
+        // The amount is checked against the payoff for the PAYMENT date: the
+        // interest share is derived from it (amount − principal − penalty), so a
+        // quote made for another day would be booked as wrong interest income.
+        $quote = $this->calculateFullPaymentQuote($contract, $date);
+        $isCash = filter_var($cash, FILTER_VALIDATE_BOOLEAN);
+        $expectedAmount = $isCash ? $quote['cash_amount'] : $quote['full_payment_amount'];
+        // Cash may be settled at the exact payoff or rounded to 10 dram.
+        $accepted = array_unique($isCash
+            ? [$quote['full_payment_amount'], $quote['cash_amount']]
+            : [$quote['full_payment_amount']]);
+        $matches = collect($accepted)->contains(fn ($a) => abs((float) $totalAmount - (float) $a) <= 0.01);
+
+        if (!$matches) {
+            return $reject(response()->json([
+                'success'         => false,
+                'error_code'      => 'AMOUNT_MISMATCH',
+                'message'         => "Full payment amount for {$date} must be {$expectedAmount}.",
+                'expected_amount' => $expectedAmount,
+                'quote'           => $quote,
+            ], 422));
+        }
+
+        return DB::transaction(function () use ($request, $reject, $idempotencyKey, $contract, $totalAmount, $payer, $cash, $date, $today) {
+            // Row lock: a second full payment (double click, two tabs) waits here
+            // and then sees the contract already completed.
+            $contract = Contract::whereKey($contract->id)->lockForUpdate()->first();
+            if ($contract->status !== 'initial') {
+                return $reject(response()->json([
+                    'success'    => false,
+                    'error_code' => 'CONTRACT_NOT_OPEN',
+                    'message'    => 'The contract is already closed.',
+                ], 422));
+            }
+
             $motherAmount = $contract->provided_amount;
             $payerClientId = $this->resolvePayerClientId($payer);
 
@@ -543,6 +598,15 @@ class PaymentControllerNew extends Controller
             // reserve if the client has no open contracts left, else bring it to target.
             $this->syncClientReserveToTarget($contract->client_id, $date, $contract->id);
 
+            // ── Backdated payoff: the nightly job kept accruing interest, penalty and
+            //    reserve for the days after the payment date — remove those postings,
+            //    then bring the reserve to target as of today, so client-level
+            //    corrections posted on those days leave no leftover on 16605PC/PS. ──
+            if ($date < $today) {
+                $this->paymentService->removeDailyAccrualsAfter($contract, $date);
+                $this->syncClientReserveToTarget($contract->client_id, $today, $contract->id);
+            }
+
             // ── B4: refund whatever bucket amount could not be offset against payoff ──
             if ($prepaymentRefundAmount > 0) {
                 $prepaymentRefundOrder = $this->generateOrder(
@@ -575,9 +639,9 @@ class PaymentControllerNew extends Controller
                 ]);
             }
 
-            if (Carbon::now()->lessThan(Carbon::parse($contract->deadline))) {
-                $refundAmount = $this->calculateRefundAmount($contract->mother,$contract->lump_rate,$contract->deadline,$contract->deadline_days);
-                if ($refundAmount > 0) {
+            // Unearned lump fee, counted from the payment date (0 on/after the deadline).
+            $refundAmount = $this->calculateEarlyRepaymentLumpRefund($contract, $date);
+            if ($refundAmount > 0) {
                     $refundOrder = $this->generateOrder($contract, $refundAmount, Order::REFUND_LUMP, 'out', $cash, Order::REFUND_LUMP_FILTER, $date);
                     $refund_type = HistoryType::where('name', 'one_time_payment_refund')->first();
 
@@ -605,9 +669,8 @@ class PaymentControllerNew extends Controller
                         IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
                     }
                     return response()->json($payload);
-                }
             }
-            if ((isset($refundAmount) && $refundAmount > 0) || $prepaymentRefundAmount > 0) {
+            if ($refundAmount > 0 || $prepaymentRefundAmount > 0) {
                 $payload = ['success' => 'success', 'message' => 'Full payment created successfully with a refund', 'refund_amount' => $refundAmount ?? 0, 'prepayment_refund_amount' => $prepaymentRefundAmount];
                 if ($idempotencyKey) {
                     IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
@@ -620,24 +683,47 @@ class PaymentControllerNew extends Controller
                 IdempotencyKey::where('key', $idempotencyKey)->update(['status_code' => 200, 'response' => json_encode($payload), 'locked_at' => null]);
             }
             return response()->json($payload);
-
-
-
+        });
     }
+
     /**
-     * Calculate the refund amount for early full payment
+     * A full payment may only close an open contract, on or after its start, and
+     * only as the last operation: a later payment would already have been split
+     * using a balance this payoff now says was zero.
      */
-    private function calculateRefundAmount($providedAmont,$lumpRate,$deadline,$deadlineDays)
+    private function validateFullPaymentContext(Contract $contract, string $date): ?JsonResponse
     {
-        $lump_amount_original = $providedAmont * $lumpRate/100;
-        $lump_amount = round($lump_amount_original);
+        if ($contract->status !== 'initial') {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'CONTRACT_NOT_OPEN',
+                'message'    => 'The contract is already closed.',
+            ], 422);
+        }
 
-        $remainingDays = Carbon::parse($deadline)->diffInDays(Carbon::now()->startOfDay());
+        if ($contract->date && $date < Carbon::parse($contract->date)->toDateString()) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'BEFORE_CONTRACT_DATE',
+                'message'    => 'Payment date cannot be before the contract date.',
+            ], 422);
+        }
 
-        $refund_amount_original = $lump_amount/$deadlineDays*$remainingDays;
-        $refund_amount = round($refund_amount_original);
+        $laterOperation = \App\Models\Deal::where('contract_id', $contract->id)
+            ->whereDate('date', '>', $date)
+            ->orderBy('date')
+            ->value('date');
 
-        return round($refund_amount/10)*10;
+        if ($laterOperation) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'LATER_OPERATIONS_EXIST',
+                'message'    => 'There are operations on this contract after ' . $date
+                    . ' (first on ' . Carbon::parse($laterOperation)->toDateString() . '). Reverse them first.',
+            ], 422);
+        }
+
+        return null;
     }
     public function payPartial(Request $request): JsonResponse
     {

@@ -787,6 +787,73 @@ trait ContractTrait
         ];
     }
 
+    /**
+     * Cash is settled to the nearest 10 dram; a remainder of exactly 5 rounds
+     * down (5395 -> 5390). Mirrors roundCashAmount() in the frontend.
+     */
+    public static function roundCashAmount(float $amount): float
+    {
+        return (float) (ceil(round(($amount - 5) / 10, 6)) * 10);
+    }
+
+    /**
+     * Full payoff of $contract as of $date (Y-m-d, default today): principal still
+     * to pay after the prepayment bucket, interest and penalty accrued up to the
+     * end of $date, and the lump-sum refund an early payoff on $date earns.
+     *
+     * Read-only: countPenalty() persists contracts.penalty_amount as a side
+     * effect, so the live value is restored — a past-date quote must not
+     * overwrite it.
+     */
+    public function calculateFullPaymentQuote(Contract $contract, ?string $date = null): array
+    {
+        $date = Carbon::parse($date ?? now()->toDateString())->toDateString();
+
+        $penaltyAmountBefore = Contract::whereKey($contract->id)->value('penalty_amount');
+        $current = $this->calculateCurrentPayment($contract, $date);
+        Contract::whereKey($contract->id)->update(['penalty_amount' => $penaltyAmountBefore]);
+        $contract->penalty_amount = $penaltyAmountBefore;
+
+        $mother = $this->calculateMotherAmountToPay($contract);
+
+        $interest  = round(max(0.0, (float) ($current['interest_amount'] ?? 0)), 2);
+        $penalty   = round(max(0.0, (float) ($current['penalty_amount'] ?? 0)), 2);
+        $principal = round((float) $mother['mother_amount_to_pay'], 2);
+        $total     = round($principal + $interest + $penalty, 2);
+
+        return [
+            'date'                => $date,
+            'principal_amount'    => $principal,
+            'prepayment_credit'   => (float) $mother['principal_from_bucket'],
+            'prepayment_balance'  => (float) $mother['prepayment_balance'],
+            'interest_amount'     => $interest,
+            'penalty_amount'      => $penalty,
+            'full_payment_amount' => $total,
+            'cash_amount'         => self::roundCashAmount($total),
+            'lump_refund_amount'  => $this->calculateEarlyRepaymentLumpRefund($contract, $date),
+        ];
+    }
+
+    /**
+     * Unearned part of the one-time (lump) fee refunded when the contract is paid
+     * off before its deadline, counted from $date (the payment date), not today.
+     */
+    public function calculateEarlyRepaymentLumpRefund(Contract $contract, string $date): float
+    {
+        $paymentDay = Carbon::parse($date)->startOfDay();
+        $deadline   = Carbon::parse($contract->deadline)->startOfDay();
+
+        if (!$contract->deadline || !$paymentDay->lessThan($deadline) || (int) $contract->deadline_days <= 0) {
+            return 0.0;
+        }
+
+        $lumpAmount    = round($contract->mother * $contract->lump_rate / 100);
+        $remainingDays = $deadline->diffInDays($paymentDay);
+        $refundAmount  = round($lumpAmount / $contract->deadline_days * $remainingDays);
+
+        return (float) (round($refundAmount / 10) * 10);
+    }
+
 //    public function countPenalty($contract_id, $import_date = null)
 //    {
 //        $contract = Contract::find($contract_id);
