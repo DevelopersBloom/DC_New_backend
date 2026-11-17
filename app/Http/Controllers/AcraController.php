@@ -175,7 +175,17 @@ class AcraController
                     ->orWhereIn('id', $contractsWithPrepayments)
                     ->orWhereIn('id', $contractsWithOverdueInterest)
                     ->orWhereIn('id', $contractsWithClassificationChange);
-            })->get();
+            })
+            // A closed contract is reported exactly once: in the window it closed
+            // in, so ACRA learns it was repaid. After that no trigger (a later
+            // client classification change, stale schedule rows, etc.) may pull it
+            // back into a report.
+            ->where(function ($query) use ($from) {
+                $query->whereNotIn('status', ['completed', 'executed'])
+                    ->orWhereNull('closed_at')
+                    ->orWhere('closed_at', '>=', $from);
+            })
+            ->get();
 
         // Debtor/Credit sheets are built from $contracts only; AcraExport never
         // reads $allClients, so a client matched by updated_at alone was never
