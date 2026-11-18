@@ -644,9 +644,9 @@ class AcraExport
             $sheet->setCellValue('O' . $row, $riskClassCode);
 
             // X: last risk classification date ("Վարկի վերջին դասակարգման ամսաթիվ").
-            // Left blank only when the client has no risk class; every class
-            // (including "standard" 01) carries the date it was last assigned.
-            $requiresClassificationDate = $riskClassCode !== '';
+            // Left blank when the client has no risk class or is "standard" (01);
+            // every other class carries the date it was last assigned.
+            $requiresClassificationDate = $riskClassCode !== '' && $riskClassCode !== '01';
             $lastClassificationDate = $requiresClassificationDate ? $classificationHistory?->date : null;
             if ($lastClassificationDate) {
                 $this->setDateCellValue($sheet, 'X' . $row, $lastClassificationDate);
